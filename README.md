@@ -1,1 +1,3 @@
 # GENGA
+
+## How to compile
