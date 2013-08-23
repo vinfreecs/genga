@@ -1,0 +1,419 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+       "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title> GENGA Documentation</title>
+</head>
+<body>
+
+<center>
+<h1>
+ The GENGA Code: <br />
+Gravitational Encounters with GPU Acceleration.
+</h1>
+
+Authors: <br />
+Simon Grimm <br />
+Joachim Stadel <br />
+<br />
+Institute for Theoretical Physics <br />
+University of Zurich <br />
+Switzerland
+
+</center>
+
+<a href="#Requirements">Requirements</a><br />
+<a href="#Compilation">Compilation</a><br />
+<a href="#The param.dat File">The param.dat File</a><br />
+<a href="#Console Arguments">Console Arguments</a><br />
+<a href="#Defined Constants and Flags">Defined Constants and Flags</a><br />
+<a href="#The Initial Conditions">The Initial Conditions</a><br />
+<a href="#The Output Files">The Output Files</a><br />
+<a href="#Restart a simulation">Restart a simulation</a><br />
+<a href="#aeLimits">aeLimits</a><br />
+<a href="#aeGrid">aeGrid</a><br />
+<a href="#Gas disc">Gas disc</a><br />
+<a href="#Test particle mode">Test particle mode</a><br />
+<a href="#Multi simulation mode">Multi simulation mode</a><br />
+<a href="#The source code">The source code</a><br />
+
+
+<h2 id="Requirements"> Requirements </h2>
+<p>GENGA runs on Nvidia GPU's with compute capability of 2.0 or higher. To be able to use the Code one has
+to install the Cuda Toolkit. This can be downloaded from <a href="https://developer.nvidia.com/cuda-downloads">https://developer.nvidia.com/cuda-downloads</a>. <br />
+We strongly recommend to use the driver version 5.0 or higher to get the full performance and correct results. Especially in version 3 and 4 have been observed rounding errors which can affect the output of a simulation serious.
+</p>
+
+<h2 id="Compilation"> Compilation </h2>
+GENGA can be compiled with the Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability.
+For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. <br />
+To delete the executable and all object files, type 'make clean'.
+
+<h2 id="The param.dat File"> The param.dat File</h2>
+
+Simulation parameters are specified in the 'param.dat' file. The used parameters are listed here, the order can not be changed. 
+
+<ul>
+<li>The time step, in days </li>
+<li>The output name </li>
+<li>The Energy output interval, in time steps </li>
+<li>The Coordinates output interval, in time steps </li>
+<li>The number of outputs per Coordinate output interval</li>
+<li>The total number of integration steps</li>
+<li>The central Mass, in solar masses</li>
+<li>Value of close encounter parameter n1</li>
+<li>Value of close encounter parameter n2</li>
+<li>The Input file name</li>
+<li>The input file format</li>
+Here is specified the format of the input file. The possible arguments are listed below, some are optional, the order can be changed. The input file format arguments in the param.dat file must be placed between '<< ' and ' >>' and separated with a space.
+	<ul>
+	<li> x = x-coordinate in AU (heliocentric) </li>
+	<li> y = y-coordinate in AU (heliocentric) </li>
+	<li> z = z-coordinate in AU (heliocentric) </li>
+	<li> m = mass in Solar masses </li>
+	<li> vx = x-velocity in AU/day * 0.0172020989 (heliocentric) </li>
+	<li> vy = y-velocity in AU/day * 0.0172020989 (heliocentric) </li>
+	<li> vz = z-velocity in AU/day * 0.0172020989 (heliocentric) </li>
+	<li> rho = density in g/cm^3; optional, the default value can be specified below. </li>
+	<li> r = physical radius in AU; optional, if r is not given or the radius is equal to zero, then the program uses the density to calculate the radius. Note that you have many ways to input the radius or density. Look at the input file section.</li>
+	<li> Sx = x-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0 </li>
+	<li> Sy = y-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0 </li>
+	<li> Sz = z-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0 </li>
+	<li> i = index of the body; optional, the default value is the line number in the input file. Don't give two bodies the same index. </li>
+	<li> t = start time of the simulation in years, optional. The default is zero.
+	<li> amin = minimal value of semi major axis range for aecount; optional, the default value is 0.0. See <a href="#aeLimits">here</a> for more details</li>
+	<li> amax = maximal value of semi major axis range for aecount; optional, the default value is Rcut. See <a href="#aeLimits">here</a> for more details</li>
+	<li> emin = minimal value of eccentricity range for aecount; optional, the default value is 0.0. See <a href="#aeLimits">here</a> for more details</li>
+	<li> emax = maximal value of eccentricity range for aecount; optional, the default value is 1.0. See <a href="#aeLimits">here</a> for more details</li>
+	<li> - = skip this column, optional </li>
+	</ul>
+<li>The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.</li>
+<li>Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies.</li>
+<li>The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.</li>
+<li>The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.</li>
+<li>The Order of the symplectic integrator. The options are 2, 4 or 6</li>
+<li>Miminal major axis for the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>Maximal major axis for the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>Miminal eccentricity for the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>Maximal eccentricity for the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>The number of cells in a of the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>The number of cells in e of the aeCount grid. See <a href="#aeGrid">here</a> for more details </li>
+<li>The time step when aeCount starts. (In Detail aeCount will start at the next bigger coordinate output step).</li>
+<li>The name for the aeCount grid</li>
+<li>The dissipation time for the gas disc in years</li>
+<li>The power law exponent for the gas disc, alpha </li>
+</ul>
+
+<h2 id="Console Arguments"> Console Arguments </h2>
+Instead of using the parameter file, some arguments can also be passed as console
+arguments. The console arguments have the highest priority and are overwriting the
+arguments of the param.dat file.
+The options are:
+<ul>
+
+<li>-dt f	Time step in days</li>
+<li>-ei i	Energy output interval</li>
+<li>-ci i	Coordinates output interval</li>
+<li>-I i	Number of integration steps</li>
+<li>-n1 f	Value of n1</li>
+<li>-n2 f	Value of n2</li>
+<li>-dev i	Device number</li>
+<li>-in s	Input file name</li>
+<li>-out s	Output name</li>
+<li>-R i	Restart a simulation at time step i</li>
+<li>-TP i	Test Particle mode i = 0, treat all bodies the same way, i = 1: small bodies don't affect big bodies.</li>
+<li>-M s	name of file, containing a list of the directories for the multi simulation mode.</li>
+<li>-Nmin i	Minimal number of bodies in the simulation, not including test particles.</li>
+<li>-SIO i	Order of symplectic integrator, The options are 2, 4 or 6.</li>
+<li>-aeN s	Name of the aeCount grid</li>
+<li>-t f	Start time of the simulation in years
+
+</ul>
+Where i means an integer, f a floating point value, and s a string.
+
+<h2 id="Defined Constants and Flags">Defined Constants and Flags</h2>
+
+Some Constants are defined as c++ preprocessor directives in the include.h file.
+After changing one of these constants, the code has to be recompiled.
+
+<p>Here it can also be chosen if the aeCount grid is used and if the gas disc is included or not.</p>
+
+
+<ul>
+<li>Rcut f          Radius where bodies get ejected, in AU</li>
+<li>RcutSun f       Radius where bodies fall into the central mass, in AU</li>
+<li>Kg f            Squared Gaussian gravitation constant</li>
+<li>pc f            Factor in Prechecker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates</li>
+<li>FGN i           Number of elements in table for fastfg</li>
+<li>MaxColl i       Maximum number of Collisions per time step</li>
+<li>cef f           Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.</li>
+</ul>
+
+Where i means an integer and f a floating point value.
+
+
+<h2 id="The Initial Conditions">The Initial Conditions </h2>
+
+The initial conditions are read from the file specified in 'param.dat' (Input file = ). The initial conditions must be a text file 
+and the format must correspond to the values set in the 'param.dat' file (Input file Format: << ... >> ).
+
+The data of each particle has to be written in a new lines in text format.
+Don't write the central mass (Sun) in the initial condition file, it is set automatically to the heliocentric origin with a mass specified in the 'parm.dat' file.
+
+<ul>
+<li> Example 1 </li>
+	<ul>
+	<li> Format in 'param.dat':  << x y z m vx vy vz r >></li>
+	<li>input file:</li>
+		<ul>
+			<li>x1 y1 z1 m1 vx1 vy1 vz1 r1</li>
+			<li>x2 y2 z2 m2 vx2 vy2 vz2 r2</li>
+			<li>.</li>
+			<li>.</li>
+			<li>.</li>
+			<li>xn yn zn mn vxn vyn vzn rn</li>
+		</ul>
+	</ul>
+	GENGA reads the radii from the initial condition file.
+
+<li> Example 2 </li>
+	<ul>
+	<li> Format in 'param.dat':  << x y z m vx vy vz rho >></li>
+	<li>input file:</li>
+		<ul>
+			<li>x1 y1 z1 m1 vx1 vy1 vz1 rho1</li>
+			<li>x2 y2 z2 m2 vx2 vy2 vz2 rho2</li>
+			<li>.</li>
+			<li>.</li>
+			<li>.</li>
+			<li>xn yn zn mn vxn vyn vzn rhon</li>
+		</ul>
+	</ul>
+	GENGA reads the densities from the initial condition file and computes the radii.
+
+
+<li> Example 3 </li>
+	<ul>
+	<li> Format in 'param.dat':  << x y z m vx vy vz >></li>
+	<li>Default rho = 2.0</li>
+	<li>input file:</li>
+		<ul>
+			<li>x1 y1 z1 m1 vx1 vy1 vz1</li>
+			<li>x2 y2 z2 m2 vx2 vy2 vz2</li>
+			<li>.</li>
+			<li>.</li>
+			<li>.</li>
+			<li>xn yn zn mn vxn vyn vzn</li>
+		</ul>
+	</ul>
+	GENGA uses the default density from the 'param.dat' file and computes the radii.
+
+<li> Example 4 </li>
+	<ul>
+	<li> Format in 'param.dat':  << x y z m vx vy vz r rho >></li>
+	<li>Default rho = 2.0</li>
+	<li>input file:</li>
+		<ul>
+			<li>x1 y1 z1 m1 vx1 vy1 vz1 r1 rho1</li>
+			<li>x2 y2 z2 m2 vx2 vy2 vz2 r2 rho2</li>
+			<li>.</li>
+			<li>.</li>
+			<li>.</li>
+			<li>xn yn zn mn vxn vyn vzn r2 rho2</li>
+		</ul>
+	</ul>
+	GENGA reads the radii from the initial condition file. If a radius set to zero, then GENGA
+	reads density from the initial condition file and computes the radius.
+</ul>
+
+<h2 id="The Output Files">The Output Files</h2>
+
+<h3>The Coordinate output file: Out&ltname>_&lttime step>.dat </h3>
+
+This file contains the heliocentric positions and velocities, the spin and some information about the orbit and close encounters.<br />
+At the coordinate output interval set in the 'param.dat' file, a new output file is created.
+	<ul>
+	t i1 m1 r1 x1 y1 z1 vx1 vy1 vz1 Sx1 Sy2 Sz1 amin1 amax1 emin1 emax1 aecount1 aecountT1 enccountT1 test1 <br />
+	t i2 m2 r2 x2 y2 z2 vx2 vy2 vz2 Sx2 Sy2 Sz2 amin2 amax2 emin2 emax2 aecount2 aecountT2 enccountT2 test2 <br />
+	.<br />
+	.<br />
+	.<br />
+	t in mn rn xn yn zn vxn vyn vzn Sxn Syn Szn aminn amaxn eminn emaxn aecountn aecountTn enccountTn testn <br />
+	<br />
+	
+	<li>t is the time in years.</li>
+	<li>i is the particle index. If two particles collide, then the new index is the one from the more massive particle.
+	If both particles have the same mass, then the smaller index is taken.</li>
+	<li> amin, amax, emin and emax are the specified boundaries for the aeCount box, see <a href="#aeLimits">here</a> for more details. At a collision,
+	the same rules as for the index are applied to these values.</li>
+	<li> aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity
+	where in the aecount box limits. See <a href="#aeLimits">here</a> for more details.</li>
+	<li> aecountT is the integrated value of all previous aecount values.</li>
+	<li> enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with an other (massive) particle.</li>
+	<li> test can be used for some individual values</li>
+
+	</ul>
+	
+<h3>The Energy output file: Energy&ltname>.dat</h3>
+This file contains information about the number of particles and the energy.
+At the energy output interval set in the 'param.dat' file, a new line in this file is written. The format is the following: 
+	<ul>
+	time N V T+TSun 2T+V U Total V+T TSun ERelativ <br />
+	.<br />
+	.<br />
+	.<br />
+	<br />
+	with
+	<li>time in years </li>
+	<li>N: Number of particles</li>
+	<li>V: Total potential energy</li>
+	<li>T: Total Kinetic energy</li>
+	<li>TSun: Kinetic energy of the central mass</li>
+	<li>U: Inner energy created from collisions, ejections or gas disc</li>
+	<li>ERelativ: (ETotal_t - ETotal_0)/ETotal_0</li>
+	</ul>
+	
+<h3>The Execution time file: time&ltname>.dat</h3>
+
+	This file contains the execution time spent for the corresponding Coordinate Output interval, in seconds.
+	The last line contains the total execution time in seconds.
+
+<h3>The information file: info&ltname>.dat</h3>
+
+	This file contains general information about the used parameters and hardware.<br />
+	This file contains also information about the number of close encounter pairs and close encounter group sizes: It shows the Number of prechecked
+	close encounter pairs, the number of close encounter pairs, and the number of groups of sizes 2,4,8,16,32,64,128,256,512,1024 and 2048.<br />
+
+	If an error occurs during the simulation, then in this File is written the last coordinates-Output and an information
+	about the error.
+
+<h3>The collision file: Collisions&ltname>.dat</h3>
+	In this file are listed the details of the collisions between particle i and j just before they collide:
+
+	<ul>
+	time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj<br />
+	.<br />
+	.<br />
+	.<br />
+	</ul>
+
+<h3> The ejection file Ejections&ltname>.dat</h3>
+	In this file are listed the details of the ejected particles. An ejection happens if a particle's distance to the central mass is greater
+	than the Rcut value specified in the 'defines.h' file, or smaller than the 'RcutSun' value.
+
+	<ul>
+	time index m r x y z vx vy vz Sx Sy Sz case<br />
+	.<br />
+	.<br />
+	.<br />
+
+	with: case = -3 for ejected bodies, and case = -2 for bodies falling into the central mass.
+	</ul>
+	
+<h3> The aeGrid file: aeCount&ltaeGrid name>_&lttime step>.dat </h3>
+If the useGridae value in the 'define.h' file is set to one, then at the coordinate output interval, a new aeGrid file is created.
+This file contains two Matrices of the size Na x Ne, where Na and Ne are set in the 'param.dat' file. The first matrix contains the number of time steps which a 
+particle was at the corresponding semi major axis and eccentricity bin, since the last output time<br />
+The second matrix contains the same information since the beginning of the simulation. <br />
+In the multi simulation mode all sub simulations are contributing to the same files.<br />
+See <a href="#aeGrid">here</a> for more details.
+
+<h3> The master file: master.out</h3>
+The master file contains information about the used hardware and simulation progress. If an error occurs than the master file contains more details about that.
+    
+<h2 id="Restart a simulation"> Restart a simulation </h2>
+
+A simulation can be restarted from each coordinate output file, by using the -R time step console argument or specify 
+a restart time in the 'param.dat' file.
+
+Before you restart a simulation you can also change things in the param.dat file, but the Output name must be the same as in the original run!
+To be able to restart a simulation, the corresponding coordinate output file, the corresponding line in the energy file and if used, the corresponding aeGrid file, must exist.<br />
+
+Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files are not deleted and the
+new data is added at the end of these files. But the coordinate output files are OVERWRITTEN with the new data.
+By restarting a simulation the values of E0 and the inner Energy are read out from the original run and
+used again.<br />
+
+One can also use a coordinate output file to start a new simulation run with totally different parameters by using the
+Output file as a new initial condition file. the Input file Format should then be of the form  << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
+
+
+<h2 id="aeLimits"> aeLimits </h2>
+The aeLimits values amin, amax, emin and emax are limits for the semi major axis and eccentricity for an individual particle. The values can be set in the initial condition file. If the corresponding particle spends time in the given area in a-e space, then a counter is increased. <br />
+This values can be useful in a stability analysis of planetary systems.
+
+
+<h2 id="aeGrid"> aeGrid </h2>
+The aeGrid is a semi major axis versus eccentricity grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity
+The dimensions of the grid can be set in the 'para.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin and aeGrid_emax values, where the semi major axis 'a' is a positive value in astronomical units, and the eccentricity 'e' a value between zero and one. <br />
+The resolution of the grid can be set by the Na and Ne values. <br />
+
+In the multi simulation mode all sub simulations are contributing to the same files. <br />
+
+To use the aeGrid functionality, then in the 'define.h' file, the 'useGridae' value must be set to 1. 
+
+
+
+<h2 id="Gas disc"> Gas disc </h2>
+The gas disc is implemented according Morishima et al. (2010) <a href="http://arxiv.org/pdf/1007.0579v1.pdf">From planetesimals to terrestrial planets: N-body simulations including the effects of nebular gas and giant planets.</a> It supports gas drag, Type I migration and drag enhancement for small particles. <br />
+The parameters for the gas disc can be set in:
+<ul>
+<li> define.h:</li>
+	<ul>
+	<li> useGas: Use the gas disc or not
+	<li> Gasnr_g: Number of cells in r direction for gas grid
+	<li> Gasnz_g: Number of cells in z direction for gas grid
+	<li> Gasnr_p: Number of cells in r direction for particle grid
+	<li> Gasnz_p: Number of cells in z direction for particle grid
+	<li> h_1: scale height at 1AU for c = 1km/s
+	<li> Sigma_10: surface density at 1AU
+	<li> Mgiant: Maximum mass for gas drag
+	<li> M_Enhance: factor for enhamcement
+	<li> Mass_pl: factor for enhamcement
+	<li> fMass_min: factor for enhamcement
+	</ul>
+<li> param.dat:</li>
+	<ul>
+	<li>Dissipation time for the gas in years</li>
+	<li>power law exponent for the gas disc</li>
+	</ul>
+</ul>
+
+
+<h2 id="Test particle mode"> Test particle mode </h2>
+The test particle mode should be used in simulation with only up to 16 massive bodies and lots of massless test particles. The test particles doesn't interact with other
+test particles.<br />
+
+The test particle mode can be started with the -TP 1 console argument are by setting the 'use Test Particles' value in the 'param.dat' file to one.
+
+<h2 id="Multi simulation mode"> Multi simulation mode </h2>
+The multi simulation mode can be used to simulate a large number of small simulations with up to 16 massive particles. For each simulation a new directory is needed, containing the initial condition file and the param.dat file. Note that not all parameters in the 'param.dat' file can be chosen individually, these are only:
+<ul>
+<li> the name </li>
+<li> the central mass </li>
+<li> the n1 parameter </li>
+<li> the n2 parameter </li>
+<li> the initial condition file </li>
+<li> the Nmin value </li>
+</ul>
+All the other parameters ore read from the simulation number 0.<br />
+To start a multi simulation run, an additional file is needed, which contains a list of all sub simulation directory names. For example:
+<ul>
+<li> path.dat: </li>
+	<ul>
+	sim0000<br />
+	sim0001<br />
+	sim0002<br />
+	.<br />
+	.<br />
+	.<br />
+	</ul>
+</ul>
+The simulation can then be started with './genga -M path.dat'<br />
+The sub simulations can all have a different number of bodies. If a sub simulation contains less particles than specified in the Nmin value, then this specific simulation is stopped, and the total number of simulations gets reduced. <br />
+In the multi simulation mode, the indexes of the particles should not be greater than 100.
+
+<h2 id="The source code"> The source code </h2>
+
+</body>
+</html>
