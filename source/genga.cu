@@ -55,13 +55,14 @@ int main(int argc, char*argv[]){
 	printf("Read parameters\n");
 	int er = Param(argc, argv);
 	if(er == 0) return 0;
-
+	printf("Parameters OK\n");
 
 	// Determine the size of the simulations
+	printf("Read Size\n");
 	er = size();
 	if(er == 0) return 0;
 	
-	printf("Parameters OK\n");
+	printf("Size OK\n");
 	cudaDeviceSynchronize();
 
 	cudaSetDevice(P.dev);

@@ -19,10 +19,22 @@ __host__ int firstoutput(){
 			fprintf(GSF[st].Energyfile,"%g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", P.ict, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
 			fclose(GSF[st].Energyfile);
 
-			sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
-			GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+			if(FormatP == 1){
+				if(Nst == 1 || FormatS == 0){
+					if(FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+					if(FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+				}
+				else{
+					if(FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+					if(FormatT == 1)sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+				}
+			}
+
 			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, P.ict, 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
-			fclose(GSF[st].outputfile);
+			if(FormatP == 1) fclose(GSF[st].outputfile);
 		}
 		else if(N_h[st] + Nsmall_h[st] > 0){
 			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "r");
@@ -83,16 +95,35 @@ __host__ void printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *te
 	DemoToHelio(x4_h, v4_h, Msun, N, x4small_h, v4small_h, Nsmall);
 
 	int index;
+
 	for(int j = 0; j < N; j+=1){
-		if(Nst == 1) index = index_h[j];
+		int st = index_h[j] / 100;
+		if(FormatP == 0){
+			char outputfilename[160];
+			if(Nst == 1) sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+			else sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+			if(t > P.ict) outputfile = fopen(outputfilename, "a");
+			else outputfile = fopen(outputfilename, "w");
+		}
+
+		if(Nst == 1 || FormatS == 1) index = index_h[j];
 		else index = index_h[j] % 100;
 
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
 
 		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/ts, enccountT_h[j], test_h[j]);
+		if(FormatP == 0) fclose(outputfile);
 	}
 	for(int j = 0; j < Nsmall; j+=1){
+		int st = 0;
+		if(FormatP == 0){
+			char outputfilename[160];
+			sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, indexsmall_h[j]);
+			if(t > P.ict) outputfile = fopen(outputfilename, "a");
+			else outputfile = fopen(outputfilename, "w");
+		}
+
 		if(Nst == 1) index = indexsmall_h[j];
 		else index = indexsmall_h[j] % 100;
 
@@ -100,7 +131,7 @@ __host__ void printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *te
 		enccountsmallT_h[j] += enccountsmall_h[j];
 
 		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/ts, enccountsmallT_h[j], -1.0);
-
+		if(FormatP == 0) fclose(outputfile);
 	}
 }
 
@@ -201,11 +232,35 @@ __host__ void CoordinateOutput(long long ts, double t){
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
 		int NsmallS = NsmallS_h[st];
-		sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, ts);
-		GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+
+		if(FormatP == 1){
+			if(Nst == 1 || FormatS == 0){
+				if(FormatT == 0){
+					sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, ts);
+					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+				}
+				if(FormatT == 1){
+					sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
+					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+					}
+			}
+			else{
+				if(FormatT == 0){
+					sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, ts);
+					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+				}
+				if(FormatT == 1){
+					sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+				}
+			}
+		}
+
+
 		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, t/365.25, ts, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
 
-		fclose(GSF[st].outputfile);
+		if(FormatP == 1) fclose(GSF[st].outputfile);
 
 	}
 	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long)*NT, cudaMemcpyHostToDevice);

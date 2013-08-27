@@ -614,8 +614,15 @@ __host__ int Param(int argc, char*argv[]){
 	for(int st = 0; st < Nst; ++st){
 		dtiMsun_h[st] = dt / Msun_h[st];
 		//restart -> inputfilename
-		if(P.tRestart > 0){
-			sprintf(GSF[st].inputfilename, "%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+		if(P.tRestart > 0 && FormatP == 1){
+			if(Nst == 1 || FormatS == 0){
+				if(FormatT == 0) sprintf(GSF[st].inputfilename, "%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+				if(FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+			}
+			else{
+				if(FormatT == 0) sprintf(GSF[st].inputfilename, "Out%s_%.12lld.dat", GSF[st].X, P.tRestart);
+				if(FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.dat", GSF[st].X);
+			}
 		}
 		sprintf(GSF[st].logfilename, "%sinfo%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].timefilename, "%stime%s.dat", GSF[st].path, GSF[st].X);
@@ -657,9 +664,27 @@ __host__ int Param(int argc, char*argv[]){
 //It returns the number of bodies
 __host__ int icSize(int st){
 
+	//Determinde the number of coordinates in the input file
+	int Nformat = 0;
+	for(int f = 0; f < 22; ++f){
+		if(GSF[st].informat[f] > 0) ++Nformat;
+	}
+	if(P.tRestart > 0 && FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
+
+	char t[500];
+	double time = 0.0;
+	int er = 1;
+	int NN = 0;
+	int er1 = 1;
+	double m;
+	int index;
+	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
+	sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25);
+	double Et = atof(Ets);
+	
+
 	FILE *infile;
 	infile = fopen(GSF[st].inputfilename, "r");
-
 	if(infile == NULL){
 		if(Nst == 1){
 			fprintf(masterfile,"Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
@@ -674,40 +699,109 @@ __host__ int icSize(int st){
 		}
 	}
 
-	//Determinde the number of coordinates in the input file
-	int Nformat = 0;
-	for(int f = 0; f < 22; ++f){
-		if(GSF[st].informat[f] > 0) ++Nformat;
-	}
-	if(P.tRestart == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
-
-	char t[500];
-	int er = 1;
-	int NN = 0;
-	int er1 = 1;
-	double m;
-
-	for(int i = 0; i < 100000000; ++i){
+	for(int i = 0; i < 1000000000; ++i){
 		for(int f = 0; f < Nformat; ++f){
 
-			if((GSF[st].informat[f] == 4 && P.tRestart == 0) || f == 2 && P.tRestart == 1){
-				er = fscanf (infile, "%lf",&m);
+			if(P.tRestart == 0 || FormatP == 0){
+				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&m);
+				else er = fscanf(infile, "%s", t);
 			}
-			else er = fscanf(infile, "%s", t);
+			else{
+				if(f == 0) er = fscanf (infile, "%lf",&time);
+				else if(f == 1)	er = fscanf (infile, "%d",&index);
+				else if(f == 2) er = fscanf (infile, "%lf",&m);
+				else er = fscanf (infile, "%s",t);
 
-			if(er <= 0){
+			}
+			if(er <= 0){ //error by reading
 				er1 = 0;
 				break;
 			}
+
 		}
+		if(FormatT == 1 && time > Et) break;
 
 		if(er1 == 1){
-			if(m > 0.0) ++NN;
-			else ++Nsmall_h[st];
+			if(FormatP == 1){
+				if(FormatS == 0 || P.tRestart == 0 || Nst == 1){
+					if(Et == time){
+						if(m > 0.0) ++NN;
+						else ++Nsmall_h[st];
+					}
+				}
+				else if(index / 100 == st){
+					if(Et == time){
+						if(m > 0.0) ++NN;
+						else ++Nsmall_h[st];
+					}
+				}
+			}
+			if(FormatP == 0){
+				if(P.tRestart == 0){
+					if(m > 0.0) ++NN;
+					else ++Nsmall_h[st];
+				}
+				else ++NN;
+			}
 		}
 		else break;
 	}
 	fclose(infile);
+
+	if(FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
+		int NNN = 0;
+		int NNNsmall = 0;
+		Nformat = 21;
+		for(int i = 0; i < 1000000; ++i){
+			int NMAX = 0;
+			er1 = 1;
+			char infilename[160];
+			sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+			infile = fopen(infilename, "r");
+			if(infile == NULL) continue;
+			for(int it = 0; it < 1000000000; ++it){
+
+				for(int f = 0; f < Nformat; ++f){
+					if(f == 0) er = fscanf (infile, "%lf",&time);
+					else if(f == 1)	er = fscanf (infile, "%d",&index);
+					else if(f == 2) er = fscanf (infile, "%lf",&m);
+					else{
+						er = fscanf (infile, "%s",t);
+					}
+					
+					if(er <= 0){ //error by reading
+						er1 = 0;
+						break;
+					}
+				}
+				if(time > Et) break;
+			
+				if(er1 == 1){
+					if(Nst == 1 || FormatS == 0){
+						if(Et == time){
+							if(m > 0.0) ++NNN;
+							else ++NNNsmall;
+						}
+						if(NNN + NNNsmall == NN){
+							NMAX = 1;
+							break;
+						}
+					}
+				}
+				else{
+					--NN;
+					break;
+				}
+			}
+			fclose(infile);
+			if(NMAX == 1) break;
+		}
+		NN = NNN;
+		Nsmall_h[st] = NNNsmall;
+	}
+
+	
+
 	if(P.UseTestParticles == 0){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
@@ -791,6 +885,9 @@ __host__ void Info(){
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", Version);
+			fprintf(infofile, "FormatS: %d\n", FormatS);
+			fprintf(infofile, "FormatT: %d\n", FormatT);
+			fprintf(infofile, "FormatP: %d\n", FormatP);
 			fprintf(infofile, "dt: %g \n", P.idt);                                          // use only argument in simulation 0
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
 			fprintf(infofile, "Energy output intervall: %d\n", P.ei);                       // use only argument in simulation 0

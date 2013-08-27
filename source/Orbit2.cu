@@ -244,7 +244,7 @@ __host__ int FGAlloc(){
 }
 
 
-//This function reads at a rrestart the corespondent Gridae file
+//This function reads at a restart the corrspondent Gridae file
 __host__ int readGridae(){
 	if(P.tRestart > 0){
 		sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, P.tRestart);
@@ -474,7 +474,7 @@ __host__ int readic(int st){
 	double AU = 1.49597870700e13; //in cm
 	double Solarmass = 1.98892e33; //in g
 
-	infile = fopen(GSF[st].inputfilename, "r");
+	if(FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 
 	int ii = 0;
 	int iismall = 0;
@@ -551,68 +551,178 @@ __host__ int readic(int st){
 		}
 	}
 	else{
-
+	//read from restart time step
+		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
+		sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25);
+		double Et = atof(Ets);
+		double time = 0.0;
 		double aecount = 0.0;
-		for(int i = 0; i < N; ++i){
-			fscanf (infile, "%lf",&skip);
-			fscanf (infile, "%d",&index_h[i + NBS]);
-			fscanf (infile, "%lf",&x4_h[i + NBS].w);
-			fscanf (infile, "%lf",&v4_h[i + NBS].w);
-			fscanf (infile, "%lf",&x4_h[i + NBS].x);
-			fscanf (infile, "%lf",&x4_h[i + NBS].y);
-			fscanf (infile, "%lf",&x4_h[i + NBS].z);
-			fscanf (infile, "%lf",&v4_h[i + NBS].x);
-			fscanf (infile, "%lf",&v4_h[i + NBS].y);
-			fscanf (infile, "%lf",&v4_h[i + NBS].z);
-			fscanf (infile, "%lf",&spin_h[i + NBS].x);
-			fscanf (infile, "%lf",&spin_h[i + NBS].y);
-			fscanf (infile, "%lf",&spin_h[i + NBS].z);
-			fscanf (infile, "%f",&aelimits_h[i + NBS].x);
-			fscanf (infile, "%f",&aelimits_h[i + NBS].y);
-			fscanf (infile, "%f",&aelimits_h[i + NBS].z);
-			fscanf (infile, "%f",&aelimits_h[i + NBS].w);
-			fscanf (infile, "%lf",&skip);
-			fscanf (infile, "%lf",&aecount);
-			fscanf (infile, "%lld",&enccountT_h[i + NBS]);
-			fscanf (infile, "%lf",&ttest);
 
-			index_h[i + NBS] += 100*st;
-			aecountT_h[i + NBS] = (long long)(aecount * P.tRestart);
+		if(FormatP == 1){
+			//skip previous time steps
+			if(FormatT == 0) fscanf (infile, "%lf",&time);
+			if(FormatT == 1){
+				fscanf (infile, "%lf",&time);
+				while(time < Et){
+					if(time == Et) break;
+					for(int j = 0; j < 20; ++j){
+						fscanf (infile, "%lf",&skip);
+					}
+					fscanf (infile, "%lf",&time);
+				}
+			}
 
-			++ii;
+			//skip previous simulation data
+			if(FormatS == 1){
+				for(int i = 0; i < NBS * 21; ++i){
+					fscanf (infile, "%lf",&skip);
+				}
+			}
+
+			for(int i = 0; i < N; ++i){
+				if(i > 0) fscanf (infile, "%lf",&time);
+				fscanf (infile, "%d",&index_h[i + NBS]);
+				fscanf (infile, "%lf",&x4_h[i + NBS].w);
+				fscanf (infile, "%lf",&v4_h[i + NBS].w);
+				fscanf (infile, "%lf",&x4_h[i + NBS].x);
+				fscanf (infile, "%lf",&x4_h[i + NBS].y);
+				fscanf (infile, "%lf",&x4_h[i + NBS].z);
+				fscanf (infile, "%lf",&v4_h[i + NBS].x);
+				fscanf (infile, "%lf",&v4_h[i + NBS].y);
+				fscanf (infile, "%lf",&v4_h[i + NBS].z);
+				fscanf (infile, "%lf",&spin_h[i + NBS].x);
+				fscanf (infile, "%lf",&spin_h[i + NBS].y);
+				fscanf (infile, "%lf",&spin_h[i + NBS].z);
+				fscanf (infile, "%f",&aelimits_h[i + NBS].x);
+				fscanf (infile, "%f",&aelimits_h[i + NBS].y);
+				fscanf (infile, "%f",&aelimits_h[i + NBS].z);
+				fscanf (infile, "%f",&aelimits_h[i + NBS].w);
+				fscanf (infile, "%lf",&skip);
+				fscanf (infile, "%lf",&aecount);
+				fscanf (infile, "%lld",&enccountT_h[i + NBS]);
+				fscanf (infile, "%lf",&ttest);
+
+				if(FormatS == 0) index_h[i + NBS] += 100*st;
+				aecountT_h[i + NBS] = (long long)(aecount * P.tRestart);
+
+				++ii;
+			}
+			for(int i = 0; i < Nsmall; ++i){
+				fscanf (infile, "%lf",&skip);
+				fscanf (infile, "%d",&indexsmall_h[i + NsmallS]);
+				fscanf (infile, "%lf",&x4small_h[i + NsmallS].w);
+				fscanf (infile, "%lf",&v4small_h[i + NsmallS].w);
+				fscanf (infile, "%lf",&x4small_h[i + NsmallS].x);
+				fscanf (infile, "%lf",&x4small_h[i + NsmallS].y);
+				fscanf (infile, "%lf",&x4small_h[i + NsmallS].z);
+				fscanf (infile, "%lf",&v4small_h[i + NsmallS].x);
+				fscanf (infile, "%lf",&v4small_h[i + NsmallS].y);
+				fscanf (infile, "%lf",&v4small_h[i + NsmallS].z);
+				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].x);
+				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].y);
+				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].z);
+				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].x);
+				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].y);
+				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].z);
+				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].w);
+				fscanf (infile, "%lf",&skip);
+				fscanf (infile, "%lf",&aecount);
+				fscanf (infile, "%lld",&enccountsmallT_h[i + NsmallS]);
+				fscanf (infile, "%lf",&ttest);
+
+				indexsmall_h[i + NsmallS] += 100*st;
+				aecountsmallT_h[i + NsmallS] = (long long)(aecount * P.tRestart);
+
+				++ii;
+			}
 		}
-		for(int i = 0; i < Nsmall; ++i){
-			fscanf (infile, "%lf",&skip);
-			fscanf (infile, "%d",&indexsmall_h[i + NsmallS]);
-			fscanf (infile, "%lf",&x4small_h[i + NsmallS].w);
-			fscanf (infile, "%lf",&v4small_h[i + NsmallS].w);
-			fscanf (infile, "%lf",&x4small_h[i + NsmallS].x);
-			fscanf (infile, "%lf",&x4small_h[i + NsmallS].y);
-			fscanf (infile, "%lf",&x4small_h[i + NsmallS].z);
-			fscanf (infile, "%lf",&v4small_h[i + NsmallS].x);
-			fscanf (infile, "%lf",&v4small_h[i + NsmallS].y);
-			fscanf (infile, "%lf",&v4small_h[i + NsmallS].z);
-			fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].x);
-			fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].y);
-			fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].z);
-			fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].x);
-			fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].y);
-			fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].z);
-			fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].w);
-			fscanf (infile, "%lf",&skip);
-			fscanf (infile, "%lf",&aecount);
-			fscanf (infile, "%lld",&enccountsmallT_h[i + NsmallS]);
-			fscanf (infile, "%lf",&ttest);
+		if(FormatP == 0){
+			ii = 0;
+			int iismall = 0;
+			for(int i = 0; i < 1000000; ++i){
+				int er = 0;
+				char infilename[160];
+				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+				infile = fopen(infilename, "r");
+				if(infile == NULL) continue;
+	
+				//skip previous time steps
+				fscanf (infile, "%lf",&time);
+				while(time < Et){
+					if(time == Et) break;
+					for(int j = 0; j < 20; ++j){
+						fscanf (infile, "%lf",&skip);
+					}
+					er = fscanf (infile, "%lf",&time);
+					if(er <= 0) break;
+				}
+				if(er <= 0) continue;
 
-			indexsmall_h[i + NsmallS] += 100*st;
-			aecountsmallT_h[i + NsmallS] = (long long)(aecount * P.tRestart);
+				int index;
+				double m;
+				fscanf (infile, "%d",&index);
+				fscanf (infile, "%lf",&m);
+				if(m > 0 || P.UseTestParticles == 0){
+					index_h[ii + NBS] = index;	
+					x4_h[ii + NBS].w = m;
+					fscanf (infile, "%lf",&v4_h[ii + NBS].w);
+					fscanf (infile, "%lf",&x4_h[ii + NBS].x);
+					fscanf (infile, "%lf",&x4_h[ii + NBS].y);
+					fscanf (infile, "%lf",&x4_h[ii + NBS].z);
+					fscanf (infile, "%lf",&v4_h[ii + NBS].x);
+					fscanf (infile, "%lf",&v4_h[ii + NBS].y);
+					fscanf (infile, "%lf",&v4_h[ii + NBS].z);
+					fscanf (infile, "%lf",&spin_h[ii + NBS].x);
+					fscanf (infile, "%lf",&spin_h[ii + NBS].y);
+					fscanf (infile, "%lf",&spin_h[ii + NBS].z);
+					fscanf (infile, "%f",&aelimits_h[ii + NBS].x);
+					fscanf (infile, "%f",&aelimits_h[ii + NBS].y);
+					fscanf (infile, "%f",&aelimits_h[ii + NBS].z);
+					fscanf (infile, "%f",&aelimits_h[ii + NBS].w);
+					fscanf (infile, "%lf",&skip);
+					fscanf (infile, "%lf",&aecount);
+					fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
+					fscanf (infile, "%lf",&ttest);
 
-			++ii;
+					if(FormatS == 0) index_h[ii + NBS] += 100*st;
+					aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
+
+					++ii;
+				}
+				else{
+					indexsmall_h[iismall + NsmallS] = index;
+					x4small_h[iismall + NsmallS].w = m;
+					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].w);
+					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].x);
+					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].y);
+					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].z);
+					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].x);
+					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].y);
+					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].z);
+					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].x);
+					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].y);
+					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].z);
+					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].x);
+					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].y);
+					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].z);
+					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].w);
+					fscanf (infile, "%lf",&skip);
+					fscanf (infile, "%lf",&aecount);
+					fscanf (infile, "%lld",&enccountsmallT_h[iismall + NsmallS]);
+					fscanf (infile, "%lf",&ttest);
+
+					indexsmall_h[iismall + NsmallS] += 100*st;
+					aecountsmallT_h[iismall + NsmallS] = (long long)(aecount * P.tRestart);
+
+					++iismall;
+				}
+				fclose(infile);
+				if(ii + iismall == N + Nsmall) break;
+			}
 		}
-
 	}
-	fclose(infile);
-	return ii;
+	if(FormatP == 1 || P.tRestart == 0) fclose(infile);
+	return ii + iismall;
 } 
 
 // **************************************
