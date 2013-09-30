@@ -906,7 +906,7 @@ __host__ void Info(){
 			fprintf(infofile, "cef: %g\n", cef);
 			fprintf(infofile, "Number of bodies: %d\n", N_h[st]);
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
-			fprintf(infofile, "Ninimal number of bodies: %d\n", Nmin[st]);
+			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
