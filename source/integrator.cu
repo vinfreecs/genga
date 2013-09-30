@@ -615,7 +615,6 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 	return 1;
 }
 __host__ int step_2048(double t){
-cudaError_t error; 
 #if useGas > 0
 com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt * Ct[0], N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
@@ -647,7 +646,6 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		if(si < SIn - 1){
 			HC128_kernel < 512, 2048, 3 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
 			kick4_kernel < 256, 2048, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
-printf("D\n");
 #if useGas > 0
 com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt * Ct[si], N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
