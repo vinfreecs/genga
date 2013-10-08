@@ -633,7 +633,7 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 			cudaDeviceSynchronize();
 
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF > 1) group1024_kernel <2048, 512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d);
+			if(NF > 0) group1024_kernel <2048, 512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d);
 
 			if(NF > 1) fusionB_kernel <2048, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, x4_d, rcrit_d);
 			cudaDeviceSynchronize();
