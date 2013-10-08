@@ -95,12 +95,15 @@ __host__ void printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *te
 	DemoToHelio(x4_h, v4_h, Msun, N, x4small_h, v4small_h, Nsmall);
 
 	int index;
+	int st = 0;
 
 	for(int j = 0; j < N; j+=1){
-		int st = index_h[j] / 100;
+		if(Nst > 1) st = index_h[j] / 100;
 		if(FormatP == 0){
 			char outputfilename[160];
-			if(Nst == 1) sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+			if(Nst == 1){
+				sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+			}
 			else sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
 			if(t > P.ict) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");

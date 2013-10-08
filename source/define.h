@@ -4,7 +4,7 @@
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define FormatT 0			//0: one file per time step, 1: all time steps in the same file
-#define FormatP 0			//0: one file per particle, 1: all particles in the same file
+#define FormatP 1			//0: one file per particle, 1: all particles in the same file
 
 #define Version 2.97
 #define Rcut 20.0			//bodies with r > Rcut are Ejected

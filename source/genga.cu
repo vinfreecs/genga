@@ -133,6 +133,7 @@ int main(int argc, char*argv[]){
 
 	printf("Write initial Energy\n");
 
+	//write first output
 	er = firstoutput();
 	if(er == 0) return 0;
 	printf("Energy OK\n");
