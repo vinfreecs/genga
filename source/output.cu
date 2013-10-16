@@ -1,15 +1,15 @@
-#include "output.h"
+#include "Orbit2.h"
 
 timeval tt1;				//start time
 timeval tt2;				//start time of a output time intervall
 timeval tt3;				//end time of a output time intervall
 timeval tt4;				//end time//
 
-long times, timems;			//elapsed time in seconds and microseconds
+long long times, timems;			//elapsed time in seconds and microseconds
 
 //This function prints the initial Energy and Coordinate output
 //If Restart is set, then it reads the corespondent initial conditions from the files and writes no output
-__host__ int firstoutput(){
+__host__ int Data::firstoutput(){
 	for(int st = 0; st < Nst; ++st){
 		if(P.tRestart == 0){
 			int NBS = NBS_h[st];
@@ -90,7 +90,7 @@ __host__ int firstoutput(){
 
 //**************************************
 //This function prints the coordinate output
-__host__ void printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double t, long long ts, int N, FILE *outputfile, double Msun, double3 *spin_h, double4 *x4small_h, double4 *v4small_h, double3 *spinsmall_h, int *indexsmall_h, int Nsmall, int Nst, float4 *aelimits_h, float4 *aelimitssmall_h, int *aecount_h, int *aecountsmall_h, int *enccount_h, int *enccountsmall_h, long long *aecountT_h, long long *aecountsmallT_h, long long *enccountT_h, long long *enccountsmallT_h, int ci){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double t, long long ts, int N, FILE *outputfile, double Msun, double3 *spin_h, double4 *x4small_h, double4 *v4small_h, double3 *spinsmall_h, int *indexsmall_h, int Nsmall, int Nst, float4 *aelimits_h, float4 *aelimitssmall_h, int *aecount_h, int *aecountsmall_h, int *enccount_h, int *enccountsmall_h, long long *aecountT_h, long long *aecountsmallT_h, long long *enccountT_h, long long *enccountsmallT_h, int ci){
 
 	DemoToHelio(x4_h, v4_h, Msun, N, x4small_h, v4small_h, Nsmall);
 
@@ -138,7 +138,8 @@ __host__ void printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *te
 	}
 }
 
-__host__ void firstInfo(){
+//this fucntion prints the first close encounter information to the info file
+__host__ void Data::firstInfo(){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, (Nst + 1) * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaMemcpy(Nencpairssmall_h, Nencpairssmall_d, (Nst + 1) * sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
@@ -149,25 +150,42 @@ __host__ void firstInfo(){
 	}
 }
 
+__host__ int Data::firstEnergy(){
+	cudaStream_t hstream[16];
+
+	for(int hst = 0; hst < 16; ++hst) cudaStreamCreate(&hstream[hst]);
+	for(int st = 0; st < Nst; ++st){
+		int NBS = NBS_h[st];
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, Energy0_d, hstream[st%16], st, N_h[st], 0);
+	}
+	for(int hst = 0; hst < 16; ++hst) cudaStreamDestroy(hstream[hst]);
+	error = cudaGetLastError();
+	fprintf(masterfile,"Energy error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("Energy error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
+	return 1;
+}
 
 //This function calls the Energy function and prints informations
-__host__ void EnergyOutput(long long ts, double t){
+__host__ void Data::EnergyOutput(long long ts, double t){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
 	}
 #if useGas > 0
-	if(Nst == 1) gasEnergy(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0]);
+	if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0]);
 	else{
 		for(int st = 0; st < Nst; ++st){
 			int NBS = NBS_h[st];
-			gasEnergyM(NB[st], Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], st, N_h[st]);
+			gasEnergyMCall(NB[st], Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], st, N_h[st]);
 		}
 	}
 #endif
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		Energy(NB[st], x4_d + NBS, v4_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, Energy0_d, hstream[st%16], st, N_h[st], 1);
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, Energy0_d, hstream[st%16], st, N_h[st], 1);
 	}
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamDestroy(hstream[hst]);
@@ -203,12 +221,10 @@ __host__ void EnergyOutput(long long ts, double t){
 	}
 	cudaMemset(Energy_d, 0, NEnergyT*sizeof(double));
 	
-	
-	
 }
 
 //This function copies the data from the device to host and calls the printoutput function
-__host__ void CoordinateOutput(long long ts, double t){
+__host__ void Data::CoordinateOutput(long long ts, double t){
 	cudaMemcpy(x4_h, x4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(v4_h, v4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(index_h, index_d, sizeof(int)*NT, cudaMemcpyDeviceToHost);
@@ -273,7 +289,8 @@ __host__ void CoordinateOutput(long long ts, double t){
 	cudaMemset(aecountsmall_d, 0, sizeof(int)*NsmallT);
 }
 
-__host__ void GridaeOutput(long long ts){
+
+__host__ void Data::GridaeOutput(long long ts){
 	int GridN = Gridae.Na * Gridae.Ne;
 	sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, ts);
 	Gridae.file = fopen(Gridae.filename, "w");
@@ -302,9 +319,10 @@ __host__ void GridaeOutput(long long ts){
 	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridN);
 }
 
+
 //This function prints information if there are too many Collisions which fit not in allocated memory
 //It stops the integration
-__host__ void printfMaxColl(long long ts){
+__host__ void Data::printMaxColl(long long ts){
 	printf("Error: Too many Collisions, MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], ts);
 	if(Nst ==1){
 		GSF[0].logfile = fopen(GSF[0].logfilename, "a");
@@ -325,8 +343,9 @@ __host__ void printfMaxColl(long long ts){
 	}
 }
 
+
 //This function prints information if a too big close encounter group occurs and stops the integrations
-__host__ int MaxGroups(long long ts, double t){
+__host__ int Data::MaxGroups(long long ts, double t){
 	for(int nm = 7; nm < 12; ++nm){
 		if(Nenc_m[nm] > 0){
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
@@ -369,16 +388,18 @@ __host__ int MaxGroups(long long ts, double t){
 	return 1;
 }
 
+
 //This functions set the starting rutime of the integrations
-__host__ void setStartTime(){
+__host__ void Data::setStartTime(){
 	gettimeofday(&tt1, NULL);
 	gettimeofday(&tt2, NULL);
 	times = 0.0;
 	timems = 0.0;
 }
 
+
 //This function prints information how long the integration takes
-__host__ void printTime(long long ts){
+__host__ void Data::printTime(long long ts){
 	gettimeofday( &tt3, NULL );
 	for(int st = 0; st < Nst; ++st){
 		times = (tt3.tv_sec - tt2.tv_sec);
@@ -404,19 +425,21 @@ __host__ void printTime(long long ts){
 }
 
 //This function prints the total integration runtime
-__host__ void printLastTime(){
+__host__ void Data::printLastTime(){
         gettimeofday(&tt4, NULL );
         times = (tt4.tv_sec - tt1.tv_sec);
         timems = (tt4.tv_usec - tt1.tv_usec);
         for(int st = 0; st < Nst; ++st){
                 GSF[st].timefile = fopen(GSF[st].timefilename, "a");
                 fprintf(GSF[st].timefile, "\n\n%g\n", times + timems/1000000.0);
+		printf("Execution time: \n\n%g\n", times + timems/1000000.0);
                 fclose(GSF[st].timefile);
         }
 }
 
+
 //This function prints the last information
-__host__ void LastInfo(){
+__host__ void Data::LastInfo(){
 	for(int st = 0; st < Nst; ++st){
 	        GSF[st].logfile = fopen(GSF[st].logfilename, "a");
                 fprintf(GSF[st].logfile,"Integration finished with %d bodies, %d test particles. Total Energy: %.20g\n", N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
@@ -427,7 +450,7 @@ __host__ void LastInfo(){
 }
 
 //This function prints details of the Collisions
-__host__ void printCollisions(){
+__host__ void Data::printCollisions(){
   
 	cudaMemcpy(Coll_h, Coll_d, sizeof(double)*25*Ncoll_m[0], cudaMemcpyDeviceToHost);
 	FILE *collisionfile;
@@ -458,3 +481,4 @@ __host__ void printCollisions(){
 		fclose(logfile);
 	}
 }
+

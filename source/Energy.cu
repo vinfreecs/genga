@@ -1,4 +1,4 @@
-#include "Energy.h"
+#include "Orbit2.h"
 
 /**************************************
 * This function computes the terms m/r^3 between all pairs of bodies.
@@ -858,7 +858,7 @@ __global__ void kineticEnergy32_kernel(double4 *x4_d, double4 *v4_d, double *Ene
 
 
 //This function falls the Energy kernels
-__host__ void Energy(int NB, double4 *x4_d, double4 *v4_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *Energy0_d, cudaStream_t hstream, int st, int N, int E){
+__host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *Energy0_d, cudaStream_t hstream, int st, int N, int E){
 	switch(NB){
 		case 16:{
 			potentialEnergy32_kernel<16, 32><<< NB, 16, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
@@ -902,7 +902,7 @@ __host__ void Energy(int NB, double4 *x4_d, double4 *v4_d, double Msun, double* 
 		break;
 	}
 }
-__host__ void EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double Msun, int i, double *U_d, double3 *vcomsmall_d, int N){
+__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double Msun, int i, double *U_d, double3 *vcomsmall_d, int N){
 	switch(NB){
 		case 16:{
 			EjectionEnergy32_kernel<16, 32><<<1, 16>>> (x4_d, v4_d, Msun, i, U_d, vcomsmall_d, N);
@@ -937,11 +937,11 @@ __host__ void EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double Ms
 		};
 	}
 }
-__host__ void EjectionEnergysmallCall(double4 *v4small_d, int Nsmall, double3 *vcomsmall_d){
+__host__ void Data::EjectionEnergysmallCall(double4 *v4small_d, int Nsmall, double3 *vcomsmall_d){
 	EjectionEnergysmall1_kernel <<< (Nsmall + 127) / 128, 128 >>> (v4small_d, Nsmall, vcomsmall_d);
 	
 }
-__host__ void EjectionEnergysmall2Call(double4 *x4small_d, int i){
+__host__ void Data::EjectionEnergysmall2Call(double4 *x4small_d, int i){
 	EjectionEnergysmall2_kernel <<< 1, 1 >>> (x4small_d, i);
 }
 

@@ -1,67 +1,8 @@
 #include "Orbit2.h"
 
-__constant__ float Gridae_c[6];
-__constant__ int GridaeN_c[2];
-__constant__ double S_c[FGN + 1];
-__constant__ double C_c[FGN + 1];
-
-
-double4 *x4_h, *x4_d;
-double4 *v4_h, *v4_d;
-double4 *xold_h, *xold_d;
-double4 *vold_h, *vold_d;
-int *index_h, *index_d;
-double3 *spin_h, *spin_d;
-double3 *a_d;
-double *rcrit_h, *rcrit_d;
-double *rcritv_d;
-int *Nencpairs_d, *Nencpairs_h;
-int *Nencpairs2_d, *Nencpairs2_h;
-int2 *Encpairs_d;
-int2 *Encpairs2_d;
-int *Nenc_d, *Nenc_m;
-float4 *aelimits_h, *aelimits_d;
-int *aecount_h, *aecount_d;
-int *enccount_h, *enccount_d;
-long long *aecountT_h, *aecountT_d;
-long long *enccountT_h, *enccountT_d;
-int *Gridaecount_h, *Gridaecount_d;
-long long *GridaecountS_h;
-long long *GridaecountT_h;
-
-double4 *x4small_h, *x4small_d;
-double4 *v4small_h, *v4small_d;
-double4 *xoldsmall_h, *xoldsmall_d;
-double4 *voldsmall_h, *voldsmall_d;
-int *indexsmall_h, *indexsmall_d;
-double3 *spinsmall_h, *spinsmall_d;
-double3 *asmall_d;
-double *rcritvsmall_h, *rcritvsmall_d;
-int *Nencpairssmall_h, *Nencpairssmall_d;
-int *Nencpairssmall2_h, *Nencpairssmall2_d;
-int2 *Encpairssmall_d;
-int2 *Encpairssmall2_d;
-int *Nencsmall_d, *Nencsmall_m;
-double3 *vcomsmall_h, *vcomsmall_d;
-float4 *aelimitssmall_h, *aelimitssmall_d;
-int *aecountsmall_h, *aecountsmall_d;
-int *enccountsmall_h, *enccountsmall_d;
-long long *aecountsmallT_h, *aecountsmallT_d;
-long long *enccountsmallT_h, *enccountsmallT_d;
-
-double *U_h, *U_d;
-double *Energy_h, *Energy_d;
-double *Energy0_h, *Energy0_d;
-int *Ncoll_d, *Ncoll_m;
-int *EjectionFlag_d, *EjectionFlag_m;
-double *Coll_h, *Coll_d;
-double *test_h, *test_d;
-
-
-int GridN;
 
 //Allocate orbit data
-__host__ void AllocateOrbitt(){
+__host__ void Data::AllocateOrbitt(){
 
 	//allocate memory on host//
 	rcrit_h = (double*)malloc(NT*sizeof(double));
@@ -149,14 +90,11 @@ __host__ void AllocateOrbitt(){
 	cudaMalloc((void **) &enccountsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &aecountsmallT_d,NsmallT*sizeof(long long));
 	cudaMalloc((void **) &enccountsmallT_d,NsmallT*sizeof(long long));
-
-	cudaMalloc((void **) &NBS_d, Nst*sizeof(int));
-
 };
 
 
 //This function allocates mapped memory
-__host__ int CMallocateOrbit(){
+__host__ int Data::CMallocateOrbit(){
 
 	cudaError_t error;
 	error = cudaGetLastError();
@@ -191,8 +129,9 @@ __host__ int CMallocateOrbit(){
 
 }
 
+
 //This function allocates the Grida and set values to zero
-__host__ int GridaeAlloc(){
+__host__ int Data::GridaeAlloc(){
 	cudaError_t error;
 	GridN = Gridae.Na * Gridae.Ne;
 	cudaMalloc((void **) &Gridaecount_d, GridN * sizeof(int));
@@ -204,8 +143,6 @@ __host__ int GridaeAlloc(){
 	      Gridaecount_h[i] = 0;
 	      GridaecountT_h[i] = 0;
 	      GridaecountS_h[i] = 0;
-
-
 	}
 	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(int)*GridN, cudaMemcpyHostToDevice);
 
@@ -221,7 +158,8 @@ __host__ int GridaeAlloc(){
 	return 1;
 }
 
-__host__ int FGAlloc(){
+
+__host__ int Data::FGAlloc(){
 	cudaError_t error;
         double S_h[FGN + 1];
         double C_h[FGN + 1];
@@ -245,7 +183,7 @@ __host__ int FGAlloc(){
 
 
 //This function reads at a restart the corrspondent Gridae file
-__host__ int readGridae(){
+__host__ int Data::readGridae(){
 	if(P.tRestart > 0){
 		sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, P.tRestart);
 		Gridae.file = fopen(Gridae.filename, "r");
@@ -265,7 +203,7 @@ __host__ int readGridae(){
 }
 
 //This function copies values from the current Gridae to the total and summing host Grid
-__host__ int copyGridae(long long ts){
+__host__ int Data::copyGridae(long long ts){
 	cudaError_t error;
 
 	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int) * GridN, cudaMemcpyDeviceToHost);
@@ -287,7 +225,7 @@ __host__ int copyGridae(long long ts){
 
 
 //This function initialized the data
-__host__ int init(){
+__host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
 	for(int i = 0; i < 12; ++i){
@@ -391,7 +329,7 @@ __host__ int init(){
 
 
 //This function calls the readic function and copies the data to the GPU.
-__host__ int ic(){
+__host__ int Data::ic(){
 
 	for(int st = 0; st < Nst; ++st){
 		if(N_h[st] + Nsmall_h[st] > 0){
@@ -461,7 +399,7 @@ __host__ int ic(){
 
 // ************************************** //
 //This function reads the initial conditions from the IC file.
-__host__ int readic(int st){
+__host__ int Data::readic(int st){
 
 	int N = N_h[st];
 	int Nsmall = Nsmall_h[st];
@@ -725,9 +663,10 @@ __host__ int readic(int st){
 	return ii + iismall;
 } 
 
+
 // **************************************
 //This function converts heliocentric coordinares to democratic coordinates.
-__host__ void HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
+__host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
 
 	double mtot = 0.0;
 	double3 vcom;
@@ -770,7 +709,7 @@ __host__ void HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N, doub
 }
 // **************************************
 //This function converts democratic coordinares to heliocentric coordinates.
-__host__ void DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
+__host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
 
 	double3 vcom;
 	vcom.x = 0.0;
@@ -887,6 +826,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 	N_d[st] = N;
 }
 
+
 // **************************************
 //This kernel removes ghost-masses from the test particles and decreases the number of bodies.
 //It also removes bodies wich a semi major axis bigger than Rcut.
@@ -955,12 +895,14 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 	Nsmall_d[st] = Nsmall;
 }
 
+
+
 // **************************************
 //This function prints out data of ejected bodies
 //It sets the masses of ejecte bodies to zero, this are then later removed
 //It Updates the lost Energy term U
 //****************************************
-__host__ void Ejection(double time){
+__host__ void Data::Ejection(double time){
 
 	FILE *ejectfile;
 	FILE *logfile;
@@ -1025,7 +967,7 @@ __host__ void Ejection(double time){
 	}
 }
 
-__host__ void Ejectionsmall(double time){
+__host__ void Data::Ejectionsmall(double time){
 
 	FILE *ejectfile;
 	FILE *logfile;
@@ -1077,10 +1019,9 @@ __host__ void Ejectionsmall(double time){
 }
 
 
-
 //This function removes ghost particles and reorders the arrays
 //It returns 1 if a simulations has less than the minimal number of bodies, otherwise zero
-__host__ int remove(){
+__host__ int Data::remove(){
 
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
@@ -1119,7 +1060,7 @@ __host__ int remove(){
 // **************************************
 //This function recomputes the value of NB, which is the next bigger 
 //number to N which is a power of two.
-__host__ void resize(int &N, int &NB, int &N4, int &N2){
+__host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 
 	NB = 16;
 	if( N > 16) NB = 32;
@@ -1140,7 +1081,6 @@ __host__ void resize(int &N, int &NB, int &N4, int &N2){
 	if(N2 %2 == 1) N2 +=1;
 	N2 /=2;
 }
-
 
 
 //This function rearranges the memory if a simulations is stopped
@@ -1195,7 +1135,7 @@ __global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
 
 
 //This function stopps simulations with less than the minimal number of bodies, and rearranges the memory
-__host__ void stopSimulations(){
+__host__ void Data::stopSimulations(){
 	NT = 0;
 	NsmallT = 0;
 	NB2T = 0;
@@ -1276,7 +1216,8 @@ __host__ void stopSimulations(){
 
 }
 
-__host__ int freeOrbit(){
+
+__host__ int Data::freeOrbit(){
 	
 	cudaError_t error;
 	
@@ -1294,7 +1235,6 @@ __host__ int freeOrbit(){
 	free(aecountT_h);
 	free(enccountT_h);
 
-
 	free(x4small_h);
 	free(v4small_h);
 	free(xoldsmall_h);
@@ -1311,7 +1251,6 @@ __host__ int freeOrbit(){
 	free(enccountsmall_h);
 	free(aecountsmallT_h);
 	free(enccountsmallT_h);
-
 
 	free(U_h);
 	free(Energy_h);

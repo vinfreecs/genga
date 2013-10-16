@@ -1,76 +1,27 @@
 #include "Host2.h"
 
-FILE *masterfile;
-char masterfilename[64];
-FILE *pathfile;
-char pathfilename[64];
+//Costructor for Host class
+__host__ Host::Host(){
+        sprintf(masterfilename, "%s", "master.out");
+        masterfile = fopen(masterfilename, "w");
+        sprintf(pathfilename, "");
 
-int Nst;
+        Nst = 1;
+        devCount = 0;
+        runtimeVersion = 0;
+        driverVersion = 0;
 
-int devCount;
-int runtimeVersion;
-int driverVersion;
-
-int *NB;
-int *icNB;
-int *N4;
-int *N2;
-int *Nconst;
-int *Nmin;
-double *rho;
-
-
-struct Parameter P;
-struct GSFiles *GSF;
-struct GridaeParameter Gridae;
-// These are the parameters for the multi simulation run mode //
-double *n1_h, *n1_d;
-double *n2_h, *n2_d;
-int *N_h, *N_d;
-int *Nsmall_h, *Nsmall_d;
-double *Msun_h, *Msun_d;
-double *dtiMsun_h, *dtiMsun_d;
-
-double dt;
-double dtksq;
-
-//Total sizes
-int NT;
-int NsmallT;
-int NB2T;
-int Nsmall2T;
-int NEnergyT;
-
-int *NsmallS_h;
-int *NB2S;
-int *Nsmall2S;
-int *NEnergy;
-
-int *NBS_h, *NBS_d;
-
-
-__host__ void Hostinit(){
-	sprintf(masterfilename, "%s", "master.out");
-	masterfile = fopen(masterfilename, "w");
-	sprintf(pathfilename, "");
-
-	Nst = 1;
-	devCount = 0;
-	runtimeVersion = 0;
-	driverVersion = 0;
-
-	NT = 0;
-	NsmallT = 0;
-	NB2T = 0;
-	Nsmall2T = 0;
-	NEnergyT = 0;
+        NT = 0;
+        NsmallT = 0;
+        NB2T = 0;
+        Nsmall2T = 0;
+        NEnergyT = 0;
 }
 
 
 // ************************************************
-
 //This function determines the number of simulations by reading the pathfile specified in the -M console argument
-__host__ int NSimulations(int argc, char*argv[]){
+__host__ int Host::NSimulations(int argc, char*argv[]){
 
 	for(int i = 1; i < argc; i += 2){
 		if(strcmp(argv[i], "-M") == 0){
@@ -102,11 +53,9 @@ __host__ int NSimulations(int argc, char*argv[]){
 	return Nst;
 }
 
-
 // ************************************************
-
 //Device Properties
-__host__ int DeviceInfo(){
+__host__ int Host::DeviceInfo(){
 
 	cudaError_t error;
 	cudaGetDeviceCount(&devCount);
@@ -153,9 +102,8 @@ __host__ int DeviceInfo(){
 
 
 // ************************************************
-
 //This function allocates memory on the Host
-__host__ void Halloc(){
+__host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
 	icNB = (int*)malloc(Nst*sizeof(int));
 	N4 = (int*)malloc(Nst*sizeof(int));
@@ -210,7 +158,7 @@ __host__ void Halloc(){
 
 //This function reads the parameters from param.dat and the console input arguments.
 //Return 1 by sucess and 0 by an error.
-__host__ int readparam(FILE *paramfile, int st, int argc, char*argv[]){
+__host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 	char sp[160];
 	int er;
@@ -577,7 +525,7 @@ __host__ int readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 // ************************************************
 //This function calls the function readparam
-__host__ int Param(int argc, char*argv[]){
+__host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
 	char paramfilename[160];
 
@@ -662,7 +610,7 @@ __host__ int Param(int argc, char*argv[]){
 
 //This function counts the number of bodies in the initial condition file
 //It returns the number of bodies
-__host__ int icSize(int st){
+__host__ int Host::icSize(int st){
 
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
@@ -814,7 +762,7 @@ __host__ int icSize(int st){
 // ************************************************
 
 //This function calls the function icSize and sets the size parameters
-__host__ int size(){
+__host__ int Host::size(){
 	for(int st = 0; st < Nst; ++st){
 		//Determine the size of the simulations
 		int er = icSize(st);
@@ -846,10 +794,10 @@ __host__ int size(){
 	return 1;
 }
 
-// ************************************************
 
+// ************************************************
 //This function allocates memory on the device
-__host__ void Calloc(){
+__host__ void Host::Calloc(){
 	cudaMalloc((void **) &n1_d,Nst*sizeof(double));
 	cudaMalloc((void **) &n2_d,Nst*sizeof(double));
 	cudaMalloc((void **) &N_d,Nst*sizeof(int));
@@ -865,9 +813,8 @@ __host__ void Calloc(){
 }
 
 // ************************************************
-
 //This function prints the parametes on screen and into the infofiles
-__host__ void Info(){
+__host__ void Host::Info(){
 	FILE *infofile;
 
 	for(int st = 0; st < Nst; ++st){
@@ -929,15 +876,17 @@ __host__ void Info(){
 	}
 }
 
-// **************************************
 
+// **************************************
 //This function determines the start points of the individual simulations
-__host__ void Tsizes(){
+__host__ void Host::Tsizes(){
 	NBS_h = (int*)malloc(Nst*sizeof(int));
 	NsmallS_h = (int*)malloc(Nst*sizeof(int));
 	NB2S = (int*)malloc(Nst*sizeof(int));
 	Nsmall2S = (int*)malloc(Nst*sizeof(int));
 	NEnergy = (int*)malloc(Nst*sizeof(int));
+
+	cudaMalloc((void **) &NBS_d, Nst*sizeof(int));
 
 	for(int st = 0; st < Nst; ++st){
 		NBS_h[st] = NT;
@@ -960,10 +909,8 @@ __host__ void Tsizes(){
 	}
 }
 
-__host__ int freeHost(){
-	
+__host__ int Host::freeHost(){
 	cudaError_t error;
-	
 	free(NB);
 	free(icNB);
 	free(N4);
@@ -996,5 +943,3 @@ __host__ int freeHost(){
 
 	
 }
-
-

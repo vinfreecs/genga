@@ -1,22 +1,3 @@
-#ifndef GAS_H
-#define GAS_H
-
-#include "Host2.h"
-#endif
-
-extern double3 *GasDisk_h, *GasDisk_d;
-extern double3 *GasAcc_h, *GasAcc_d;
-
-extern __host__ void GasAlloc();
-extern __host__ int setGasDisk();
-extern __host__ int freeGas();
-extern __global__ void GasAcc(double4 *, double4 *, int *, double3 *, double3 *, double, double *, double, int, double *, double, int, int);
-extern __host__ void gasEnergy(int , double* , double *, double *, cudaStream_t, int, int);
-extern __host__ void gasEnergyM(int , double* , double *, double *, cudaStream_t, int, int);
-
-
-#ifndef COM32
-#define COM32
 //This kernel computes the kinet energy of the center of mass
 template < int Bl, int Bl2>
 __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
@@ -88,13 +69,6 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 		U_d[0] += f * Tsun;	
 	}
 }
-extern template __global__ void com32_kernel < 16, 32 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com32_kernel < 32, 64 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com32_kernel < 64, 64 > (double4 *, double4 *, double *, double, double *, int, int);
-#endif
-
-#ifndef COM128
-#define COM128
 template < int NB, int Bl>
 __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
 
@@ -109,7 +83,6 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
         for(int i = 0; i < NB ;i += Bl){
 		double m = x4_d[idy + i].w;
                 if(m > 0 && idy + i < N){
-if(fabs(v4_d[idy + i].x) > 100) printf("Stop com128 %d %d %g\n", f, idy + i, v4_d[idy + i].x);
                         p_s[idy].x += m * v4_d[idy + i].x;
                         p_s[idy].y += m * v4_d[idy + i].y;
                         p_s[idy].z += m * v4_d[idy + i].z;
@@ -173,15 +146,7 @@ if(fabs(v4_d[idy + i].x) > 100) printf("Stop com128 %d %d %g\n", f, idy + i, v4_
 		U_d[0] += f * Tsun;
 	}
 }
-extern template __global__ void com128_kernel < 128, 128 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com128_kernel < 256, 256 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com128_kernel < 512, 256 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com128_kernel < 1024, 256 > (double4 *, double4 *, double *, double, double *, int, int);
-extern template __global__ void com128_kernel < 2048, 256 > (double4 *, double4 *, double *, double, double *, int, int);
-#endif
 
-#ifndef COMM
-#define COMM
 template <int Bl, int Bl2, int Nmax >
 __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, double *U_d, int *index_d, int NT, double *test_d, int ff){
 
@@ -298,5 +263,3 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		U_d[st_s[idy]] += ff * Tsun;
 	}
 }
-extern template __global__ void comM_kernel < HCM_Bl, HCM_Bl2, NmaxM >(double4 *, double4 *, const double *, double *, int *, int, double *, int);
-#endif

@@ -1,10 +1,5 @@
-#ifndef BSB_H
-#define BSB_H
-
-#include "define.h"
 #include "directAcc.h"
 #include "Encounter3.h"
-#endif
 
 // **************************************
 //This Kernel intergrates the independent groups of close encunters for a time step
@@ -431,9 +426,3 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		rcritv_d[idi] = rcritv_s[idy];
 	}
 }
-extern template __global__ void BSBStep_kernel < 2, 2> (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);
-extern template __global__ void BSBStep_kernel < 4, 4> (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);
-extern template __global__ void BSBStep_kernel < 8, 8> (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);
-extern template __global__ void BSBStep_kernel < 16, 16> (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);
-extern template __global__ void BSBStep_kernel < 32, 8> (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);
-

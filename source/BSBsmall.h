@@ -1,10 +1,5 @@
-#ifndef BSBSMALL_H
-#define BSBSMALL_H
-
-#include "define.h"
 #include "directAcc.h"
 #include "Encounter3.h"
-#endif
 
 // **************************************
 //This Kernel intergrates the independent groups of close encunters for a time step
@@ -440,7 +435,3 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	}
 
 }
-extern template __global__ void BSBStepsmall_kernel < 2, 2 > (double4 *, double4 *, double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, int2 *, double, double, double *, int, int *, int *, int *, double *, double, double3 *, double3 *, const int);
-extern template __global__ void BSBStepsmall_kernel < 4, 4 > (double4 *, double4 *, double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, int2 *, double, double, double *, int, int *, int *, int *, double *, double, double3 *, double3 *, const int);
-extern template __global__ void BSBStepsmall_kernel < 8, 8 > (double4 *, double4 *, double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, int2 *, double, double, double *, int, int *, int *, int *, double *, double, double3 *, double3 *, const int);
-extern template __global__ void BSBStepsmall_kernel < 16, 16 > (double4 *, double4 *, double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, int2 *, double, double, double *, int, int *, int *, int *, double *, double, double3 *, double3 *, const int);

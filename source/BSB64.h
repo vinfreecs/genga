@@ -1,16 +1,11 @@
-#ifndef BSB64_H
-#define BSB64_H
-
 #include "define.h"
 #include "directAcc.h"
 #include "Encounter3.h"
-#endif
 
 // **************************************
 //The Bulirsch Stoer Method is based
 //on the Mercury Code from chambers
 // ****************************************
-
 
 template< int NN, int nb>
 __global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB){
@@ -436,4 +431,3 @@ __global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		rcritv_d[idi] = rcritv_s[idy];
 	}
 }
-extern template __global__ void BSBStep64_kernel < 64, 4 > (double4 *, double4 *, double4 *, double4 *, double *, double *, int2 *, double, double, double *, int, int *, int *, double *, double, double3 *, int, float4 *, int *, int *, long long *, long long *, int);

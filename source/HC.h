@@ -1,10 +1,4 @@
-#ifndef HC_H
-#define HC_H
-
-#include "Host2.h"
-#include "Orbit2.h"
 #include "define.h"
-#endif
 
 // **************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
@@ -101,23 +95,7 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
 		}
 	}
 }
-extern template __global__ void HC128_kernel < 128, 128, 1 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 256, 256, 1 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 512, 1 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 1024, 1 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 2048, 1 > (double4 *, double4 *, const double, int *, int *, int *, int);
 
-extern template __global__ void HC128_kernel < 128, 128, 2 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 256, 256, 2 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 512, 2 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 1024, 2 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 2048, 2 > (double4 *, double4 *, const double, int *, int *, int *, int);
-
-extern template __global__ void HC128_kernel < 128, 128, 3 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 256, 256, 3 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 512, 3 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 1024, 3 > (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC128_kernel < 512, 2048, 3 > (double4 *, double4 *, const double, int *, int *, int *, int);
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
@@ -190,18 +168,6 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 		if(idx == 2) x4_d[idy].z += a1_s[0] * dti2Msun;
 	}
 }
-extern template __global__ void HC32_kernel <16, 32, 1> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <32, 64, 1> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <64, 64, 1> (double4 *, double4 *, const double, int *, int *, int *, int);
-
-extern template __global__ void HC32_kernel <16, 32, 2> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <32, 64, 2> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <64, 64, 2> (double4 *, double4 *, const double, int *, int *, int *, int);
-
-extern template __global__ void HC32_kernel <16, 32, 3> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <32, 64, 3> (double4 *, double4 *, const double, int *, int *, int *, int);
-extern template __global__ void HC32_kernel <64, 64, 3> (double4 *, double4 *, const double, int *, int *, int *, int);
-
 
 /**************************************
 * This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
@@ -312,10 +278,6 @@ __global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Ms
 		}
 	}
 }
-extern template __global__ void HCsmall_kernel < 256, 1> (double4 *, double4 *, const double, int *, int *, int *, int *, int *, int *, double4 *, double4 *, int, int);
-extern template __global__ void HCsmall_kernel < 256, 2> (double4 *, double4 *, const double, int *, int *, int *, int *, int *, int *, double4 *, double4 *, int, int);
-extern template __global__ void HCsmall_kernel < 256, 3> (double4 *, double4 *, const double, int *, int *, int *, int *, int *, int *, double4 *, double4 *, int, int);
-
 
 // **************************************
 //Used for Multi Simulation Mode
@@ -501,6 +463,3 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		x4_d[id].z += p_s[idy].z * dti2Msun;
 	}
 }
-extern template __global__ void HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 1 > (double4 *, double4 *, const double *, int *, int, double, double *, int *, int *, int *, int);
-extern template __global__ void HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > (double4 *, double4 *, const double *, int *, int, double, double *, int *, int *, int *, int);
-

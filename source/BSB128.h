@@ -1,3 +1,6 @@
+#include "directAcc.h"
+#include "Encounter3.h"
+
 template< int NN, int nb>
 __global__ void BSBStep128_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB){
 	int idy = threadIdx.x;
