@@ -627,7 +627,7 @@ __host__ int Host::icSize(int st){
 	double m;
 	int index;
 	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-	sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25);
+	sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
 	double Et = atof(Ets);
 	
 
@@ -646,7 +646,6 @@ __host__ int Host::icSize(int st){
 			Nsmall_h[st] = 0;
 		}
 	}
-
 	for(int i = 0; i < 1000000000; ++i){
 		for(int f = 0; f < Nformat; ++f){
 

@@ -41,7 +41,7 @@ __host__ int Data::firstoutput(){
 			double skip;
 			double Et;
 			char Ets[160];
-			sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25);
+			sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
 			fscanf (GSF[st].Energyfile, "%lf",&Et);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
