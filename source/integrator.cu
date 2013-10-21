@@ -512,6 +512,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 	return 1;
 }
 
+
 __host__ int Data::step_32(double t){
 #if useGas > 0
 com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);

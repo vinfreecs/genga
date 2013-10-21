@@ -46,10 +46,10 @@ __host__ int Data::firstoutput(){
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
+			fscanf (GSF[st].Energyfile, "%lf",&LI_h[st]);
 			fscanf (GSF[st].Energyfile, "%lf",&U_h[st]);
 			fscanf (GSF[st].Energyfile, "%lf",&Energy0_h[st]);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
+			fscanf (GSF[st].Energyfile, "%lf",&LI0_h[st]);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			int er = 0;
@@ -58,8 +58,8 @@ __host__ int Data::firstoutput(){
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf(GSF[st].Energyfile, "%lf",&U_h[st]);
+				fscanf (GSF[st].Energyfile, "%lf",&LI_h[st]);
+				fscanf (GSF[st].Energyfile, "%lf",&U_h[st]);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
@@ -82,6 +82,8 @@ __host__ int Data::firstoutput(){
 
 			cudaMemcpy(Energy0_d + st, Energy0_h + st, sizeof(double), cudaMemcpyHostToDevice);
 			cudaMemcpy(U_d + st, U_h + st, sizeof(double), cudaMemcpyHostToDevice);
+			cudaMemcpy(LI_d + st, LI_h + st, sizeof(double), cudaMemcpyHostToDevice);
+			cudaMemcpy(LI0_d + st, LI0_h + st, sizeof(double), cudaMemcpyHostToDevice);
 		}
 	}
 	return 1;
@@ -156,7 +158,7 @@ __host__ int Data::firstEnergy(){
 	for(int hst = 0; hst < 16; ++hst) cudaStreamCreate(&hstream[hst]);
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, Energy0_d, hstream[st%16], st, N_h[st], 0);
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], 0);
 	}
 	for(int hst = 0; hst < 16; ++hst) cudaStreamDestroy(hstream[hst]);
 	error = cudaGetLastError();
@@ -185,7 +187,7 @@ __host__ void Data::EnergyOutput(long long ts, double t){
 #endif
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, Energy0_d, hstream[st%16], st, N_h[st], 1);
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], 1);
 	}
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamDestroy(hstream[hst]);

@@ -13,8 +13,10 @@ __host__ void Data::AllocateOrbitt(){
 	index_h = (int*)malloc(NT*sizeof(int));
 	spin_h = (double3*)malloc(NT*sizeof(double3));
 	U_h = (double*)malloc(Nst*sizeof(double));
+	LI_h = (double*)malloc(Nst*sizeof(double));
 	Energy_h = (double*)malloc(NEnergyT*sizeof(double));
 	Energy0_h = (double*)malloc(Nst*sizeof(double));
+	LI0_h = (double*)malloc(Nst*sizeof(double));
 	Coll_h = (double*)malloc(25*MaxColl*Nst*sizeof(double));
 	aelimits_h = (float4*)malloc(NT*sizeof(float4));
 	aecount_h = (int*)malloc(NT*sizeof(int));
@@ -55,9 +57,11 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &index_d,NT*sizeof(int));
 	cudaMalloc((void **) &spin_d,NT*sizeof(double3));
 	cudaMalloc((void **) &U_d,Nst*sizeof(double));
+	cudaMalloc((void **) &LI_d,Nst*sizeof(double));
 	cudaMalloc((void **) &a_d, NT*sizeof(double3));
 	cudaMalloc((void **) &Energy_d, NEnergyT*sizeof(double));
 	cudaMalloc((void **) &Energy0_d, Nst*sizeof(double));
+	cudaMalloc((void **) &LI0_d, Nst*sizeof(double));
 	cudaMalloc((void **) &Nenc_d, 12*sizeof(int));
 	cudaMalloc((void **) &Ncoll_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1)*sizeof(int));
@@ -320,7 +324,9 @@ __host__ int Data::init(){
 	}
 	for(int st = 0; st < Nst; ++st){
 		U_h[st] = 0.0;
+		LI_h[st] = 0.0;
 		Energy0_h[st] = 1.0;
+		LI0_h[st] = 1.0;
 	}
 
 
@@ -356,7 +362,9 @@ __host__ int Data::ic(){
 	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double)*NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double)*NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(LI_d, LI_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy0_d, Energy0_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(LI0_d, LI0_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy_d, Energy_h, sizeof(double)*NEnergyT, cudaMemcpyHostToDevice);
 	cudaMemcpy(test_d, test_h, sizeof(double)*NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(index_d, index_h, sizeof(int)*NT, cudaMemcpyHostToDevice);
@@ -956,7 +964,7 @@ __host__ void Data::Ejection(double time){
 					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
-					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, Msun_h[st], i, U_d + st, vcomsmall_d + st, N_h[st]);
+					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcomsmall_d + st, N_h[st]);
 					
 					if(Nsmall_h[st] > 0) EjectionEnergysmallCall(v4small_d + NsmallS, Nsmall_h[st], vcomsmall_d + st);
 				}
@@ -1159,7 +1167,9 @@ __host__ void Data::stopSimulations(){
 	}
 
 	cudaMemcpy(U_h, U_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(LI_h, LI_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy(Energy0_h, Energy0_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(LI0_h, LI0_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 
 	for(int st = 0; st < Nst; ++st){
 		if(N_h[st] < Nmin[st]){
@@ -1186,7 +1196,9 @@ __host__ void Data::stopSimulations(){
 				Nconst[sst] = Nconst[sst + 1];
 
 				U_h[sst] = U_h[sst + 1];
+				LI_h[sst] = LI_h[sst + 1];
 				Energy0_h[sst] = Energy0_h[sst + 1];
+				LI0_h[sst] = LI0_h[sst + 1];
 
 				NBS_h[sst] = NBS_h[sst + 1];
 				NsmallS_h[sst] = NsmallS_h[sst + 1];
@@ -1208,7 +1220,9 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(LI_d, LI_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy0_d, Energy0_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(LI0_d, LI0_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
@@ -1253,8 +1267,10 @@ __host__ int Data::freeOrbit(){
 	free(enccountsmallT_h);
 
 	free(U_h);
+	free(LI_h);
 	free(Energy_h);
 	free(Energy0_h);
+	free(LI0_h);
 	cudaFreeHost(Ncoll_m);
 	cudaFreeHost(EjectionFlag_m);
 	free(Coll_h);
@@ -1301,8 +1317,10 @@ __host__ int Data::freeOrbit(){
 	cudaFree(enccountsmallT_d);
 	
 	cudaFree(U_d);
+	cudaFree(LI_d);
 	cudaFree(Energy_d);
 	cudaFree(Energy0_d);
+	cudaFree(LI0_d);
 
 
 	cudaFree(Coll_d);

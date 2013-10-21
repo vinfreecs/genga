@@ -58,9 +58,11 @@ public:
 	long long *aecountsmallT_h, *aecountsmallT_d;
 	long long *enccountsmallT_h, *enccountsmallT_d;
 
-	double *U_h, *U_d;
+	double *U_h, *U_d;	//internal Energy
+	double *LI_h, *LI_d;	//internal Angular Momentum
 	double *Energy_h, *Energy_d;
 	double *Energy0_h, *Energy0_d;
+	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
 	double *Coll_h, *Coll_d;
@@ -101,8 +103,8 @@ public:
 	__host__ void EnergyOutput(long long, double);
 
 	//Energy
-	__host__ void EnergyCall(int, double4 *, double4 *, double, double *, double *, double *, double *, cudaStream_t, int, int, int);
-	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double, int, double *, double3 *, int);
+	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);
+	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double3 *, double, int, double *, double *, double3 *, int);
 	__host__ void EjectionEnergysmallCall(double4 *, int, double3 *);
 	__host__ void EjectionEnergysmall2Call(double4 *, int);
 
