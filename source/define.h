@@ -27,9 +27,11 @@
 #define KM_Bl 128
 #define KM_Bl2 (KM_Bl - NmaxM)
 
+//The serial grouping mode can be chosen to repruduce simulations exactly, but there is a performance penalty
+#define SERIAL_GROUPING 1
 
 //use aeGrid
-#define useGridae 0			// 1 or 0
+#define useGridae 1			// 1 or 0
 
 //Gas Grid
 #define useGas 0			// 1 or 0

@@ -34,6 +34,10 @@ int main(int argc, char*argv[]){
 
 	Data H;
 
+#if SERIAL_GROUPING > 0
+	printf("Using serial grouping!");
+	fprintf(H.masterfile, "Using serial grouping!");
+#endif
 	//determine the number of simulations
 	int Nst = H.NSimulations(argc, argv);
 	if(Nst == 0) return 0;
