@@ -961,8 +961,8 @@ __host__ void Data::Ejection(double time){
 					}
 				}
 				if(c < 0){
-					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
 					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcomsmall_d + st, N_h[st]);
 					
@@ -1013,8 +1013,8 @@ __host__ void Data::Ejectionsmall(double time){
 					else printf("In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
 				}
 				if(c < 0){
-					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, indexsmall_h[i + NsmallS] % 100, x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
+					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
+					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, indexsmall_h[i + NsmallS] % 100, x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
 					EjectionEnergysmall2Call(x4small_d + NsmallS, i);
 				}
 
