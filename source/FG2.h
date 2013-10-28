@@ -110,9 +110,11 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 				t.x = f*x4i.x+g*v4i.x;
 				t.y = f*x4i.y+g*v4i.y;
 				t.z = f*x4i.z+g*v4i.z;
+
 				v4i.x = fd*x4i.x+gd*v4i.x;
 				v4i.y = fd*x4i.y+gd*v4i.y;
 				v4i.z = fd*x4i.z+gd*v4i.z;
+
 				x4i.x = t.x;
 				x4i.y = t.y;
 				x4i.z = t.z;

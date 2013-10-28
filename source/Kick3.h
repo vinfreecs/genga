@@ -196,6 +196,56 @@ __global__ void kickMB_kernel(double4 *v4_d, double3 *acck_d, double *test_d, in
 	}
 }
 
+
+//This kernel is used to sort the close encoutner list, to be able to reproduce simulations exactly
+//It shoud be used only for debugging or special cases.
+__global__ void Sort_kernel(int2 *Encpairs2_d, int N, int icNB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;	
+
+	if(id < N){
+		int NI = Encpairs2_d[id * icNB].x;
+		int NJ = Encpairs2_d[id * icNB + 1].x;
+
+		int stop = 0;
+		while(stop == 0){
+			stop = 1;
+			for(int i = 0; i < NI - 1; ++i){
+				int jj = Encpairs2_d[id * icNB + i].y;
+				int jjnext = Encpairs2_d[id * icNB + i + 1].y;
+
+				if(jjnext < jj){
+					//swap
+					Encpairs2_d[id * icNB + i].y = jjnext;
+					Encpairs2_d[id * icNB + i + 1].y = jj;
+					stop = 0;
+
+				}
+			}
+		}
+		stop = 0;
+		while(stop == 0){
+			stop = 1;
+			for(int i = 0; i < NJ - 1; ++i){
+				int jj = Encpairs2_d[id * icNB + icNB - 1 - i].y;
+				int jjnext = Encpairs2_d[id * icNB + icNB - 1 - i - 1].y;
+
+				if(jjnext < jj){
+					//swap
+					Encpairs2_d[id * icNB + icNB - 1 - i].y = jjnext;
+					Encpairs2_d[id * icNB + icNB - 1 - i - 1].y = jj;
+					stop = 0;
+				}			
+			}
+		}
+
+	}
+
+}
+
+
+
 // **************************************
 //This kernel performs the first kick of the time step, in the case of close interactions.
 //It reuses the values from the seccond kick in the previous time step, and adds the terms aij*dt*Kij for all

@@ -12,7 +12,7 @@
 //c = 3 : perform C Kick + reset Nencpairs
 //*****************************************
 template <int Bl, int NB, int E>
-__global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N){
+__global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -89,9 +89,9 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
 	__syncthreads();
 	for(int i = 0; i <NB; i +=  Bl){
 		if(idy < N){
-			if(idx == 0) x4_d[idy + i].x += a1_s[0] * dti2Msun;
-			if(idx == 1) x4_d[idy + i].y += a1_s[0] * dti2Msun;
-			if(idx == 2) x4_d[idy + i].z += a1_s[0] * dti2Msun;
+			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
+			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
+			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
 		}
 	}
 }
