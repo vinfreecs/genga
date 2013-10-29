@@ -34,7 +34,7 @@
 #define useGridae 0			// 1 or 0
 
 //Gas Grid
-#define useGas 0			// 1 or 0
+#define useGas 1			// 1 or 0
 #define Gasnr_g 189
 #define Gasnz_g 50
 #define Gasnr_p 150
