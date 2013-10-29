@@ -424,7 +424,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 		//Read Grid Start
 		er = fscanf (paramfile, "%s%s%s%3c",sp, sp, sp, sp);
-		er = fscanf (paramfile, "%d", &Gridae.Start);
+		er = fscanf (paramfile, "%lld", &Gridae.Start);
 		if(er <= 0){
 			printf("Error: Grid Start not valid\n");
 			return 0;
