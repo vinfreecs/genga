@@ -462,8 +462,52 @@ __host__ void Data::EjectionMCall(double t){
 	EjectionFlag2 = 1;
 }
 
+#if poincareFlag == 1
+__host__ int Data::PoincareSectionCall(int NB, double t){
+	if(SIn > 1){
+		printf("Compute Poincare Sections only with the second Order integrator!\n");
+		fprintf(masterfile, "Compute Poincare Sections only with the second Order integrator!\n");
+		return 0;
+	}
+	switch(NB){
+		case 16: PoincareSection <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 32: PoincareSection <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 64: PoincareSection <<< 2, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 128: PoincareSection <<< 4, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 256: PoincareSection <<< 8, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 512: PoincareSection <<< 16, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 1024: PoincareSection <<< 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+		case 2048: PoincareSection <<< 64, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		break;
+	}
 
+	PoincareSection <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+	cudaMemcpy(PFlag_h, PFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
+	if(PFlag_h[0] == 1){
+		cudaMemcpy(xold_h, xold_d, N_h[0] * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(vold_h, vold_d, N_h[0] * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(index_h, index_d, N_h[0] * sizeof(int), cudaMemcpyDeviceToHost);
+		poincarefile = fopen("PoincareSection.dat", "a");
+		for(int i = 0; i < N_h[0]; ++i){
+			if(vold_h[i].w < 0.0 && xold_h[i].w >= 0.0){
+				fprintf(poincarefile, "%g %d %g %g\n", t/365.25, index_h[i], xold_h[i].x, vold_h[i].x);
 
+			}
+		}
+		fclose(poincarefile);
+		PFlag_h[0] = 0; 
+		cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
+	}
+	return 1;
+}
+#endif
 __global__ void testA_kernel(double4 *x4_d, double4 *v4_d, int A){
         int idy = threadIdx.x;
         int id = blockIdx.x * blockDim.x + idy;
@@ -521,6 +565,10 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(16, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 
@@ -574,6 +622,10 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(32, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 __host__ int Data::step_64(double t){
@@ -625,6 +677,10 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(64, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 __host__ int Data::step_128(double t){
@@ -676,6 +732,10 @@ com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(128, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 __host__ int Data::step_256(double t){
@@ -727,6 +787,10 @@ com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(256, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 
@@ -782,6 +846,10 @@ com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(512, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 __host__ int Data::step_1024(double t){
@@ -833,6 +901,10 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(1024, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 
@@ -891,6 +963,10 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		int Ej = EjectionCall(t);
 		if(Ej == 0) return 0;
 	}
+#if poincareFlag == 1
+	int per = PoincareSectionCall(2048, t);
+	if(per == 0) return 0;
+#endif
 	return 1;
 }
 

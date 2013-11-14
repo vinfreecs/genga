@@ -51,7 +51,7 @@ int main(int argc, char*argv[]){
 
 	long long int kmin = 0;
 	long long int kmax = 100;
-	int step = 1.0;
+	int step = 1;
 	char X[160];
         char inputfilename[160];
         char outputfilename[160];

@@ -238,6 +238,39 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 	}
 }
 
+__global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double Msun, int N, int si, int *PFlag_d){
+
+        int idy = threadIdx.x;
+        int id = blockIdx.x * blockDim.x + idy;
+
+	double test;
+
+	float4 aelimits;
+	aelimits.x = 0.0f;
+	aelimits.y = 0.0f;
+	aelimits.z = 0.0f;
+	aelimits.w = 0.0f;
+	int aecount = 0;
+
+
+	if(id < N && si == 0){
+		double4 x4i = x4_d[id];
+		double4 x4oldi = xold_d[id];
+		double4 v4oldi = vold_d[id];
+		if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
+			PFlag_d[0] = 1;
+			double dtt = -x4oldi.y / v4oldi.y;
+			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, si, id);
+//			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
+			xold_d[id] = x4oldi;
+			vold_d[id] = v4oldi;
+			vold_d[id].w *= -1.0;		//Flag particles
+		}
+	}
+
+
+}
+
 
 // **************************************
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.

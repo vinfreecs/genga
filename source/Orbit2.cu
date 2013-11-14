@@ -39,7 +39,12 @@ __host__ void Data::AllocateOrbitt(){
 	enccountsmallT_h = (long long*)malloc(NsmallT*sizeof(long long));
 
 	cudaHostAlloc((void **)&test_h, NT*sizeof(double), cudaHostAllocDefault);
-	
+#if poincareFlag == 1
+	PFlag_h = (int*)malloc(sizeof(int));
+	PFlag_h[0] = 0;
+	poincarefile = fopen("PoincareSection.dat", "w");
+	fclose(poincarefile);
+#endif
 	//allocate pinned memory on host//
 	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
@@ -94,6 +99,11 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &enccountsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &aecountsmallT_d,NsmallT*sizeof(long long));
 	cudaMalloc((void **) &enccountsmallT_d,NsmallT*sizeof(long long));
+
+#if poincareFlag == 1
+	cudaMalloc((void **) &PFlag_d,sizeof(int));
+	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
+#endif
 };
 
 
@@ -1275,7 +1285,9 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(EjectionFlag_m);
 	free(Coll_h);
 	cudaFreeHost(test_h);
-	
+#if poincareFlag == 1
+	free(PFlag_h);
+#endif	
 	cudaFree(x4_d);
 	cudaFree(v4_d);
 	cudaFree(xold_d);
@@ -1322,7 +1334,9 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Energy0_d);
 	cudaFree(LI0_d);
 
-
+#if poincareFlag == 1
+	cudaFree(PFlag_d);
+#endif
 	cudaFree(Coll_d);
 	cudaFree(test_d);
 	

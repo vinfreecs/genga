@@ -157,6 +157,13 @@ public:
 	__host__ void GasAccCall_2048(double, double);
 	__host__ void GasAccCall_small(double, double);
 	__host__ void GasAccCall_M(double, double);
+
+#if poincareFlag == 1
+	int *PFlag_h;
+	int *PFlag_d;
+	FILE *poincarefile;
+	__host__ int PoincareSectionCall(int, double);
+# endif
 private:
 	//Total sizes
 	int GridN;

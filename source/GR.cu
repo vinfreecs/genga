@@ -9,13 +9,17 @@ __global__ void force(double4 *x4_d, double4 *v4_d, double Msun, double csq, dou
 	double4 x4 = x4_d[id];
 	double4 v4 = v4_d[id];
 
+
+	double c = 10065.3201686;//c in AU / day * 0.0172020989
+	double csq = c * c;
+
 	double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
 	double ir = 1.0 / sqrt(rsq);
 	double vsq = (v4.x * v4.x + v4.y * v4.y + v4.z * v4.z);
 	double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir; 
 
 	double A = ksq * (Msun + x4.w) * ir;
-	double B = -A * ir / csq / x4.w;
+	double B = -A * ir / csq;
 
 	double eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 
