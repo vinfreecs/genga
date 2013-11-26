@@ -497,7 +497,7 @@ __host__ int Data::PoincareSectionCall(int NB, double t){
 		poincarefile = fopen("PoincareSection.dat", "a");
 		for(int i = 0; i < N_h[0]; ++i){
 			if(vold_h[i].w < 0.0 && xold_h[i].w >= 0.0){
-				fprintf(poincarefile, "%g %d %g %g\n", t/365.25, index_h[i], xold_h[i].x, vold_h[i].x);
+				fprintf(poincarefile, "%.16g %d %g %g\n", t/365.25, index_h[i], xold_h[i].x, vold_h[i].x);
 
 			}
 		}
