@@ -42,8 +42,6 @@ __host__ void Data::AllocateOrbitt(){
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
-	poincarefile = fopen("PoincareSection.dat", "w");
-	fclose(poincarefile);
 #endif
 	//allocate pinned memory on host//
 	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);

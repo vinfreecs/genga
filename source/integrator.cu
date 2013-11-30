@@ -494,14 +494,12 @@ __host__ int Data::PoincareSectionCall(int NB, double t){
 		cudaMemcpy(xold_h, xold_d, N_h[0] * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(vold_h, vold_d, N_h[0] * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(index_h, index_d, N_h[0] * sizeof(int), cudaMemcpyDeviceToHost);
-		poincarefile = fopen("PoincareSection.dat", "a");
 		for(int i = 0; i < N_h[0]; ++i){
 			if(vold_h[i].w < 0.0 && xold_h[i].w >= 0.0){
 				fprintf(poincarefile, "%.16g %d %g %g\n", t/365.25, index_h[i], xold_h[i].x, vold_h[i].x);
 
 			}
 		}
-		fclose(poincarefile);
 		PFlag_h[0] = 0; 
 		cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 	}
@@ -538,6 +536,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 			cudaDeviceSynchronize();
 			BSCall(16, si, t);
 		}
+	EjectionFlag2 = 0;
 		if(Ncoll_m[0] > 0){
 			int col = CollisionCall();
 			if(col == 0) return 0;
@@ -554,6 +553,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 	}
 	HC32_kernel <16, 32, 2> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
+	EjectionFlag2 = 0;
 	kick16_kernel<16, 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
 #if useGas > 0
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
@@ -988,7 +988,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 			encountersmall_kernel <<< (Nencpairs_h[0] + Nencpairssmall_h[0] + 31)/ 32, 32  >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, x4small_d, v4small_d, xoldsmall_d, v4small_d, Nencpairssmall_d, Encpairssmall_d, Nencpairssmall2_d, Encpairssmall2_d, N_h[0], enccount_d, enccountsmall_d, si);
 			cudaMemcpy(Nencpairssmall2_h, Nencpairssmall2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();
-			groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
+			if(Nsmall_h[0] > 0) groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
 			if(Nencpairssmall2_h[0] > 0) groupsmall2_kernel <<< (Nencpairssmall2_h[0] + 127)/128, 128 >>> (Nencpairssmall2_d, Encpairssmall2_d, Nencsmall_d, Encpairssmall_d, Nconst[0]);
 			group_kernel16 <32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
 			cudaDeviceSynchronize();

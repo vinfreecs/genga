@@ -161,6 +161,7 @@ public:
 #if poincareFlag == 1
 	int *PFlag_h;
 	int *PFlag_d;
+	char poincarefilename[160];
 	FILE *poincarefile;
 	__host__ int PoincareSectionCall(int, double);
 # endif

@@ -187,7 +187,10 @@ int main(int argc, char*argv[]){
 	//Print first informations about close encounter pairs
 	D.firstInfo();
 	D.setStartTime();
-
+#if poincareFlag == 1
+	sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, 0);
+	D.poincarefile = fopen(D.poincarefilename, "w");
+#endif
 for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 	double t = ts * D.P.idt + D.P.ict * 365.25;
 	if(D.Nst > 1){
@@ -255,6 +258,14 @@ for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 #if useGridae
 			D.GridaeOutput(ts);
 #endif
+#if poincareFlag == 1
+			if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
+				fclose(D.poincarefile);
+				sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, ts);
+				//Erase old Poincare files
+				D.poincarefile = fopen(D.poincarefilename, "w");
+			}
+#endif
 		}
 		// print time information //
 		if(ts % D.P.ci == 0){
@@ -263,6 +274,9 @@ for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 		}
 
 } // end of time step loop
+#if poincareFlag == 1
+	fclose(D.poincarefile);
+#endif
 
 	//print last informations
 	D.printLastTime();
