@@ -99,40 +99,24 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acc
 
 // **************************************
 //This kernel sets initial values for the test particle mode
-__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acck_d, int NB, int Bl, int N, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, double3 *accksmall_d, int Nsmall, const int Nconst ){
-	int idy = threadIdx.x;
+__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int Nsmall){
+
 	int idx = blockIdx.x;
+	int id = blockIdx.x * blockDim.x + idx;
 
-	if(idx < NB){
-		for(int i = 0; i < NB; i += Bl){
-			if(idy + i < NB){
-				Encpairs_d[(idy +i)* NB + idx].x = -1;
-				Encpairs_d[(idy +i)* NB + idx].y = -1;
+	if(id < NB * NB){
+		Encpairs_d[id].x = -1;
+		Encpairs_d[id].y = -1;
 
-				Encpairs2_d[(idy +i)* NB + idx].x = -1;
-				Encpairs2_d[(idy +i)* NB + idx].y = -1;
-			
-				if(idx == 0){
-					acck_d[idy + i].x = 0.0;
-					acck_d[idy + i].y = 0.0;
-					acck_d[idy + i].z = 0.0;
-				}
-			}
-		}
+		Encpairs2_d[id].x = -1;
+		Encpairs2_d[id].y = -1;
 	}
 
-	if(idx < Nsmall){
-		if(idy < 16){
-			Encpairssmall_d[idx * 16 + idy].x = -1;
-			Encpairssmall_d[idx * 16 + idy].y = -1;
-			Encpairssmall2_d[idx * 16 + idy].x = -1;
-			Encpairssmall2_d[idx * 16 + idy].y = -1;
-		}
-		if(idy == 0){
-			accksmall_d[idx].x = 0.0;
-			accksmall_d[idx].y = 0.0;
-			accksmall_d[idx].z = 0.0;
-		}
+	if(id < Nsmall * 32){
+		Encpairssmall_d[id].x = -1;
+		Encpairssmall_d[id].y = -1;
+		Encpairssmall2_d[id].x = -1;
+		Encpairssmall2_d[id].y = -1;
 	}
 
 }
@@ -364,7 +348,10 @@ __host__ void Data::firstKick_2048(){
 	kick4_kernel < 256, 2048, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
 }
 __host__ void Data::firstKick_small(){
-	initialsmall_kernel <<< max(NB[0], Nsmall_h[0]), 256 >>> (Encpairs_d, Encpairs2_d, a_d, NB[0], 256, N_h[0], Encpairssmall_d, Encpairssmall2_d, asmall_d, Nsmall_h[0], Nconst[0]);
+
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(asmall_d, 0, NsmallT*sizeof(double3));
+	initialsmall_kernel <<< (Nsmall_h[0] + 255)/ 256, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0]);
 	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
 	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
 }
