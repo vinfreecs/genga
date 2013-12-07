@@ -192,7 +192,6 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 		enccount = encouter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N);
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccountsmall_d[ii], 1);
-			atomicAdd(&enccountsmall_d[jj], 1);
 		}
 	}
 
