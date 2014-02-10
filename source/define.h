@@ -50,6 +50,9 @@
 
 #ifndef STRUCT_H
 #define STRUCT_H
+
+#define G3 1				//New integrator scheme
+
 struct Parameter{
 	int dev;                        //Number of device
 	int ei;                         //Energy output intervall

@@ -40,6 +40,32 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 		}
 	}
 }
+__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double time, double K){
+	if(x4i.w >= 0 && x4j.w > 0 && i != j){
+
+		double3 r3;
+		double rsq;
+		double ir, ir3;
+		double s;
+
+		r3.x = x4j.x - x4i.x;
+		r3.y = x4j.y - x4i.y;
+		r3.z = x4j.z - x4i.z;
+
+		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z + 1.0e-30;
+
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir * ir * ir;
+
+		s = ir3 * ksq * (1.0 - K) * x4j.w;
+
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
+//printf("%g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0);
+
+	}
+}
 
 // **************************************
 //This function computes the acceleration between the sun and body i.
@@ -59,6 +85,57 @@ __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 		ac.x += s * x4i.x;
 		ac.y += s * x4i.y;
 		ac.z += s * x4i.z;
+	}
+}
+//This fuction corrects the first kick of the time step
+__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time){
+        if(x4i.w >= 0 && x4j.w > 0 && i != j){
+
+                double3 r3;
+                double rsq;
+                double ir, ir3;
+                double s;
+
+                r3.x = x4j.x - x4i.x;
+                r3.y = x4j.y - x4i.y;
+                r3.z = x4j.z - x4i.z;
+
+                rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
+
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir * ir * ir;
+
+		s = -1.0 * Kold * x4j.w * ir3 * ksq;
+		s += K * x4j.w * ir3 * ksq; 
+//printf("%g %d %d %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0);
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
+	}
+}
+//This fuction corrects the second kick of the time step
+__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time){
+        if(x4i.w >= 0 && x4j.w > 0 && i != j){
+
+                double3 r3;
+                double rsq;
+                double ir, ir3;
+                double s;
+
+                r3.x = x4j.x - x4i.x;
+                r3.y = x4j.y - x4i.y;
+                r3.z = x4j.z - x4i.z;
+
+                rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
+
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir * ir * ir;
+
+		s = K * x4j.w * ir3 * ksq; 
+//printf("%g %d %d %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0);
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
 	}
 }
 

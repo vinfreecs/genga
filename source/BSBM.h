@@ -395,7 +395,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-                                        	encouter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol_s[0], 0);
+                                        	encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol_s[0], 0);
 					}
                                         __syncthreads();
                                         if(idy == 0) {

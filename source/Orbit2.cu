@@ -78,6 +78,18 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &aecountT_d,NT*sizeof(long long));
 	cudaMalloc((void **) &enccountT_d,NT*sizeof(long long));
 
+#if G3 == 1
+	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
+	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
+	cudaMalloc((void **) &groupIndex_d,NT*sizeof(int));
+	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
+#else
+	K_d = NULL;
+	Kold_d = NULL;
+	groupIndex_d = NULL;
+	groupIndexsmall_d = NULL;
+#endif
+
 	cudaMalloc((void **) &x4small_d,NsmallT*sizeof(double4));
 	cudaMalloc((void **) &v4small_d,NsmallT*sizeof(double4));
 	cudaMalloc((void **) &xoldsmall_d,NsmallT*sizeof(double4));
@@ -768,7 +780,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //This kernel removes ghost-masses and decreases the number of bodies.
 //It also removes bodies wich a semi major axis bigger than Rcut.
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int NB){
 
 	int NOld;
 	int N = N_d[st];
@@ -833,6 +845,18 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 				test_d[j + NBS] = test_d[N-1 + NBS];
 				test_d[N-1 + NBS] = -1.0;
+#if G3 == 1
+				for(int i = 0; i < N; ++i){
+					K_d[(j + NBS) * NB + i] = K_d[(N-1 + NBS) * NB + i];
+					K_d[i * NB + j + NBS] = K_d[i * NB + (N-1 + NBS)];
+					K_d[(N-1 + NBS) * NB + i] = 1.0;
+					K_d[i * NB + (N-1 + NBS)] = 1.0;
+					Kold_d[(j + NBS) * NB + i] = Kold_d[(N-1 + NBS) * NB + i];
+					Kold_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
+					Kold_d[(N-1 + NBS) * NB + i] = 1.0;
+					Kold_d[i * NB + (N-1 + NBS)] = 1.0;
+				}
+#endif
 
 				N -= 1;
 			}
@@ -1042,7 +1066,7 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st]);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d);
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1335,6 +1359,13 @@ __host__ int Data::freeOrbit(){
 #if poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
+#if G3 == 1
+	cudaFree(K_d);
+	cudaFree(Kold_d);
+	cudaFree(groupIndex_d);
+	cudaFree(groupIndexsmall_d);
+#endif
+
 	cudaFree(Coll_d);
 	cudaFree(test_d);
 	

@@ -17,7 +17,7 @@
 //Code is adapted from Mercury
 // ****************************************
 template<int E>
-__device__ int encouter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N){
+__device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N){
 
 //if(E == 0 || E >= 2)printf("E %d %d\n", i,j);
 //if(E == 1) printf("E1 %d %d\n", i, j);
@@ -160,6 +160,243 @@ __device__ int encouter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi
 	}
 	else return 0;
 }
+template<int E>
+__device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double time){
+
+//if(E == 0 || E >= 2)printf("E %d %d\n", i,j);
+//if(E == 1) printf("E1 %d %d\n", i, j);
+
+	int Enc = 0;
+	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
+		double d0, d1, dd0, dd1;
+		double4 r1, r0;
+		double4 rd0, rd1;
+		double a,b,c,cc;
+		double w,q;
+		double t1,t2,t12,t22,tt1,tt2,tt12,tt22;
+		double delta1, delta2;
+		double delta;
+		double sgnb;
+		double rcrit;
+		double rcritv;
+		int Ni;
+		double f;
+	
+		if(E == 0 || E == 3){
+			rcrit = fmax(rcriti, rcritj);
+			rcritv = fmax(rcritvi, rcritvj);
+			f = cef;
+		}
+		if(E == 1){
+			rcrit = 0.0;
+			rcritv = rcriti + rcritj;
+			f = 1.0;
+		}
+		if(E == 2){
+			rcrit = rcritj;
+			rcritv = rcritvj;
+			f = cef;
+		}
+
+		r1.x = x4j.x - x4i.x;
+		r1.y = x4j.y - x4i.y;
+		r1.z = x4j.z - x4i.z;
+		d1 = r1.x*r1.x + r1.y*r1.y+ r1.z*r1.z;
+
+		r0.x = x4oldj.x - x4oldi.x;
+		r0.y = x4oldj.y - x4oldi.y;
+		r0.z = x4oldj.z - x4oldi.z;
+		d0 = r0.x*r0.x + r0.y*r0.y+ r0.z*r0.z;
+			
+		rd0.x = v4oldj.x - v4oldi.x;
+		rd0.y = v4oldj.y - v4oldi.y;
+		rd0.z = v4oldj.z - v4oldi.z;
+
+		rd1.x = v4j.x - v4i.x;
+		rd1.y = v4j.y - v4i.y;
+		rd1.z = v4j.z - v4i.z;
+
+		dd0 = (r0.x*rd0.x + r0.y*rd0.y+ r0.z*rd0.z) * 2.0;
+		dd1 = (r1.x*rd1.x + r1.y*rd1.y+ r1.z*rd1.z) * 2.0;
+		t1 = 6.0 *(d0-d1); 
+		a = t1 + 3.0*dt*(dd0+dd1);
+		b = -t1 - 2.0*dt*(2.0*dd0+ dd1);
+		c = dt*dd0;
+		cc = dt*dd1;
+
+		if(b < 0){
+			sgnb = -1.0;
+		}
+		else sgnb = 1.0;
+		t1 = 0.0;
+		t2 = 0.0;
+
+		w = b*b - 4.0*a*c;
+		if(w < 0.0) w = 0.0;
+		if( b != 0){
+			q = -0.5 * (b + sgnb * sqrt(w));
+			if(q != 0){
+				if( a != 0){
+					t1 = q/a;
+					t2 = c/q;
+				}
+				else{
+					t1 = -c/b;
+					t2 = t1;
+				}
+			}	
+		}
+		else{
+			if( a != 0){
+				t1 = sqrt(-c/a);
+				t2 = -t1;
+			}
+		}
+		if(0 <= t1 && t1 <= 1){
+			t12 = t1*t1;
+			tt1 = 1.0-t1;
+			tt12 = tt1*tt1;
+			delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*c - t12*tt1*cc;
+		}
+		else delta1 = min(d0, d1);
+		if(0 <= t2 && t2 <= 1){
+			t22 = t2*t2;
+			tt2 = 1.0-t2;
+			tt22 = tt2*tt2;
+			delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*c - t22*tt2*cc;
+		}
+		else delta2 = min(d0, d1);
+
+		delta = min(delta1,delta2);
+		if(delta < 0) delta = 0.0;
+		
+		delta = fmin(delta, d1);
+		delta = fmin(delta, d0);
+
+		int Encflag = 0;
+
+		if(E == 0){
+			// *************************
+			double rij0 = sqrt(d0);
+			double rij1 = sqrt(d1);
+			double B0 = x4i.w * x4j.w / rij0;
+			double Bd0 = -B0 / d0 * 0.5 * dd0;
+			double B1 = x4i.w * x4j.w / rij1;
+			double Bd1 = -B1 / d1 * 0.5 * dd1;
+
+			double ri0 = sqrt(x4oldi.x * x4oldi.x + x4oldi.y * x4oldi.y + x4oldi.z * x4oldi.z);
+			double rj0 = sqrt(x4oldj.x * x4oldj.x + x4oldj.y * x4oldj.y + x4oldj.z * x4oldj.z);
+			double ri1 = sqrt(x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z);
+			double rj1 = sqrt(x4j.x * x4j.x + x4j.y * x4j.y + x4j.z * x4j.z);
+
+			double3 ai0;
+			double3 aj0;
+			double3 ai1;
+			double3 aj1;
+
+			double irij03 = 1.0 / (rij0 * d0);
+			double irij13 = 1.0 / (rij1 * d1);
+			double iri03 = 1.0 / (ri0 * ri0 * ri0);
+			double irj03 = 1.0 / (rj0 * rj0 * rj0);
+			double iri13 = 1.0 / (ri1 * ri1 * ri1);
+			double irj13 = 1.0 / (rj1 * rj1 * rj1);
+
+			ai0.x = x4j.w * irij03 * r0.x - iri03 * x4oldi.x;
+			ai0.y = x4j.w * irij03 * r0.y - iri03 * x4oldi.y;
+			ai0.z = x4j.w * irij03 * r0.z - iri03 * x4oldi.z;
+			aj0.x = -x4i.w * irij03 * r0.x - irj03 * x4oldj.x;
+			aj0.y = -x4i.w * irij03 * r0.y - irj03 * x4oldj.y;
+			aj0.z = -x4i.w * irij03 * r0.z - irj03 * x4oldj.z;
+			ai1.x = x4j.w * irij13 * r1.x - iri13 * x4i.x;
+			ai1.y = x4j.w * irij13 * r1.y - iri13 * x4i.y;
+			ai1.z = x4j.w * irij13 * r1.z - iri13 * x4i.z;
+			aj1.x = -x4i.w * irij13 * r1.x - irj13 * x4j.x;
+			aj1.y = -x4i.w * irij13 * r1.y - irj13 * x4j.y;
+			aj1.z = -x4i.w * irij13 * r1.z - irj13 * x4j.z;
+
+			double ud0 = rd0.x * rd0.x + r0.x * (aj0.x - ai0.x) + rd0.y * rd0.y + r0.y * (aj0.y - ai0.y) + rd0.z * rd0.z + r0.z * (aj0.z - ai0.z);
+			double ud1 = rd1.x * rd1.x + r1.x * (aj1.x - ai1.x) + rd1.y * rd1.y + r1.y * (aj1.y - ai1.y) + rd1.z * rd1.z + r1.z * (aj1.z - ai1.z);
+
+			double Bdd0 = -3.0 * Bd0 / d0 * 0.5 * dd0 - B0 / d0 * ud0;
+			double Bdd1 = -3.0 * Bd1 / d1 * 0.5 * dd1 - B1 / d1 * ud1;
+//	printf("%g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0);
+
+			Kiold = Ki;
+			Kjold = Kj;
+
+			if(Kiold < 1.0) Encflag = 1;
+
+			double limit = 2.0e-12;//2.0e-12;
+			if((Bdd0 >= limit && Bdd1 >= limit && Bdd0 <= Bdd1 && Bd0 > 0.0 &&Bd1 > 0.0) || Kiold == 0.0){
+//printf("%g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+				//close encounter
+				Ki = 0.0;
+				Kj = 0.0;
+				Kiold = 0.0;
+				Kjold = 0.0;
+			}
+			if(Bdd0 < limit && Bdd1 < limit && Bdd0 >= Bdd1 && Bdd0 > 0.0 && Bd0 < 0.0 && Bd1 < 0.0){
+//printf("%g %d %d %g %g %g %g %g %g no close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+				//no close encounter
+				Ki = 1.0;
+				Kj = 1.0;
+				Kiold = 0.0;
+				Kjold = 0.0;
+			}
+			if(Bdd0 < limit && Bdd1 >= limit && Bd0 >= 0.0 && Bd1 >= 0.0){
+//printf("%g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+				//start close encounter
+				double root = ((limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				Ki = root;
+				Kj = root;
+			}
+			if(Bdd0 >= limit && Bdd1 < limit && Bd0 <= 0.0 && Bd1 <= 0.0){
+//printf("%g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+				//stop close encounter
+				double root = ((limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				Ki = 1.0 - root;
+				Kj = 1.0 - root;
+			}
+			if(Ki < 1.0) Encflag = 1;
+
+		// *****************
+		}
+		if(E != 0){
+			if(delta < f * rcritv*rcritv) Encflag = 1;
+		}
+
+
+		if(Encflag == 1){
+			Enc = 2;
+//if (E == 0 || E >= 2)printf("EE %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
+//if (E == 1)printf("EE1 %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
+			if(E < 2){ 
+				Ni = atomicAdd(&Nenc, 1);
+				if(x4i.w >= x4j.w){
+					encpairs[Ni].x = i;
+					encpairs[Ni].y = j;
+				}
+				else{
+					encpairs[Ni].x = j;
+					encpairs[Ni].y = i;
+				}
+			}
+			if(E == 2){ //used for collision detetion
+				
+				Ni = atomicAdd(&Nenc, 1);	
+				encpairs[Ni].x = i;
+				encpairs[Ni].y = j - N;	
+			}
+		}
+		else Enc = 0;
+		if(delta < rcrit*rcrit){
+			Enc = 1;
+		}
+		return Enc;
+	}
+	else return 0;
+}
+
 
 __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int N, int *enccount_d, int *enccountsmall_d, int si){
 	int idy = threadIdx.x;
@@ -182,14 +419,14 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 	__syncthreads();
 	
 	if(id < *Nencpairs_d){
-		enccount = encouter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
+		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);
 		}
 	}
 	else if(id < *Nencpairs_d + *Nencpairssmall_d){
-		enccount = encouter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N);
+		enccount = encounter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N);
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccountsmall_d[ii], 1);
 		}
@@ -219,7 +456,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__syncthreads();
 
 	if(id < Nencpairs_d[0] && ii >= 0 && jj >= 0 && st < Nst){
-		int enccount = encouter<3>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, Encpairs2_d, Nencpairs2_d[st], 0);
+		int enccount = encounter<3>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, Encpairs2_d, Nencpairs2_d[st], 0);
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
@@ -250,7 +487,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //All close encounter pairs are stored in the array Encpairs2_d. 
 //The number of close encounter pairs is stored in Nencpairs2_d.
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, int NB, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -262,9 +499,14 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		jj = Encpairs_d[id].y;
 	}
 	__syncthreads();
+	int enccount = 0;
 	
 	if(id < *Nencpairs_d){
-		int enccount = encouter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
+#if G3 == 0
+		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
+#else
+		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], t);
+#endif
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);
@@ -338,7 +580,7 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 //This Kernel must be launched only with one block!.
 // ****************************************
 template <int BN, int Bl>
-__global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d){
+__global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 
@@ -427,6 +669,11 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 	}
 	// *At this point B_s[idy] contains a consecutive group index* /
 	__syncthreads();
+#if G3 == 1
+	if(idy < BN){
+		groupIndex_d[idy] = B_s[idy];
+	}
+#endif
 #if SERIAL_GROUPING == 0
 	if(idy < BN){
 		if(B_s[idy] < BN2){
@@ -604,7 +851,7 @@ __global__ void group512_kernel(double *test_d, int *Nencpairs2_d, int2 *Encpair
 //For more than 512 close encounter, a Fusion Kernel has to be called to merger the sub sets. 
 // ****************************************
 template <int BN, int Bl>
-__global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, double4 *x4_d, double *rcrit_d){
+__global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -713,6 +960,11 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 	/*At this point Encpairs_d[iy + i].x contains a consecutive group index*/
 	__syncthreads();
 	if(gridDim.x == 1){
+#if G3 == 1
+		for(int i = 0; i < BN; i += Bl){
+			groupIndex_d[idy + i] = Encpairs_d[iy + i].x;
+		}
+#endif
 #if SERIAL_GROUPING == 0
 		for(int i = 0; i < BN; i += Bl){
 			if(Encpairs_d[idy + i].x < BN2){
@@ -776,7 +1028,7 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 //This Kernel must be launched  with only one block!
 // ****************************************
 template <int BN, int Bl> 
-__global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, double4 *x4_d, double *rcrit_d){
+__global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 	__shared__ int encpairs_s[BN];
@@ -882,6 +1134,11 @@ __global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 		}	
 	}
 	__syncthreads();
+#if G3 == 1
+	for(int i = 0; i < BN; i += Bl){
+		groupIndex_d[idy + i] = encpairs_s[idy + i];
+	}
+#endif
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(encpairs_s[idy + i] < BN2){
@@ -1139,7 +1396,7 @@ __global__ void fusionA_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, dou
 //This Kernel must be launched  with two blocks!
 // ****************************************
 template <int BN, int Bl>
-__global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d){
+__global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 	__shared__ int encpairs_s[BN];
@@ -1243,6 +1500,11 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 		}	
 	}
 	__syncthreads();
+#if G3 == 1
+	for(int i = 0; i < BN; i += Bl){
+		groupIndex_d[idy + i] = encpairs_s[idy + i];
+	}
+#endif
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(encpairs_s[idy + i] < BN2){
@@ -1386,7 +1648,7 @@ __global__ void fusionA2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, do
 //This Kernel must be launched  with two blocks!
 // ****************************************
 template <int BN, int Bl>
-__global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d){
+__global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 
@@ -1483,8 +1745,11 @@ __global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 		}	
 	}
 	__syncthreads();
-
-
+#if G3 == 1
+	for(int i = 0; i < BN; i += Bl){
+		groupIndex_d[idy + i] = Encpairs_d[idy + i].x;
+	}
+#endif
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(Encpairs_d[idy + i].x < BN2){

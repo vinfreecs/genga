@@ -10,7 +10,7 @@
 ****************************************/
 
 template <int NN, int NB>
-__global__ void BSstep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int2 *Encpairs2_d, const double Msun, const double dt, double *test_d, double *test2_d, double *U_d, double *rcrit_d, double *rcritv_d, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d){
+__global__ void BSstep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int2 *Encpairs2_d, const double Msun, const double dt, double *test_d, double *test2_d, double *U_d, double *rcrit_d, double *rcritv_d, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int *groupIndex_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -277,7 +277,7 @@ if(dt < 0) sgnt = -1;
 						__syncthreads();
 
 						for(int j = 0; j < N2; ++j){
-							encouter<1>(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], v4_s[idy].w, v4_s[j].w, 0.0, 0.0, dt1, idy, j, &test, Colpairs_s, Ncol[0], 0); 
+							encounter<1>(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], v4_s[idy].w, v4_s[j].w, 0.0, 0.0, dt1, idy, j, &test, Colpairs_s, Ncol[0], 0); 
 						}
 						__syncthreads();
 						if(idy == 0){

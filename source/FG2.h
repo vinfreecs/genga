@@ -279,7 +279,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //which is a power of two.
 // *****************************************
 template <int Bl>
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -302,6 +302,9 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		x4_d[id] = x4_s[idy];
 		v4_d[id] = v4_s[idy];
+
+		groupIndex_d[id] = -1;
+
 		if(si == 0){
 		aecount_d[id] += aecount;
 		}

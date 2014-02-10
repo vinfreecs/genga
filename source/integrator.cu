@@ -78,11 +78,15 @@ __host__ void  Data::SymplecticP(){
 // **************************************
 // This kernel sets initial values for the Encouter pair arrays
 template <int Bl, int NB>
-__global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acck_d){
+__global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acck_d, double *K_d, double *Kold_d, int *groupIndex_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	for(int i = 0; i < NB; i += Bl){
+
+		K_d[(idy +i)* NB + idx] = 1.0;
+		Kold_d[(idy +i)* NB + idx] = 1.0;
+
 		Encpairs_d[(idy +i)* NB + idx].x = -1;
 		Encpairs_d[(idy +i)* NB + idx].y = -1;
 
@@ -93,13 +97,16 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acc
 			acck_d[idy + i].x = 0.0;
 			acck_d[idy + i].y = 0.0;
 			acck_d[idy + i].z = 0.0;
+#if G3 == 1
+			groupIndex_d[idy + i] = -1;
+#endif
 		}
 	}
 }
 
 // **************************************
 //This kernel sets initial values for the test particle mode
-__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int Nsmall){
+__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int Nsmall, int *groupIndexsmall_d){
 
 	int idx = blockIdx.x;
 	int id = blockIdx.x * blockDim.x + idx;
@@ -118,6 +125,11 @@ __global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB,
 		Encpairssmall2_d[id].x = -1;
 		Encpairssmall2_d[id].y = -1;
 	}
+#if G3 == 1
+	if(id < Nsmall){
+		groupIndexsmall_d[id] = -1;
+	}
+#endif
 
 }
 
@@ -308,52 +320,52 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, doub
 
 
 __host__ void Data::firstKick_16(){
-	initial_kernel < 16, 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 16, 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick16_kernel < 16, 40, 0 > <<< N_h[0] , 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick16_kernel < 16, 40, 0 > <<< N_h[0] , 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_32(){
-	initial_kernel < 32, 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 32, 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 1, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick32_kernel < 32, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick32_kernel < 32, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_64(){
-	initial_kernel < 64, 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 64, 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 2, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick32_kernel < 64, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick32_kernel < 64, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_128(){
-	initial_kernel < 128, 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 128, 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 4, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick128_kernel < 128, 0 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0]);
+	kick128_kernel < 128, 0 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_256(){
-	initial_kernel < 256, 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 256, 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick256_kernel <128, 256, 0> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick256_kernel <128, 256, 0> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_512(){
-	initial_kernel < 512, 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 512, 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 16, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick4_kernel < 256, 512, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick4_kernel < 256, 512, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_1024(){
-	initial_kernel < 1024, 1024 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel < 1024, 1024 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 32 > <<< 32, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick4_kernel < 256, 1024, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick4_kernel < 256, 1024, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_2048(){
-	initial_kernel<2048 ,2048 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d);
+	initial_kernel<2048 ,2048 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, groupIndex_d);
 	Rcrit_kernel < 64 > <<< 32, 64 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
-	kick4_kernel < 256, 2048, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick4_kernel < 256, 2048, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_small(){
 
 	cudaMemset(a_d, 0, NT*sizeof(double3));
 	cudaMemset(asmall_d, 0, NsmallT*sizeof(double3));
-	initialsmall_kernel <<< (Nsmall_h[0] + 255)/ 256, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0]);
+	initialsmall_kernel <<< (Nsmall_h[0] + 255)/ 256, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0], groupIndexsmall_d);
 	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
+	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
 }
 __host__ void Data::firstKick_M(){
 	initialM_kernel <16> <<< (NT + 31) / 32, 32 >>>(Encpairs_d, Encpairs2_d, a_d, NT);
@@ -366,22 +378,22 @@ __host__ void Data::firstKick_M(){
 cudaStream_t stream[10];
 __host__ void Data::BSCall(int NB, int si, double t){
 	for(int st = 0; st < 6; ++st)   cudaStreamCreate(&stream[st]);
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
-		if(Nenc_m[6] > 0) BSBStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 5, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[6] > 0) BSBStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 5, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d);
 	for(int st = 0; st < 6; ++st) cudaStreamDestroy(stream[st]);
 	cudaDeviceSynchronize();
 }
 
 __host__ void Data::BSsmallCall(int si, double t){
 	for(int st = 0; st < 8; ++st)   cudaStreamCreate(&stream[st]);
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32, K_d, Kold_d, groupIndex_d);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, 32, K_d, Kold_d, groupIndex_d);
 		if(Nencsmall_m[1] > 0) BSBStepsmall_kernel <2, 2> <<< Nencsmall_m[1], 4, 0, stream[4] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0]);
 		if(Nencsmall_m[2] > 0) BSBStepsmall_kernel <4, 4> <<< Nencsmall_m[2], 16, 0, stream[5] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0]);
 		if(Nencsmall_m[3] > 0) BSBStepsmall_kernel <8, 8> <<< Nencsmall_m[3], 64, 0, stream[6] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0]);
@@ -511,15 +523,15 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <16, 32, 1> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<16, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<16, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(16, si, t);
 		}
@@ -530,7 +542,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 		if(si < SIn - 1){
 			HC32_kernel <16, 32, 3> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-			kick16_kernel<16, 40, 2> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+			kick16_kernel<16, 40, 2> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_16(t, dt * Ct[si]);
@@ -541,7 +553,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 	}
 	HC32_kernel <16, 32, 2> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
 	EjectionFlag2 = 0;
-	kick16_kernel<16, 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick16_kernel<16, 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_16(t, dt * Ct[SIn - 1]);
@@ -570,15 +582,15 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<1, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<1, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <32, 64, 1> <<< 3, 32 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel <32> <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(32, si, t);
 		}
@@ -588,7 +600,7 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 		if(si < SIn - 1){
 			HC32_kernel<32, 64, 3> <<< 3, 32 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-			kick32_kernel<32, 64, 2> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+			kick32_kernel<32, 64, 2> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_32(t, dt * Ct[si]);
@@ -598,7 +610,7 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 	}
 	HC32_kernel<32, 64, 2> <<< 3, 32 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-	kick32_kernel<32, 64, 1> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick32_kernel<32, 64, 1> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_32(t, dt * Ct[SIn - 1]);
@@ -625,15 +637,15 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<2, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<2, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<2, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel<64, 64, 1> <<< 3, 64 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel <32> <<< 2, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 2, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<64, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<64, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(64, si, t);
 		}
@@ -643,7 +655,7 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 		if(si < SIn - 1){
 			HC32_kernel<64, 64, 3> <<< 3, 64 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-			kick32_kernel<64, 64, 2 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+			kick32_kernel<64, 64, 2 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_64(t, dt * Ct[si]);
@@ -653,7 +665,7 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 	}
 	HC32_kernel<64, 64, 2> <<< 3, 64 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-	kick32_kernel<64, 64, 1 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0]);
+	kick32_kernel<64, 64, 1 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], t);
 #if useGas > 0
 com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_64(t, dt * Ct[SIn - 1]);
@@ -680,15 +692,15 @@ com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<4, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<4, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 128, 128, 1 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-		fg_kernel <32> <<< 4, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 4, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<128, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<128, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(128, si, t);
 		}
@@ -698,7 +710,7 @@ com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		}
 		if(si < SIn - 1){
 			HC128_kernel < 128, 128, 3 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-			kick128_kernel<128, 2 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0]);
+			kick128_kernel<128, 2 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_128(t, dt * Ct[si]);
@@ -708,7 +720,7 @@ com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		}
 	}
 	HC128_kernel < 128, 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-	kick128_kernel<128, 1 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0]);
+	kick128_kernel<128, 1 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_128(t, dt * Ct[SIn - 1]);
@@ -735,15 +747,15 @@ com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<8, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<8, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 256, 256, 1 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-		fg_kernel <32> <<< 8, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 8, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<256, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<256, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(256, si, t);		
 		}
@@ -753,7 +765,7 @@ com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		}
 		if(si < SIn - 1){
 			HC128_kernel < 256, 256, 3 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-			kick256_kernel <128, 256, 2> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+			kick256_kernel <128, 256, 2> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_256(t, dt * Ct[si]);
@@ -763,7 +775,7 @@ com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		}
 	}
 	HC128_kernel < 256, 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-	kick256_kernel <128, 256, 1> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick256_kernel <128, 256, 1> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_256(t, dt * Ct[SIn - 1]);
@@ -791,15 +803,15 @@ com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<16, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<16, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-		fg_kernel <32> <<< 16, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 16, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group_kernel16<512, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group_kernel16<512, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(512, si, t);
 		}
@@ -809,7 +821,7 @@ com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 		}
 		if(si < SIn - 1){
 			HC128_kernel < 512, 512, 3 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-			kick4_kernel < 256, 512, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+			kick4_kernel < 256, 512, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 
 #if useGas > 0
 com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
@@ -821,7 +833,7 @@ com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 	}
 
 	HC128_kernel < 512, 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-	kick4_kernel < 256, 512, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick4_kernel < 256, 512, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_512(t, dt * Ct[SIn - 1]);
@@ -849,15 +861,15 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 1024, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-		fg_kernel <32> <<< 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
-			group1024_kernel <1024, 512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
+			group1024_kernel <1024, 512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(1024, si, t);
 		}
@@ -867,7 +879,7 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		}
 		if(si < SIn - 1){
 			HC128_kernel < 512, 1024, 3 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-			kick4_kernel < 256, 1024, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+			kick4_kernel < 256, 1024, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_1024(t, dt * Ct[si]);
@@ -877,7 +889,7 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		}
 	}
 	HC128_kernel < 512, 1024, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-	kick4_kernel < 256, 1024, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]); 
+	kick4_kernel < 256, 1024, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t); 
 #if useGas > 0
 com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_1024(t, dt * Ct[SIn - 1]);
@@ -905,21 +917,21 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel<32> <<<64, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel<32> <<<64, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 2048, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-		fg_kernel <32> <<< 64, 32 >>>(x4_d, v4_d, xold_d, vold_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
+		fg_kernel <32> <<< 64, 32 >>>(x4_d, v4_d, xold_d, vold_d, groupIndex_d, dt * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, si);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si);
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, NB[0], t);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();
 
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF > 0) group1024_kernel <2048, 512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d);
+			if(NF > 0) group1024_kernel <2048, 512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d, groupIndex_d);
 
-			if(NF > 1) fusionB_kernel <2048, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, x4_d, rcrit_d);
+			if(NF > 1) fusionB_kernel <2048, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, x4_d, rcrit_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(2048, si, t);
 		}
@@ -929,7 +941,7 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		}
 		if(si < SIn - 1){
 			HC128_kernel < 512, 2048, 3 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-			kick4_kernel < 256, 2048, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+			kick4_kernel < 256, 2048, 2 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_2048(t, dt * Ct[si]);
@@ -939,7 +951,7 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 		}
 	}
 	HC128_kernel < 512, 2048, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
-	kick4_kernel < 256, 2048, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0]);
+	kick4_kernel < 256, 2048, 1 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], t);
 #if useGas > 0
 com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_2048(t, dt * Ct[SIn - 1]);
@@ -977,7 +989,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 			cudaDeviceSynchronize();
 			if(Nsmall_h[0] > 0) groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
 			if(Nencpairssmall2_h[0] > 0) groupsmall2_kernel <<< (Nencpairssmall2_h[0] + 127)/128, 128 >>> (Nencpairssmall2_d, Encpairssmall2_d, Nencsmall_d, Encpairssmall_d, Nconst[0]);
-			group_kernel16 <32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d);
+			group_kernel16 <32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			if(Nencsmall_m[0] > 0) groupsmall3_kernel<<< (Nencsmall_m[0] + 127)/128, 128 >>> (Nencsmall_d, Encpairssmall_d, Encpairssmall2_d, Nconst[0]);
 			cudaDeviceSynchronize();
@@ -989,7 +1001,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 		if(si < SIn - 1){
 			HCsmall_kernel<256, 3> <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairssmall_d, Nencpairs2_d, Nencpairssmall2_d, Nenc_d, Nencsmall_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-			kicksmall_kernel < 128, 2 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[si], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, Nencpairssmall_d, Encpairssmall_d,Encpairssmall2_d, NB[0], Nconst[0]);
+			kicksmall_kernel < 128, 2 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[si], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d,Encpairssmall2_d, NB[0], Nconst[0]);
 #if useGas > 0
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_16(t, dt * Ct[si]);
@@ -1001,7 +1013,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 		}
 	}
 	HCsmall_kernel<256, 2> <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairssmall_d, Nencpairs2_d, Nencpairssmall2_d, Nenc_d, Nencsmall_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-	kicksmall_kernel < 128, 1 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
+	kicksmall_kernel < 128, 1 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
 #if useGas > 0
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_16(t, dt * Ct[SIn - 1]);

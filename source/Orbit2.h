@@ -24,6 +24,7 @@ public:
 	double3 *a_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
+	int *groupIndex_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
 	int2 *Encpairs_d;
@@ -38,6 +39,10 @@ public:
 	long long *GridaecountS_h;
 	long long *GridaecountT_h;
 
+	double *K_d;
+	double *Kold_d;
+
+
 	double4 *x4small_h, *x4small_d;
 	double4 *v4small_h, *v4small_d;
 	double4 *xoldsmall_h, *xoldsmall_d;
@@ -46,6 +51,7 @@ public:
 	double3 *spinsmall_h, *spinsmall_d;
 	double3 *asmall_d;
 	double *rcritvsmall_h, *rcritvsmall_d;
+	int *groupIndexsmall_d;
 	int *Nencpairssmall_h, *Nencpairssmall_d;
 	int *Nencpairssmall2_h, *Nencpairssmall2_d;
 	int2 *Encpairssmall_d;

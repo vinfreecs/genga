@@ -831,6 +831,10 @@ __host__ void Host::Info(){
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", Version);
+			fprintf(infofile, "Use Gas: %d\n", useGas);
+			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
+			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
+			fprintf(infofile, "Use Gridae: %d\n", useGridae);
 			fprintf(infofile, "FormatS: %d\n", FormatS);
 			fprintf(infofile, "FormatT: %d\n", FormatT);
 			fprintf(infofile, "FormatP: %d\n", FormatP);
