@@ -52,7 +52,8 @@
 #define STRUCT_H
 
 #define G3 1				//New integrator scheme
-
+#define G3Limit	2.0e-12
+#define G3Limit2 1.0e-13
 struct Parameter{
 	int dev;                        //Number of device
 	int ei;                         //Energy output intervall

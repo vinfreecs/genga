@@ -302,9 +302,9 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		x4_d[id] = x4_s[idy];
 		v4_d[id] = v4_s[idy];
-
+#if G3 == 1
 		groupIndex_d[id] = -1;
-
+#endif
 		if(si == 0){
 		aecount_d[id] += aecount;
 		}

@@ -319,46 +319,211 @@ __device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4o
 
 			double Bdd0 = -3.0 * Bd0 / d0 * 0.5 * dd0 - B0 / d0 * ud0;
 			double Bdd1 = -3.0 * Bd1 / d1 * 0.5 * dd1 - B1 / d1 * ud1;
-//	printf("%g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0);
+//	printf("%.10g %g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0, (Bdd1 - Bdd0) / dt);
 
 			Kiold = Ki;
 			Kjold = Kj;
 
 			if(Kiold < 1.0) Encflag = 1;
 
-			double limit = 2.0e-12;//2.0e-12;
-			if((Bdd0 >= limit && Bdd1 >= limit && Bdd0 <= Bdd1 && Bd0 > 0.0 &&Bd1 > 0.0) || Kiold == 0.0){
-//printf("%g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+			int start = 0;
+			if((Bdd0 >= G3Limit  && Bd0 > 0.0 && Kiold < 1.0) || Kiold == 0.0) {
+//printf("%.10g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//close encounter
 				Ki = 0.0;
 				Kj = 0.0;
 				Kiold = 0.0;
 				Kjold = 0.0;
 			}
-			if(Bdd0 < limit && Bdd1 < limit && Bdd0 >= Bdd1 && Bdd0 > 0.0 && Bd0 < 0.0 && Bd1 < 0.0){
-//printf("%g %d %d %g %g %g %g %g %g no close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+			if(Bdd0 < G3Limit && Bdd1 < G3Limit && Bdd0 >= Bdd1 && Bdd0 > 0.0 && Bd0 < 0.0 && Bd1 < 0.0){
+//printf("%.10g %d %d %g %g %g %g %g %g no close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//no close encounter
 				Ki = 1.0;
 				Kj = 1.0;
 				Kiold = 0.0;
 				Kjold = 0.0;
 			}
-			if(Bdd0 < limit && Bdd1 >= limit && Bd0 >= 0.0 && Bd1 >= 0.0){
-//printf("%g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+			if(Bdd0 < G3Limit && Bdd1 >= G3Limit && Bd0 >= 0.0 && Bd1 >= 0.0 && Kiold == 1.0){
+//printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//start close encounter
-				double root = ((limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				start = 1;
+				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
 				Ki = root;
 				Kj = root;
 			}
-			if(Bdd0 >= limit && Bdd1 < limit && Bd0 <= 0.0 && Bd1 <= 0.0){
-//printf("%g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+			if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Bd0 <= 0.0 && Bd1 <= 0.0 && Kiold < 1.0){
+//printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//stop close encounter
-				double root = ((limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
 				Ki = 1.0 - root;
 				Kj = 1.0 - root;
 			}
-			if(Ki < 1.0) Encflag = 1;
+double Bdd;
+if(start == 1){
+	double4	x4it = x4i;
+	double4	x4jt = x4j;
+	double4	v4it = v4i;
+	double4	v4jt = v4j;
+	int aecount = 0;
+	int Gridaecount = 0;
+	float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
+	double test = 0.0;
+	double Msun = 1.0;
 
+	double dtt = 2.0* dt;
+	for(int bt = 0; bt < 100; ++bt){
+		fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+		fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+		double rx = x4jt.x - x4it.x;
+		double ry = x4jt.y - x4it.y;
+		double rz = x4jt.z - x4it.z;
+		double d = rx * rx + ry * ry + rz * rz;
+		double rij = sqrt(d);
+		double B = x4it.w * x4jt.w / rij;
+		double rdx = v4jt.x - v4it.x;
+		double rdy = v4jt.y - v4it.y;
+		double rdz = v4jt.z - v4it.z;
+
+		double dd = (rx * rdx + ry * rdy + rz * rdz) * 2.0;
+		double Bd = -B / d * 0.5 * dd;
+
+
+//printf("%d %d maximum of B before %g %.8g %g %g\n", i, j, dtt / dt, time + dtt/0.01720209895, B, Bd);
+		if(Bd < 0.0){
+			break;
+		}
+		dtt *= 1.5;
+		x4it = x4i;
+		x4jt = x4j;
+		v4it = v4i;
+		v4jt = v4j;
+		
+	}
+	double dtt1 = dtt;
+	double4 x4it1 = x4it;
+	double4 x4jt1 = x4jt;
+	double4 v4it1 = v4it;
+	double4 v4jt1 = v4jt;
+	dtt = 2.0 * dt;
+	Bdd = 0.0;
+	for(int bt = 0; bt < 100; ++bt){
+		fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+		fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+		double rx = x4jt.x - x4it.x;
+		double ry = x4jt.y - x4it.y;
+		double rz = x4jt.z - x4it.z;
+		double d = rx * rx + ry * ry + rz * rz;
+		double rij = sqrt(d);
+		double B = x4it.w * x4jt.w / rij;
+		double rdx = v4jt.x - v4it.x;
+		double rdy = v4jt.y - v4it.y;
+		double rdz = v4jt.z - v4it.z;
+
+		double dd = (rx * rdx + ry * rdy + rz * rdz) * 2.0;
+		double Bd = -B / d * 0.5 * dd;
+
+		double ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
+		double rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
+
+		double3 ai;
+		double3 aj;
+
+		double irij3 = 1.0 / (rij * d);
+		double iri3 = 1.0 / (ri * ri * ri);
+		double irj3 = 1.0 / (rj * rj * rj);
+
+		ai.x = x4jt.w * irij3 * rx - iri3 * x4it.x;
+		ai.y = x4jt.w * irij3 * ry - iri3 * x4it.y;
+		ai.z = x4jt.w * irij3 * rz - iri3 * x4it.z;
+		aj.x = -x4it.w * irij3 * rx - irj3 * x4jt.x;
+		aj.y = -x4it.w * irij3 * ry - irj3 * x4jt.y;
+		aj.z = -x4it.w * irij3 * rz - irj3 * x4jt.z;
+
+		double ud = rdx * rdx + rx * (aj.x - ai.x) + rdy * rdy + ry * (aj.y - ai.y) + rdz * rdz + rz * (aj.z - ai.z);
+		double Bddold = Bdd;
+		Bdd = -3.0 * Bd / d * 0.5 * dd - B / d * ud;
+//printf("%d %d maximum of Bd at %g %.8g %g %g\n", i, j, dtt / dt, time + (dtt + dtt1)/0.01720209895, Bd, Bdd);
+
+		if(Bddold / Bdd < 0.0 && Bdd > 0.0) break;
+		
+		if(Bdd <= 0.0) dtt *= 1.2;
+		if(Bdd >= 0.0) dtt *= 0.8;
+
+
+		x4it = x4it1;
+		x4jt = x4jt1;
+		v4it = v4it1;
+		v4jt = v4jt1;
+		
+	}
+	dtt1 += dtt;
+	x4it1 = x4it;
+	x4jt1 = x4jt;
+	v4it1 = v4it;
+	v4jt1 = v4jt;
+	dtt = dt;
+	Bdd = 0.0;
+	for(int bt = 0; bt < 100; ++bt){
+		fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+		fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+		double rx = x4jt.x - x4it.x;
+		double ry = x4jt.y - x4it.y;
+		double rz = x4jt.z - x4it.z;
+		double d = rx * rx + ry * ry + rz * rz;
+		double rij = sqrt(d);
+		double B = x4it.w * x4jt.w / rij;
+		double rdx = v4jt.x - v4it.x;
+		double rdy = v4jt.y - v4it.y;
+		double rdz = v4jt.z - v4it.z;
+
+		double dd = (rx * rdx + ry * rdy + rz * rdz) * 2.0;
+		double Bd = -B / d * 0.5 * dd;
+
+		double ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
+		double rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
+
+		double3 ai;
+		double3 aj;
+
+		double irij3 = 1.0 / (rij * d);
+		double iri3 = 1.0 / (ri * ri * ri);
+		double irj3 = 1.0 / (rj * rj * rj);
+
+		ai.x = x4jt.w * irij3 * rx - iri3 * x4it.x;
+		ai.y = x4jt.w * irij3 * ry - iri3 * x4it.y;
+		ai.z = x4jt.w * irij3 * rz - iri3 * x4it.z;
+		aj.x = -x4it.w * irij3 * rx - irj3 * x4jt.x;
+		aj.y = -x4it.w * irij3 * ry - irj3 * x4jt.y;
+		aj.z = -x4it.w * irij3 * rz - irj3 * x4jt.z;
+
+		double ud = rdx * rdx + rx * (aj.x - ai.x) + rdy * rdy + ry * (aj.y - ai.y) + rdz * rdz + rz * (aj.z - ai.z);
+		double Bddold = Bdd;
+		Bdd = -3.0 * Bd / d * 0.5 * dd - B / d * ud;
+//printf("%d %d maximum of Bd at %g %.8g %g %g\n", i, j, dtt / dt, time + (dtt + dtt1)/0.01720209895, Bd, Bdd);
+
+		if(Bddold >= Bdd) break;
+		
+		dtt += dt;
+
+		x4it = x4it1;
+		x4jt = x4jt1;
+		v4it = v4it1;
+		v4jt = v4jt1;
+		
+	}
+}
+
+
+			if(Ki < 1.0) Encflag = 1;
+			if(start == 1 && Bdd < G3Limit){
+				Encflag = 0;
+				Ki = 1.0;
+				Kj = 1.0;
+				Kiold = 0.0;
+				Kjold = 0.0;
+
+			}
+//if(Encflag == 1)printf("%g %g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0, (Bdd1 - Bdd0) / dt);
 		// *****************
 		}
 		if(E != 0){

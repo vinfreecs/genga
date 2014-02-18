@@ -83,10 +83,10 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acc
 	int idx = blockIdx.x;
 
 	for(int i = 0; i < NB; i += Bl){
-
+#if G3 == 1
 		K_d[(idy +i)* NB + idx] = 1.0;
 		Kold_d[(idy +i)* NB + idx] = 1.0;
-
+#endif
 		Encpairs_d[(idy +i)* NB + idx].x = -1;
 		Encpairs_d[(idy +i)* NB + idx].y = -1;
 
@@ -523,8 +523,12 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <16, 32, 1> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
@@ -582,8 +586,12 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<1, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <32, 64, 1> <<< 3, 32 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
@@ -637,8 +645,12 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<2, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<2, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel<64, 64, 1> <<< 3, 64 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
@@ -692,8 +704,12 @@ com128_kernel < 128, 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<4, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 128, 128, 1 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
@@ -747,8 +763,12 @@ com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<8, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 256, 256, 1 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
@@ -803,8 +823,12 @@ com128_kernel < 512, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<16, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
@@ -861,8 +885,12 @@ com128_kernel < 1024, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 1024, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);
@@ -917,8 +945,12 @@ com128_kernel < 2048, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
+#if G3 == 0
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel<32> <<<64, 32 >>> (x4_d, v4_d, a_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB[0], t);
 	else kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d);
+#else
+	kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d);
+#endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128_kernel < 512, 2048, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], t);

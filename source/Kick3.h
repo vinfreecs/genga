@@ -60,16 +60,12 @@ __device__ void  accAG3(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi,
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir*ir*ir;
 
-		if(rsq >= 1.0 * rcritv2){
-			s = x4j.w * ir3;
-		}
-		else{
+		s = x4j.w * ir3;
+
+		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NB){
 			s = 0.0;
 		}
-		if(rsq >= rcritv2 && groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NB){
-			s = 0.0;//x4j.w * ir3;
-		}
-//printf("%g %d %d %g %g %g %g %g %g %g %g\n", t, i, j, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+//printf("%g %d %d %g %g %g %g %g %g %g %g %g\n", t, i, j, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
@@ -195,13 +191,15 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		r3ij.z = x4j.z - x4i.z;
 
 		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-//		rcrit = fmax(rcriti, rcritj);
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir*ir*ir;
+
+		double B = x4i.w * x4j.w * ir;
 		rcritv = fmax(rcritvi, rcritvj);
 
-//		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
-		if(E <= 2){		
-//			if(rsq < pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
+		if(E <= 2){	
+			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || B > G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
 //printf("Precheck %d %d\n", i, j);
 				if( i < j){
 					Ni = atomicAdd(NencpairsI, 1);
@@ -213,7 +211,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 					Encpairs_d[icNB * i + icNB - 1 - Nj].y = j;
 
 				}
-//			}
+			}
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
 			if(rsq < pc * rcritv2){
@@ -235,20 +233,19 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 				}
 			}
 		}
-		ir = 1.0/sqrt(rsq);
-		ir3 = ir*ir*ir;
 
-		if(rsq >= 1.0 * rcritv2){
-			s = x4j.w * ir3;
-		}
-		else{
-			s = 0.0;
-		}
+		s = x4j.w * ir3;
+
 		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) s = 0.0;
-//printf("%g %d %d %g %g %g %g %g %g %g %g\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
+		if(E % 10 != 2){
+			b.x += __dmul_rn(r3ij.x, s);
+			b.y += __dmul_rn(r3ij.y, s);
+			b.z += __dmul_rn(r3ij.z, s);
+		}
 
 	}
 }
@@ -494,8 +491,6 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	double rcritvi = rcritv_d[idx];
 #if G3 == 1
 	int groupIndexi = groupIndex_d[idx];
-#else
-	int groupIndexi = 0;
 #endif
 
 	double4 x4j = x4_d[idy];
@@ -503,8 +498,6 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	double rcritvj = rcritv_d[idy];
 #if G3 == 1
 	int groupIndexj = groupIndex_d[idy];
-#else
-	int groupIndexj = 0;
 #endif
 
 
@@ -621,8 +614,6 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	double rcritvi = rcritv_d[idx];
 #if G3 == 1
 	int groupIndexi = groupIndex_d[idx];
-#else
-	int groupIndexi = 0;
 #endif
 
 	double4 x4j = x4_d[idy];
@@ -630,8 +621,6 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	double rcritvj = rcritv_d[idy];
 #if G3 == 1
 	int groupIndexj = groupIndex_d[idy];
-#else
-	int groupIndexj = 0;
 #endif
 
 	double test;
@@ -789,8 +778,6 @@ __global__ void kick128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	double rcritvj = rcritv_d[idy];
 #if G3 == 1
 	int groupIndexj = groupIndex_d[idy];
-#else
-	int groupIndexj = 0;
 #endif
 
 	double rcriti = rcrit_d[idx];
@@ -800,9 +787,6 @@ __global__ void kick128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 #if G3 == 1
 	int groupIndexi = groupIndex_d[idx];
 	int groupIndexi2 = groupIndex_d[idx + N2];
-#else
-	int groupIndexi = 0;
-	int groupIndexi2 = 0;
 #endif
 	double test;
 
@@ -1086,11 +1070,6 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	int groupIndexi2 = groupIndex_d[idx + N4];
 	int groupIndexi3 = groupIndex_d[idx + 2*N4];
 	int groupIndexi4 = groupIndex_d[idx + 3*N4];
-#else
-	int groupIndexi = 0;
-	int groupIndexi2 = 0;
-	int groupIndexi3 = 0;
-	int groupIndexi4 = 0;
 #endif
 
 
@@ -1621,11 +1600,6 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 	int groupIndexi2 = groupIndex_d[idx + N4];
 	int groupIndexi3 = groupIndex_d[idx + 2*N4];
 	int groupIndexi4 = groupIndex_d[idx + 3*N4];
-#else	
-	int groupIndexi = 0;
-	int groupIndexi2 = 0;
-	int groupIndexi3 = 0;
-	int groupIndexi4 = 0;
 #endif
 	double test;
 

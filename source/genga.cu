@@ -152,8 +152,8 @@ int main(int argc, char*argv[]){
 	else printf("Start integration with %d simulations\n", Nst);
         error = cudaGetLastError();
 	if(error != 0){
-		fprintf(D.masterfile, "Cuda error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("Cuda error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(D.masterfile, "Start error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("Start error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -225,8 +225,8 @@ for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 		cudaDeviceSynchronize();
 		error = cudaGetLastError();
 		if(error != 0){
-			printf("Cuda error = %d = %s\n",error, cudaGetErrorString(error));
-			fprintf(D.masterfile, "Cuda error = %d = %s\n",error, cudaGetErrorString(error));
+			printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
+			fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
 			return 0;
 		}
 

@@ -62,7 +62,7 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rc
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
-//printf("%g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0);
+//printf("%.10g %g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
 	}
 }
@@ -107,7 +107,7 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 
 		s = -1.0 * Kold * x4j.w * ir3 * ksq;
 		s += K * x4j.w * ir3 * ksq; 
-//printf("%g %d %d %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0);
+//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -132,7 +132,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir3 = ir * ir * ir;
 
 		s = K * x4j.w * ir3 * ksq; 
-//printf("%g %d %d %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0);
+//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
