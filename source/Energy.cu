@@ -1000,6 +1000,7 @@ __global__ void kineticEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *sp
 			T_s[idy] = 0.5 * x4_s[idy].w * (v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z);
 		}
 		E_s[idy] =  V_s[idy] + T_s[idy];
+test_d[idy] = E_s[idy];
 	}
 	__syncthreads();
 	//convert to barycentric positions

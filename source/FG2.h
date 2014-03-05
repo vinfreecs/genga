@@ -279,7 +279,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //which is a power of two.
 // *****************************************
 template <int Bl>
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -294,6 +294,13 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 
 		xold_d[id] = x4_s[idy];
 		vold_d[id] = v4_s[idy];
+		a_d[id].x = 0.0;
+		a_d[id].y = 0.0;
+		a_d[id].z = 0.0;
+
+#if G3 == 1
+		groupIndexOld_d[id] = groupIndex_d[id];
+#endif
 		double test;
 		float4 aelimits = aelimits_d[idy];
 		//fastfg(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
@@ -313,7 +320,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 
 
 template <int Bl>
-__global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int si){
+__global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *asmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int si){
 
         int idy = threadIdx.x;
         int id = blockIdx.x * blockDim.x + idy;
@@ -330,6 +337,9 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		aelimits = aelimits_d[id];
 	        xold_d[id] = x4_s[idy];
         	vold_d[id] = v4_s[idy];
+		a_d[id].x = 0.0;
+		a_d[id].y = 0.0;
+		a_d[id].z = 0.0;
 	}
 	else if(id < N + Nsmall){
 		x4_s[idy] = x4small_d[id - N];
@@ -337,6 +347,9 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		aelimits = aelimitssmall_d[id - N];
 	        xoldsmall_d[id - N] = x4_s[idy];
         	voldsmall_d[id - N] = v4_s[idy];
+		asmall_d[id - N].x = 0.0;
+		asmall_d[id - N].y = 0.0;
+		asmall_d[id - N].z = 0.0;
 	}
 	else{
                 x4_s[idy].x = 0.0;

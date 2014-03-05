@@ -237,7 +237,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		s = x4j.w * ir3;
 
 		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) s = 0.0;
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %d %d\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, groupIndexi, groupIndexj);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
@@ -558,9 +558,9 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[idx].z += ab1[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx].x = ab1[16].x * dtksq;
-			acck_d[idx].y = ab1[16].y * dtksq;
-			acck_d[idx].z = ab1[16].z * dtksq;
+			acck_d[idx].x += ab1[16].x * dtksq;
+			acck_d[idx].y += ab1[16].y * dtksq;
+			acck_d[idx].z += ab1[16].z * dtksq;
 		}
 		if(E <= 2){
 			Ne = atomicAdd(Nencpairs_d, NencpairsI_s);
@@ -711,9 +711,9 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[idx].z += a1[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx].x = b1[0].x * dtksq;
-			acck_d[idx].y = b1[0].y * dtksq;
-			acck_d[idx].z = b1[0].z * dtksq;
+			acck_d[idx].x += b1[0].x * dtksq;
+			acck_d[idx].y += b1[0].y * dtksq;
+			acck_d[idx].z += b1[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne = atomicAdd(Nencpairs_d, NencpairsI_s);
@@ -958,9 +958,9 @@ __global__ void kick128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx].z += a1[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx].x = b1[0].x * dtksq;
-			acck_d[idx].y = b1[0].y * dtksq;
-			acck_d[idx].z = b1[0].z * dtksq;
+			acck_d[idx].x += b1[0].x * dtksq;
+			acck_d[idx].y += b1[0].y * dtksq;
+			acck_d[idx].z += b1[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
@@ -974,9 +974,9 @@ __global__ void kick128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx + N2].z += a2[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx + N2].x = b2[0].x * dtksq;
-			acck_d[idx + N2].y = b2[0].y * dtksq;
-			acck_d[idx + N2].z = b2[0].z * dtksq;
+			acck_d[idx + N2].x += b2[0].x * dtksq;
+			acck_d[idx + N2].y += b2[0].y * dtksq;
+			acck_d[idx + N2].z += b2[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
@@ -1436,9 +1436,9 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx].z += a1[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx].x = b1[0].x * dtksq;
-			acck_d[idx].y = b1[0].y * dtksq;
-			acck_d[idx].z = b1[0].z * dtksq;
+			acck_d[idx].x += b1[0].x * dtksq;
+			acck_d[idx].y += b1[0].y * dtksq;
+			acck_d[idx].z += b1[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
@@ -1452,9 +1452,9 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx + N4].z += a2[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx + N4].x = b2[0].x * dtksq;
-			acck_d[idx + N4].y = b2[0].y * dtksq;
-			acck_d[idx + N4].z = b2[0].z * dtksq;
+			acck_d[idx + N4].x += b2[0].x * dtksq;
+			acck_d[idx + N4].y += b2[0].y * dtksq;
+			acck_d[idx + N4].z += b2[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
@@ -1468,9 +1468,9 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx + 2*N4].z += a3[0].z * dtksq;
 		} 
 		if(E <= 1){
-			acck_d[idx + 2*N4].x = b3[0].x * dtksq;
-			acck_d[idx + 2*N4].y = b3[0].y * dtksq;
-			acck_d[idx + 2*N4].z = b3[0].z * dtksq;
+			acck_d[idx + 2*N4].x += b3[0].x * dtksq;
+			acck_d[idx + 2*N4].y += b3[0].y * dtksq;
+			acck_d[idx + 2*N4].z += b3[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne3 = atomicAdd(Nencpairs_d, NencpairsI3_s);
@@ -1484,9 +1484,9 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx + 3*N4].z += a4[0].z * dtksq;
 		} 
 		if(E <= 1){
-			acck_d[idx + 3*N4].x = b4[0].x * dtksq;
-			acck_d[idx + 3*N4].y = b4[0].y * dtksq;
-			acck_d[idx + 3*N4].z = b4[0].z * dtksq;
+			acck_d[idx + 3*N4].x += b4[0].x * dtksq;
+			acck_d[idx + 3*N4].y += b4[0].y * dtksq;
+			acck_d[idx + 3*N4].z += b4[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne4 = atomicAdd(Nencpairs_d, NencpairsI4_s);
@@ -1949,9 +1949,9 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			v4_d[idx].z += a1[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx].x = b1[0].x * dtksq;
-			acck_d[idx].y = b1[0].y * dtksq;
-			acck_d[idx].z = b1[0].z * dtksq;
+			acck_d[idx].x += b1[0].x * dtksq;
+			acck_d[idx].y += b1[0].y * dtksq;
+			acck_d[idx].z += b1[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
@@ -1964,9 +1964,9 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			v4_d[idx + N4].z += a2[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx + N4].x = b2[0].x * dtksq;
-			acck_d[idx + N4].y = b2[0].y * dtksq;
-			acck_d[idx + N4].z = b2[0].z * dtksq;
+			acck_d[idx + N4].x += b2[0].x * dtksq;
+			acck_d[idx + N4].y += b2[0].y * dtksq;
+			acck_d[idx + N4].z += b2[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
@@ -1979,9 +1979,9 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			v4_d[idx + 2*N4].z += a3[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx + 2*N4].x = b3[0].x * dtksq;
-			acck_d[idx + 2*N4].y = b3[0].y * dtksq;
-			acck_d[idx + 2*N4].z = b3[0].z * dtksq;
+			acck_d[idx + 2*N4].x += b3[0].x * dtksq;
+			acck_d[idx + 2*N4].y += b3[0].y * dtksq;
+			acck_d[idx + 2*N4].z += b3[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne3 = atomicAdd(Nencpairs_d, NencpairsI3_s);
@@ -1994,9 +1994,9 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			v4_d[idx + 3*N4].z += a4[0].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[idx + 3*N4].x = b4[0].x * dtksq;
-			acck_d[idx + 3*N4].y = b4[0].y * dtksq;
-			acck_d[idx + 3*N4].z = b4[0].z * dtksq;
+			acck_d[idx + 3*N4].x += b4[0].x * dtksq;
+			acck_d[idx + 3*N4].y += b4[0].y * dtksq;
+			acck_d[idx + 3*N4].z += b4[0].z * dtksq;
 		}
 		if(E <= 2){
 			Ne4 = atomicAdd(Nencpairs_d, NencpairsI4_s);
@@ -2094,9 +2094,9 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			v4_d[id].z += a_s[idy].z * dtksq;
 		}
 		if(E <= 1){
-			acck_d[id].x = b_s[idy].x * dtksq;
-			acck_d[id].y = b_s[idy].y * dtksq;
-			acck_d[id].z = b_s[idy].z * dtksq;
+			acck_d[id].x += b_s[idy].x * dtksq;
+			acck_d[id].y += b_s[idy].y * dtksq;
+			acck_d[id].z += b_s[idy].z * dtksq;
 			Ne = atomicAdd(Nencpairs_d, NencpairsI);
 			for(int ii = 0; ii < NencpairsI; ++ii){
 				Encpairs_d[ii + Ne] = Encpairs2_d[NB * id + ii];
@@ -2118,9 +2118,9 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			v4small_d[id - N].z += a_s[idy].z * dtksq;
 		}
 		if(E <= 1){
-			accksmall_d[id - N].x = b_s[idy].x * dtksq;
-			accksmall_d[id - N].y = b_s[idy].y * dtksq;
-			accksmall_d[id - N].z = b_s[idy].z * dtksq;
+			accksmall_d[id - N].x += b_s[idy].x * dtksq;
+			accksmall_d[id - N].y += b_s[idy].y * dtksq;
+			accksmall_d[id - N].z += b_s[idy].z * dtksq;
 		}
 		if(E <= 2){
 			Nesmall = atomicAdd(Nencpairssmall_d, NencpairsI);

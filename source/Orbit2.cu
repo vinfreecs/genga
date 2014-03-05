@@ -82,12 +82,16 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &groupIndex_d,NT*sizeof(int));
+	cudaMalloc((void **) &groupIndexOld_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
+	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
 #else
 	K_d = NULL;
 	Kold_d = NULL;
 	groupIndex_d = NULL;
+	groupIndexOld_d = NULL;
 	groupIndexsmall_d = NULL;
+	groupIndexsmallOld_d = NULL;
 #endif
 
 	cudaMalloc((void **) &x4small_d,NsmallT*sizeof(double4));
@@ -1363,7 +1367,9 @@ __host__ int Data::freeOrbit(){
 	cudaFree(K_d);
 	cudaFree(Kold_d);
 	cudaFree(groupIndex_d);
+	cudaFree(groupIndexOld_d);
 	cudaFree(groupIndexsmall_d);
+	cudaFree(groupIndexsmallOld_d);
 #endif
 
 	cudaFree(Coll_d);

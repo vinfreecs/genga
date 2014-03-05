@@ -25,6 +25,7 @@ public:
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
 	int *groupIndex_d;
+	int *groupIndexOld_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
 	int2 *Encpairs_d;
@@ -52,6 +53,7 @@ public:
 	double3 *asmall_d;
 	double *rcritvsmall_h, *rcritvsmall_d;
 	int *groupIndexsmall_d;
+	int *groupIndexsmallOld_d;
 	int *Nencpairssmall_h, *Nencpairssmall_d;
 	int *Nencpairssmall2_h, *Nencpairssmall2_d;
 	int2 *Encpairssmall_d;

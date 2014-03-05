@@ -9,7 +9,7 @@
 //  ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int *groupIndexOld_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -30,6 +30,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	__shared__ double4 vp_s[NN];
 	__shared__ double4 xt_s[NN];
 	__shared__ double4 vt_s[NN];
+	
+	__shared__ int groupIndexOld_s[NN];
 
 	__shared__ double3 dx_s[NN][8];
 	__shared__ double3 dv_s[NN][8];
@@ -49,7 +51,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	N2 = Encpairs2_d[si].y;
 	if(idy < N2){
 		idi = Encpairs2_d[si * NB + idy].x;
-//printf("BS %d %d %d %d\n", idx, st, idi, index_d[idi]);
+//printf("BS %d %d %d %d %d\n", idx, st, idi, index_d[idi], N2);
 	}
 	else idi = 0;
 
@@ -64,17 +66,19 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
+		groupIndexOld_s[idy] = groupIndexOld_d[idi];
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
-		x4_s[idy].w = 0.0;
+		x4_s[idy].w = -1.0e-12;//0.0;
                 v4_s[idy].x = 0.0;
                 v4_s[idy].y = 0.0;
                 v4_s[idy].z = 0.0;
                 v4_s[idy].w = 0.0;
 		rcritv_s[idy] = 0.0;
+		groupIndexOld_s[idy] = -1;
 	}
 	if(idy < NN){
 		a0_s[idy + nb*NN].x = 0.0;
@@ -97,7 +101,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         for(int l = 0; l < NN; l += nb){
 		int iK = Encpairs2_d[si * NB + ii].x;
 		int jK = Encpairs2_d[si * NB + jj + l].x;
-                CorrectKick(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + t/0.01720209895);
+                CorrectKick(x4_s[ii], x4_s[jj + l], a0_s[idy], groupIndexOld_s[ii], groupIndexOld_s[jj + l], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + t/0.01720209895, NB);
         }
         __syncthreads();
         {
@@ -460,6 +464,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 									int jK = Encpairs2_d[si * NB + j].x;
 									K_d[iK * NB + jK] = 1.0;
 									K_d[jK * NB + iK] = 1.0;
+									groupIndex_d[iK] =  -1;
+									groupIndex_d[jK] =  -1;
 #endif
 							}
                                                 }
@@ -494,15 +500,25 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         a0_s[idy].y = 0.0;
         a0_s[idy].z = 0.0;
         for(int l = 0; l < NN; l += nb){
-		int iK = Encpairs2_d[si * NB + ii].x;
-		int jK = Encpairs2_d[si * NB + jj + l].x;
-		//start again second Kick operation
-		if(Kold_d[iK * NB + jK] == 0.0 && K_d[iK * NB + jK] == 1){
-			groupIndex_d[iK] =  -1;
-			groupIndex_d[jK] =  -1;
-		}
-		else{
-                CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895);
+		if(ii < N2 && jj + l < N2){
+			int iK = Encpairs2_d[si * NB + ii].x;
+			int jK = Encpairs2_d[si * NB + jj + l].x;
+
+			
+
+			//start again second Kick operation
+			//if(Kold_d[iK * NB + jK] < 1.0 && K_d[iK * NB + jK] == 1.0){
+				//groupIndex_d[iK] =  -1;
+				//groupIndex_d[jK] =  -1;
+			//}
+			//else{
+				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895);
+			//}
+//			if(Kold_d[iK * NB + jK] == 1.0 && K_d[iK * NB + jK] == 1.0){
+//printf("indirect%d %d\n", ii, jj + l);
+				//Kick indirect close encounter pairs
+//				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], 0.0, 0.0, test, ii, jj + l, time + (t - dt )/0.01720209895);
+			//}
 		}
         }
         __syncthreads();
@@ -525,10 +541,34 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         }
         __syncthreads();
         if(idy < NN){
-                v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-                v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-                v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
+        for(int l = 0; l < NN; l += nb){
+		if(ii < N2 && jj + l < N2){
+			int iK = Encpairs2_d[si * NB + ii].x;
+			int jK = Encpairs2_d[si * NB + jj + l].x;
+		//	if(!(Kold_d[iK * NB + jK] == 1.0 && K_d[iK * NB + jK] == 1.0)){
+                		v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
+                		v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
+                		v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
+		//	}
+		}	
+	}
+//if(a0_s[idy * nb].x != 0.0) printf("Correct 2 %d %g %d\n", idy, a0_s[idy * nb].x, idy * nb);
         }
+        for(int l = 0; l < NN; l += nb){
+		if(ii < N2 && jj + l < N2){
+			int iK = Encpairs2_d[si * NB + ii].x;
+			int jK = Encpairs2_d[si * NB + jj + l].x;
+//printf("K %d %d %d %d %g %g\n", iK, jK, ii, jj +l, Kold_d[iK * NB + jK], K_d[iK * NB + jK]);
+	//		if(Kold_d[iK * NB + jK] <= 1.0 && K_d[iK * NB + jK] == 1.0){
+				//start again next first Kick
+				a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
+				a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
+				a_d[iK].z = 0.5 * dt * a0_s[ii * nb].z;
+//printf("Correct 2A %d %g %d %d %d\n", iK, a0_s[ii * nb].x, ii, idy * nb, ii*nb);
+	//		}
+		}
+	}
+
 #endif
 	if(idy < N2){
 		x4_d[idi] = x4_s[idy]; 
