@@ -6,9 +6,13 @@ timeval tt3;				//end time of a output time intervall
 timeval tt4;				//end time//
 
 long long times, timems;			//elapsed time in seconds and microseconds
-
+// ********************************************3
 //This function prints the initial Energy and Coordinate output
 //If Restart is set, then it reads the corespondent initial conditions from the files and writes no output
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *************************************
 __host__ int Data::firstoutput(){
 	for(int st = 0; st < Nst; ++st){
 		if(P.tRestart == 0){
@@ -92,6 +96,9 @@ __host__ int Data::firstoutput(){
 
 //**************************************
 //This function prints the coordinate output
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***************************************
 __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double t, long long ts, int N, FILE *outputfile, double Msun, double3 *spin_h, double4 *x4small_h, double4 *v4small_h, double3 *spinsmall_h, int *indexsmall_h, int Nsmall, int Nst, float4 *aelimits_h, float4 *aelimitssmall_h, int *aecount_h, int *aecountsmall_h, int *enccount_h, int *enccountsmall_h, long long *aecountT_h, long long *aecountsmallT_h, long long *enccountT_h, long long *enccountsmallT_h, int ci){
 
 	DemoToHelio(x4_h, v4_h, Msun, N, x4small_h, v4small_h, Nsmall);

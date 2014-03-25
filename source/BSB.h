@@ -2,9 +2,14 @@
 #include "Encounter3.h"
 
 // **************************************
+// For less than 64 bodies
 //This Kernel intergrates the independent groups of close encunters for a time step
 //using a Bulirsh Stoer method with nb threds. Where n is the minimum of n^2 and 256
 //The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //
 //  ****************************************
 
@@ -30,9 +35,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	__shared__ double4 vp_s[NN];
 	__shared__ double4 xt_s[NN];
 	__shared__ double4 vt_s[NN];
-	
+#if G3 == 1	
 	__shared__ int groupIndexOld_s[NN];
-
+#endif
 	__shared__ double3 dx_s[NN][8];
 	__shared__ double3 dv_s[NN][8];
 
@@ -66,7 +71,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
+#if G3 == 1
 		groupIndexOld_s[idy] = groupIndexOld_d[idi];
+#endif
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
@@ -78,7 +85,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 v4_s[idy].z = 0.0;
                 v4_s[idy].w = 0.0;
 		rcritv_s[idy] = 0.0;
+#if G3 == 1
 		groupIndexOld_s[idy] = -1;
+#endif
 	}
 	if(idy < NN){
 		a0_s[idy + nb*NN].x = 0.0;
@@ -543,29 +552,21 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         if(idy < NN){
         for(int l = 0; l < NN; l += nb){
 		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[si * NB + ii].x;
-			int jK = Encpairs2_d[si * NB + jj + l].x;
-		//	if(!(Kold_d[iK * NB + jK] == 1.0 && K_d[iK * NB + jK] == 1.0)){
-                		v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-                		v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-                		v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
-		//	}
+                	v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
+                	v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
+                	v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
 		}	
 	}
 //if(a0_s[idy * nb].x != 0.0) printf("Correct 2 %d %g %d\n", idy, a0_s[idy * nb].x, idy * nb);
         }
         for(int l = 0; l < NN; l += nb){
 		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[si * NB + ii].x;
-			int jK = Encpairs2_d[si * NB + jj + l].x;
 //printf("K %d %d %d %d %g %g\n", iK, jK, ii, jj +l, Kold_d[iK * NB + jK], K_d[iK * NB + jK]);
-	//		if(Kold_d[iK * NB + jK] <= 1.0 && K_d[iK * NB + jK] == 1.0){
-				//start again next first Kick
-				a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
-				a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
-				a_d[iK].z = 0.5 * dt * a0_s[ii * nb].z;
+			int iK = Encpairs2_d[si * NB + ii].x;
+			a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
+			a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
+			a_d[iK].z = 0.5 * dt * a0_s[ii * nb].z;
 //printf("Correct 2A %d %g %d %d %d\n", iK, a0_s[ii * nb].x, ii, idy * nb, ii*nb);
-	//		}
 		}
 	}
 

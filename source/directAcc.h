@@ -3,6 +3,10 @@
 
 //**************************************
 //This function computes the term a = mj/rij^3 * (1 - Kij).
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j){
 	if(x4i.w >= 0 && x4j.w > 0 && i != j){
@@ -40,6 +44,13 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 		}
 	}
 }
+//**************************************
+//This function is only here for testing
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double time, double K){
 	if(x4i.w >= 0 && x4j.w > 0 && i != j){
 
@@ -69,6 +80,10 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rc
 
 // **************************************
 //This function computes the acceleration between the sun and body i.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 
@@ -87,7 +102,13 @@ __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 		ac.z += s * x4i.z;
 	}
 }
+// ***************************************************
 //This fuction corrects the first kick of the time step
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// **************************************************
 __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int groupIndexOldi, int groupIndexOldj, double K, double Kold, double &test, int i, int j, double time, int NB){
         if(x4i.w >= 0 && x4j.w > 0 && i != j){
 
@@ -121,7 +142,12 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int gr
 		ac.z += __dmul_rn(r3.z, s);
 	}
 }
+// ***********************************************
 //This fuction corrects the second kick of the time step
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//*************************************************
 __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time){
         if(x4i.w >= 0 && x4j.w > 0 && i != j){
 
@@ -153,6 +179,10 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //to the collision: U = 0.5 * mi* mj/(mi + mj) * vij^2 - G * mi * mj / rij
 //The index of the new bodie is the index of the more massiv one. If both bodies
 //have an equal mass then the new index is the smaller one.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
 //****************************************
 __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, double *rcritv, double *rcrit_d, int Nst, int NBS, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
 
@@ -278,7 +308,18 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
         v4[j].w = 0.0;
 
 }
-
+// **************************************
+// For test particles
+//This function performs a merger of two bodies i and j.
+//It also calculates the amount of energy which will be lost due
+//to the collision: U = 0.5 * mi* mj/(mi + mj) * vij^2 - G * mi * mj / rij
+//The index of the new bodie is the index of the more massiv one. If both bodies
+//have an equal mass then the new index is the smaller one.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+//****************************************
 __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
 
         printf("Collision between body %d and Test particle %d\n", index[indexi], indexsmall[indexj]);

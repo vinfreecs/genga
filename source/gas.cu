@@ -310,7 +310,7 @@ __host__ int Data::setGasDisk(){
 	else return 1;
 }
 
-
+// Taken from Morishima
 __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double dTime, double *Msun_d, double dt, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst){
 
 	int idy = threadIdx.x;

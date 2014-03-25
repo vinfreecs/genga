@@ -1,20 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define Version 2.99
+
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define FormatP 1			//0: one file per particle, 1: all particles in the same file
 
-#define Version 2.98
 #define Rcut 50.0			//bodies with r > Rcut are Ejected
 #define RcutSun 0.2			//bodies with r < RcutSun fall into the Sun
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
-#define FGN 127				//Number of elements in table for fastfg
-#define PI_N M_PI/FGN
-#define N_PI FGN/M_PI
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
+
+//The serial grouping mode can be chosen to repruduce simulations exactly, but there is a performance penalty
+#define SERIAL_GROUPING 0
+
+//use aeGrid
+#define useGridae 0			// 1 or 0
+
+//print Poincare Section of surface, in this mode the code can be very slow
+#define poincareFlag 0			//1: print, 0: no print
+
+//Units
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units
 #define Kg 2.959122082855911e-4         //Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
@@ -27,13 +36,11 @@
 #define KM_Bl 128
 #define KM_Bl2 (KM_Bl - NmaxM)
 
-//The serial grouping mode can be chosen to repruduce simulations exactly, but there is a performance penalty
-#define SERIAL_GROUPING 0
+//Parameters for fastfg
+#define FGN 127				//Number of elements in table for fastfg
+#define PI_N M_PI/FGN
+#define N_PI FGN/M_PI
 
-//use aeGrid
-#define useGridae 0			// 1 or 0
-
-#define poincareFlag 0
 
 //Gas Grid
 #define useGas 0			// 1 or 0
@@ -51,9 +58,12 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
-#define G3 1				//New integrator scheme
-#define G3Limit	2.0e-12
-#define G3Limit2 1.0e-13
+// * Only for testing **
+#define G3 0				//New integrator scheme
+#define G3Limit	3.0e-13
+#define G3Limit2 2.0e-14 //1.0e-13
+// *********************
+
 struct Parameter{
 	int dev;                        //Number of device
 	int ei;                         //Energy output intervall

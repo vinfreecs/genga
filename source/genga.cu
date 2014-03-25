@@ -22,17 +22,24 @@
 
 int main(int argc, char*argv[]){
 
-#if useGas > 0
-	printf("Start GENGA with Gas Disc\n");
-#endif
-#if useGridae
-	printf("Use ae Grid\n");
-#else
-	printf("No ae Grid\n");
-#endif
 	cudaError_t error;
 
 	Data H;
+
+#if useGas > 0
+	printf("Start GENGA with Gas Disc\n");
+	fprintf(H.masterfile,"Start GENGA with Gas Disc\n");
+#else
+	printf("Start GENGA without Gas Disc\n");
+	fprintf(H.masterfile,"Start GENGA without Gas Disc\n");
+#endif
+#if useGridae
+	printf("Use ae Grid\n");
+	fprintf(H.masterfile, "Use ae Grid\n");
+#else
+	printf("No ae Grid\n");
+	fprintf(H.masterfile, "No ae Grid\n");
+#endif
 
 #if SERIAL_GROUPING > 0
 	printf("Using serial grouping!\n");

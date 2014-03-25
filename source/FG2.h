@@ -4,6 +4,10 @@
 //based on a code
 //from Joachim Stadel
 //See Danby for f and g method
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //***************************************/
 __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id){
 
@@ -132,7 +136,17 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 	}
 }
 
+//**************************************
 //this functions is not jet fully working and not energy conserving
+//
+//based on a code
+//from Joachim Stadel
+//See Danby for f and g method
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+//***************************************/
 __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id){
 
 	if(x4i.w >= 0){
@@ -237,7 +251,13 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 		}
 	}
 }
-
+// ******************************************
+//This function calculates the Poincare surcafe of section
+//It markes paricles crossing the section and set the Flag PFlag_d
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ******************************************
 __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double Msun, int N, int si, int *PFlag_d){
 
         int idy = threadIdx.x;
@@ -277,6 +297,10 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //There are 2 different FG, and one Burlish Stoer function, fastest one is fastfg.
 //This Kernel is launched wich NB/Bl blocks with Bl threads. NB is the next bigger number of N
 //which is a power of two.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // *****************************************
 template <int Bl>
 __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
@@ -294,6 +318,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 
 		xold_d[id] = x4_s[idy];
 		vold_d[id] = v4_s[idy];
+
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
@@ -318,7 +343,14 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 	}
 }
 
-
+// **************************************
+//for test particles
+//The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// *****************************************
 template <int Bl>
 __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *asmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int si){
 
@@ -393,7 +425,14 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	}
 
 }
-
+// **************************************
+//for multi simulation mode
+//The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// *****************************************
 template <int Bl>
 __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double dt, const double *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, double FGt, int si){
 

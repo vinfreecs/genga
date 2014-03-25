@@ -15,6 +15,10 @@
 //E = 1: Used for Physical Radius 
 //E = 2: Udes for Critical Radius with Test Particles
 //Code is adapted from Mercury
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template<int E>
 __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N){
@@ -160,286 +164,465 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 	}
 	else return 0;
 }
+// ************************************************
+// This function is here only for testing
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ***********************************************
 template<int E>
-__device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double time, int &groupIndexi, int &groupIndexj){
+__device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &Bdd1oldi, double &Bdd1oldj, double time, int &groupIndexOldi, int &groupIndexOldj){
 
 //if(E == 0 || E >= 2)printf("E %d %d\n", i,j);
-//if(E == 1) printf("E1 %d %d\n", i, j);
 
 	int Enc = 0;
 	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
-		double d0, d1, dd0, dd1;
-		double4 r1, r0;
-		double4 rd0, rd1;
-		double a,b,c,cc;
-		double w,q;
-		double t1,t2,t12,t22,tt1,tt2,tt12,tt22;
-		double delta1, delta2;
-		double delta;
-		double sgnb;
-		double rcrit;
-		double rcritv;
 		int Ni;
-		double f;
-	
-		if(E == 0 || E == 3){
-			rcrit = fmax(rcriti, rcritj);
-			rcritv = fmax(rcritvi, rcritvj);
-			f = cef;
-		}
-		if(E == 1){
-			rcrit = 0.0;
-			rcritv = rcriti + rcritj;
-			f = 1.0;
-		}
-		if(E == 2){
-			rcrit = rcritj;
-			rcritv = rcritvj;
-			f = cef;
-		}
 
-		r1.x = x4j.x - x4i.x;
-		r1.y = x4j.y - x4i.y;
-		r1.z = x4j.z - x4i.z;
-		d1 = r1.x*r1.x + r1.y*r1.y+ r1.z*r1.z;
-
-		r0.x = x4oldj.x - x4oldi.x;
-		r0.y = x4oldj.y - x4oldi.y;
-		r0.z = x4oldj.z - x4oldi.z;
-		d0 = r0.x*r0.x + r0.y*r0.y+ r0.z*r0.z;
-			
-		rd0.x = v4oldj.x - v4oldi.x;
-		rd0.y = v4oldj.y - v4oldi.y;
-		rd0.z = v4oldj.z - v4oldi.z;
-
-		rd1.x = v4j.x - v4i.x;
-		rd1.y = v4j.y - v4i.y;
-		rd1.z = v4j.z - v4i.z;
-
-		dd0 = (r0.x*rd0.x + r0.y*rd0.y+ r0.z*rd0.z) * 2.0;
-		dd1 = (r1.x*rd1.x + r1.y*rd1.y+ r1.z*rd1.z) * 2.0;
-		t1 = 6.0 *(d0-d1); 
-		a = t1 + 3.0*dt*(dd0+dd1);
-		b = -t1 - 2.0*dt*(2.0*dd0+ dd1);
-		c = dt*dd0;
-		cc = dt*dd1;
-
-		if(b < 0){
-			sgnb = -1.0;
-		}
-		else sgnb = 1.0;
-		t1 = 0.0;
-		t2 = 0.0;
-
-		w = b*b - 4.0*a*c;
-		if(w < 0.0) w = 0.0;
-		if( b != 0){
-			q = -0.5 * (b + sgnb * sqrt(w));
-			if(q != 0){
-				if( a != 0){
-					t1 = q/a;
-					t2 = c/q;
-				}
-				else{
-					t1 = -c/b;
-					t2 = t1;
-				}
-			}	
-		}
-		else{
-			if( a != 0){
-				t1 = sqrt(-c/a);
-				t2 = -t1;
-			}
-		}
-		if(0 <= t1 && t1 <= 1){
-			t12 = t1*t1;
-			tt1 = 1.0-t1;
-			tt12 = tt1*tt1;
-			delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*c - t12*tt1*cc;
-		}
-		else delta1 = min(d0, d1);
-		if(0 <= t2 && t2 <= 1){
-			t22 = t2*t2;
-			tt2 = 1.0-t2;
-			tt22 = tt2*tt2;
-			delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*c - t22*tt2*cc;
-		}
-		else delta2 = min(d0, d1);
-
-		delta = min(delta1,delta2);
-		if(delta < 0) delta = 0.0;
+		//undo last kick
+		double Bdd0, Bd0, B0;
+		double4 x4it = x4oldi;
+		double4 x4jt = x4oldj;
+		double4 v4it = v4oldi;
+		double4 v4jt = v4oldj;
+		{
 		
-		delta = fmin(delta, d1);
-		delta = fmin(delta, d0);
+			double3 r;
+			r.x = x4jt.x - x4it.x;
+			r.y = x4jt.y - x4it.y;
+			r.z = x4jt.z - x4it.z;
+			double d = r.x*r.x + r.y*r.y + r.z*r.z;
+			double rij = sqrt(d);
+
+			double3 ai;
+			double3 aj;
+
+			double irij3 = 1.0 / (rij * d);
+
+			ai.x = x4j.w * irij3 * r.x;
+			ai.y = x4j.w * irij3 * r.y;
+			ai.z = x4j.w * irij3 * r.z;
+			aj.x = -x4i.w * irij3 * r.x;
+			aj.y = -x4i.w * irij3 * r.y;
+			aj.z = -x4i.w * irij3 * r.z;
+
+			//Kick
+			// This is wrong, include here th groupindex
+			double s = dt * 0.5;// * Ki;
+if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4 /*icNB*/) s = 0.0;
+//printf("C %d %d %g %g %g\n", i, j, ai.x * s / (dt * 0.5), irij3, time);
+			v4it.x -= ai.x * s;
+			v4it.y -= ai.y * s;
+			v4it.z -= ai.z * s;
+			v4jt.x -= aj.x * s;
+			v4jt.y -= aj.y * s;
+			v4jt.z -= aj.z * s;
+
+			B0 = x4i.w * x4j.w / rij;
+			double3 rd;
+			rd.x = v4jt.x - v4it.x;
+			rd.y = v4jt.y - v4it.y;
+			rd.z = v4jt.z - v4it.z;
+			double dd = (r.x*rd.x + r.y*rd.y+ r.z*rd.z) * 2.0;
+			Bd0 = -B0 / d * 0.5 * dd;
+
+			double ri = sqrt(x4oldi.x * x4oldi.x + x4oldi.y * x4oldi.y + x4oldi.z * x4oldi.z);
+			double rj = sqrt(x4oldj.x * x4oldj.x + x4oldj.y * x4oldj.y + x4oldj.z * x4oldj.z);
+
+			double iri3 = 1.0 / (ri * ri * ri);
+			double irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
+			Bdd0 = -3.0 * Bd0 / d * 0.5 * dd - B0 / d * ud;
+		}
+//Bdd0 = Bdd1oldi;
+		double Bdd1;
+		double Bd1, B1;
+		//do next step with RK 4
+/*		{
+			double3 r;
+			r.x = x4jt.x - x4it.x;
+			r.y = x4jt.y - x4it.y;
+			r.z = x4jt.z - x4it.z;
+			double d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+			double rij = sqrt(d);
+
+			double3 ai;
+			double3 aj;
+
+			double irij3 = 1.0 / (rij * d);
+			double ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
+			double rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
+
+			double iri3 = 1.0 / (ri * ri * ri);
+			double irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+	
+			double3 l1i;
+			double3 l1j;
+			l1i.x = dt * v4it.x;
+			l1i.y = dt * v4it.y;
+			l1i.z = dt * v4it.z;
+			l1j.x = dt * v4jt.x;
+			l1j.y = dt * v4jt.y;
+			l1j.z = dt * v4jt.z;
+
+			double3 k1i;
+			double3 k1j;
+			k1i.x = dt * ai.x;
+			k1i.y = dt * ai.y;
+			k1i.z = dt * ai.z;
+			k1j.x = dt * aj.x;
+			k1j.y = dt * aj.y;
+			k1j.z = dt * aj.z;
+
+			// *****************  //
+
+			double4 x4is;
+			double4 x4js;
+
+			x4is.x = x4it.x + 0.5 * k1i.x;
+			x4is.y = x4it.y + 0.5 * k1i.y;
+			x4is.z = x4it.z + 0.5 * k1i.z;
+			x4js.x = x4jt.x + 0.5 * k1j.x;
+			x4js.y = x4jt.y + 0.5 * k1j.y;
+			x4js.z = x4jt.z + 0.5 * k1j.z;
+
+			r.x = x4js.x - x4is.x;
+			r.y = x4js.y - x4is.y;
+			r.z = x4js.z - x4is.z;
+			d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+			rij = sqrt(d);
+
+			irij3 = 1.0 / (rij * d);
+			ri = sqrt(x4is.x * x4is.x + x4is.y * x4is.y + x4is.z * x4is.z);
+			rj = sqrt(x4js.x * x4js.x + x4js.y * x4js.y + x4js.z * x4js.z);
+
+			iri3 = 1.0 / (ri * ri * ri);
+			irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double3 l2i;
+			double3 l2j;
+			l2i.x = dt * (v4it.x + 0.5 * l1i.x);
+			l2i.y = dt * (v4it.y + 0.5 * l1i.y);
+			l2i.z = dt * (v4it.z + 0.5 * l1i.z);
+			l2j.x = dt * (v4jt.x + 0.5 * l1j.x);
+			l2j.y = dt * (v4jt.y + 0.5 * l1j.y);
+			l2j.z = dt * (v4jt.z + 0.5 * l1j.z);
+
+			double3 k2i;
+			double3 k2j;
+			k2i.x = dt * ai.x;
+			k2i.y = dt * ai.y;
+			k2i.z = dt * ai.z;
+			k2j.x = dt * aj.x;
+			k2j.y = dt * aj.y;
+			k2j.z = dt * aj.z;
+
+			// *****************  //
+
+			x4is.x = x4it.x + 0.5 * k2i.x;
+			x4is.y = x4it.y + 0.5 * k2i.y;
+			x4is.z = x4it.z + 0.5 * k2i.z;
+			x4js.x = x4jt.x + 0.5 * k2j.x;
+			x4js.y = x4jt.y + 0.5 * k2j.y;
+			x4js.z = x4jt.z + 0.5 * k2j.z;
+
+			r.x = x4js.x - x4is.x;
+			r.y = x4js.y - x4is.y;
+			r.z = x4js.z - x4is.z;
+			d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+			rij = sqrt(d);
+
+			irij3 = 1.0 / (rij * d);
+			ri = sqrt(x4is.x * x4is.x + x4is.y * x4is.y + x4is.z * x4is.z);
+			rj = sqrt(x4js.x * x4js.x + x4js.y * x4js.y + x4js.z * x4js.z);
+
+			iri3 = 1.0 / (ri * ri * ri);
+			irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double3 l3i;
+			double3 l3j;
+			l3i.x = dt * (v4it.x + 0.5 * l2i.x);
+			l3i.y = dt * (v4it.y + 0.5 * l2i.y);
+			l3i.z = dt * (v4it.z + 0.5 * l2i.z);
+			l3j.x = dt * (v4jt.x + 0.5 * l2j.x);
+			l3j.y = dt * (v4jt.y + 0.5 * l2j.y);
+			l3j.z = dt * (v4jt.z + 0.5 * l2j.z);
+
+			double3 k3i;
+			double3 k3j;
+			k3i.x = dt * ai.x;
+			k3i.y = dt * ai.y;
+			k3i.z = dt * ai.z;
+			k3j.x = dt * aj.x;
+			k3j.y = dt * aj.y;
+			k3j.z = dt * aj.z;
+
+			// *****************  //
+
+			x4is.x = x4it.x + k3i.x;
+			x4is.y = x4it.y + k3i.y;
+			x4is.z = x4it.z + k3i.z;
+			x4js.x = x4jt.x + k3j.x;
+			x4js.y = x4jt.y + k3j.y;
+			x4js.z = x4jt.z + k3j.z;
+
+			r.x = x4js.x - x4is.x;
+			r.y = x4js.y - x4is.y;
+			r.z = x4js.z - x4is.z;
+			d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+			rij = sqrt(d);
+
+			irij3 = 1.0 / (rij * d);
+			ri = sqrt(x4is.x * x4is.x + x4is.y * x4is.y + x4is.z * x4is.z);
+			rj = sqrt(x4js.x * x4js.x + x4js.y * x4js.y + x4js.z * x4js.z);
+
+			iri3 = 1.0 / (ri * ri * ri);
+			irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double3 l4i;
+			double3 l4j;
+			l4i.x = dt * (v4it.x + l3i.x);
+			l4i.y = dt * (v4it.y + l3i.y);
+			l4i.z = dt * (v4it.z + l3i.z);
+			l4j.x = dt * (v4jt.x + l3j.x);
+			l4j.y = dt * (v4jt.y + l3j.y);
+			l4j.z = dt * (v4jt.z + l3j.z);
+
+			double3 k4i;
+			double3 k4j;
+			k4i.x = dt * ai.x;
+			k4i.y = dt * ai.y;
+			k4i.z = dt * ai.z;
+			k4j.x = dt * aj.x;
+			k4j.y = dt * aj.y;
+			k4j.z = dt * aj.z;
+
+
+			x4it.x += 1.0/6.0 * l1i.x + 1.0 / 3.0 * l2i.x + 1.0 / 3.0 * l3i.x + 1.0 / 6.0 * l4i.x;
+			x4it.y += 1.0/6.0 * l1i.y + 1.0 / 3.0 * l2i.y + 1.0 / 3.0 * l3i.y + 1.0 / 6.0 * l4i.y;
+			x4it.z += 1.0/6.0 * l1i.z + 1.0 / 3.0 * l2i.z + 1.0 / 3.0 * l3i.z + 1.0 / 6.0 * l4i.z;
+			x4jt.x += 1.0/6.0 * l1j.x + 1.0 / 3.0 * l2j.x + 1.0 / 3.0 * l3j.x + 1.0 / 6.0 * l4j.x;
+			x4jt.y += 1.0/6.0 * l1j.y + 1.0 / 3.0 * l2j.y + 1.0 / 3.0 * l3j.y + 1.0 / 6.0 * l4j.y;
+			x4jt.z += 1.0/6.0 * l1j.z + 1.0 / 3.0 * l2j.z + 1.0 / 3.0 * l3j.z + 1.0 / 6.0 * l4j.z;
+
+			v4it.x += 1.0/6.0 * k1i.x + 1.0 / 3.0 * k2i.x + 1.0 / 3.0 * k3i.x + 1.0 / 6.0 * k4i.x;
+			v4it.y += 1.0/6.0 * k1i.y + 1.0 / 3.0 * k2i.y + 1.0 / 3.0 * k3i.y + 1.0 / 6.0 * k4i.y;
+			v4it.z += 1.0/6.0 * k1i.z + 1.0 / 3.0 * k2i.z + 1.0 / 3.0 * k3i.z + 1.0 / 6.0 * k4i.z;
+			v4jt.x += 1.0/6.0 * k1j.x + 1.0 / 3.0 * k2j.x + 1.0 / 3.0 * k3j.x + 1.0 / 6.0 * k4j.x;
+			v4jt.y += 1.0/6.0 * k1j.y + 1.0 / 3.0 * k2j.y + 1.0 / 3.0 * k3j.y + 1.0 / 6.0 * k4j.y;
+			v4jt.z += 1.0/6.0 * k1j.z + 1.0 / 3.0 * k2j.z + 1.0 / 3.0 * k3j.z + 1.0 / 6.0 * k4j.z;
+
+			//New B
+			r.x = x4jt.x - x4it.x;
+			r.y = x4jt.y - x4it.y;
+			r.z = x4jt.z - x4it.z;
+			d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+			rij = sqrt(d);
+			B1 = x4i.w * x4j.w / rij;
+			double3 rd;
+			rd.x = v4jt.x - v4it.x;
+			rd.y = v4jt.y - v4it.y;
+			rd.z = v4jt.z - v4it.z;
+			double dd = (r.x*rd.x + r.y*rd.y+ r.z*rd.z) * 2.0;
+			Bd1 = -B1 / d * 0.5 * dd;
+
+			ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
+			rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
+
+			iri3 = 1.0 / (ri * ri * ri);
+			irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
+			Bdd1 = -3.0 * Bd1 / d * 0.5 * dd - B1 / d * ud;
+
+		}
+*/		//do next step with Kick FG Kick
+{
+			double3 r;
+			volatile double d, rij, irij3;
+
+			int aecount = 0;
+			int Gridaecount = 0;
+			float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
+			double test = 0.0;
+			double Msun = 1.0;
+
+			double3 ai;
+			double3 aj;
+
+			double dtt = dt / 32.0;
+			for(int st = 0; st < 32; ++st){
+				r.x = x4jt.x - x4it.x;
+				r.y = x4jt.y - x4it.y;
+				r.z = x4jt.z - x4it.z;
+				d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+				rij = sqrt(d);
+
+				irij3 = 1.0 / (rij * d);
+
+				ai.x = x4jt.w * irij3 * r.x;
+				ai.y = x4jt.w * irij3 * r.y;
+				ai.z = x4jt.w * irij3 * r.z;
+				aj.x = -x4it.w * irij3 * r.x;
+				aj.y = -x4it.w * irij3 * r.y;
+				aj.z = -x4it.w * irij3 * r.z;
+
+				//Kick
+				v4it.x += ai.x * dtt * 0.5;
+				v4it.y += ai.y * dtt * 0.5;
+				v4it.z += ai.z * dtt * 0.5;
+				v4jt.x += aj.x * dtt * 0.5;
+				v4jt.y += aj.y * dtt * 0.5;
+				v4jt.z += aj.z * dtt * 0.5;
+
+				//FG
+				fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+				fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+
+				//Kick
+				r.x = x4jt.x - x4it.x;
+				r.y = x4jt.y - x4it.y;
+				r.z = x4jt.z - x4it.z;
+				d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+				rij = sqrt(d);
+
+				irij3 = 1.0 / (rij * d);
+
+				ai.x = x4jt.w * irij3 * r.x;
+				ai.y = x4jt.w * irij3 * r.y;
+				ai.z = x4jt.w * irij3 * r.z;
+				aj.x = -x4it.w * irij3 * r.x;
+				aj.y = -x4it.w * irij3 * r.y;
+				aj.z = -x4it.w * irij3 * r.z;
+
+				v4it.x += ai.x * dtt * 0.5;
+				v4it.y += ai.y * dtt * 0.5;
+				v4it.z += ai.z * dtt * 0.5;
+				v4jt.x += aj.x * dtt * 0.5;
+				v4jt.y += aj.y * dtt * 0.5;
+				v4jt.z += aj.z * dtt * 0.5;
+			}
+			//New B
+			B1 = x4i.w * x4j.w / rij;
+			double3 rd;
+			rd.x = v4jt.x - v4it.x;
+			rd.y = v4jt.y - v4it.y;
+			rd.z = v4jt.z - v4it.z;
+			double dd = (r.x*rd.x + r.y*rd.y+ r.z*rd.z) * 2.0;
+			Bd1 = -B1 / d * 0.5 * dd;
+
+			double ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
+			double rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
+
+			double iri3 = 1.0 / (ri * ri * ri);
+			double irj3 = 1.0 / (rj * rj * rj);
+
+			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
+			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
+			ai.z = x4j.w * irij3 * r.z - iri3 * x4i.z;
+			aj.x = -x4i.w * irij3 * r.x - irj3 * x4j.x;
+			aj.y = -x4i.w * irij3 * r.y - irj3 * x4j.y;
+			aj.z = -x4i.w * irij3 * r.z - irj3 * x4j.z;
+
+			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
+			Bdd1 = -3.0 * Bd1 / d * 0.5 * dd - B1 / d * ud;
+		}
 
 		int Encflag = 0;
 
 		if(E == 0){
-			// *************************
-			double rij0 = sqrt(d0);
-			double rij1 = sqrt(d1);
-			double B0 = x4i.w * x4j.w / rij0;
-			double Bd0 = -B0 / d0 * 0.5 * dd0;
-			double B1 = x4i.w * x4j.w / rij1;
-			double Bd1 = -B1 / d1 * 0.5 * dd1;
 
-			double ri0 = sqrt(x4oldi.x * x4oldi.x + x4oldi.y * x4oldi.y + x4oldi.z * x4oldi.z);
-			double rj0 = sqrt(x4oldj.x * x4oldj.x + x4oldj.y * x4oldj.y + x4oldj.z * x4oldj.z);
-			double ri1 = sqrt(x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z);
-			double rj1 = sqrt(x4j.x * x4j.x + x4j.y * x4j.y + x4j.z * x4j.z);
-
-			double3 ai0;
-			double3 aj0;
-			double3 ai1;
-			double3 aj1;
-
-			double irij03 = 1.0 / (rij0 * d0);
-			double irij13 = 1.0 / (rij1 * d1);
-			double iri03 = 1.0 / (ri0 * ri0 * ri0);
-			double irj03 = 1.0 / (rj0 * rj0 * rj0);
-			double iri13 = 1.0 / (ri1 * ri1 * ri1);
-			double irj13 = 1.0 / (rj1 * rj1 * rj1);
-
-			ai0.x = x4j.w * irij03 * r0.x - iri03 * x4oldi.x;
-			ai0.y = x4j.w * irij03 * r0.y - iri03 * x4oldi.y;
-			ai0.z = x4j.w * irij03 * r0.z - iri03 * x4oldi.z;
-			aj0.x = -x4i.w * irij03 * r0.x - irj03 * x4oldj.x;
-			aj0.y = -x4i.w * irij03 * r0.y - irj03 * x4oldj.y;
-			aj0.z = -x4i.w * irij03 * r0.z - irj03 * x4oldj.z;
-			ai1.x = x4j.w * irij13 * r1.x - iri13 * x4i.x;
-			ai1.y = x4j.w * irij13 * r1.y - iri13 * x4i.y;
-			ai1.z = x4j.w * irij13 * r1.z - iri13 * x4i.z;
-			aj1.x = -x4i.w * irij13 * r1.x - irj13 * x4j.x;
-			aj1.y = -x4i.w * irij13 * r1.y - irj13 * x4j.y;
-			aj1.z = -x4i.w * irij13 * r1.z - irj13 * x4j.z;
-
-			double ud0 = rd0.x * rd0.x + r0.x * (aj0.x - ai0.x) + rd0.y * rd0.y + r0.y * (aj0.y - ai0.y) + rd0.z * rd0.z + r0.z * (aj0.z - ai0.z);
-			double ud1 = rd1.x * rd1.x + r1.x * (aj1.x - ai1.x) + rd1.y * rd1.y + r1.y * (aj1.y - ai1.y) + rd1.z * rd1.z + r1.z * (aj1.z - ai1.z);
-
-			double Bdd0 = -3.0 * Bd0 / d0 * 0.5 * dd0 - B0 / d0 * ud0;
-			double Bdd1 = -3.0 * Bd1 / d1 * 0.5 * dd1 - B1 / d1 * ud1;
 
 			Kiold = Ki;
 			Kjold = Kj;
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time, i, j, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0, (Bdd1 - Bdd0) / dt, Kiold, Bdd1, Bdd1 >= G3Limit);
+
+printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd1, Bd1, B1, (Bdd1 - Bdd0) / dt, Kiold, Bdd0, Bd0, B0);
 
 			if(Kiold < 1.0) Encflag = 1;
 
-			int start = 0;
 			int stop = 0;
 			if((Bdd0 >= G3Limit && Kiold < 1.0) || Kiold == 0.0) {
-//printf("%.10g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+printf("%.10g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//close encounter
 				Ki = 0.0;
 				Kj = 0.0;
 			}
 			//if(Bdd0 < G3Limit && Bdd1 < G3Limit && Bdd0 >= Bdd1 && Bdd0 > 0.0 && Bd0 < 0.0 && Bd1 < 0.0){
 			if(Bdd0 < G3Limit && Bdd1 < G3Limit && Kiold < 1.0 && Kiold > 0.0){
-//printf("%.10g %d %d %g %g %g %g %g %g no CL\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+printf("%.10g %d %d %g %g %g %g %g %g no CL\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//no close encounter
 				Ki = 1.0;
 				Kj = 1.0;
 			}
-			if(/*Bdd0 < G3Limit && */Bdd1 >= G3Limit && Kiold == 1.0){
-//printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+			if(Bdd0 < G3Limit && Bdd1 >= G3Limit && Kiold == 1.0){
+printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//start close encounter
-				start = 1;
 				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
 				Ki = root;
 				Kj = root;
 			}
-			//if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Bd0 <= 0.0 && Bd1 <= 0.0 && Kiold < 1.0){
 			if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Kiold < 1.0){
-//printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//stop close encounter
 				stop = 1;
 				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
-				Ki = 1.0 - root;
-				Kj = 1.0 - root;
+
+				Ki = (1.0 - root) * 1.07;
+				Kj = (1.0 - root) * 1.07;
+printf("%g\n", Ki);
 			}
 double Bdd = 0.0;
-//This is not need anymore
-//this function searches for the hight of the next follwing peak
-if(start == 1){
-	double4	x4it = x4i;
-	double4	x4jt = x4j;
-	double4	v4it = v4i;
-	double4	v4jt = v4j;
-	int aecount = 0;
-	int Gridaecount = 0;
-	float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
-	double test = 0.0;
-
-// ******************* include Msun **************
-	double Msun = 1.0;
-
-	double dtt = dt;
-	int phase = 0;
-
-	double rsqi = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z; 
-	double rsqj = x4j.x * x4j.x + x4j.y * x4j.y + x4j.z * x4j.z; 
-	double vsqi = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z; 
-	double vsqj = v4j.x * v4j.x + v4j.y * v4j.y + v4j.z * v4j.z; 
-
-	double iai = 2.0 / sqrt(rsqi) - vsqi / (Msun);
-	double iaj = 2.0 / sqrt(rsqj) - vsqj / (Msun);
-	double a = fmax(1.0 / iai, 1.0 /iaj);
-	double T = 2.0 * M_PI * sqrt(a * a * a / Msun);
-//printf("%g %g %g %g\n", T, a, dtt, T / dtt);
-
-	for(int bt = 1; bt < T / dtt; ++bt){
-		fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
-		fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
-		double rx = x4jt.x - x4it.x;
-		double ry = x4jt.y - x4it.y;
-		double rz = x4jt.z - x4it.z;
-		double d = rx * rx + ry * ry + rz * rz;
-		double rij = sqrt(d);
-		double B = x4it.w * x4jt.w / rij;
-		double rdx = v4jt.x - v4it.x;
-		double rdy = v4jt.y - v4it.y;
-		double rdz = v4jt.z - v4it.z;
-
-		double dd = (rx * rdx + ry * rdy + rz * rdz) * 2.0;
-		double Bd = -B / d * 0.5 * dd;
-
-		double ri = sqrt(x4it.x * x4it.x + x4it.y * x4it.y + x4it.z * x4it.z);
-		double rj = sqrt(x4jt.x * x4jt.x + x4jt.y * x4jt.y + x4jt.z * x4jt.z);
-
-		double3 ai;
-		double3 aj;
-
-		double irij3 = 1.0 / (rij * d);
-		double iri3 = 1.0 / (ri * ri * ri);
-		double irj3 = 1.0 / (rj * rj * rj);
-
-		ai.x = x4jt.w * irij3 * rx - iri3 * x4it.x;
-		ai.y = x4jt.w * irij3 * ry - iri3 * x4it.y;
-		ai.z = x4jt.w * irij3 * rz - iri3 * x4it.z;
-		aj.x = -x4it.w * irij3 * rx - irj3 * x4jt.x;
-		aj.y = -x4it.w * irij3 * ry - irj3 * x4jt.y;
-		aj.z = -x4it.w * irij3 * rz - irj3 * x4jt.z;
-
-		double ud = rdx * rdx + rx * (aj.x - ai.x) + rdy * rdy + ry * (aj.y - ai.y) + rdz * rdz + rz * (aj.z - ai.z);
-		double Bddold = Bdd;
-		Bdd = -3.0 * Bd / d * 0.5 * dd - B / d * ud;
-		if(phase == 0 && Bddold > Bdd){
-			//entering decending phase
-			//search next for acending phase
-			phase = 1;
-		}
-		if(phase == 1 && Bddold < Bdd){
-			//entering acending node
-			//search for the height of the peak
-			phase = 2;
-		}
-		if(phase == 2 && (Bdd >= G3Limit)){
-//printf("%g %d %d start. next peak is at %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bdd);
-			break;
-		}
-	}
-}
 //this function searches if there is a following peak
 if(stop == 1){
 	double4	x4it = x4i;
@@ -501,28 +684,20 @@ if(stop == 1){
 		double Bddold = Bdd;
 		Bdd = -3.0 * Bd / d * 0.5 * dd - B / d * ud;
 		if(phase == 1 && Bddold < Bdd){
-//printf("%g %d %d stop to phase 2. %g %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bddold, Bdd);
+printf("%g %d %d stop to phase 2. %g %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bddold, Bdd);
 			//entering acending node
 			//search for the height of the peak
 			phase = 2;
 		}
 		if(phase == 2 && (Bdd >= G3Limit)){
-//printf("%g %d %d stop. next peak is at %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bdd);
+printf("%g %d %d stop. next peak is at %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bdd);
 			break;
 		}
 	}
 }
-/*			//remove invalid start points
-			if(Ki < 1.0) Encflag = 1;
-			if(start == 1 && Bdd < G3Limit){
-				Encflag = 0;
-				Ki = 1.0;
-				Kj = 1.0;
-				Kiold = 0.0;
-				Kjold = 0.0;
 
-			}
-*/			//remove invalid stop points
+			Bdd1oldi = Bdd1;	
+			//remove invalid stop points
 			if(Ki < 1.0) Encflag = 1;
 			if(stop == 1 && Bdd >= 1.01 * G3Limit){ //the feactor is needed due to prediction uncertainties
 				Encflag = 1;
@@ -537,7 +712,6 @@ if(stop == 1){
 		if(Encflag == 1){
 			Enc = 2;
 //if (E == 0 || E >= 2)printf("EE %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
-//if (E == 1)printf("EE1 %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
 				if(x4i.w >= x4j.w){
@@ -562,7 +736,17 @@ if(stop == 1){
 	else return 0;
 }
 
-
+// **************************************
+// For test particles
+//This reads all encounter pairs from the prechecker, and calls the encounter function
+//to detect close encounter pairs.
+//All close encounter pairs are stored in the array Encpairs2_d. 
+//The number of close encounter pairs is stored in Nencpairs2_d.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int N, int *enccount_d, int *enccountsmall_d, int si){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -598,7 +782,17 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 	}
 
 }
-
+// **************************************
+// For the multi simulation mode
+//This reads all encounter pairs from the prechecker, and calls the encounter function
+//to detect close encounter pairs.
+//All close encounter pairs are stored in the array Encpairs2_d. 
+//The number of close encounter pairs is stored in Nencpairs2_d.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -651,8 +845,12 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //to detect close encounter pairs.
 //All close encounter pairs are stored in the array Encpairs2_d. 
 //The number of close encounter pairs is stored in Nencpairs2_d.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, int NB, double t, int *groupIndex_d){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double *Bdd1old_d, int NB, double t, int *groupIndexOld_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -670,7 +868,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 #if G3 == 0
 		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
 #else
-		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], t, groupIndex_d[ii], groupIndex_d[jj]);
+		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], Bdd1old_d[ii * NB + jj], Bdd1old_d[jj * NB + ii], t, groupIndexOld_d[ii], groupIndexOld_d[jj]);
 #endif
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
@@ -743,6 +941,10 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 //in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
 //
 //This Kernel must be launched only with one block!.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int BN, int Bl>
 __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *groupIndex_d){
@@ -898,6 +1100,9 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 //This Kernel is launched with Ne/512 blocks a 512 threads, with Ne the number of close encounters.
 //A Fusion Kernel has to be called to merger the sub sets.
 //
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
 //****************************************
 template <int BN, int Bl>
 __global__ void group512_kernel(double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d){
@@ -1015,6 +1220,10 @@ __global__ void group512_kernel(double *test_d, int *Nencpairs2_d, int2 *Encpair
 //
 //This Kernel is launched with Ne/512 blocks a 512 threads, with Ne the number of close encounters.
 //For more than 512 close encounter, a Fusion Kernel has to be called to merger the sub sets. 
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int BN, int Bl>
 __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d){
@@ -1190,6 +1399,9 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 //group i are stored in Encpairs2_d[i * BN + j].x
 //In Nenc_d[0] is stored the total number of groups.
 //in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
 //
 //This Kernel must be launched  with only one block!
 // ****************************************
@@ -1471,6 +1683,10 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 //less than 1025 bodies.
 //
 //This Kernel is launched with Ne/512 blocks, with Ne the number of close encounters.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int BN, int Bl>	//fusion tree
 __global__ void fusionA_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, double *test_d){
@@ -1560,6 +1776,10 @@ __global__ void fusionA_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, dou
 //in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
 //
 //This Kernel must be launched  with two blocks!
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
 // ****************************************
 template <int BN, int Bl>
 __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, int *groupIndex_d){
@@ -1722,6 +1942,10 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 //more than 1024 bodies.
 //
 //This Kernel is launched with Ne/512 blocks, with Ne the number of close encounters.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int BN, int Bl>  //fusion tree for 2048 bodies
 __global__ void fusionA2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, double *test_d){
@@ -1812,6 +2036,10 @@ __global__ void fusionA2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, do
 //in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
 //
 //This Kernel must be launched  with two blocks!
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int BN, int Bl>
 __global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, int *groupIndex_d){

@@ -13,6 +13,11 @@ __constant__ int GridaeN_c[2];
 __constant__ double S_c[FGN + 1];
 __constant__ double C_c[FGN + 1];
 
+// *************************************
+// Authors: Simon Grimm, Joachim Stadel
+// March 2014
+//
+// *************************************
 class Data : public Host{
 public:
 	double4 *x4_h, *x4_d;
@@ -42,7 +47,7 @@ public:
 
 	double *K_d;
 	double *Kold_d;
-
+	double *Bdd1old_d;
 
 	double4 *x4small_h, *x4small_d;
 	double4 *v4small_h, *v4small_d;

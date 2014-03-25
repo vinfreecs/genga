@@ -4,7 +4,11 @@
 
 #ifndef HOST_CLASS
 #define HOST_CLASS
-
+// ***********************************
+// Authors: Simon Grimm, Joachim Stadel
+// March 2014
+//
+// ************************************
 class Host{
 
 public:

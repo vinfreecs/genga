@@ -4,6 +4,9 @@
 //This function  intergrates one body using a Bulirsh Stoer method.
 //The implementation is based on the mercury code from Chambers.
 //
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const double dt, double &test, int id){
 

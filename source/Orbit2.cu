@@ -81,6 +81,7 @@ __host__ void Data::AllocateOrbitt(){
 #if G3 == 1
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
+	cudaMalloc((void **) &Bdd1old_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &groupIndex_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexOld_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
@@ -88,6 +89,7 @@ __host__ void Data::AllocateOrbitt(){
 #else
 	K_d = NULL;
 	Kold_d = NULL;
+	Bdd1old_d = NULL;
 	groupIndex_d = NULL;
 	groupIndexOld_d = NULL;
 	groupIndexsmall_d = NULL;
@@ -431,6 +433,9 @@ __host__ int Data::ic(){
 
 // ************************************** //
 //This function reads the initial conditions from the IC file.
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *****************************************
 __host__ int Data::readic(int st){
 
 	int N = N_h[st];
@@ -784,7 +789,10 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //This kernel removes ghost-masses and decreases the number of bodies.
 //It also removes bodies wich a semi major axis bigger than Rcut.
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int NB){
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***************************************
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *Bdd1old_d, int NB){
 
 	int NOld;
 	int N = N_d[st];
@@ -859,6 +867,10 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					Kold_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
 					Kold_d[(N-1 + NBS) * NB + i] = 1.0;
 					Kold_d[i * NB + (N-1 + NBS)] = 1.0;
+					Bdd1old_d[(j + NBS) * NB + i] = Kold_d[(N-1 + NBS) * NB + i];
+					Bdd1old_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
+					Bdd1old_d[(N-1 + NBS) * NB + i] = 1.0;
+					Bdd1old_d[i * NB + (N-1 + NBS)] = 1.0;
 				}
 #endif
 
@@ -875,6 +887,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 //This kernel removes ghost-masses from the test particles and decreases the number of bodies.
 //It also removes bodies wich a semi major axis bigger than Rcut.
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
+// Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ****************************************3
 __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, double3 *asmall_d, int *Nsmall_d, int *indexsmall_d, double3 *spinsmall_d, int NsmallS, int st, float4 *aelimitssmall_d, int *aecountsmall_d, int *enccountsmall_d, long long *aecountsmallT_d, long long *enccountsmallT_d){
 
 	int NOldsmall;
@@ -945,6 +960,9 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 //This function prints out data of ejected bodies
 //It sets the masses of ejecte bodies to zero, this are then later removed
 //It Updates the lost Energy term U
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
 //****************************************
 __host__ void Data::Ejection(double time){
 
@@ -1070,7 +1088,7 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st]);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, Bdd1old_d, NB[st]);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d);
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);

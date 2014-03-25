@@ -1,6 +1,9 @@
 #include "Host2.h"
-
+// ******************************
 //Costructor for Host class
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *******************************
 __host__ Host::Host(){
         sprintf(masterfilename, "%s", "master.out");
         masterfile = fopen(masterfilename, "w");
@@ -21,6 +24,9 @@ __host__ Host::Host(){
 
 // ************************************************
 //This function determines the number of simulations by reading the pathfile specified in the -M console argument
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ************************************************
 __host__ int Host::NSimulations(int argc, char*argv[]){
 
 	for(int i = 1; i < argc; i += 2){
@@ -54,7 +60,10 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 }
 
 // ************************************************
-//Device Properties
+//Check Device Properties
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// **********************************************
 __host__ int Host::DeviceInfo(){
 
 	cudaError_t error;
@@ -103,6 +112,9 @@ __host__ int Host::DeviceInfo(){
 
 // ************************************************
 //This function allocates memory on the Host
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
 	icNB = (int*)malloc(Nst*sizeof(int));
@@ -155,9 +167,12 @@ __host__ void Host::Halloc(){
 
 
 // ************************************************
-
 //This function reads the parameters from param.dat and the console input arguments.
 //Return 1 by sucess and 0 by an error.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***********************************************
 __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 	char sp[160];
@@ -522,9 +537,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 
 // ************************************************
-
-// ************************************************
 //This function calls the function readparam
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *********************************************3
 __host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
 	char paramfilename[160];
@@ -607,9 +624,12 @@ __host__ int Host::Param(int argc, char*argv[]){
 }
 
 // ************************************************
-
 //This function counts the number of bodies in the initial condition file
 //It returns the number of bodies
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *********************************************
 __host__ int Host::icSize(int st){
 
 	//Determinde the number of coordinates in the input file
@@ -759,8 +779,10 @@ __host__ int Host::icSize(int st){
 }
 
 // ************************************************
-
 //This function calls the function icSize and sets the size parameters
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***********************************************3
 __host__ int Host::size(){
 	for(int st = 0; st < Nst; ++st){
 		//Determine the size of the simulations
@@ -796,6 +818,9 @@ __host__ int Host::size(){
 
 // ************************************************
 //This function allocates memory on the device
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***********************************************
 __host__ void Host::Calloc(){
 	cudaMalloc((void **) &n1_d,Nst*sizeof(double));
 	cudaMalloc((void **) &n2_d,Nst*sizeof(double));
@@ -813,6 +838,9 @@ __host__ void Host::Calloc(){
 
 // ************************************************
 //This function prints the parametes on screen and into the infofiles
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//  **************************************************
 __host__ void Host::Info(){
 	FILE *infofile;
 
@@ -882,6 +910,9 @@ __host__ void Host::Info(){
 
 // **************************************
 //This function determines the start points of the individual simulations
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ******************************************
 __host__ void Host::Tsizes(){
 	NBS_h = (int*)malloc(Nst*sizeof(int));
 	NsmallS_h = (int*)malloc(Nst*sizeof(int));

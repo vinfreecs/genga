@@ -1,8 +1,12 @@
 #include "Orbit2.h"
 
-/**************************************
-* This function computes the terms m/r^3 between all pairs of bodies.
-****************************************/
+// **************************************
+//This function computes the terms m/r^3 between all pairs of bodies.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+
+// ****************************************
 __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 
 	double3 r;
@@ -24,9 +28,13 @@ __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 }
 
 
-/**************************************
-* This function computes the potential energy from the Sun and body i.
-****************************************/
+// **************************************
+//This function computes the potential energy from the Sun and body i.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+//****************************************/
 __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 
 	double rsq, ir;
@@ -42,12 +50,16 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 }
 
 
-/**************************************
-* This Kernel computes the potential energy for the body i, in the case N >= 64.
-* It uses a reduction formula to compute the sum over all bodies. 
-* The Kernel is launched with NB blocks with Bl threads. NB is the next bigger number of N
-* which is a power of two. Bl is the minimum of NB and 512.
-****************************************/
+// **************************************
+//This Kernel computes the potential energy for the body i, in the case N >= 64.
+//It uses a reduction formula to compute the sum over all bodies. 
+//The Kernel is launched with NB blocks with Bl threads. NB is the next bigger number of N
+//which is a power of two. Bl is the minimum of NB and 512.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ****************************************/
 template <int NB, int Bl>
 __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, double *test_d, int st, int N){
 	int idy = threadIdx.x;
@@ -105,11 +117,15 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 	}
 }
 
-/**************************************
-* This Kernel computes the energy change due to ejections,  in the case N >= 64.
-* It uses a reduction formula to compute the sum over all bodies. 
-* The Kernel is launched with 1 block with Bl threads. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
-****************************************/
+// **************************************
+// This Kernel computes the energy change due to ejections,  in the case N >= 64.
+// It uses a reduction formula to compute the sum over all bodies. 
+// The Kernel is launched with 1 block with Bl threads. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ****************************************
 template <int NB, int Bl>
 __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
 	int idy = threadIdx.x;
@@ -329,13 +345,16 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 }
 
 
-/**************************************
-* This Kernel computes the potential energy for the body i, in the case N < 64.
-* It uses a reduction formula to compute the sum over all bodies. 
-* The Kernel is launched with NB blocks with Bl threads. NB is the next bigger number of N
-* which is a power of two. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
-*
-****************************************/
+// **************************************
+//This Kernel computes the potential energy for the body i, in the case N < 64.
+//It uses a reduction formula to compute the sum over all bodies. 
+//The Kernel is launched with NB blocks with Bl threads. NB is the next bigger number of N
+//which is a power of two. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ****************************************
 template<int Bl, int Bl2>
 __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, double *test_d, int st, int N){
 	int idy = threadIdx.x;
@@ -378,11 +397,15 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 
 }
 
-/**************************************
-* This Kernel computes the energy change due to ejections,  in the case N < 64.
-* It uses a reduction formula to compute the sum over all bodies. 
-* The Kernel is launched with 1 block with Bl threads. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
-****************************************/
+// **************************************
+//This Kernel computes the energy change due to ejections,  in the case N < 64.
+//It uses a reduction formula to compute the sum over all bodies. 
+//The Kernel is launched with 1 block with Bl threads. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ****************************************
 template<int Bl, int Bl2>
 __global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
 	int idy = threadIdx.x;
@@ -585,19 +608,23 @@ __global__ void EjectionEnergysmall2_kernel(double4 *x4small_d, int i){
 
 
 
-/**************************************
-* This Kernel computes the total energy of the system, in the case N >= 128.
-* It computes the sum over the momenta p_i which is used to calculate the Kinetic 
-* Energy from the sun.
-* It computes the sum of the  potential and kinetic energy over all bodies.
-* All sums are performed using a reduction formula.
-* At the first call, the initial energy is stored in Energy0_d.
-* At all other calls, it stores in Energy_d the following quantities:
-* Total potential energy, total kinetic energy, Virial, inner energy due to collisions, 
-* total energy, total potential + kinetic energy, Kinetic energy of the sun, relative energy Error (E-E0)/E0.
-* The kernel is launched with 1 Block with Bl threads. Bl is the minimum of NB and 256. NB is the next bigger number of N
-* which is a power of two.
-****************************************/
+// **************************************
+//This Kernel computes the total energy of the system, in the case N >= 128.
+//It computes the sum over the momenta p_i which is used to calculate the Kinetic 
+//Energy from the sun.
+//It computes the sum of the  potential and kinetic energy over all bodies.
+//All sums are performed using a reduction formula.
+//At the first call, the initial energy is stored in Energy0_d.
+//At all other calls, it stores in Energy_d the following quantities:
+//Total potential energy, total kinetic energy, Lost Angular Momentum at ejections, inner energy due to collisions + Ejections + Gas, 
+//total energy, total Angular Momentum, relative energy Error (E-E0)/E0,  relative angular momentum Error (L-L0)/L0
+//The kernel is launched with 1 Block with Bl threads. Bl is the minimum of NB and 256. NB is the next bigger number of N
+//which is a power of two.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+//
+// ****************************************
 template < int NB, int Bl>
 __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
 	int idy = threadIdx.x;
@@ -837,7 +864,7 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 		E_s[0] *= Kg;
 		Tsun *= Kg;
 		Energy_d[0] = V_s[0];
-		Energy_d[1] = T_s[0];
+		Energy_d[1] = T_s[0] + Tsun;
 		Energy_d[2] = LI_d[st] * Kg;
 		Energy_d[3] = U_d[st] * Kg;
 		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
@@ -856,19 +883,22 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	}
 }
 
-/**************************************
-* This Kernel computes the total energy of the system, in the case N < 128.
-* It computes the sum over the momenta p_i which is used to calculate the Kinetic 
-* Energy from the sun.
-* It computes the sum of the  potential and kinetic energy over all bodies.
-* All sums are performed using a reduction formula.
-* At the first call, the initial energy is stored in Energy0_d.
-* At all other calls, it stores in Energy_d the following quantities:
-* Total potential energy, total kinetic energy, Virial, inner energy due to collisions, 
-* total energy, total potential + kinetic energy, Kinetic energy of the sun, relative energy Error (E-E0)/E0.
-* The kernel is launched with 1 Block with Bl threads. Bl is equal to NB, Bl2 is the minimum of 2*NB and 64. NB is the next bigger number of N
-* which is a power of two.
-****************************************/
+// **************************************
+//This Kernel computes the total energy of the system, in the case N < 128.
+//It computes the sum over the momenta p_i which is used to calculate the Kinetic 
+//Energy from the sun.
+//It computes the sum of the  potential and kinetic energy over all bodies.
+//All sums are performed using a reduction formula.
+//At the first call, the initial energy is stored in Energy0_d.
+//At all other calls, it stores in Energy_d the following quantities:
+//Total potential energy, total kinetic energy, Lost Angular Momentum at ejections, inner energy due to collisions + Ejections + Gas, 
+//total energy, total Angular Momentum, relative energy Error (E-E0)/E0,  relative angular momentum Error (L-L0)/L0
+//The kernel is launched with 1 Block with Bl threads. Bl is equal to NB, Bl2 is the minimum of 2*NB and 64. NB is the next bigger number of N
+//which is a power of two.
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ****************************************
 template < int Bl, int Bl2>
 __global__ void kineticEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
 
@@ -1073,7 +1103,7 @@ test_d[idy] = E_s[idy];
 		E_s[0] *= Kg;
 		Tsun *= Kg;
 		Energy_d[0] = V_s[0];
-		Energy_d[1] = T_s[0];
+		Energy_d[1] = T_s[0] + Tsun;
 		Energy_d[2] = LI_d[st] * Kg;
 		Energy_d[3] = U_d[st] * Kg;
 		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
@@ -1091,8 +1121,12 @@ test_d[idy] = E_s[idy];
 	}
 }
 
-
+// *************************************
 //This function falls the Energy kernels
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *************************************3
 __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int E){
 	switch(NB){
 		case 16:{
@@ -1137,6 +1171,12 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *sp
 		break;
 	}
 }
+// *************************************
+//This function falls the EjectionEnergy kernels
+//
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// *************************************3
 __host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
 	switch(NB){
 		case 16:{

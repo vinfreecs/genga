@@ -1,4 +1,9 @@
+// *********************************************************
 //This kernel computes the kinet energy of the center of mass
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+// ***********************************************************
 template < int Bl, int Bl2>
 __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
 
@@ -69,6 +74,12 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 		U_d[0] += f * Tsun;	
 	}
 }
+// *********************************************************
+//This kernel computes the kinet energy of the center of mass
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+// ***********************************************************
 template < int NB, int Bl>
 __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
 
@@ -146,7 +157,12 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 		U_d[0] += f * Tsun;
 	}
 }
-
+// *********************************************************
+//This kernel computes the kinet energy of the center of mass
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+// ***********************************************************
 template <int Bl, int Bl2, int Nmax >
 __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, double *U_d, int *index_d, int NT, double *test_d, int ff){
 

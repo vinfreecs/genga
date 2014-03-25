@@ -42,35 +42,6 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		ac.z += __dmul_rn(r3ij.z, s);
 	}
 }
-__device__ void  accAG3(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int groupIndexi, int groupIndexj, int j, int i, int NB, double t){
-	if( i != j && x4i.w >= 0.0 && x4j.w > 0.0){
-		double rsq, ir, ir3, s;
-		double3 r3ij;
-		double rcritv, rcritv2;
-
-		r3ij.x = x4j.x - x4i.x;
-		r3ij.y = x4j.y - x4i.y;
-		r3ij.z = x4j.z - x4i.z;
-
-		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-		rcritv = fmax(rcritvi, rcritvj);
-
-		rcritv2 = rcritv * rcritv;
-
-		ir = 1.0/sqrt(rsq);
-		ir3 = ir*ir*ir;
-
-		s = x4j.w * ir3;
-
-		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NB){
-			s = 0.0;
-		}
-//printf("%g %d %d %g %g %g %g %g %g %g %g %g\n", t, i, j, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-		ac.x += __dmul_rn(r3ij.x, s);
-		ac.y += __dmul_rn(r3ij.y, s);
-		ac.z += __dmul_rn(r3ij.z, s);
-	}
-}
 
 //**************************************
 //This function computes the terms a = mi/rij^3 * Kij and b = mi/rij.
@@ -87,6 +58,10 @@ __device__ void  accAG3(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi,
 //E = 30: a + b + precheck. (initial step) used for massiv bodies in Test Particle Mode
 //E = 31: a + b + precheck. used for massiv bodies in Test Particle Mode
 //E = 32: a + precheck. used for massiv bodies in Test Particle Mode
+
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+
 //****************************************
 template < int E >
 __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, double &test, const int Nconst){
@@ -177,6 +152,14 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		}
 	}
 }
+
+// *********************************
+//Only here for testing
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ********************************
 template < int E >
 __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, double &test, const int Nconst, double t){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
@@ -253,6 +236,10 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 // **************************************
 //This kernel performs the first kick of the time step, in the case of no close encounters.
 //It reuses the values from the seccond kick in the previous time step.
+
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d){
 
@@ -265,7 +252,14 @@ __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d){
 		v4_d[id].z += acck_d[id].z;
 	}
 }
+// **************************************
+//This kernel performs the first kick of the time step for test particles, in the case of no close encounters.
+//It reuses the values from the seccond kick in the previous time step.
 
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 __global__ void kickBsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double4 *x4small_d, double4 *v4small_d, double3 *accksmall_d, int N, int Nsmall){
 
 	int idy = threadIdx.x;
@@ -285,7 +279,14 @@ __global__ void kickBsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 		}
 	}
 }
+// **************************************
+//This kernel performs the first kick of the time step for the multi simulation mode, in the case of no close encounters.
+//It reuses the values from the seccond kick in the previous time step.
 
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 __global__ void kickMB_kernel(double4 *v4_d, double3 *acck_d, double *test_d, int NT){
 
 	int idy = threadIdx.x;
@@ -297,9 +298,14 @@ __global__ void kickMB_kernel(double4 *v4_d, double3 *acck_d, double *test_d, in
 	}
 }
 
-
+// *******************************************
 //This kernel is used to sort the close encoutner list, to be able to reproduce simulations exactly
 //It shoud be used only for debugging or special cases.
+
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// *********************************************
 __global__ void Sort_kernel(int2 *Encpairs2_d, int N, int icNB){
 
 	int idy = threadIdx.x;
@@ -353,6 +359,11 @@ __global__ void Sort_kernel(int2 *Encpairs2_d, int N, int icNB){
 //the bodies involved in a close encounter.
 //NI is the number of bodies involved in a close encounter with body i which have a bigger index than i.
 //NJ is the number of bodies involved in a close encounter with body i which have a smaller index than i.
+
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+
 // ****************************************
 template <int Bl>
 __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int icNB, double t){
@@ -407,7 +418,18 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq) + acck_d[id].z;
 	}
 }
+// **************************************
+//This kernel performs the first kick of the time step for test particles, in the case of close interactions.
+//It reuses the values from the seccond kick in the previous time step, and adds the terms aij*dt*Kij for all
+//the bodies involved in a close encounter.
+//NI is the number of bodies involved in a close encounter with body i which have a bigger index than i.
+//NJ is the number of bodies involved in a close encounter with body i which have a smaller index than i.
 
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+
+// ****************************************
 template <int Bl>
 __global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, double4 *x4small_d, double4 *v4small_d, int2 *Encpairssmall2_d, int Nsmall, double3 *accksmall_d, int NB, const int Nconst){
 
@@ -476,6 +498,10 @@ __global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration
 //
 //The Kernel is launched with N blocks a NB theads.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //****************************************
 template <const int Bl, int Bl2, int E>
 __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int icNB, double t){
@@ -598,6 +624,10 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration*
 //
 //The Kernel is launched with N blocks a NB theads.
+
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //****************************************
 template <const int Bl, int Bl2, int E>
 __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int icNB, double t){
@@ -751,6 +781,9 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration
 //
 //The Kernel is launched with N/2 blocks a 128 theads.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
 //
 // ****************************************
 template <int Bl, int E>
@@ -1025,6 +1058,10 @@ __global__ void kick128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration
 //
 //The Kernel is launched with N/4 blocks a 128 theads.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int Bl, int NB, int E>
 __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, double t){
@@ -1554,6 +1591,10 @@ __global__ void kick256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration
 //
 //The Kernel is launched with N/4 blocks a 128 theads.
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int Bl, int NB, int E>
 __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, double t){
@@ -2048,6 +2089,23 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 	}
 }
 
+// **************************************
+//This kernel performs the seccond kick of the time step for test particles
+//It calculates the acceleration between all bodies with respect to the changeover function K.
+//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
+//it the next time step.
+//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
+//The number of close encounter candidates is stored in Nencpairs_d.
+//
+//E = 0: Precheck + acck. used in initial step
+//E = 1: Kick + Precheck + acck. used in main steps
+//E = 2: Kick + Precheck. used in mid term steps of higher order integration
+//
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
 template <int Bl, int E>
 __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double4 *x4small_d, double4 *v4small_d, double3 *accksmall_d, int Nsmall, double *rcritvsmall_d, int *groupIndexsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int NB, const int Nconst){
 
@@ -2144,6 +2202,10 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //E = 0: Precheck + acck. used in initial step
 //E = 1: Kick + Precheck + acck. used in main steps
 //E = 2: Kick + Precheck. used in mid term steps of higher order integration
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E, int NB>
 __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double dtksqKt, int *index_d, int NT, double *test_d){
@@ -2154,7 +2216,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	__shared__ volatile double3 a_s[Bl + Nmax];
 	__shared__ volatile double3 b_s[Bl + Nmax];
 	__shared__ double4 x4_s[Bl + Nmax];
-	__shared__ double rcrit_s[Bl + Nmax];
+	//__shared__ double rcrit_s[Bl + Nmax];
 	__shared__ double rcritv_s[Bl + Nmax];
 	__shared__ int st_s[Bl + Nmax];
 
@@ -2168,7 +2230,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	if(id < NT && id >= 0){
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
-		rcrit_s[idy] = rcrit_d[id];
+		//rcrit_s[idy] = rcrit_d[id];
 		rcritv_s[idy] = rcritv_d[id];
 	}
 	else{
@@ -2177,7 +2239,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
 		x4_s[idy].w = 0.0;
-		rcrit_s[idy] = 0.0;
+		//rcrit_s[idy] = 0.0;
 		rcritv_s[idy] = 0.0;
 	}
 	//halo
@@ -2192,7 +2254,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		if(id + Bl < NT){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			x4_s[idy + Bl] = x4_d[id + Bl];
-			rcrit_s[idy + Bl] = rcrit_d[id + Bl];
+			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
 			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
 		}
 		else{
@@ -2201,7 +2263,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			x4_s[idy + Bl].y = 0.0;
 			x4_s[idy + Bl].z = 0.0;
 			x4_s[idy + Bl].w = 0.0;
-			rcrit_s[idy + Bl] = 0.0;
+			//rcrit_s[idy + Bl] = 0.0;
 			rcritv_s[idy + Bl] = 0.0;
 		}
 	}

@@ -10,7 +10,10 @@
 //c = 1 : perform C Kick.
 //c = 2 : perform C Kick + reset Nencpairs + update time.
 //c = 3 : perform C Kick + reset Nencpairs
-//*****************************************
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+////*****************************************
 template <int Bl, int NB, int E>
 __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
 
@@ -106,6 +109,10 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
 //c = 1 : perform C Kick.
 //c = 2 : perform C Kick + reset Nencpairs + update time.
 //c = 3 : perform C Kick + reset Nencpairs
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //  *****************************************
 template < int Bl, int Bl2, int E>
 __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N){
@@ -169,17 +176,20 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 	}
 }
 
-/**************************************
-* This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
-* It uses a parallel reduction fomula to calculate the sum in log(N) steps.
-*
-* It works for the case of more than 64 bodies.
-* Each Kernel is launched with 3 blocks, one for each dimension.
-*
-* c = 1 : perform C Kick.
-* c = 2 : perform C Kick + reset Nencpairs + update time.
-* c = 3 : perform C Kick + reset Nencpairs
-*****************************************/
+// **************************************
+//This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
+//It uses a parallel reduction fomula to calculate the sum in log(N) steps.
+//It works for the case of more than 64 bodies.
+//Each Kernel is launched with 3 blocks, one for each dimension.
+//
+//c = 1 : perform C Kick.
+//c = 2 : perform C Kick + reset Nencpairs + update time.
+//c = 3 : perform C Kick + reset Nencpairs
+//i
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// *****************************************/
 template <int Bl, int E>
 __global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairssmall_d, int *Nencpairs2_d, int *Nencpairssmall2_d, int *Nenc_d, int *Nencsmall_d, double4 *x4small_d, double4 *v4small_d, int Nsmall, int N){
 
@@ -289,6 +299,10 @@ __global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Ms
 //
 //E = 1 : perform C Kick.
 //E = 2 : perform C Kick + reset Nencpairs
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
 __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst){
