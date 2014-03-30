@@ -1105,7 +1105,6 @@ comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl 
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) KickM2_kernel< KM_Bl, KM_Bl2, NmaxM, 3, 16 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq * Kt[SIn - 1], index_d, NT, test_d);
 	else kickMB_kernel <<< (NT + 127) / 128, 128>>> (v4_d, a_d, test_d, NT);
 	EjectionFlag2 = 0;
-
 	for(int si = 0; si < SIn; ++si){
 		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 1 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl>>> (x4_d, v4_d, dtiMsun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst);
 		fgM_kernel <128> <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, xold_d, vold_d, dt, Msun_d, test_d, index_d, NT, aelimits_d, aecount_d, Gridaecount_d, FGt[si], si);

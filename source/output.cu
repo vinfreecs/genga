@@ -441,7 +441,7 @@ __host__ void Data::printLastTime(){
         for(int st = 0; st < Nst; ++st){
                 GSF[st].timefile = fopen(GSF[st].timefilename, "a");
                 fprintf(GSF[st].timefile, "\n\n%g\n", times + timems/1000000.0);
-		printf("Execution time: \n\n%g\n", times + timems/1000000.0);
+		if(st == 0) printf("Execution time: \n\n%g\n", times + timems/1000000.0);
                 fclose(GSF[st].timefile);
         }
 }

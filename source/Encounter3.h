@@ -208,17 +208,16 @@ __device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4o
 			aj.z = -x4i.w * irij3 * r.z;
 
 			//Kick
-			// This is wrong, include here th groupindex
-			double s = dt * 0.5;// * Ki;
+			double s = dt * 0.5;
 if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4 /*icNB*/) s = 0.0;
-//printf("C %d %d %g %g %g\n", i, j, ai.x * s / (dt * 0.5), irij3, time);
 			v4it.x -= ai.x * s;
 			v4it.y -= ai.y * s;
 			v4it.z -= ai.z * s;
 			v4jt.x -= aj.x * s;
 			v4jt.y -= aj.y * s;
 			v4jt.z -= aj.z * s;
-
+//printf("Ai %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i, x4it.x, x4it.y, x4it.z, v4it.x, v4it.y, v4it.z);
+//printf("Aj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", j, x4jt.x, x4jt.y, x4jt.z, v4jt.x, v4jt.y, v4jt.z);
 			B0 = x4i.w * x4j.w / rij;
 			double3 rd;
 			rd.x = v4jt.x - v4it.x;
@@ -499,8 +498,9 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 			double3 ai;
 			double3 aj;
 
-			double dtt = dt / 32.0;
-			for(int st = 0; st < 32; ++st){
+
+			double dtt = dt / 1.0;
+			for(int st = 0; st < 1; ++st){
 				r.x = x4jt.x - x4it.x;
 				r.y = x4jt.y - x4it.y;
 				r.z = x4jt.z - x4it.z;
@@ -539,12 +539,15 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 
 				irij3 = 1.0 / (rij * d);
 
-				ai.x = x4jt.w * irij3 * r.x;
-				ai.y = x4jt.w * irij3 * r.y;
-				ai.z = x4jt.w * irij3 * r.z;
-				aj.x = -x4it.w * irij3 * r.x;
-				aj.y = -x4it.w * irij3 * r.y;
-				aj.z = -x4it.w * irij3 * r.z;
+				double si = x4jt.w * irij3;
+				double sj = x4it.w * irij3;
+
+				ai.x = r.x * si;
+				ai.y = r.y * si;
+				ai.z = r.z * si;
+				aj.x = -r.x * sj;
+				aj.y = -r.y * sj;
+				aj.z = -r.z * sj;
 
 				v4it.x += ai.x * dtt * 0.5;
 				v4it.y += ai.y * dtt * 0.5;
@@ -593,34 +596,34 @@ printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 
 
 			int stop = 0;
 			if((Bdd0 >= G3Limit && Kiold < 1.0) || Kiold == 0.0) {
-printf("%.10g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+//printf("%.10g %d %d %g %g %g %g %g %g close encounter\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//close encounter
 				Ki = 0.0;
 				Kj = 0.0;
 			}
 			//if(Bdd0 < G3Limit && Bdd1 < G3Limit && Bdd0 >= Bdd1 && Bdd0 > 0.0 && Bd0 < 0.0 && Bd1 < 0.0){
 			if(Bdd0 < G3Limit && Bdd1 < G3Limit && Kiold < 1.0 && Kiold > 0.0){
-printf("%.10g %d %d %g %g %g %g %g %g no CL\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+//printf("%.10g %d %d %g %g %g %g %g %g no CL\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//no close encounter
 				Ki = 1.0;
 				Kj = 1.0;
 			}
 			if(Bdd0 < G3Limit && Bdd1 >= G3Limit && Kiold == 1.0){
-printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+//printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//start close encounter
-				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				double root = (G3Limit - Bdd0)/(Bdd1 - Bdd0);
 				Ki = root;
 				Kj = root;
 			}
 			if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Kiold < 1.0){
-printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
+//printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//stop close encounter
 				stop = 1;
-				double root = ((G3Limit - Bdd0) * dt/(Bdd1 - Bdd0)) / dt;
+				double root = (G3Limit - Bdd0)/(Bdd1 - Bdd0);
 
-				Ki = (1.0 - root) * 1.07;
-				Kj = (1.0 - root) * 1.07;
-printf("%g\n", Ki);
+				Ki = (1.0 - root);// * 0.9;
+				Kj = (1.0 - root);// * 0.9;
+printf("%g %g %g\n", Ki, root, (G3Limit - root * Bdd1) / (1.0 - root));
 			}
 double Bdd = 0.0;
 //this function searches if there is a following peak
@@ -684,13 +687,13 @@ if(stop == 1){
 		double Bddold = Bdd;
 		Bdd = -3.0 * Bd / d * 0.5 * dd - B / d * ud;
 		if(phase == 1 && Bddold < Bdd){
-printf("%g %d %d stop to phase 2. %g %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bddold, Bdd);
+//printf("%g %d %d stop to phase 2. %g %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bddold, Bdd);
 			//entering acending node
 			//search for the height of the peak
 			phase = 2;
 		}
 		if(phase == 2 && (Bdd >= G3Limit)){
-printf("%g %d %d stop. next peak is at %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bdd);
+//printf("%g %d %d stop. next peak is at %g %g\n",time, i, j, time + bt * dtt/0.01720209895, Bdd);
 			break;
 		}
 	}
@@ -1596,6 +1599,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		encpairs_s[idy].x = Encpairs2_d[idy + NBS * 16].x - NBS;
 		encpairs_s[idy].y = Encpairs2_d[idy + NBS * 16].y - NBS;
 		A_s[idy] = encpairs_s[idy].x;
+//printf("%d %d\n", encpairs_s[idy].x, encpairs_s[idy].y);
 	}
 	//encpairs_s[idy] contains the two close encounter pairs//
 	else{

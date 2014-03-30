@@ -60,7 +60,7 @@
 
 // * Only for testing **
 #define G3 0				//New integrator scheme
-#define G3Limit	3.0e-13
+#define G3Limit	2.0e-13
 #define G3Limit2 2.0e-14 //1.0e-13
 // *********************
 

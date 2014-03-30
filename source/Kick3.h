@@ -2243,7 +2243,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		rcritv_s[idy] = 0.0;
 	}
 	//halo
-	if(idy < Nmax / 2){
+	if(idy < Nmax){
 		a_s[idy + Bl].x = 0.0;
 		a_s[idy + Bl].y = 0.0;
 		a_s[idy + Bl].z = 0.0;
@@ -2267,6 +2267,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			rcritv_s[idy + Bl] = 0.0;
 		}
 	}
+
 	volatile double a;
 	volatile double b;
 	volatile double rx, ry, rz;

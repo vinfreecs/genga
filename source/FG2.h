@@ -332,6 +332,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
 //		BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt, test, test);
 		__syncthreads();
+
 		x4_d[id] = x4_s[idy];
 		v4_d[id] = v4_s[idy];
 #if G3 == 1
