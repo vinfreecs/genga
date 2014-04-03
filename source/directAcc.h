@@ -73,7 +73,7 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rc
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g accEnc\n", time, i, j, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K);
+//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g %g accEnc\n", time, i, j, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K);
 
 	}
 }
@@ -136,7 +136,7 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int gr
 
 		s += K * x4j.w * ir3 * ksq;
 
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g K %g Kold %g C1\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
+//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g i%g %g %g %g %g %g K %g Kold %g C1\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -166,7 +166,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir3 = ir * ir * ir;
 
 		s = K * x4j.w * ir3 * ksq; 
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g K %g Kold %g C2\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
+//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g K %g Kold %g C2\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);

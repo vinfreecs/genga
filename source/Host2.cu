@@ -2,11 +2,67 @@
 // ******************************
 //Costructor for Host class
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//April 2014
 // *******************************
-__host__ Host::Host(){
+__host__ Host::Host(long long Restart){
+
         sprintf(masterfilename, "%s", "master.out");
-        masterfile = fopen(masterfilename, "w");
+
+	FILE *lockfile;
+ 	char lockfilename[64];
+        sprintf(lockfilename, "%s", "lock.dat");
+
+	Lock = 0;
+	
+	if(Restart == 0LL){
+		lockfile = fopen(lockfilename, "r");
+
+		if(lockfile == NULL){
+			lockfile = fopen(lockfilename, "w");
+			fprintf(lockfile, "%d\n", 0);
+			fclose(lockfile);
+        	}
+		else{
+			Lock = 1;
+			fclose(lockfile);
+		}
+
+	}
+	else{
+		lockfile = fopen(lockfilename, "r");
+		if(lockfile == NULL){
+			lockfile = fopen(lockfilename, "w");
+			fprintf(lockfile, "%d\n", Restart);
+			fclose(lockfile);
+        	}
+		else{
+			long long R;
+			fscanf(lockfile, "%ld", &R);
+			fclose(lockfile);
+
+			if(R == Restart) Lock = 1;
+
+			lockfile = fopen(lockfilename, "w");
+			fprintf(lockfile, "%d\n", Restart);
+			fclose(lockfile);
+
+		}
+	}
+
+	if(Lock == 0){
+		if(Restart == 0LL){
+        		masterfile = fopen(masterfilename, "w");
+		}
+		else{
+        		masterfile = fopen(masterfilename, "a");
+		}
+	}
+	else{
+		masterfile = fopen(masterfilename, "a");
+	}
+
+
+
         sprintf(pathfilename, "");
 
         Nst = 1;
@@ -576,6 +632,10 @@ __host__ int Host::Param(int argc, char*argv[]){
 	}
 	dt = P.idt * dayUnit;
 	dtksq = dt * ksq;
+
+	sprintf(OrigInfilename, "%s", GSF[0].inputfilename);
+	OrigInfile = fopen(OrigInfilename, "r");
+
 	for(int st = 0; st < Nst; ++st){
 		dtiMsun_h[st] = dt / Msun_h[st];
 		//restart -> inputfilename
@@ -611,7 +671,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-		if(P.tRestart > 0) fprintf(GSF[st].logfile, "\n\n\n************** Restart Simulation at time step%lld *******************\n", P.tRestart);
+		if(P.tRestart > 0) fprintf(GSF[st].logfile, "\n\n\n************** Restart Simulation at time step %lld *******************\n", P.tRestart);
 		if(P.UseTestParticles == 1 && N_h[st] > 32){
 			printf("Error: Number of bodies in Test particle mode too big: %d\n", N_h[st]);
 			fprintf(GSF[st].logfile, "Error: Number of bodies in Test particle mode too big: %d\n", N_h[st]);
@@ -623,12 +683,32 @@ __host__ int Host::Param(int argc, char*argv[]){
 	return 1;
 }
 
+
+// **************************************
+// This function determines the starting time of the simulation using the input file 
+// specified in the param file. In the multi simulation mode, the first simulation is used.
+
+//Authors: Simon Grimm, Joachim Stadel
+//April 2014
+// ************************************3
+__host__ void Host::icict(int Nformat){
+	double time = 0.0;
+	int er = 1;
+	for(int f = 0; f < Nformat; ++f){
+		if(GSF[0].informat[f] == 19){
+			er = fscanf (OrigInfile, "%lf",&time);
+			break;
+		}
+	}
+	if(er > 0 && P.ict == 0.0 && P.tRestart > 0) P.ict = time;
+	fclose(OrigInfile);
+}
 // ************************************************
 //This function counts the number of bodies in the initial condition file
 //It returns the number of bodies
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//April 2014
 // *********************************************
 __host__ int Host::icSize(int st){
 
@@ -637,6 +717,10 @@ __host__ int Host::icSize(int st){
 	for(int f = 0; f < 22; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
+
+	//Determine the simulation start time
+	if(st == 0) icict(Nformat);
+
 	if(P.tRestart > 0 && FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
 
 	char t[500];
@@ -678,7 +762,6 @@ __host__ int Host::icSize(int st){
 				else if(f == 1)	er = fscanf (infile, "%d",&index);
 				else if(f == 2) er = fscanf (infile, "%lf",&m);
 				else er = fscanf (infile, "%s",t);
-
 			}
 			if(er <= 0){ //error by reading
 				er1 = 0;
@@ -688,8 +771,9 @@ __host__ int Host::icSize(int st){
 		}
 		if(FormatT == 1 && time > Et) break;
 
+		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
-			if(FormatP == 1){
+			if(FormatP == 1){ // All particles in one time file
 				if(FormatS == 0 || P.tRestart == 0 || Nst == 1){
 					if(Et == time){
 						if(m > 0.0) ++NN;
@@ -719,7 +803,22 @@ __host__ int Host::icSize(int st){
 		int NNN = 0;
 		int NNNsmall = 0;
 		Nformat = 21;
-		for(int i = 0; i < 1000000; ++i){
+
+		OrigInfile = fopen(OrigInfilename, "r");
+		for(int k = 0; k < 1000000000; ++k){
+			int i;
+			double skip = 0.0;
+			int eri = 1;
+			for(int f = 0; f < 22; ++f){
+				if(GSF[st].informat[f] == 13){
+					eri = fscanf (OrigInfile, "%d",&i);
+				}
+				else if(GSF[st].informat[f] > 0){
+					eri = fscanf (OrigInfile, "%lf",&skip);
+				}
+			}
+			if(eri < 0) break;
+
 			int NMAX = 0;
 			er1 = 1;
 			char infilename[160];
@@ -756,13 +855,13 @@ __host__ int Host::icSize(int st){
 					}
 				}
 				else{
-					--NN;
 					break;
 				}
 			}
 			fclose(infile);
 			if(NMAX == 1) break;
 		}
+		fclose(OrigInfile);
 		NN = NNN;
 		Nsmall_h[st] = NNNsmall;
 	}

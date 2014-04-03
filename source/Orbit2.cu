@@ -1,5 +1,10 @@
 #include "Orbit2.h"
 
+//Constructor
+__host__ Data::Data(long long Restart): Host(Restart){
+
+
+}
 
 //Allocate orbit data
 __host__ void Data::AllocateOrbitt(){
@@ -79,6 +84,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &enccountT_d,NT*sizeof(long long));
 
 #if G3 == 1
+	cudaMalloc((void **) &aold_d, NT * sizeof(double3));
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Bdd1old_d, NT * NT * sizeof(double));
@@ -87,6 +93,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
 #else
+	aold_d = NULL;
 	K_d = NULL;
 	Kold_d = NULL;
 	Bdd1old_d = NULL;
@@ -528,7 +535,7 @@ __host__ int Data::readic(int st){
 	else{
 	//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-		sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25);
+		sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
 		double Et = atof(Ets);
 		double time = 0.0;
 		double aecount = 0.0;
@@ -614,7 +621,22 @@ __host__ int Data::readic(int st){
 		if(FormatP == 0){
 			ii = 0;
 			int iismall = 0;
-			for(int i = 0; i < 1000000; ++i){
+		
+			OrigInfile = fopen(OrigInfilename, "r");
+			for(int k = 0; k < 1000000000; ++k){
+				int i;
+				double skip = 0.0;
+				int eri = 1;
+				for(int f = 0; f < 22; ++f){
+					if(GSF[st].informat[f] == 13){
+						eri = fscanf (OrigInfile, "%d",&i);
+					}
+					else if(GSF[st].informat[f] > 0){
+						eri = fscanf (OrigInfile, "%lf",&skip);
+					}
+				}
+				if(eri < 0) break;
+		
 				int er = 0;
 				char infilename[160];
 				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
@@ -694,6 +716,7 @@ __host__ int Data::readic(int st){
 				fclose(infile);
 				if(ii + iismall == N + Nsmall) break;
 			}
+			fclose(OrigInfile);
 		}
 	}
 	if(FormatP == 1 || P.tRestart == 0) fclose(infile);
@@ -792,7 +815,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *Bdd1old_d, int NB){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *Bdd1old_d, double3* aold_d, int NB){
 
 	int NOld;
 	int N = N_d[st];
@@ -858,6 +881,10 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				test_d[j + NBS] = test_d[N-1 + NBS];
 				test_d[N-1 + NBS] = -1.0;
 #if G3 == 1
+				aold_d[j + NBS] = aold_d[N-1 + NBS];
+				aold_d[N-1 + NBS].x = 0.0;
+				aold_d[N-1 + NBS].y = 0.0;
+				aold_d[N-1 + NBS].z = 0.0;
 				for(int i = 0; i < N; ++i){
 					K_d[(j + NBS) * NB + i] = K_d[(N-1 + NBS) * NB + i];
 					K_d[i * NB + j + NBS] = K_d[i * NB + (N-1 + NBS)];
@@ -1088,7 +1115,7 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, Bdd1old_d, NB[st]);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, Bdd1old_d, aold_d, NB[st]);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d);
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);

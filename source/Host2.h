@@ -12,11 +12,14 @@
 class Host{
 
 public:
+	int Lock;
 	FILE *masterfile;
 	char masterfilename[64];
 	FILE *pathfile;				//used in multisim mode, contains list of directories
 	char pathfilename[64];
 
+	FILE *OrigInfile;			//this is the inputfile defined in tha paramfile, it is used to determine the simulation start time
+	char OrigInfilename[160];
 	int Nst;				//Number of simulations
 
 	int devCount;
@@ -60,7 +63,7 @@ public:
 
 	int *NBS_h, *NBS_d;
 	
-	__host__ Host();
+	__host__ Host(long long);
 	__host__ int NSimulations(int, char*argv[]);
 	__host__ int DeviceInfo();
 	__host__ void Halloc();
@@ -73,6 +76,6 @@ public:
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
 	__host__ int icSize(int);
-
+	__host__ void icict(int);
 };
 #endif

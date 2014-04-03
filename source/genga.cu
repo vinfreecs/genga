@@ -24,14 +24,41 @@ int main(int argc, char*argv[]){
 
 	cudaError_t error;
 
-	Data H;
+	long long Restart = 0LL;
+	int RRestart = 0;
+	//Check if simulation is restarted
+	for(int i = 1; i < argc; i += 2){
+		if(strcmp(argv[i], "-R") == 0){
+			Restart = atol(argv[i + 1]);
+			RRestart = 1;
+		}
+	}
+
+	Data H(Restart);
+
+	if(H.Lock == 1){
+	printf("lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+	fprintf(H.masterfile, "lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+		return 0;
+
+	}
+
+	if(RRestart == 0){
+       		printf("Start GENGA\n");
+        	fprintf(H.masterfile,"Start GENGA\n");
+	}
+	if(RRestart == 1){
+       		printf("Restart GENGA\n");
+		fprintf(H.masterfile,"\n \n **************************************** \n \n");
+        	fprintf(H.masterfile,"Restart GENGA\n");
+	}
 
 #if useGas > 0
-	printf("Start GENGA with Gas Disc\n");
-	fprintf(H.masterfile,"Start GENGA with Gas Disc\n");
+	printf("Use Gas Disc\n");
+	fprintf(H.masterfile,"Use Gas Disc\n");
 #else
-	printf("Start GENGA without Gas Disc\n");
-	fprintf(H.masterfile,"Start GENGA without Gas Disc\n");
+	printf("No Gas Disc\n");
+	fprintf(H.masterfile,"No Gas Disc\n");
 #endif
 #if useGridae
 	printf("Use ae Grid\n");

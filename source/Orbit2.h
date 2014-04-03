@@ -48,6 +48,7 @@ public:
 	double *K_d;
 	double *Kold_d;
 	double *Bdd1old_d;
+	double3 *aold_d;
 
 	double4 *x4small_h, *x4small_d;
 	double4 *v4small_h, *v4small_d;
@@ -82,6 +83,8 @@ public:
 	double *test_h, *test_d;
 
 	cudaError_t error;
+
+	__host__ Data(long long);
 
 	__host__ void AllocateOrbitt();
 	__host__ int CMallocateOrbit();

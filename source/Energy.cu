@@ -45,6 +45,7 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 		ir = 1.0/sqrt(rsq);
 		a = -ksqMsun * x4i.w * ir;
 	}
+
 	return a;
 
 }

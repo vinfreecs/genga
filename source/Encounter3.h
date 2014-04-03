@@ -172,7 +172,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 //
 // ***********************************************
 template<int E>
-__device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &Bdd1oldi, double &Bdd1oldj, double time, int &groupIndexOldi, int &groupIndexOldj){
+__device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &Bdd1oldi, double &Bdd1oldj, double time, int &groupIndexOldi, int &groupIndexOldj, double3 aiold, double3 ajold){
 
 //if(E == 0 || E >= 2)printf("E %d %d\n", i,j);
 
@@ -186,6 +186,7 @@ __device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4o
 		double4 x4jt = x4oldj;
 		double4 v4it = v4oldi;
 		double4 v4jt = v4oldj;
+double E0, E1;
 		{
 		
 			double3 r;
@@ -195,29 +196,16 @@ __device__ int encounterG3(double4 x4i, double4 v4i, double4 x4oldi, double4 v4o
 			double d = r.x*r.x + r.y*r.y + r.z*r.z;
 			double rij = sqrt(d);
 
-			double3 ai;
-			double3 aj;
-
 			double irij3 = 1.0 / (rij * d);
 
-			ai.x = x4j.w * irij3 * r.x;
-			ai.y = x4j.w * irij3 * r.y;
-			ai.z = x4j.w * irij3 * r.z;
-			aj.x = -x4i.w * irij3 * r.x;
-			aj.y = -x4i.w * irij3 * r.y;
-			aj.z = -x4i.w * irij3 * r.z;
-
 			//Kick
-			double s = dt * 0.5;
-if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4 /*icNB*/) s = 0.0;
-			v4it.x -= ai.x * s;
-			v4it.y -= ai.y * s;
-			v4it.z -= ai.z * s;
-			v4jt.x -= aj.x * s;
-			v4jt.y -= aj.y * s;
-			v4jt.z -= aj.z * s;
-//printf("Ai %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i, x4it.x, x4it.y, x4it.z, v4it.x, v4it.y, v4it.z);
-//printf("Aj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", j, x4jt.x, x4jt.y, x4jt.z, v4jt.x, v4jt.y, v4jt.z);
+			v4it.x -= aiold.x;
+			v4it.y -= aiold.y;
+			v4it.z -= aiold.z;
+			v4jt.x -= ajold.x;
+			v4jt.y -= ajold.y;
+			v4jt.z -= ajold.z;
+
 			B0 = x4i.w * x4j.w / rij;
 			double3 rd;
 			rd.x = v4jt.x - v4it.x;
@@ -231,6 +219,8 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 
 			double iri3 = 1.0 / (ri * ri * ri);
 			double irj3 = 1.0 / (rj * rj * rj);
+			double3 ai;
+			double3 aj;
 
 			ai.x = x4j.w * irij3 * r.x - iri3 * x4i.x;
 			ai.y = x4j.w * irij3 * r.y - iri3 * x4i.y;
@@ -241,6 +231,19 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 
 			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
 			Bdd0 = -3.0 * Bd0 / d * 0.5 * dd - B0 / d * ud;
+
+			double Ti = 0.5 * x4i.w * (v4it.x * v4it.x + v4it.y * v4it.y + v4it.z * v4it.z);
+			double Tj = 0.5 * x4j.w * (v4jt.x * v4jt.x + v4jt.y * v4jt.y + v4jt.z * v4jt.z);
+
+			double Msun = 1.0;
+			double Vi = -Msun * x4it.w / ri;
+			double Vj = -Msun * x4jt.w / rj;
+			double Vij = -x4it.w * x4jt.w / rij;
+			E0 = (Ti + Tj) + (Vi + Vj) + Vij;
+//printf("Ei %g %.20g %.20g %.20g\n", time, Vi, Ti, Vij);
+//printf("Ej %g %.20g %.20g %.20g\n", time, Vj, Tj, Vij);
+//printf("%g %.20g %.20g %.20g\n",time,  Kg * (Ti + Tj), Kg *(Vi + Vj), Kg * Vij);
+
 		}
 //Bdd0 = Bdd1oldi;
 		double Bdd1;
@@ -528,6 +531,8 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 				//FG
 				fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
 				fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+				//BSSinglestep(x4it, v4it, Msun, dtt, test, test);
+				//BSSinglestep(x4jt, v4jt, Msun, dtt, test, test);
 
 				//Kick
 				r.x = x4jt.x - x4it.x;
@@ -580,6 +585,15 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 
 			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
 			Bdd1 = -3.0 * Bd1 / d * 0.5 * dd - B1 / d * ud;
+
+			double Ti = 0.5 * x4i.w * (v4it.x * v4it.x + v4it.y * v4it.y + v4it.z * v4it.z);
+			double Tj = 0.5 * x4j.w * (v4jt.x * v4jt.x + v4jt.y * v4jt.y + v4jt.z * v4jt.z);
+			double Vi = -Msun * x4it.w / ri;
+			double Vj = -Msun * x4jt.w / rj;
+			double Vij = -x4it.w * x4jt.w / rij;
+			E1 = (Ti + Tj) + (Vi + Vj) + Vij;
+//printf("%g %.20g %.20g %.20g\n",time,  Kg * (Ti + Tj), Kg *(Vi + Vj), Kg * Vij);
+printf("%g %.20g %.20g\n", time, E0, E1);
 		}
 
 		int Encflag = 0;
@@ -590,7 +604,7 @@ if(groupIndexOldi == groupIndexOldj && groupIndexOldi >= 0 && groupIndexOldi < 4
 			Kiold = Ki;
 			Kjold = Kj;
 
-printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd1, Bd1, B1, (Bdd1 - Bdd0) / dt, Kiold, Bdd0, Bd0, B0);
+//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd1, Bd1, B1, (Bdd1 - Bdd0) / dt, Kiold, Bdd0, Bd0, B0);
 
 			if(Kiold < 1.0) Encflag = 1;
 
@@ -612,19 +626,24 @@ printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g\n", time, i, j, 0.0, 
 //printf("%.10g %d %d %g %g %g %g %g %g start\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//start close encounter
 				double root = (G3Limit - Bdd0)/(Bdd1 - Bdd0);
+//root = 0.03333;
 				Ki = root;
 				Kj = root;
+//printf("Start %g %g\n", Ki, root);
 			}
-			if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Kiold < 1.0){
+
+/*			if(Bdd0 >= G3Limit && Bdd1 < G3Limit && Kiold < 1.0){
 //printf("%.10g %d %d %g %g %g %g %g %g  stop\n", time, i, j, Bdd0, Bdd1, Bd0, Bd1, B0, B1);
 				//stop close encounter
 				stop = 1;
 				double root = (G3Limit - Bdd0)/(Bdd1 - Bdd0);
-
+//proot = 0.583;
 				Ki = (1.0 - root);// * 0.9;
 				Kj = (1.0 - root);// * 0.9;
-printf("%g %g %g\n", Ki, root, (G3Limit - root * Bdd1) / (1.0 - root));
+//printf("Stop %g %g\n", Ki, root);
+
 			}
+*/
 double Bdd = 0.0;
 //this function searches if there is a following peak
 if(stop == 1){
@@ -711,7 +730,6 @@ if(stop == 1){
 //if(Encflag == 1)printf("%g %g %g %g %g %g %g %g %g %g %g %g\n", time, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Bdd0, Bd0, B0, (Bdd1 - Bdd0) / dt);
 		// *****************
 		}
-
 		if(Encflag == 1){
 			Enc = 2;
 //if (E == 0 || E >= 2)printf("EE %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
@@ -853,7 +871,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 ////March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double *Bdd1old_d, int NB, double t, int *groupIndexOld_d){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double *Bdd1old_d, int NB, double t, int *groupIndexOld_d, double3 *aold_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -871,7 +889,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 #if G3 == 0
 		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
 #else
-		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], Bdd1old_d[ii * NB + jj], Bdd1old_d[jj * NB + ii], t, groupIndexOld_d[ii], groupIndexOld_d[jj]);
+		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], Bdd1old_d[ii * NB + jj], Bdd1old_d[jj * NB + ii], t, groupIndexOld_d[ii], groupIndexOld_d[jj], aold_d[ii], aold_d[jj]);
 #endif
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);

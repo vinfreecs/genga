@@ -220,7 +220,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		s = x4j.w * ir3;
 
 		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) s = 0.0;
-//printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %d %d\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, groupIndexi, groupIndexj);
+//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g %d %d\n", t, i, j, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, groupIndexi, groupIndexj);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);

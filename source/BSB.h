@@ -512,22 +512,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		if(ii < N2 && jj + l < N2){
 			int iK = Encpairs2_d[si * NB + ii].x;
 			int jK = Encpairs2_d[si * NB + jj + l].x;
-
-			
-
-			//start again second Kick operation
-			//if(Kold_d[iK * NB + jK] < 1.0 && K_d[iK * NB + jK] == 1.0){
-				//groupIndex_d[iK] =  -1;
-				//groupIndex_d[jK] =  -1;
-			//}
-			//else{
 				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895);
-			//}
-//			if(Kold_d[iK * NB + jK] == 1.0 && K_d[iK * NB + jK] == 1.0){
-//printf("indirect%d %d\n", ii, jj + l);
-				//Kick indirect close encounter pairs
-//				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], 0.0, 0.0, test, ii, jj + l, time + (t - dt )/0.01720209895);
-			//}
 		}
         }
         __syncthreads();
@@ -557,11 +542,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 	v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
 		}	
 	}
-//if(a0_s[idy * nb].x != 0.0) printf("Correct 2 %d %g %d\n", idy, a0_s[idy * nb].x, idy * nb);
         }
         for(int l = 0; l < NN; l += nb){
 		if(ii < N2 && jj + l < N2){
-//printf("K %d %d %d %d %g %g\n", iK, jK, ii, jj +l, Kold_d[iK * NB + jK], K_d[iK * NB + jK]);
 			int iK = Encpairs2_d[si * NB + ii].x;
 			a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
 			a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
