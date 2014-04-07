@@ -23,6 +23,9 @@
 //print Poincare Section of surface, in this mode the code can be very slow
 #define poincareFlag 0			//1: print, 0: no print
 
+//ignore the lock file and start GENGA anyway
+#define IgnoreLockFIle 1
+
 //Units
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units
 #define Kg 2.959122082855911e-4         //Squared Gaussion gravitation constant, used for conversion
@@ -59,7 +62,7 @@
 #define STRUCT_H
 
 // * Only for testing **
-#define G3 0				//New integrator scheme
+#define G3 1				//New integrator scheme
 #define G3Limit	2.0e-13
 #define G3Limit2 2.0e-14 //1.0e-13
 // *********************

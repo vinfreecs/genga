@@ -528,12 +528,13 @@ double E0, E1;
 				v4jt.y += aj.y * dtt * 0.5;
 				v4jt.z += aj.z * dtt * 0.5;
 
+printf("Ai %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i, x4it.x, x4it.y, x4it.z, v4it.x, v4it.y, v4it.z);
+printf("Aj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", j, x4jt.x, x4jt.y, x4jt.z, v4jt.x, v4jt.y, v4jt.z);
 				//FG
-				fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
-				fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
-				//BSSinglestep(x4it, v4it, Msun, dtt, test, test);
-				//BSSinglestep(x4jt, v4jt, Msun, dtt, test, test);
-
+				//fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+				//fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+				BSSinglestep(x4it, v4it, Msun, dtt, test, test);
+				BSSinglestep(x4jt, v4jt, Msun, dtt, test, test);
 				//Kick
 				r.x = x4jt.x - x4it.x;
 				r.y = x4jt.y - x4it.y;
@@ -585,6 +586,70 @@ double E0, E1;
 
 			double ud = rd.x * rd.x + r.x * (aj.x - ai.x) + rd.y * rd.y + r.y * (aj.y - ai.y) + rd.z * rd.z + r.z * (aj.z - ai.z);
 			Bdd1 = -3.0 * Bd1 / d * 0.5 * dd - B1 / d * ud;
+
+			dtt = -dt/1.0;
+			for(int st = 0; st < 1; ++st){
+				r.x = x4jt.x - x4it.x;
+				r.y = x4jt.y - x4it.y;
+				r.z = x4jt.z - x4it.z;
+				d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+				rij = sqrt(d);
+
+				irij3 = 1.0 / (rij * d);
+
+				ai.x = x4jt.w * irij3 * r.x;
+				ai.y = x4jt.w * irij3 * r.y;
+				ai.z = x4jt.w * irij3 * r.z;
+				aj.x = -x4it.w * irij3 * r.x;
+				aj.y = -x4it.w * irij3 * r.y;
+				aj.z = -x4it.w * irij3 * r.z;
+
+				//Kick
+				v4it.x += ai.x * dtt * 0.5;
+				v4it.y += ai.y * dtt * 0.5;
+				v4it.z += ai.z * dtt * 0.5;
+				v4jt.x += aj.x * dtt * 0.5;
+				v4jt.y += aj.y * dtt * 0.5;
+				v4jt.z += aj.z * dtt * 0.5;
+
+				//FG
+				//fgfull(x4it, v4it, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, i);
+				//fgfull(x4jt, v4jt, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, 1, j);
+				BSSinglestep(x4it, v4it, Msun, dtt, test, test);
+				BSSinglestep(x4jt, v4jt, Msun, dtt, test, test);
+printf("Bi %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i, x4it.x, x4it.y, x4it.z, v4it.x, v4it.y, v4it.z);
+printf("Bj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", j, x4jt.x, x4jt.y, x4jt.z, v4jt.x, v4jt.y, v4jt.z);
+
+				//Kick
+				r.x = x4jt.x - x4it.x;
+				r.y = x4jt.y - x4it.y;
+				r.z = x4jt.z - x4it.z;
+				d = r.x*r.x + r.y*r.y+ r.z*r.z;
+
+				rij = sqrt(d);
+
+				irij3 = 1.0 / (rij * d);
+
+				double si = x4jt.w * irij3;
+				double sj = x4it.w * irij3;
+
+				ai.x = r.x * si;
+				ai.y = r.y * si;
+				ai.z = r.z * si;
+				aj.x = -r.x * sj;
+				aj.y = -r.y * sj;
+				aj.z = -r.z * sj;
+
+				v4it.x += ai.x * dtt * 0.5;
+				v4it.y += ai.y * dtt * 0.5;
+				v4it.z += ai.z * dtt * 0.5;
+				v4jt.x += aj.x * dtt * 0.5;
+				v4jt.y += aj.y * dtt * 0.5;
+				v4jt.z += aj.z * dtt * 0.5;
+//printf("Bi %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i, x4it.x, x4it.y, x4it.z, v4it.x, v4it.y, v4it.z);
+//printf("Bj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", j, x4jt.x, x4jt.y, x4jt.z, v4jt.x, v4jt.y, v4jt.z);
+			}
 
 			double Ti = 0.5 * x4i.w * (v4it.x * v4it.x + v4it.y * v4it.y + v4it.z * v4it.z);
 			double Tj = 0.5 * x4j.w * (v4jt.x * v4jt.x + v4jt.y * v4jt.y + v4jt.z * v4jt.z);

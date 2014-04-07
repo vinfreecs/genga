@@ -49,6 +49,9 @@ __host__ Host::Host(long long Restart){
 		}
 	}
 
+#if IgnoreLockFIle == 1
+	Lock = 0;
+#endif
 	if(Lock == 0){
 		if(Restart == 0LL){
         		masterfile = fopen(masterfilename, "w");
