@@ -49,7 +49,7 @@ __host__ Host::Host(long long Restart){
 		}
 	}
 
-#if IgnoreLockFIle == 1
+#if IgnoreLockFile == 1
 	Lock = 0;
 #endif
 	if(Lock == 0){

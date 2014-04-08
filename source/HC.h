@@ -12,8 +12,8 @@
 //c = 3 : perform C Kick + reset Nencpairs
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
-////*****************************************
+//March 2014
+//*****************************************
 template <int Bl, int NB, int E>
 __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
 

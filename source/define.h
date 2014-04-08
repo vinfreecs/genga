@@ -14,7 +14,7 @@
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 
-//The serial grouping mode can be chosen to repruduce simulations exactly, but there is a performance penalty
+//The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
 //use aeGrid
@@ -24,7 +24,21 @@
 #define poincareFlag 0			//1: print, 0: no print
 
 //ignore the lock file and start GENGA anyway
-#define IgnoreLockFIle 1
+#define IgnoreLockFile 1
+
+
+//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define useGas 0			// 1 or 0
+#define Gasnr_g 189
+#define Gasnz_g 50
+#define Gasnr_p 150
+#define Gasnz_p 51
+#define h_1 0.03358 //scale height at 1AU for c = 1km/s*
+#define Sigma_10 2000*1.49598*1.49598/1.98892*1.0e-7 //surface density at 1AU
+#define Mgiant  1.0E-4
+#define M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
+#define Mass_pl  0.502E-14; /* corresponding to 10^19g */
+#define fMass_min 7.55E-9
 
 //Units
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units
@@ -43,20 +57,6 @@
 #define FGN 127				//Number of elements in table for fastfg
 #define PI_N M_PI/FGN
 #define N_PI FGN/M_PI
-
-
-//Gas Grid
-#define useGas 0			// 1 or 0
-#define Gasnr_g 189
-#define Gasnz_g 50
-#define Gasnr_p 150
-#define Gasnz_p 51
-#define h_1 0.03358 //scale height at 1AU for c = 1km/s*
-#define Sigma_10 2000*1.49598*1.49598/1.98892*1.0e-7 //surface density at 1AU
-#define Mgiant  1.0E-4
-#define M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
-#define Mass_pl  0.502E-14; /* corresponding to 10^19g */
-#define fMass_min 7.55E-9
 
 #ifndef STRUCT_H
 #define STRUCT_H

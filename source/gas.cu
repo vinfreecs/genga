@@ -29,6 +29,10 @@ __host__ void Data::GasAlloc(){
 }
 
 
+// *************************************************
+// This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
+//
+// ****************************************************
 __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, int G_alpha){
 
 	double dr1 = 0.1;
@@ -77,10 +81,11 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 	}
 }
 
-
-//First Kind elliptic integral
-//See Carlson or numerical recipes
-//Taken from Morishima
+// **********************************************
+// First Kind elliptic integral
+// This function corresponds to the rf function in the file master.c in pkdgrav_planets.
+// It is based on numerical recipes and the paper from Carlson 
+// **********************************************
 __device__  double rf(double x, double y, double z){
 	double lambda, mu, imu, X, Y, Z;
 	double E2, E3, sqrtx, sqrty, sqrtz;
@@ -127,9 +132,11 @@ __device__  double rf(double x, double y, double z){
 }
 
 
-//Second Kind elliptic integral
-//from Carlson or numerical recipes
-//Taken from Morishima
+// **********************************************
+// Second Kind elliptic integral
+// This function corresponds to the rf function in the file master.c in pkdgrav_planets.
+// It is based on numerical recipes and the paper from Carlson 
+// **********************************************
 __device__  double rd(double x, double y, double z){
 	double lambda, mu, imu, X, Y, Z;
 	double EA, EB, EC, ED, EE, sqrtx, sqrty, sqrtz;
@@ -181,7 +188,10 @@ __device__  double rd(double x, double y, double z){
 	return 3.0 * sum + fac * (1.0 + ED * (ED * 9.0/88.0 - Z * EE * 4.5/26.0 - 3.0/14.0) + Z * (EE / 6.0 + Z *(EC * -9.0/22.0 + Z * EA * 3.0/26.0))) /(mu * sqrt(mu));
 }
 
-//Taken from Morishima
+// *************************************************
+// This function corresponds to the ERRORFUNCT function in the file pkd.h in pkdgrav_planets.
+//
+// ****************************************************
 __device__ double ERFUNC(double zz){
 	double z, t, erfcc;
 	z = fabs(zz);
@@ -193,8 +203,10 @@ __device__ double ERFUNC(double zz){
 	return erfc;
 }
 
-//This gas sets the gas Table
-//Taken from Morishima
+// *************************************************
+// This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
+//
+// ****************************************************
 __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, int G_alpha){
 
 	int ip = blockIdx.x * blockDim.x + threadIdx.x; // r
@@ -310,7 +322,10 @@ __host__ int Data::setGasDisk(){
 	else return 1;
 }
 
-// Taken from Morishima
+// *************************************************
+// This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
+//
+// ****************************************************
 __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double dTime, double *Msun_d, double dt, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst){
 
 	int idy = threadIdx.x;
@@ -501,8 +516,11 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 }
 
 
-
+// ************************************
 //this kernel sums up all the Energy loss due to the Gas Disc and adds to the internal Energy
+//Authors: Simon Grimm, Joachim Stadel
+//March 2014
+// ***********************************33
 template <int NB, int Bl>
 __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, int st, int N){
 

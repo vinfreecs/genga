@@ -11,11 +11,9 @@
 
 # Requirements #
 
-GENGA runs on Nvidia GPU's with compute capability of 2.0 or higher. To be able to use the Code one has to install the Cuda Toolkit. This can be downloaded from https://developer.nvidia.com/cuda-downloads.
+GENGA runs on Nvidia GPUs with compute capability of 2.0 or higher. To be able to use the Code one has to install the Cuda Toolkit. This can be downloaded from https://developer.nvidia.com/cuda-downloads.
 We strongly recommend to use the driver version 5.0 or higher to get the full performance and correct results. Especially in version 3 and 4 have been observed rounding errors which can affect the output of a simulation serious. 
 
-
-[Link to Header](#markdown-header-requirements)
 
 # Compilation #
 GENGA can be compiled with the Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. 
@@ -29,7 +27,7 @@ GENGA can be startet with
 ./genga
 ```
 followed by optional arguments listed [here](#markdown-header-console-arguments).
-When GENGA is started, it creates a Lock file named lock.dat. This file must be deleted when GENGA is started again without a restart time greater than 0. This prevents from data loss by an accidental relaunch.
+When GENGA is started, it creates a Lock file named lock.dat. This file must be deleted when GENGA is started again without a restart time greater than 0. This prevents from data loss by an accidental relaunch. To ignore the lock file the IgnoreLockFile Flag in the define.h file can be set to 1.
 
 
 # The param.dat File #
@@ -106,26 +104,30 @@ Instead of using the parameter file, some arguments can also be passed as consol
  * \-aeN s Name of the aeCount grid
  * \-t f Start time of the simulation in years 
 
-Where i means an integer, f a floating point value, and s a string. 
+Here i means an integer, f a floating point value, and s a string. 
 
-# Defined Constants and Flags #
+# Defined Constants and Flags in the define.h file #
 
-Some Constants are defined as c++ preprocessor directives in the include.h file. After changing one of these constants, the code has to be recompiled.
+Some Constants are defined as c++ preprocessor directives in the define.h file. After changing one of these constants, the code has to be recompiled.
 
 Here it can also be chosen if the aeCount grid is used and if the gas disc is included or not.
 
- * FormatS Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same files.
- *  FormatT Output file format for time steps. 0: all time steps write to different files, 1: all time steps write to the same files.
- * FormatP Output file format for particles. 0: all particles write to different files, 1: all particles write to the same files.
- * Rcut f Radius where bodies get ejected, in AU
- * RcutSun f Radius where bodies fall into the central mass, in AU
- * Kg f Squared Gaussian gravitation constant
- * pc f Factor in Prechecker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
- * FGN i Number of elements in table for fastfg
- * MaxColl i Maximum number of Collisions per time step
- * cef f Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
+ * FormatS i: Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same files.
+ * FormatT i: Output file format for time steps. 0: all time steps write to different files, 1: all time steps write to the same files.
+ * FormatP i: Output file format for particles. 0: all particles write to different files, 1: all particles write to the same files.
+ * Rcut f: Radius where bodies get ejected, in AU
+ * RcutSun f: Radius where bodies fall into the central mass, in AU
+ * pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
+ * MaxColl i: Maximum number of Collisions per time step that can be stored
+ * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
+ * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
+ * useGridae i: By setting this flag, the [aeGrid](#markdown-header-aegrid) is used.
+ * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
+ * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
+ * useGas i: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
 
-Where i means an integer and f a floating point value. 
+
+Here i means an integer and f a floating point value. 
 
 # The Initial Conditions #
 The initial conditions are read from the file specified in 'param.dat' (Input file = ). The initial conditions must be a text file and the format must correspond to the values set in the 'param.dat' file (Input file Format: << ... >> ). The data of each particle has to be written in a new lines in text format. Don't write the central mass (Sun) in the initial condition file, it is set automatically to the heliocentric origin with a mass specified in the 'parm.dat' file. 
@@ -254,7 +256,7 @@ In this file are listed the details of the collisions between particle i and j j
     .
 
 ## The ejection file Ejections<name>.dat
-In this file are listed the details of the ejected particles. An ejection happens if a particle's distance to the central mass is greater than the Rcut value specified in the 'defines.h' file, or smaller than the 'RcutSun' value.
+In this file are listed the details of the ejected particles. An ejection happens if the distance of a particle to the central mass is greater than the Rcut value specified in the 'defines.h' file, or smaller than the 'RcutSun' value.
 
     time index m r x y z vx vy vz Sx Sy Sz case
     .
@@ -287,7 +289,8 @@ A simulation can be restarted from each coordinate output file, by using the -R 
 Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files are not deleted and the new data is added at the end of these files. But the coordinate output files are OVERWRITTEN with the new data. By restarting a simulation the values of E0 and the inner Energy are read out from the original run and used again.
 One can also use a coordinate output file to start a new simulation run with totally different parameters by using the Output file as a new initial condition file. the Input file Format should then be of the form << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
 
-When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch.
+When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file the IgnoreLockFile Flag in the define.h file can be set t
+o 1.
 
 # aeLimits #
 The aeLimits values amin, amax, emin and emax are limits for the semi major axis and eccentricity for an individual particle. The values can be set in the initial condition file. If the corresponding particle spends time in the given area in a-e space, then a counter is increased.

@@ -1,5 +1,5 @@
 // *********************************************************
-//This kernel computes the kinet energy of the center of mass
+//This kernel computes the kinetic energy of the center of mass
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
@@ -75,7 +75,7 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 	}
 }
 // *********************************************************
-//This kernel computes the kinet energy of the center of mass
+//This kernel computes the kinetic energy of the center of mass
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
@@ -158,7 +158,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 	}
 }
 // *********************************************************
-//This kernel computes the kinet energy of the center of mass
+//This kernel computes the kinetic energy of the center of mass
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
