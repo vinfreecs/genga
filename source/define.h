@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define Version 2.99
+#define Version 3.0
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -27,7 +27,7 @@
 #define IgnoreLockFile 1
 
 //Gas Grid. See Morishima, Stadel and Moore 2010 for more details
-#define useGas 1			// 1 or 0
+#define useGas 0			// 1 or 0
 #define Gasnr_g 189
 #define Gasnz_g 50
 #define Gasnr_p 150

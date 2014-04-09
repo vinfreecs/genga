@@ -326,7 +326,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double3 *vcom_d, double dTime, double *Msun_d, double dt, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double dTime, double *Msun_d, double dt, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -629,34 +629,34 @@ __host__ void Data::gasEnergyCall(int NB, double* Energy_d, double *test_d, doub
 }
 
 __host__ void Data::GasAccCall_16(double t, double dt){
-	GasAcc <<< 1, 16 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 1, 16 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_32(double t, double dt){
-        GasAcc <<< 1, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+        GasAcc <<< 1, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_64(double t, double dt){
-        GasAcc <<< 2, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+        GasAcc <<< 2, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_128(double t, double dt){
-	GasAcc <<< 4, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 4, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_256(double t, double dt){
-	GasAcc <<< 8, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 8, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_512(double t, double dt){
-	GasAcc <<< 16, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 16, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_1024(double t, double dt){
-	GasAcc <<< 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_2048(double t, double dt){
-	GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_small(double t, double dt){
-	GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_M(double t, double dt){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, vcom_d, t/365.25, Msun_d, dt, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
 	gasEnergy_kernel< 16, 32> <<< 1, 16, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
