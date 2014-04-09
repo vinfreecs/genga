@@ -9,8 +9,10 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 
         int idy = threadIdx.x;
 
-        __shared__ double3 p_s[Bl2];
+        __shared__ double4 p_s[Bl2];
         __shared__ double4 v4_s[Bl];
+
+	double m = x4_d[idy].w;
 
         if(idy < N){
                 v4_s[idy] = v4_d[idy];
@@ -22,7 +24,6 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
                 v4_s[idy].w = 0.0;
         }
 
-	double m = x4_d[idy].w;
 
         __syncthreads();
 
@@ -30,22 +31,25 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
                 p_s[idy].x = m * v4_s[idy].x;
                 p_s[idy].y = m * v4_s[idy].y;
                 p_s[idy].z = m * v4_s[idy].z;
+		p_s[idy].w = m;
         }
         else{
                 p_s[idy].x = 0.0;
                 p_s[idy].y = 0.0;
                 p_s[idy].z = 0.0;
+		p_s[idy].w = 0.0;
         }
 
         if(Bl <= 32){
                 p_s[idy + Bl].x = 0.0;
                 p_s[idy + Bl].y = 0.0;
                 p_s[idy + Bl].z = 0.0;
+                p_s[idy + Bl].w = 0.0;
         }
 
         __syncthreads();
         if(idy < 32){
-                volatile double3 *p = p_s;
+                volatile double4 *p = p_s;
                 if(Bl >= 64) p[idy].x += p[idy + 32].x;
                 if(Bl >= 32) p[idy].x += p[idy + 16].x;
                 if(Bl >= 16) p[idy].x += p[idy + 8].x;
@@ -66,12 +70,32 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
                 if(Bl >= 8) p[idy].z += p[idy + 4].z;
                 if(Bl >= 4) p[idy].z += p[idy + 2].z;
                 if(Bl >= 2) p[idy].z += p[idy + 1].z;
+
+                if(Bl >= 64) p[idy].w += p[idy + 32].w;
+                if(Bl >= 32) p[idy].w += p[idy + 16].w;
+                if(Bl >= 16) p[idy].w += p[idy + 8].w;
+                if(Bl >= 8) p[idy].w += p[idy + 4].w;
+                if(Bl >= 4) p[idy].w += p[idy + 2].w;
+                if(Bl >= 2) p[idy].w += p[idy + 1].w;
         }
         __syncthreads();
 	if(idy == 0){
                 volatile double Tsun = 0.5 / Msun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
-		U_d[0] += f * Tsun;	
+		U_d[0] += f * Tsun;
+	}
+	if(idy < N && f == 1){
+		//Convert to Heliocentric coordinates
+		v4_d[idy].x += p_s[0].x / Msun;
+		v4_d[idy].y += p_s[0].y / Msun;
+		v4_d[idy].z += p_s[0].z / Msun;
+
+	}
+	if(idy < N && f == -1){
+		//Convert to Democratic coordinates
+		v4_d[idy].x -= p_s[0].x / (Msun + p_s[0].w);
+		v4_d[idy].y -= p_s[0].y / (Msun + p_s[0].w);
+		v4_d[idy].z -= p_s[0].z / (Msun + p_s[0].w);
 	}
 }
 // *********************************************************
@@ -85,11 +109,12 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 
 	int idy = threadIdx.x;
 
-        __shared__ double3 p_s[Bl];
+        __shared__ double4 p_s[Bl];
 
         p_s[idy].x = 0.0;
         p_s[idy].y = 0.0;
         p_s[idy].z = 0.0;
+        p_s[idy].w = 0.0;
 
         for(int i = 0; i < NB ;i += Bl){
 		double m = x4_d[idy + i].w;
@@ -97,6 +122,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                         p_s[idy].x += m * v4_d[idy + i].x;
                         p_s[idy].y += m * v4_d[idy + i].y;
                         p_s[idy].z += m * v4_d[idy + i].z;
+                        p_s[idy].w += m;
                 }
         }
         __syncthreads();
@@ -106,6 +132,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                         p_s[idy].x += p_s[idy + 256].x;
                         p_s[idy].y += p_s[idy + 256].y;
                         p_s[idy].z += p_s[idy + 256].z;
+                        p_s[idy].w += p_s[idy + 256].w;
                 }
         }
         __syncthreads();
@@ -115,6 +142,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                         p_s[idy].x += p_s[idy + 128].x;
                         p_s[idy].y += p_s[idy + 128].y;
                         p_s[idy].z += p_s[idy + 128].z;
+                        p_s[idy].w += p_s[idy + 128].w;
                 }
         }
         __syncthreads();
@@ -124,11 +152,12 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                         p_s[idy].x += p_s[idy + 64].x;
                         p_s[idy].y += p_s[idy + 64].y;
                         p_s[idy].z += p_s[idy + 64].z;
+                        p_s[idy].w += p_s[idy + 64].w;
                 }
         }
         __syncthreads();
 	if(idy < 32){
-                volatile double3 *p = p_s;
+                volatile double4*p = p_s;
                 p[idy].x += p[idy + 32].x;
                 p[idy].x += p[idy + 16].x;
                 p[idy].x += p[idy + 8].x;
@@ -149,12 +178,38 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                 p[idy].z += p[idy + 4].z;
                 p[idy].z += p[idy + 2].z;
                 p[idy].z += p[idy + 1].z;
+    
+	        p[idy].w += p[idy + 32].w;
+                p[idy].w += p[idy + 16].w;
+                p[idy].w += p[idy + 8].w;
+                p[idy].w += p[idy + 4].w;
+                p[idy].w += p[idy + 2].w;
+                p[idy].w += p[idy + 1].w;
         }
         __syncthreads();
         if(idy == 0){
                 volatile double Tsun = 0.5 / Msun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
+	}
+        for(int i = 0; i < NB ;i += Bl){
+                double m = x4_d[idy + i].w;
+                if(m > 0 && idy + i < N && f == 1){
+			//Convert to Heliocentric coordinates
+			v4_d[idy + i].x += p_s[0].x / Msun;
+			v4_d[idy + i].y += p_s[0].y / Msun;
+			v4_d[idy + i].z += p_s[0].z / Msun;
+
+		}
+	}
+        for(int i = 0; i < NB ;i += Bl){
+                double m = x4_d[idy + i].w;
+                if(m > 0 && idy + i < N && f == -1){
+			//Convert to Democratic coordinates
+			v4_d[idy + i].x -= p_s[0].x / (Msun + p_s[0].w);
+			v4_d[idy + i].y -= p_s[0].y / (Msun + p_s[0].w);
+			v4_d[idy + i].z -= p_s[0].z / (Msun + p_s[0].w);
+		}
 	}
 }
 // *********************************************************
@@ -168,7 +223,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
-	__shared__ volatile double3 p_s[Bl + Nmax / 2];
+	__shared__ volatile double4 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
 	volatile double Msun;
 	int index;
@@ -179,6 +234,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
+		p_s[idy].w = m;
 		Msun = Msun_d[st_s[idy]];
 		index = index_d[id] % 100;
 
@@ -188,6 +244,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		p_s[idy].x = 0.0;
 		p_s[idy].y = 0.0;
 		p_s[idy].z = 0.0;
+		p_s[idy].w = 0.0;
 		Msun = 0.0;
 		index = -1;
 	}
@@ -200,6 +257,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
 			p_s[idy + Bl].y = m * v4_d[id + Bl].y;
 			p_s[idy + Bl].z = m * v4_d[id + Bl].z;
+			p_s[idy + Bl].w = m;
 			index = index_d[id + Bl] % 100;
 		}
 		else{
@@ -207,6 +265,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 			p_s[idy + Bl].x = 0.0;
 			p_s[idy + Bl].y = 0.0;
 			p_s[idy + Bl].z = 0.0;
+			p_s[idy + Bl].w = 0.0;
 			index = -1;
 		}
 	}
@@ -215,7 +274,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 	volatile double px;
 	volatile double py;
 	volatile double pz;
-
+	volatile double pw;	
 
 	if(Nmax >= 16){
 		__syncthreads();
@@ -223,12 +282,14 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		px = (p_s[idy + 8].x) * f;	
 		py = (p_s[idy + 8].y) * f;
 		pz = (p_s[idy + 8].z) * f;
+		pw = (p_s[idy + 8].w) * f;
 
 		__syncthreads();
 	
 		p_s[idy].x += px;
 		p_s[idy].y += py;
 		p_s[idy].z += pz;
+		p_s[idy].w += pw;
 	}
 
 	if(Nmax >= 8){
@@ -237,12 +298,14 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		px = (p_s[idy + 4].x) * f;
 		py = (p_s[idy + 4].y) * f;
 		pz = (p_s[idy + 4].z) * f;
+		pw = (p_s[idy + 4].w) * f;
 
 		__syncthreads();
 
 		p_s[idy].x += px;
 		p_s[idy].y += py;
 		p_s[idy].z += pz;
+		p_s[idy].w += pw;
 	}
 
 	__syncthreads();
@@ -251,12 +314,14 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 	px = (p_s[idy + 2].x) * f;
 	py = (p_s[idy + 2].y) * f;
 	pz = (p_s[idy + 2].z) * f;
+	pw = (p_s[idy + 2].w) * f;
 
 	__syncthreads();
 
 	p_s[idy].x += px;
 	p_s[idy].y += py;
 	p_s[idy].z += pz;
+	p_s[idy].w += pw;
 
 	__syncthreads();
 
@@ -264,12 +329,14 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 	px = (p_s[idy + 1].x) * f;
 	py = (p_s[idy + 1].y) * f;
 	pz = (p_s[idy + 1].z) * f;
+	pw = (p_s[idy + 1].w) * f;
 
 	__syncthreads();
 
 	p_s[idy].x += px;
 	p_s[idy].y += py;
 	p_s[idy].z += pz;
+	p_s[idy].w += pw;
 
 	__syncthreads();
 	//now the sum is complete
@@ -277,5 +344,15 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
                 volatile double Tsun = 0.5 / Msun * ( p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[st_s[idy]] += ff * Tsun;
+	}
+	if(id < NT && id >= 0 && f == 1){
+		v4_d[id].x += p_s[idy].x / Msun;
+		v4_d[id].y += p_s[idy].y / Msun;
+		v4_d[id].z += p_s[idy].z / Msun;
+	}
+	if(id < NT && id >= 0 && f == -1){
+		v4_d[id].x -= p_s[idy].x / (Msun + p_s[idy].w);
+		v4_d[id].y -= p_s[idy].y / (Msun + p_s[idy].w);
+		v4_d[id].z -= p_s[idy].z / (Msun + p_s[idy].w);
 	}
 }

@@ -792,7 +792,7 @@ __host__ int Data::step_256(double t){
 #if useGas > 0
 com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 GasAccCall_256(t, dt * Ct[0]);
-com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+com128_kernel < 256, 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0],  test_d, N_h[0], -1);
 #endif
 	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1

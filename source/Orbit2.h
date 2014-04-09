@@ -44,6 +44,7 @@ public:
 	int *Gridaecount_h, *Gridaecount_d;
 	long long *GridaecountS_h;
 	long long *GridaecountT_h;
+	double3 *vcom_h, *vcom_d;
 
 	double *K_d;
 	double *Kold_d;
