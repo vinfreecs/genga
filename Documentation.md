@@ -8,6 +8,9 @@
 
 [TOC]
 
+# License #
+GENGA is free to use, but when results from GENGA are published, then the following paper has to be referenced: 
+The GENGA Code: Gravitational Encounters in N-body simulations with GPU Acceleration (Grimm & Stadel 2014).
 
 # Requirements #
 
