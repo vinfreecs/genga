@@ -11,3 +11,5 @@ GENGA is a hybrid symplectic N-body integratori, designed to integrate planet an
 pairs.
 
 [A Documentation of GENGA can be found here](https://bitbucket.org/sigrimm/genga/src/tip/Documentation.md)
+
+[A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
