@@ -92,6 +92,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &groupIndexOld_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
+	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double));
 #else
 	aold_d = NULL;
 	K_d = NULL;
@@ -101,6 +102,7 @@ __host__ void Data::AllocateOrbitt(){
 	groupIndexOld_d = NULL;
 	groupIndexsmall_d = NULL;
 	groupIndexsmallOld_d = NULL;
+	StopTime_d = NULL;
 #endif
 
 	cudaMalloc((void **) &x4small_d,NsmallT*sizeof(double4));
@@ -815,7 +817,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *Bdd1old_d, double3* aold_d, int NB){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *StopTime_d, double *Bdd1old_d, double3* aold_d, int NB){
 
 	int NOld;
 	int N = N_d[st];
@@ -898,6 +900,10 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					Bdd1old_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
 					Bdd1old_d[(N-1 + NBS) * NB + i] = 1.0;
 					Bdd1old_d[i * NB + (N-1 + NBS)] = 1.0;
+					StopTime_d[(j + NBS) * NB + i] = StopTime_d[(N-1 + NBS) * NB + i];
+					StopTime_d[i * NB + j + NBS] = StopTime_d[i * NB + (N-1 + NBS)];
+					StopTime_d[(N-1 + NBS) * NB + i] = -1.0;
+					StopTime_d[i * NB + (N-1 + NBS)] = -1.0;
 				}
 #endif
 
@@ -1090,8 +1096,14 @@ __host__ void Data::Ejectionsmall(double time){
 				}
 				if( rsq < RcutSun * RcutSun && x4small_h[i + NsmallS].w >= 0){
 					c = -2;
-					if(Nst == 1) printf("Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
-					else printf("In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
+					if(Nst == 1){
+						printf("Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
+						fprintf(logfile, "Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
+					}
+					else{
+						printf("In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
+						fprintf(logfile, "In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
+					}
 				}
 				if(c < 0){
 					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
@@ -1115,7 +1127,7 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, Bdd1old_d, aold_d, NB[st]);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, Bdd1old_d, aold_d, NB[st]);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d);
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1223,7 +1235,7 @@ __global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
 
 
 
-//This function stopps simulations with less than the minimal number of bodies, and rearranges the memory
+//This function stopps simulations with less than the minimal number of bodies, and rearanges the memory
 __host__ void Data::stopSimulations(){
 	NT = 0;
 	NsmallT = 0;
@@ -1415,6 +1427,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(groupIndexOld_d);
 	cudaFree(groupIndexsmall_d);
 	cudaFree(groupIndexsmallOld_d);
+	cudaFree(StopTime_d);
 #endif
 
 	cudaFree(Coll_d);

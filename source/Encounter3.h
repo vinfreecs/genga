@@ -16,7 +16,7 @@
 //
 //E = 0: Used for Critical Radius 
 //E = 1: Used for Physical Radius 
-//E = 2: Udes for Critical Radius with Test Particles
+//E = 2: Used for Critical Radius with Test Particles
 //Code is adapted from Mercury
 //
 //Authors: Simon Grimm, Joachim Stadel
@@ -283,7 +283,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 ////March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double *Bdd1old_d, int NB, double t, int *groupIndexOld_d, double3 *aold_d){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double *StopTime_d, double *Bdd1old_d, int NB, double t, int *groupIndexOld_d, double3 *aold_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -301,7 +301,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 #if G3 == 0
 		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0);
 #else
-		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], Bdd1old_d[ii * NB + jj], Bdd1old_d[jj * NB + ii], t, groupIndexOld_d[ii], groupIndexOld_d[jj], aold_d[ii], aold_d[jj]);
+		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], Bdd1old_d[ii * NB + jj], Bdd1old_d[jj * NB + ii], t, groupIndexOld_d[ii], groupIndexOld_d[jj], aold_d[ii], aold_d[jj]);
 #endif
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);

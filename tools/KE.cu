@@ -7,7 +7,7 @@
 void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc){
 
 	double rsq, vsq, u, ir, ia;
-	double t1, ria, ien, ec, es;
+	double t1, ria, ien2, ec, es2;
 	double3 h3;
 	double h2, h, t;
 
@@ -21,10 +21,10 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc)
 
         t1 = ia*ia;
         ria = rsq*ir*ia;
-        ien = rsqrt(mu*t1*ia);
+        ien2 = 1.0 / (mu*t1*ia);
         ec = 1.0-ria;
-        es = u*t1*ien;
-        e = sqrt(ec*ec + es*es);
+        es2 = u * u * t1 * t1 * ien2;
+        e = sqrt(ec*ec + es2);
 
 
 	h3.x = x4i.y * v4i.z - x4i.z * v4i.y;
@@ -75,47 +75,51 @@ int main(int argc, char*argv[]){
 
 	}
 
-	int N = 2050;
+	printf("tmin: %ld, tmax: %ld, step: %d, Name: %s\n", kmin, kmax, step, X);
+
+	int N = 110000;
 	int NN = 0;
 	double Msun = 1.0;
 
-	double3 x[N], v[N], spin[N];
+	double3 x, v, spin;
 	double xOld;
-	double m[N], r[N], a[N], e[N], inc[N];
+	double m, r, a, e, inc;
 	double s, t;
 	int index;
 
 	for(long long int k = kmin; k <= kmax; k += step){	    
                 sprintf(outputfilename, "aei%s_%.12d.dat", X, k);
 
-
         	index = -1;
         	t = 1.0e8;
 
 		sprintf(inputfilename, "Out%s_%.12d.dat", X, k);	
 		inputfile = fopen(inputfilename, "r");
-		if(inputfile == NULL) continue;
+		if(inputfile == NULL){
+printf("%s skipped\n", inputfilename);
+			continue;
+		}
 printf("%s\n", inputfilename);
                 FILE *outputfile;
                 outputfile = fopen(outputfilename, "a");
 		index = -1;
-		x[0].x = 0.0;
+		x.x = 0.0;
 		for(int i = 0; i < N; ++i){
-			xOld = x[i].x;
+			xOld = x.x;
                         fscanf (inputfile, "%lf",&t);
                         fscanf (inputfile, "%d",&index);
 //printf("%d %g %d\n", i, t, index);
-			fscanf (inputfile, "%lf",&m[i]);
-			fscanf (inputfile, "%lf",&r[i]);
-			fscanf (inputfile, "%lf",&x[i].x);
-			fscanf (inputfile, "%lf",&x[i].y);
-			fscanf (inputfile, "%lf",&x[i].z);
-			fscanf (inputfile, "%lf",&v[i].x);
-			fscanf (inputfile, "%lf",&v[i].y);
-			fscanf (inputfile, "%lf",&v[i].z);
-                        fscanf (inputfile, "%lf",&spin[i].x);
-                        fscanf (inputfile, "%lf",&spin[i].y);
-                        fscanf (inputfile, "%lf",&spin[i].z);
+			fscanf (inputfile, "%lf",&m);
+			fscanf (inputfile, "%lf",&r);
+			fscanf (inputfile, "%lf",&x.x);
+			fscanf (inputfile, "%lf",&x.y);
+			fscanf (inputfile, "%lf",&x.z);
+			fscanf (inputfile, "%lf",&v.x);
+			fscanf (inputfile, "%lf",&v.y);
+			fscanf (inputfile, "%lf",&v.z);
+                        fscanf (inputfile, "%lf",&spin.x);
+                        fscanf (inputfile, "%lf",&spin.y);
+                        fscanf (inputfile, "%lf",&spin.z);
 			fscanf (inputfile, "%lf",&s);
 			fscanf (inputfile, "%lf",&s);
 			fscanf (inputfile, "%lf",&s);
@@ -124,16 +128,13 @@ printf("%s\n", inputfilename);
 			fscanf (inputfile, "%lf",&s);
 			fscanf (inputfile, "%lf",&s);
 			fscanf (inputfile, "%lf",&s);
-                        if(xOld == x[i].x){
+                        if(xOld == x.x){
                                 NN = i;
 printf("%d\n", NN);
                                 break;
                         }
-		}
-
-		for(int i = 0; i < NN; ++i){
-			aei(x[i], v[i], Msun + m[i], a[i], e[i], inc[i]);
-			fprintf(outputfile,"%g %d %g %g %g %g %g\n", t, index, a[i], e[i], inc[i], m[i], r[i]);
+			aei(x, v, Msun + m, a, e, inc);
+			fprintf(outputfile,"%g %d %g %g %g %g %g\n", t, index, a, e, inc, m, r);
 		}
 		fclose(outputfile);
 	}
