@@ -225,89 +225,89 @@ int main(int argc, char*argv[]){
 	sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, 0);
 	D.poincarefile = fopen(D.poincarefilename, "w");
 #endif
-for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
-	double t = ts * D.P.idt + D.P.ict * 365.25;
-	if(D.Nst > 1){
-		er = D.step_M(t);
-		if(er == 0) return 0;
-	}
-	else{
-		if(D.P.UseTestParticles == 1){
-			er = D.step_small(t);
+	for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
+		double t = ts * D.P.idt + D.P.ict * 365.25;
+		if(D.Nst > 1){
+			er = D.step_M(t);
 			if(er == 0) return 0;
 		}
-		else switch(D.NB[0]){
-			case 16: D.step_16(t);
-			break;
-			case 32: D.step_32(t);
-			break;
-			case 64: D.step_64(t);
-			break;
-			case 128: D.step_128(t);
-			break;
-			case 256: D.step_256(t);
-			break;
-			case 512: D.step_512(t);
-			break;
-			case 1024: D.step_1024(t);
-			break;
-			case 2048: D.step_2048(t);
-			break;
-		}
-	}
-
-		cudaDeviceSynchronize();
-		error = cudaGetLastError();
-		if(error != 0){
-			printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
-			fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
-			return 0;
+		else{
+			if(D.P.UseTestParticles == 1){
+				er = D.step_small(t);
+				if(er == 0) return 0;
+			}
+			else switch(D.NB[0]){
+				case 16: D.step_16(t);
+				break;
+				case 32: D.step_32(t);
+				break;
+				case 64: D.step_64(t);
+				break;
+				case 128: D.step_128(t);
+				break;
+				case 256: D.step_256(t);
+				break;
+				case 512: D.step_512(t);
+				break;
+				case 1024: D.step_1024(t);
+				break;
+				case 2048: D.step_2048(t);
+				break;
+			}
 		}
 
-		//Check for too big groups//
-		if(D.Nst == 1){
-			er = D.MaxGroups(ts, t);
-			if(er == 0) return 0;
-		}
+			cudaDeviceSynchronize();
+			error = cudaGetLastError();
+			if(error != 0){
+				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
+				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+				return 0;
+			}
 
-		//Check for too many Collisions//
-		if(D.Ncoll_m[0] >= MaxColl-1){
-			D.printMaxColl(ts);
-			return 0;
-		}
-		//Print Energy and log information//
-		if(ts % D.P.ei == 0){
-			D.EnergyOutput(ts, t);
-		}
+			//Check for too big groups//
+			if(D.Nst == 1){
+				er = D.MaxGroups(ts, t);
+				if(er == 0) return 0;
+			}
+
+			//Check for too many Collisions//
+			if(D.Ncoll_m[0] >= MaxColl-1){
+				D.printMaxColl(ts);
+				return 0;
+			}
+			//Print Energy and log information//
+			if(ts % D.P.ei == 0){
+				D.EnergyOutput(ts, t);
+			}
 
 #if useGridae 
-		if(ts % 10000 == 0){
-			D.copyGridae(ts);
-		}
-#endif
-//test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
-		//Print Output//
-		if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
-			D.CoordinateOutput(ts, t);
-#if useGridae
-			D.GridaeOutput(ts);
-#endif
-#if poincareFlag == 1
-			if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
-				fclose(D.poincarefile);
-				sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, ts);
-				//Erase old Poincare files
-				D.poincarefile = fopen(D.poincarefilename, "w");
+			if(ts % 10000 == 0){
+				D.copyGridae(ts);
 			}
 #endif
-		}
-		// print time information //
-		if(ts % D.P.ci == 0){
-			D.printTime(ts);
-			fflush(D.masterfile);
-		}
+//test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
+			//Print Output//
+			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
+				D.CoordinateOutput(ts, t);
+#if useGridae
+				D.GridaeOutput(ts);
+#endif
+#if poincareFlag == 1
+				if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
+					fclose(D.poincarefile);
+					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, ts);
+					//Erase old Poincare files
+					D.poincarefile = fopen(D.poincarefilename, "w");
+				}
+#endif
+			}
+			// print time information //
+			if(ts % D.P.ci == 0){
+				D.printTime(ts);
+				fflush(D.masterfile);
+			}
 
-} // end of time step loop
+	} // end of time step loop
 #if poincareFlag == 1
 	fclose(D.poincarefile);
 #endif

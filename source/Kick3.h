@@ -519,11 +519,26 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	int groupIndexi = groupIndex_d[idx];
 #endif
 
-	double4 x4j = x4_d[idy];
-	double rcritj = rcrit_d[idy];
-	double rcritvj = rcritv_d[idy];
+	double4 x4j;
+	double rcritj, rcritvj;
+
+	if(idy < Bl){
+		x4j = x4_d[idy];
+		rcritj = rcrit_d[idy];
+		rcritvj = rcritv_d[idy];
+	}
+	else{
+		x4j.x = 0.0;
+		x4j.y = 0.0;
+		x4j.z = 0.0;
+		x4j.w = 0.0;
+		rcritj = 0.0;
+		rcritvj = 0.0;
+	}
 #if G3 == 1
-	int groupIndexj = groupIndex_d[idy];
+	int groupIndexj;
+	if(idy < Bl) groupIndexj = groupIndex_d[idy];
+	else groupIndexj = 0;
 #endif
 
 
@@ -727,7 +742,7 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			b1[idy-32].z += b1[idy + 2-32].z;
 			b1[idy-32].z += b1[idy + 1-32].z;
 		}
-}
+	}
 
 
 	__shared__ int Ne;
