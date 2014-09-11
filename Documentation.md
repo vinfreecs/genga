@@ -128,6 +128,7 @@ Here it can also be chosen if the aeCount grid is used and if the gas disc is in
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * useGas i: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
+ * NmaxTestParticles i: Set the maximal number of massive bodies in the test particle mode.
 
 
 Here i means an integer and f a floating point value. 
@@ -331,7 +332,7 @@ The parameters for the gas disc can be set in:
     * power law exponent for the gas disc (must be 1 in the current version of GENGA)
 
 # Test particle mode
-The test particle mode should be used in simulation with only up to 16 massive bodies and lots of massless test particles. The test particles doesn't interact with other test particles.
+The test particle mode should be used in simulation with only a small number of massive bodies and lots of massless test particles. The test particles doesn't interact with other test particles. The maximum number of massive bodies in the test particle mode can be set with the NmaxTestParticles parameter in the file define.h. Increasing the number of massive bodies reduces the possible number of test particles due to limited memory.
 The test particle mode can be started with the -TP 1 console argument are by setting the 'use Test Particles' value in the 'param.dat' file to one. 
 
 # Multi simulation mode
