@@ -16,12 +16,11 @@ __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 		r.x = x4j.x - x4i.x;
 		r.y = x4j.y - x4i.y;
 		r.z = x4j.z - x4i.z;
-		rsq = r.x*r.x + r.y*r.y + r.z*r.z + 1.0e-30;
+		rsq = r.x*r.x + r.y*r.y + r.z*r.z;
 
 		if(rsq > 0){
 			ir = 1.0/sqrt(rsq);
 			a = -x4j.w * ir;
-
 		}
 	}
 	return a;
@@ -45,7 +44,6 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 		ir = 1.0/sqrt(rsq);
 		a = -ksqMsun * x4i.w * ir;
 	}
-
 	return a;
 
 }
@@ -386,10 +384,8 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 
 			__syncthreads();
 			if(idy == 0){
-				V_s[0] *= 0.5 * ksq * x4_d[idx].w;
-
+				V_s[0] *= (0.5 * ksq) * x4_d[idx].w;
 				V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
-
 				Energy_d[idx] = V_s[0];
 			}
 		}
@@ -1123,7 +1119,7 @@ test_d[idy] = E_s[idy];
 }
 
 // *************************************
-//This function falls the Energy kernels
+//This function calls the Energy kernels
 //
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
@@ -1173,7 +1169,7 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *sp
 	}
 }
 // *************************************
-//This function falls the EjectionEnergy kernels
+//This function calls the EjectionEnergy kernels
 //
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014

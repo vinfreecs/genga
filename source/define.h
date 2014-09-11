@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define Version 3.01
+#define Version 3.02
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -13,6 +13,7 @@
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
+
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
@@ -44,6 +45,10 @@
 #define Kg 2.959122082855911e-4         //Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
 
+
+//Maximum number of massive bodies in the test particle mode
+#define NmaxTestParticles 16
+
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
 #define NmaxM 16
@@ -63,7 +68,7 @@
 // * Only for testing **
 #define G3 0				//New integrator scheme
 #define G3Limit	2.0e-13
-#define G3Limit2 2.0e-14 //1.0e-13
+#define G3Limit2 2.0e-15 //2.0e-14
 // *********************
 
 struct Parameter{

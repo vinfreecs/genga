@@ -214,16 +214,16 @@ __host__ void Data::EnergyOutput(long long ts, double t){
 		cudaMemcpy(Nencpairssmall_h + st + 1, Nencpairssmall_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 
 		if(Nst == 1){
-			fprintf(GSF[st].logfile, "    CE: %d; ", Nencpairs2_h[0]);
-			fprintf(GSF[0].logfile, "groups: %d, 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9], Nenc_m[10], Nenc_m[11]);
-			fprintf(GSF[st].logfile, "    Test Particle CE: %d; ", Nencpairssmall2_h[0]);
-			fprintf(GSF[0].logfile, "groups: %d, 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nencsmall_m[0], Nencsmall_m[1], Nencsmall_m[2], Nencsmall_m[3], Nencsmall_m[4], Nencsmall_m[5], Nencsmall_m[6], Nencsmall_m[7], Nencsmall_m[8], Nencsmall_m[9], Nencsmall_m[10], Nencsmall_m[11]);
+			fprintf(GSF[st].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+			fprintf(GSF[0].logfile, "groups: %d; 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9], Nenc_m[10], Nenc_m[11]);
+			fprintf(GSF[st].logfile, "    CE TP: %d; ", Nencpairssmall2_h[0]);
+			fprintf(GSF[0].logfile, "groups: %d; 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nencsmall_m[0], Nencsmall_m[1], Nencsmall_m[2], Nencsmall_m[3], Nencsmall_m[4], Nencsmall_m[5], Nencsmall_m[6], Nencsmall_m[7], Nencsmall_m[8], Nencsmall_m[9], Nencsmall_m[10], Nencsmall_m[11]);
 
-			fprintf(GSF[0].logfile, "    Precheck-pairs: %d\n    Test Particles Precheck-pairs: %d\n", Nencpairs_h[0], Nencpairssmall_h[0]);
+			fprintf(GSF[0].logfile, "    Precheck-pairs:    %d\n    TP Precheck-pairs: %d\n", Nencpairs_h[0], Nencpairssmall_h[0]);
 		}
 		else{
-			fprintf(GSF[st].logfile, "    CE: %d\n    Test Particle CE: %d\n", Nencpairs2_h[st + 1], Nencpairssmall2_h[st + 1]);
-			fprintf(GSF[st].logfile, "    Precheck-pairs: %d\n    Test Particles Precheck-pairs: %d\n", Nencpairs_h[st + 1], Nencpairssmall_h[st + 1]);
+			fprintf(GSF[st].logfile, "    CE:    %d\n    CE TP: %d\n", Nencpairs2_h[st + 1], Nencpairssmall2_h[st + 1]);
+			fprintf(GSF[st].logfile, "    Precheck-pairs:    %d\n    TP Precheck-pairs: %d\n", Nencpairs_h[st + 1], Nencpairssmall_h[st + 1]);
 		}
 		fclose(GSF[st].logfile);
 

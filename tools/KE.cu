@@ -134,7 +134,7 @@ printf("%d\n", NN);
                                 break;
                         }
 			aei(x, v, Msun + m, a, e, inc);
-			fprintf(outputfile,"%g %d %g %g %g %g %g\n", t, index, a, e, inc, m, r);
+			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, m, r);
 		}
 		fclose(outputfile);
 	}

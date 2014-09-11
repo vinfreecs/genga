@@ -55,9 +55,9 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //E = 20: a + b + precheck. (initial step) used for Test particles in Test Particle Mode
 //E = 21: a + b + precheck. used for Test particles in Test Particle Mode
 //E = 22: a + precheck. used for Test particles in Test Particle Mode
-//E = 30: a + b + precheck. (initial step) used for massiv bodies in Test Particle Mode
-//E = 31: a + b + precheck. used for massiv bodies in Test Particle Mode
-//E = 32: a + precheck. used for massiv bodies in Test Particle Mode
+//E = 10: a + b + precheck. (initial step) used for massiv bodies in Test Particle Mode
+//E = 11: a + b + precheck. used for massiv bodies in Test Particle Mode
+//E = 12: a + precheck. used for massiv bodies in Test Particle Mode
 
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
@@ -125,19 +125,19 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
 			if( rsq >= pc * rcritv2) sb = s;
-//printf("%d %d %g\n", i, j, 1.0);
+//printf("%d %d %g %g\n", i, j, 1.0, 1.0 / ir);
 		}
 		else{
 			if(rsq <= 0.01 * rcritv2){
 				s = 0.0;
-//printf("%d %d %g\n", i, j, 0);
+//printf("%d %d %g %g\n", i, j, 0, 1.0 / ir);
 
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
 				s = ir3 * yy / (2.0*yy - 2.0*y + 1.0) * x4j.w;
-//printf("%d %d %g\n", i, j, yy / (2.0*yy - 2.0*y + 1.0));
+//printf("%d %d %g %g\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir);
 
 			}
 		}

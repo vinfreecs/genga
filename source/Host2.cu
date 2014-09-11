@@ -675,12 +675,6 @@ __host__ int Host::Param(int argc, char*argv[]){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
 		if(P.tRestart > 0) fprintf(GSF[st].logfile, "\n\n\n************** Restart Simulation at time step %lld *******************\n", P.tRestart);
-		if(P.UseTestParticles == 1 && N_h[st] > 32){
-			printf("Error: Number of bodies in Test particle mode too big: %d\n", N_h[st]);
-			fprintf(GSF[st].logfile, "Error: Number of bodies in Test particle mode too big: %d\n", N_h[st]);
-			fprintf(masterfile, "Error: Number of bodies in Test particle mode too big: %d\n", N_h[st]);
-			return 0;
-		}
 		fclose(GSF[st].logfile);
 	}
 	return 1;
@@ -913,6 +907,16 @@ __host__ int Host::size(){
 		
 		icNB[st] = NB[st];
 		Nconst[st] = N_h[st];
+
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+
+		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 2048)){
+			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
+			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
+			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
+			return 0;
+		}
+		fclose(GSF[st].logfile);
 	}
 	return 1;
 }
@@ -1041,7 +1045,7 @@ __host__ void Host::Tsizes(){
 	if(Nst == 1){
 		NT = NB[0];
 		NB2T = NB[0] * NB[0];
-		Nsmall2T = Nsmall_h[0] * 32;
+		Nsmall2T = Nsmall_h[0] * 2 * NmaxTestParticles;
 	}
 }
 

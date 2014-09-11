@@ -92,7 +92,9 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &groupIndexOld_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
-	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double));
+	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double4));
+	cudaMalloc((void **) &x4G3_d, NT * sizeof(double4));
+	cudaMalloc((void **) &v4G3_d, NT * sizeof(double4));
 #else
 	aold_d = NULL;
 	K_d = NULL;
@@ -103,6 +105,9 @@ __host__ void Data::AllocateOrbitt(){
 	groupIndexsmall_d = NULL;
 	groupIndexsmallOld_d = NULL;
 	StopTime_d = NULL;
+	x4G3_d = NULL;
+	v4G3_d = NULL;
+	
 #endif
 
 	cudaMalloc((void **) &x4small_d,NsmallT*sizeof(double4));
@@ -519,7 +524,7 @@ __host__ int Data::readic(int st){
 				v4_h[ii + NBS] = v;
 				spin_h[ii + NBS] = spin;
 				if(Nst == 1) index_h[ii + NBS] = index;
-				else index_h[ii + NBS] = index%100 + 100*st;
+				else index_h[ii + NBS] = index % 100 + 100*st;
 				aelimits_h[ii + NBS] = aelimits;
 				++ii;
 			}
@@ -528,7 +533,7 @@ __host__ int Data::readic(int st){
 				v4small_h[iismall + NsmallS] = v;
 				spinsmall_h[iismall + NsmallS] = spin;
 				if(Nst == 1) indexsmall_h[iismall + NsmallS] = index;
-				else indexsmall_h[iismall + NsmallS] = index%100 + 100*st;
+				else indexsmall_h[iismall + NsmallS] = index % 100 + 100*st;
 				aelimitssmall_h[iismall + NsmallS] = aelimits;
 				++iismall;
 			}
@@ -817,7 +822,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double *StopTime_d, double *Bdd1old_d, double3* aold_d, int NB){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, double *Bdd1old_d, double3* aold_d, int NB){
 
 	int NOld;
 	int N = N_d[st];
@@ -902,8 +907,14 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					Bdd1old_d[i * NB + (N-1 + NBS)] = 1.0;
 					StopTime_d[(j + NBS) * NB + i] = StopTime_d[(N-1 + NBS) * NB + i];
 					StopTime_d[i * NB + j + NBS] = StopTime_d[i * NB + (N-1 + NBS)];
-					StopTime_d[(N-1 + NBS) * NB + i] = -1.0;
-					StopTime_d[i * NB + (N-1 + NBS)] = -1.0;
+					StopTime_d[(N-1 + NBS) * NB + i].x = -1.0;
+					StopTime_d[i * NB + (N-1 + NBS)].x = -1.0;
+					StopTime_d[(N-1 + NBS) * NB + i].y = -1.0;
+					StopTime_d[i * NB + (N-1 + NBS)].y = -1.0;
+					StopTime_d[(N-1 + NBS) * NB + i].z = -1.0;
+					StopTime_d[i * NB + (N-1 + NBS)].z = -1.0;
+					StopTime_d[(N-1 + NBS) * NB + i].w = -1.0;
+					StopTime_d[i * NB + (N-1 + NBS)].w = -1.0;
 				}
 #endif
 

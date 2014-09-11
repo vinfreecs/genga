@@ -179,7 +179,6 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 // **************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
-//It works for the case of more than 64 bodies.
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
 //c = 1 : perform C Kick.
@@ -223,7 +222,7 @@ __global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Ms
 	a1_s[idy] = 0.0;
 	__syncthreads();
 
-	for (int i = 0; i < N + Nsmall; i+= Bl){
+	for(int i = 0; i < N + Nsmall; i+= Bl){
 		if(idy + i < N){
 			if(x4_d[idy + i].w > 0){
 				if(idx == 0) a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;

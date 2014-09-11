@@ -1,20 +1,22 @@
+#include "define.h"
 #include "directAcc.h"
 #include "Encounter3.h"
 
 // **************************************
-// For less than 64 bodies
+// For Test particles
+// For more than 64 bodies and less than 128 bodies
 //This Kernel intergrates the independent groups of close encunters for a time step
 //using a Bulirsh Stoer method with nb threds. Where n is the minimum of n^2 and 256
 //The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Septermber 2014
 //
 //
 //  ****************************************
-
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int *groupIndexOld_d){
+__global__ void BSBStep64small_kernel(double4 *x4small_d, double4 *v4small_d, double4 *xold_d, double4 *vold_d, double4 *xoldsmall_d, double4 *voldsmall_d, double *rcrit_d, double *rcritv_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *indexsmall_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, double3 *spinsmall_d, const int Nconst){
+
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -29,15 +31,12 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
 	__shared__ double rcritv_s[NN];
-	__shared__ double3 a0_s[nb * NN +NN];
 	__shared__ double3 a_s[nb * NN + NN];
 	__shared__ double4 xp_s[NN];
 	__shared__ double4 vp_s[NN];
 	__shared__ double4 xt_s[NN];
 	__shared__ double4 vt_s[NN];
-#if G3 == 1	
-	__shared__ int groupIndexOld_s[NN];
-#endif
+
 	__shared__ double3 dx_s[NN][8];
 	__shared__ double3 dv_s[NN][8];
 
@@ -49,16 +48,15 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	double3 scalex;
 	double3 scalev;
 
-	__shared__ double error_s[2*NN];
+	__shared__ double error_s[NN];
 	double test;
 	int idi;
-	int si = Encpairs2_d[ (st+1) * NB + idx].y; 
-	N2 = Encpairs2_d[si].y;
-//printf("BS %d %d %d %d %d\n", idx, st, si, N2, NB);
+	int si = Encpairssmall2_d[Nconst * idx + st].y; 
 
+	N2 = Encpairssmall_d[si * Nconst].y;		
 	if(idy < N2){
-		idi = Encpairs2_d[si * NB + idy].x;
-//printf("BS2 %d %d %d %d %d\n", idx, st, idi, index_d[idi], N2);
+		idi = Encpairssmall_d[si * Nconst + idy].x;
+//printf("BS2 %d %d %d \n", idx, st, idi);
 	}
 	else idi = 0;
 
@@ -69,33 +67,30 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
  	__syncthreads();
 
-	if(idy < N2){
+	if(idy == 0){
+		x4_s[idy] = xoldsmall_d[idi];
+		v4_s[idy] = voldsmall_d[idi];
+		rcritv_s[idy] = 0.0;
+	}	
+	else if(idy < N2){
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
-		rcritv_s[idy] = rcritv_d[idi];
-#if G3 == 1
-		groupIndexOld_s[idy] = groupIndexOld_d[idi];
-#endif
+		rcritv_s[idy] = rcritv_d[idi]; 
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
-		x4_s[idy].w = -1.0e-12;//0.0;
+		x4_s[idy].w = 0.0;
                 v4_s[idy].x = 0.0;
                 v4_s[idy].y = 0.0;
                 v4_s[idy].z = 0.0;
                 v4_s[idy].w = 0.0;
 		rcritv_s[idy] = 0.0;
-#if G3 == 1
-		groupIndexOld_s[idy] = -1;
-#endif
 	}
-	if(idy < NN){
-		a0_s[idy + nb*NN].x = 0.0;
-		a0_s[idy + nb*NN].y = 0.0;
-		a0_s[idy + nb*NN].z = 0.0;
 
+
+	if(idy < NN){
 		a_s[idy + nb*NN].x = 0.0;
                 a_s[idy + nb*NN].y = 0.0;
                 a_s[idy + nb*NN].z = 0.0;
@@ -103,48 +98,16 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	if(idy < MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;
+
 	}
-	if(idy < 2 * NN) error_s[idy] = 0.0;
-#if G3 == 1
-        a0_s[idy].x = 0.0;
-        a0_s[idy].y = 0.0;
-        a0_s[idy].z = 0.0;
-        for(int l = 0; l < NN; l += nb){
-		int iK = Encpairs2_d[si * NB + ii].x;
-		int jK = Encpairs2_d[si * NB + jj + l].x;
-                CorrectKick(x4_s[ii], x4_s[jj + l], a0_s[idy], groupIndexOld_s[ii], groupIndexOld_s[jj + l], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + t/0.01720209895, NB);
-        }
-        __syncthreads();
-        {
-                volatile double3 *a = a0_s;
-                if(nb >= 16) a[idy].x += a[idy + 8].x;
-                if(nb >= 8) a[idy].x += a[idy + 4].x;
-                if(nb >= 4) a[idy].x += a[idy + 2].x;
-                if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-                if(nb >= 16) a[idy].y += a[idy + 8].y;
-                if(nb >= 8) a[idy].y += a[idy + 4].y;
-                if(nb >= 4) a[idy].y += a[idy + 2].y;
-                if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-                if(nb >= 16) a[idy].z += a[idy + 8].z;
-                if(nb >= 8) a[idy].z += a[idy + 4].z;
-                if(nb >= 4) a[idy].z += a[idy + 2].z;
-                if(nb >= 2) a[idy].z += a[idy + 1].z;
-        }
-        __syncthreads();
-        if(idy < NN){
-                v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-                v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-                v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
-        }
-#endif
+	
+	if(idy < NN) error_s[idy] = 0.0;
 	__syncthreads();
-	for(int tt = 0; tt < 1000; ++tt){
+
+	for(int tt = 0; tt < 1000; ++ tt){
 	__syncthreads();
 
 		if(idy < N2){
-
 			scalex.x = 1.0 / (x4_s[idy].x * x4_s[idy].x + 1.0e-20);
 			scalex.y = 1.0 / (x4_s[idy].y * x4_s[idy].y + 1.0e-20);
 			scalex.z = 1.0 / (x4_s[idy].z * x4_s[idy].z + 1.0e-20);
@@ -155,50 +118,45 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 		}
 
-		a0_s[idy].x = 0.0;
-        	a0_s[idy].y = 0.0;
-        	a0_s[idy].z = 0.0;
-		__syncthreads();
-		for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
-#else
-			int iK = Encpairs2_d[si * NB + ii].x;
-			int jK = Encpairs2_d[si * NB + jj + l].x;
-			accEncG3(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
-#endif
-
-		}
-		__syncthreads();
-		{
-			volatile double3 *a = a0_s;
-			if(nb >= 16) a[idy].x += a[idy + 8].x;
-			if(nb >= 8) a[idy].x += a[idy + 4].x;
-			if(nb >= 4) a[idy].x += a[idy + 2].x;
-			if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-			if(nb >= 16) a[idy].y += a[idy + 8].y;
-			if(nb >= 8) a[idy].y += a[idy + 4].y;
-			if(nb >= 4) a[idy].y += a[idy + 2].y;
-			if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-			if(nb >= 16) a[idy].z += a[idy + 8].z;
-			if(nb >= 8) a[idy].z += a[idy + 4].z;
-			if(nb >= 4) a[idy].z += a[idy + 2].z;
-			if(nb >= 2) a[idy].z += a[idy + 1].z;
-		}
-		__syncthreads();
-		if(idy < N2){
-			accEncSun(x4_s[idy], a0_s[idy * nb], ksq * Msun);
-		}
-
 		volatile int f = 1;
 		__syncthreads();
 		for(int ff = 0; ff < 1e6; ++ff){
 			__syncthreads();
-			for(int n = 1; n <= 8; ++n){
+			for(int n = 1; n <= 8; ++n){ 
+				
 				dt2 = dt1 / (2.0 * n);
 				dt22 = dt2 * 2.0;
+
+				a_s[idy].x = 0.0;
+				a_s[idy].y = 0.0;
+				a_s[idy].z = 0.0;
+				__syncthreads();
+				for(int l = 0; l < NN; l += nb){
+					accEnc(x4_s[ii], x4_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
+				}
+				__syncthreads();
+				{
+					volatile double3 *a = a_s;
+					if(nb >= 16) a[idy].x += a[idy + 8].x;
+					if(nb >= 8) a[idy].x += a[idy + 4].x;
+					if(nb >= 4) a[idy].x += a[idy + 2].x;
+					if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+					if(nb >= 16) a[idy].y += a[idy + 8].y;
+					if(nb >= 8) a[idy].y += a[idy + 4].y;
+					if(nb >= 4) a[idy].y += a[idy + 2].y;
+					if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+					if(nb >= 16) a[idy].z += a[idy + 8].z;
+					if(nb >= 8) a[idy].z += a[idy + 4].z;
+					if(nb >= 4) a[idy].z += a[idy + 2].z;
+					if(nb >= 2) a[idy].z += a[idy + 1].z;
+				}
+				__syncthreads();
+
+				if(idy < N2){
+					accEncSun(x4_s[idy], a_s[idy * nb], ksq * Msun);
+				}
 
 				if(idy < NN){
 					xp_s[idy].x = x4_s[idy].x + dt2 * v4_s[idy].x;
@@ -206,25 +164,19 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					xp_s[idy].z = x4_s[idy].z + dt2 * v4_s[idy].z;
 					xp_s[idy].w = x4_s[idy].w;
 
-					vp_s[idy].x = v4_s[idy].x + dt2 * a0_s[idy * nb].x;  
-					vp_s[idy].y = v4_s[idy].y + dt2 * a0_s[idy * nb].y;  
-					vp_s[idy].z = v4_s[idy].z + dt2 * a0_s[idy * nb].z; 
+					vp_s[idy].x = v4_s[idy].x + dt2 * a_s[idy * nb].x;  
+					vp_s[idy].y = v4_s[idy].y + dt2 * a_s[idy * nb].y;  
+					vp_s[idy].z = v4_s[idy].z + dt2 * a_s[idy * nb].z; 
 					vp_s[idy].w = v4_s[idy].w;
 				}
-
+				__syncthreads();
 				a_s[idy].x = 0.0;
 				a_s[idy].y = 0.0;
 				a_s[idy].z = 0.0;
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-#if G3 == 0
 					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
-#else
-					int iK = Encpairs2_d[si * NB + ii].x;
-					int jK = Encpairs2_d[si * NB + jj + l].x;
-					accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
-#endif
 				}
 				__syncthreads();
 				{
@@ -267,13 +219,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-#if G3 == 0
 						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
-#else
-						int iK = Encpairs2_d[si * NB + ii].x;
-						int jK = Encpairs2_d[si * NB + jj + l].x;
-						accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
-#endif
 					}
 					__syncthreads();
 					{
@@ -294,6 +240,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(nb >= 2) a[idy].z += a[idy + 1].z; 
 					}
 					__syncthreads();
+
 					if(idy < N2){
 						accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
 
@@ -312,13 +259,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-#if G3 == 0
 						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
-#else
-						int iK = Encpairs2_d[si * NB + ii].x;
-						int jK = Encpairs2_d[si * NB + jj + l].x;
-						accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
-#endif
 					}
 					__syncthreads();
 					{
@@ -339,6 +280,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(nb >= 2) a[idy].z += a[idy + 1].z;
 					}
 					__syncthreads();
+
 					if(idy < N2){
 						accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun);
 
@@ -358,13 +300,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-#if G3 == 0
 					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l);
-#else
-					int iK = Encpairs2_d[si * NB + ii].x;
-					int jK = Encpairs2_d[si * NB + jj + l].x;
-					accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
-#endif
 				}
 				__syncthreads();
 				{
@@ -378,15 +314,16 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(nb >= 8) a[idy].y += a[idy + 4].y;
 					if(nb >= 4) a[idy].y += a[idy + 2].y;
 					if(nb >= 2) a[idy].y += a[idy + 1].y;
+
 					if(nb >= 16) a[idy].z += a[idy + 8].z;
 					if(nb >= 8) a[idy].z += a[idy + 4].z;
 					if(nb >= 4) a[idy].z += a[idy + 2].z;
 					if(nb >= 2) a[idy].z += a[idy + 1].z; 
 				}
 				__syncthreads();
-
 				if(idy < N2){
 					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
+
 					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * vt_s[idy].x);
 					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * vt_s[idy].y);
 					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + xp_s[idy].z + dt2 * vt_s[idy].z);
@@ -424,20 +361,20 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					error_s[idy] = fmax(errorx, errorv);
 	
 					Ncol[0] = 0;
-
 				}
-				__syncthreads();
-				if(idy < N2){
+	
+				if(idy < 32){
 					volatile  double *error = error_s;
-					if(NN >= 32) error[idy] = fmax(error[idy], error[idy + 16]);
-					if(NN >= 16) error[idy] = fmax(error[idy], error[idy + 8]); 
-					if(NN >= 8) error[idy] = fmax(error[idy], error[idy + 4]);
-					if(NN >= 4) error[idy] = fmax(error[idy], error[idy + 2]);
-					if(NN >= 2) error[idy] = fmax(error[idy], error[idy + 1]);
+					error[idy] = fmax(error[idy], error[idy + 32]);
+					error[idy] = fmax(error[idy], error[idy + 16]);
+					error[idy] = fmax(error[idy], error[idy + 8]);
+					error[idy] = fmax(error[idy], error[idy + 4]);
+					error[idy] = fmax(error[idy], error[idy + 2]);
+					error[idy] = fmax(error[idy], error[idy + 1]);
 				}
 				__syncthreads();
-				if(error_s[0] < tol * tol || sgnt * dt1 < 1.0e-6){
 
+				if(error_s[0] < tol * tol || sgnt * dt1 < 1.0e-6){
 					if(idy < N2){
 						xt_s[idy].x = dx_s[idy][0].x;
 						xt_s[idy].y = dx_s[idy][0].y;
@@ -462,31 +399,26 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                                         	encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0);
 					}
                                         __syncthreads();
+
                                         if(idy == 0) {
                                                for(int c = 0; c < Ncol[0]; ++c){
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
-								int nc = atomicAdd(Ncoll_d, 1);
+                                                                int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-                                                        	collide(xt_s, vt_s, i, j, Encpairs2_d[si * NB + i].x, Encpairs2_d[si * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, 0, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
-#if G3 == 1
-									int iK = Encpairs2_d[si * NB + i].x;
-									int jK = Encpairs2_d[si * NB + j].x;
-									K_d[iK * NB + jK] = 1.0;
-									K_d[jK * NB + iK] = 1.0;
-									groupIndex_d[iK] =  -1;
-									groupIndex_d[jK] =  -1;
-#endif
+								collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d);
 							}
                                                 }
                                         }
                                         __syncthreads();
-					t += dt1;				
+
+					t += dt1;
+					
 					if(n >= 8) dt1 *= 0.55;
 					if(n < 7) dt1 *= 1.3;
-					if(sgnt * dt1 > sgnt * dt) dt1 = dt;
-					if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+					if(sgnt * dt1 > sgnt *dt) dt1 = dt;
+					if(sgnt * (t+dt1) > sgnt *dt) dt1 = dt - t;
 					if(sgnt * dt1 < 1.0e-7) dt1 = sgnt * 1.0e-7;
 
 					if(idy < N2){
@@ -506,59 +438,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		if(sgnt * t >= sgnt * dt) break;
 		__syncthreads();
 	}
-#if G3 == 1
-        a0_s[idy].x = 0.0;
-        a0_s[idy].y = 0.0;
-        a0_s[idy].z = 0.0;
-        for(int l = 0; l < NN; l += nb){
-		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[si * NB + ii].x;
-			int jK = Encpairs2_d[si * NB + jj + l].x;
-				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895);
-		}
-        }
-        __syncthreads();
-        {
-                volatile double3 *a = a0_s;
-                if(nb >= 16) a[idy].x += a[idy + 8].x;
-                if(nb >= 8) a[idy].x += a[idy + 4].x;
-                if(nb >= 4) a[idy].x += a[idy + 2].x;
-                if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-                if(nb >= 16) a[idy].y += a[idy + 8].y;
-                if(nb >= 8) a[idy].y += a[idy + 4].y;
-                if(nb >= 4) a[idy].y += a[idy + 2].y;
-                if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-                if(nb >= 16) a[idy].z += a[idy + 8].z;
-                if(nb >= 8) a[idy].z += a[idy + 4].z;
-                if(nb >= 4) a[idy].z += a[idy + 2].z;
-                if(nb >= 2) a[idy].z += a[idy + 1].z;
-        }
-        __syncthreads();
-        if(idy < NN){
-        for(int l = 0; l < NN; l += nb){
-		if(ii < N2 && jj + l < N2){
-                	v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-                	v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-                	v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
-		}	
-	}
-        }
-        for(int l = 0; l < NN; l += nb){
-		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[si * NB + ii].x;
-			a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
-			a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
-			a_d[iK].z = 0.5 * dt * a0_s[ii * nb].z;
-//printf("Correct 2A %d %g %d %d %d\n", iK, a0_s[ii * nb].x, ii, idy * nb, ii*nb);
-		}
-	}
-
-#endif
-	if(idy < N2){
-		x4_d[idi] = x4_s[idy]; 
-		v4_d[idi] = v4_s[idy];
-		rcritv_d[idi] = rcritv_s[idy];
+	if(idy == 0){ 
+		x4small_d[idi] = x4_s[idy]; 
+		v4small_d[idi] = v4_s[idy];
 	}
 }
