@@ -13,3 +13,6 @@ pairs.
 [A Documentation of GENGA can be found here](https://bitbucket.org/sigrimm/genga/src/tip/Documentation.md)
 
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
+
+News:
+The test particle mode supports up to 2048 massive bodies. Use the NmaxTestParticles parameter in define.h
