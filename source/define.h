@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define Version 3.02
+#define Version 3.03
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file

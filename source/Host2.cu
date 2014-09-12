@@ -972,6 +972,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatS: %d\n", FormatS);
 			fprintf(infofile, "FormatT: %d\n", FormatT);
 			fprintf(infofile, "FormatP: %d\n", FormatP);
+			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
 			fprintf(infofile, "dt: %g \n", P.idt);                                          // use only argument in simulation 0
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
 			fprintf(infofile, "Energy output intervall: %d\n", P.ei);                       // use only argument in simulation 0

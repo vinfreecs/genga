@@ -136,11 +136,13 @@ __global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB,
 		Encpairs2_d[id].y = -1;
 	}
 
-	if(id < Nsmall * 2 * NmaxTestParticles){
-		Encpairssmall_d[id].x = -1;
-		Encpairssmall_d[id].y = -1;
-		Encpairssmall2_d[id].x = -1;
-		Encpairssmall2_d[id].y = -1;
+	if(id < Nsmall){
+		for(int i = 0; i < 2 * NmaxTestParticles; ++i){
+			Encpairssmall_d[id * 2 * NmaxTestParticles + i].x = -1;
+			Encpairssmall_d[id * 2 * NmaxTestParticles + i].y = -1;
+			Encpairssmall2_d[id * 2 * NmaxTestParticles + i].x = -1;
+			Encpairssmall2_d[id * 2 * NmaxTestParticles + i].y = -1;
+		}
 	}
 #if G3 == 1
 	if(id < Nsmall){
@@ -403,11 +405,10 @@ __host__ void Data::firstKick_2048(){
 	kick4_kernel < 256, 2048, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_small(){
-
 	cudaMemset(a_d, 0, NT*sizeof(double3));
 	cudaMemset(asmall_d, 0, NsmallT*sizeof(double3));
 
-	int nbInitialsmall = (max(Nsmall_h[0] * 2 * NmaxTestParticles, NB[0] * NB[0]) + 255) / 256;
+	int nbInitialsmall = (max(Nsmall_h[0], NB[0] * NB[0]) + 255) / 256;
 	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0], groupIndexsmall_d);
 	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
 	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
@@ -1071,6 +1072,7 @@ GasAccCall_16(t, dt * Ct[0]);
 GasAccCall_small(t, dt * Ct[0]);
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
+
 	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
 	if(Nencpairs_h[0] > 0 || Nencpairssmall_h[0] > 0 || EjectionFlag2 > 0) kickAsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], x4small_d, v4small_d, Encpairssmall2_d, Nsmall_h[0], asmall_d, NB[0], Nconst[0]);
 	else kickBsmall_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, x4small_d, v4small_d, asmall_d, N_h[0], Nsmall_h[0]);
