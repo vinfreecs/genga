@@ -407,7 +407,7 @@ __global__ void BSBStep64small_kernel(double4 *x4small_d, double4 *v4small_d, do
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
                                                                 int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-								collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d);
+								collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d, rcritv_s);
 							}
                                                 }
                                         }

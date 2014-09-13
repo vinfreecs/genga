@@ -26,7 +26,7 @@
 template<int E>
 __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N){
 
-//if(E == 0 || E >= 2)printf("E %d %d\n", i,j);
+//if((E == 0 || E >= 2))printf("E %d %d %d %d\n", i ,j - N, E, N);
 //if(E == 1) printf("E1 %d %d %g %g\n", i, j, x4i.w, x4j.w);
 
 	int Enc = 0;
@@ -139,7 +139,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
-//if (E == 0 || E >= 2)printf("EE %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
+//if((E == 0 || E >= 2))printf("EE %d %d %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.x, x4j.x, v4i.x, v4j.x, E);
 //if (E == 1)printf("EE1 %d %d %.40g %.40g %.40g %.40g\n", i, j, x4i.x, x4j.x, v4i.x, v4j.x);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);

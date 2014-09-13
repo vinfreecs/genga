@@ -141,7 +141,6 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		aecountsmallT_h[j] += aecountsmall_h[j];
 		enccountsmallT_h[j] += enccountsmall_h[j];
-
 		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/ts, enccountsmallT_h[j], -1.0);
 		if(FormatP == 0) fclose(outputfile);
 	}
