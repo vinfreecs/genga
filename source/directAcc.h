@@ -320,47 +320,90 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
 //March 2014
 //
 //****************************************
-__device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
+__device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall, double *rcritv){
 
-        printf("Collision between body %d and Test particle %d\n", index[indexi], indexsmall[indexj]);
+	if(x4[i].w > 0.0 && x4[j].w > 0.0){
 
-	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexi]);
-	Coll[nc * 25 + 2] = x4[i].w;
-	Coll[nc * 25 + 3] = v4[i].w;
-	Coll[nc * 25 + 4] = x4[i].x;
-	Coll[nc * 25 + 5] = x4[i].y;
-        Coll[nc * 25 + 6] = v4[i].z;
-        Coll[nc * 25 + 7] = v4[i].x;
-        Coll[nc * 25 + 8] = v4[i].y;
-	Coll[nc * 25 + 9] = v4[i].z;
-	Coll[nc * 25 + 10] = spin[indexi].x;
-	Coll[nc * 25 + 11] = spin[indexi].y;
-	Coll[nc * 25 + 12] = spin[indexi].z;
-        Coll[nc * 25 + 13] = (double)(indexsmall[indexj]);
-        Coll[nc * 25 + 14] = x4[j].w;
-	Coll[nc * 25 + 15] = v4[j].w;
-        Coll[nc * 25 + 16] = x4[j].x;
-        Coll[nc * 25 + 17] = x4[j].y;
-        Coll[nc * 25 + 18] = x4[j].z;
-        Coll[nc * 25 + 19] = v4[j].x;
-        Coll[nc * 25 + 20] = v4[j].y;
-        Coll[nc * 25 + 21] = v4[j].z;
-      	Coll[nc * 25 + 22] = spinsmall[indexj].x;
-       	Coll[nc * 25 + 23] = spinsmall[indexj].y;
-       	Coll[nc * 25 + 24] = spinsmall[indexj].z;
+		double3 s, p;
+		double mtot;
+
+		s.x = x4[i].x * x4[i].w + x4[j].x * x4[j].w;
+		s.y = x4[i].y * x4[i].w + x4[j].y * x4[j].w;
+		s.z = x4[i].z * x4[i].w + x4[j].z * x4[j].w;
+
+		p.x = v4[i].x * x4[i].w + v4[j].x * x4[j].w;
+		p.y = v4[i].y * x4[i].w + v4[j].y * x4[j].w;
+		p.z = v4[i].z * x4[i].w + v4[j].z * x4[j].w;
+
+		mtot = x4[i].w + x4[j].w;
+
+		x4[i].x = s.x / mtot;
+		x4[i].y = s.y / mtot;
+		x4[i].z = s.z / mtot;
+
+		v4[i].x = p.x / mtot;
+		v4[i].y = p.y / mtot;
+		v4[i].z = p.z / mtot;
+
+		rcritv[i] = fmax(rcritv[i], rcritv[j]);
+		rcritv[j] = 0.0;
+
+		v4[j].x = 0.0;
+		v4[j].y = 0.0;
+		v4[j].z = 0.0;
+
+		x4[j].x = Rcut;
+		x4[j].y = Rcut;
+		x4[j].z = Rcut;
+
+		x4[i].w = mtot;
+		x4[j].w = -1.0e-12;
+
+		v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
+		v4[j].w = 0.0;
+
+	}
+	else if(x4[i].w >= 0.0 && x4[j].w >= 0.0){
+		printf("Collision between body %d and Test particle %d\n", index[indexi], indexsmall[indexj]);
+
+		Coll[nc * 25 + 0] = time/365.25;
+		Coll[nc * 25 + 1] = (double)(index[indexi]);
+		Coll[nc * 25 + 2] = x4[i].w;
+		Coll[nc * 25 + 3] = v4[i].w;
+		Coll[nc * 25 + 4] = x4[i].x;
+		Coll[nc * 25 + 5] = x4[i].y;
+		Coll[nc * 25 + 6] = v4[i].z;
+		Coll[nc * 25 + 7] = v4[i].x;
+		Coll[nc * 25 + 8] = v4[i].y;
+		Coll[nc * 25 + 9] = v4[i].z;
+		Coll[nc * 25 + 10] = spin[indexi].x;
+		Coll[nc * 25 + 11] = spin[indexi].y;
+		Coll[nc * 25 + 12] = spin[indexi].z;
+		Coll[nc * 25 + 13] = (double)(indexsmall[indexj]);
+		Coll[nc * 25 + 14] = x4[j].w;
+		Coll[nc * 25 + 15] = v4[j].w;
+		Coll[nc * 25 + 16] = x4[j].x;
+		Coll[nc * 25 + 17] = x4[j].y;
+		Coll[nc * 25 + 18] = x4[j].z;
+		Coll[nc * 25 + 19] = v4[j].x;
+		Coll[nc * 25 + 20] = v4[j].y;
+		Coll[nc * 25 + 21] = v4[j].z;
+		Coll[nc * 25 + 22] = spinsmall[indexj].x;
+		Coll[nc * 25 + 23] = spinsmall[indexj].y;
+		Coll[nc * 25 + 24] = spinsmall[indexj].z;
 
 
-	x4[j].w = -1.0e-12;
+		x4[j].w = -1.0e-12;
 
-	v4[j].w = 0.0;
+		v4[j].w = 0.0;
 
-	v4[j].x = 0.0;
-	v4[j].y = 0.0;
-	v4[j].z = 0.0;
+		v4[j].x = 0.0;
+		v4[j].y = 0.0;
+		v4[j].z = 0.0;
 
-	x4[j].x = Rcut;
-	x4[j].y = Rcut;
-	x4[j].z = Rcut;
+		x4[j].x = Rcut;
+		x4[j].y = Rcut;
+		x4[j].z = Rcut;
+	}
 }
 #endif

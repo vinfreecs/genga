@@ -52,7 +52,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	N2 = Encpairssmall_d[si * Nconst].y;
 	if(idy < N2){
 		idi = Encpairssmall_d[si * Nconst + idy].x;
-//printf("BS2 %d %d %d \n", idx, st, idi);
+//printf("BSs %d %d %d N2 %d\n", idx, st, idi, N2);
 	}
 	else idi = 0;
 
@@ -68,13 +68,13 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
                 x4_s[idy] = xoldsmall_d[idi];  
                 v4_s[idy] = voldsmall_d[idi];  
                 rcritv_s[idy] = 0.0;
-//printf("BS2 %d %d %d %d\n", idx, st, idi, indexsmall_d[idi]);
+//printf("BSs %d %d %d %d\n", idx, st, idi, indexsmall_d[idi]);
 	}
 	else if(idy< N2){
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
-//printf("BS2 %d %d %d %d\n", idx, st, idi, index_d[idi]);
+//printf("BSsmall %d %d %d %d\n", idx, st, idi, index_d[idi]);
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
@@ -403,9 +403,10 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
-								int nc = atomicAdd(Ncoll_d, 1);
+								int nc = *Ncoll_d;
+								if(xt_s[i].w == 0.0 || xt_s[j].w == 0) nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-                                                        	collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d);
+                                                        	collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d, rcritv_s);
 							}
                                                 }
                                         }

@@ -100,6 +100,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
 			if(rsq < pc * rcritv2){
+//printf("Precheck 20 %d %d %d %d %d\n", i - icNB, j, icNB, Nconst, *NencpairsI);
 				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].x = i - icNB;
 				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].y = j;
 				*NencpairsI += 1;
@@ -108,6 +109,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
 			if(rsq < pc * rcritv2){
 				if(i < j){
+//printf("Precheck 10 %d %d\n", i, j);
 					Encpairs_d[icNB * i + *NencpairsI].x = i;
 					Encpairs_d[icNB * i + *NencpairsI].y = j;
 					*NencpairsI += 1;
