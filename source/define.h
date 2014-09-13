@@ -14,7 +14,6 @@
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 
-
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
