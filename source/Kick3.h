@@ -100,7 +100,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
 			if(rsq < pc * rcritv2){
-//printf("Precheck 20 %d %d %d %d %d\n", i - icNB, j, icNB, Nconst, *NencpairsI);
+//if(E == 20) printf("Precheck 20 %d %d %d %d %d\n", i - icNB, j, icNB, Nconst, *NencpairsI);
 				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].x = i - icNB;
 				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].y = j;
 				*NencpairsI += 1;
@@ -109,7 +109,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
 			if(rsq < pc * rcritv2){
 				if(i < j){
-//printf("Precheck 10 %d %d\n", i, j);
+//printf("Precheck 10 %d %d %d %d\n", i, j, icNB, *NencpairsI);
 					Encpairs_d[icNB * i + *NencpairsI].x = i;
 					Encpairs_d[icNB * i + *NencpairsI].y = j;
 					*NencpairsI += 1;
@@ -2133,8 +2133,6 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	__shared__ double3 b_s[Bl];
 	int NencpairsI;
 	int NencpairsJ;
-	__shared__ int Nesmall;
-	__shared__ int Ne;
 
 	a_s[idy].x = 0.0;
 	a_s[idy].y = 0.0;
@@ -2147,10 +2145,6 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	NencpairsI = 0;
 	NencpairsJ = 0;
 
-	if(idy == 0){
-		Nesmall = 0;
-		Ne = 0;
-	}
 
 	__syncthreads();
 
@@ -2172,7 +2166,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			acck_d[id].x += b_s[idy].x * dtksq;
 			acck_d[id].y += b_s[idy].y * dtksq;
 			acck_d[id].z += b_s[idy].z * dtksq;
-			Ne = atomicAdd(Nencpairs_d, NencpairsI);
+			int Ne = atomicAdd(Nencpairs_d, NencpairsI);
 			for(int ii = 0; ii < NencpairsI; ++ii){
 				Encpairs_d[ii + Ne] = Encpairs2_d[NB * id + ii];
 			}
@@ -2198,7 +2192,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			accksmall_d[id - N].z += b_s[idy].z * dtksq;
 		}
 		if(E <= 2){
-			Nesmall = atomicAdd(Nencpairssmall_d, NencpairsI);
+			int Nesmall = atomicAdd(Nencpairssmall_d, NencpairsI);
 			for(int ii = 0; ii < NencpairsI; ++ii){
 				Encpairssmall_d[ii + Nesmall] = Encpairssmall2_d[Nconst * (id - N) + ii];
 			}

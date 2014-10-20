@@ -193,10 +193,13 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 	if(id < *Nencpairs_d){
 		ii = Encpairs_d[id].x;
 		jj = Encpairs_d[id].y;
+//printf("%d %d %d\n", ii, jj, id);
 	}
 	else if(id < *Nencpairs_d + *Nencpairssmall_d){
 		ii = Encpairssmall_d[id - *Nencpairs_d].x;
 		jj = Encpairssmall_d[id - *Nencpairs_d].y;
+//printf("small %d %d %d\n", ii, jj, id);
+
 	}
 	__syncthreads();
 	
@@ -293,6 +296,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	if(id < *Nencpairs_d){
 		ii = Encpairs_d[id].x;
 		jj = Encpairs_d[id].y;
+//printf("%d %d %d\n", ii, jj, id);
 	}
 	__syncthreads();
 	int enccount = 0;

@@ -67,7 +67,7 @@
 // * Only for testing **
 #define G3 0				//New integrator scheme
 #define G3Limit	2.0e-13
-#define G3Limit2 2.0e-15 //2.0e-14
+#define G3Limit2 2.0e-16 //2.0e-14
 // *********************
 
 struct Parameter{

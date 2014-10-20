@@ -227,15 +227,18 @@ int main(int argc, char*argv[]){
 #endif
 	for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 		double t = ts * D.P.idt + D.P.ict * 365.25;
+		//Multi simulation mode
 		if(D.Nst > 1){
 			er = D.step_M(t);
 			if(er == 0) return 0;
 		}
 		else{
+			//Test particles
 			if(D.P.UseTestParticles == 1){
 				er = D.step_small(t);
 				if(er == 0) return 0;
 			}
+			//check the number of massive particles
 			else switch(D.NB[0]){
 				case 16: D.step_16(t);
 				break;
