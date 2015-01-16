@@ -32,18 +32,18 @@ __host__ Host::Host(long long Restart){
 		lockfile = fopen(lockfilename, "r");
 		if(lockfile == NULL){
 			lockfile = fopen(lockfilename, "w");
-			fprintf(lockfile, "%d\n", Restart);
+			fprintf(lockfile, "%lld\n", Restart);
 			fclose(lockfile);
         	}
 		else{
 			long long R;
-			fscanf(lockfile, "%ld", &R);
+			fscanf(lockfile, "%lld", &R);
 			fclose(lockfile);
 
 			if(R == Restart) Lock = 1;
 
 			lockfile = fopen(lockfilename, "w");
-			fprintf(lockfile, "%d\n", Restart);
+			fprintf(lockfile, "%lld\n", Restart);
 			fclose(lockfile);
 
 		}
@@ -110,8 +110,8 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 		}
 	}
 	if(Nst == 0){
-		printf("Error: No Simulations!\n", pathfilename);
-		fprintf(masterfile, "Error: No Simulations!\n", pathfilename);
+		printf("Error: No Simulations!\n");
+		fprintf(masterfile, "Error: No Simulations!\n");
 		return 0;
 	}
 
@@ -982,6 +982,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
+#if G3 == 1
+			fprintf(infofile, "G3Limit: %g\n", G3Limit);
+			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
+#endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].inputfilename);
 			fprintf(infofile, "Using device number %d\n", P.dev);                           // use only argument in simulation 0
 			fprintf(infofile, "Rcut: %g\n", (double)(Rcut));

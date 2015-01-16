@@ -49,8 +49,7 @@ public:
 	// G3 Data
 	double *K_d;
 	double *Kold_d;
-	double *Bdd1old_d;
-	double3 *aold_d;
+	int *BddSign_d;
 	double4 *StopTime_d;
 	double4 *x4G3_d;
 	double4 *v4G3_d;

@@ -126,12 +126,10 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			}
 			else{
 				BSSinglestep(x4i, v4i, Msun, dt, test, id);
-//printf("Use BSSinglestep for Drift, FG not converged %d\n", id);
 			}
 		}
 		else{
 			BSSinglestep(x4i, v4i, Msun, dt, test, id);
-//printf("Use BSSinglestep for Drift, not elliptic orbit %d\n", id);
 		}
 	}
 }
@@ -303,7 +301,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //
 // *****************************************
 template <int Bl>
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double3 *aold_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -315,12 +313,10 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		x4_s[idy] = x4_d[id];
 		v4_s[idy] = v4_d[id];
 		__syncthreads();
-
 		xold_d[id] = x4_s[idy];
 		vold_d[id] = v4_s[idy];
 #if G3 == 1
 		groupIndexOld_d[id] = groupIndex_d[id];
-		aold_d[id] = a_d[id];
 #endif
 
 		a_d[id].x = 0.0;

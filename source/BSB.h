@@ -68,7 +68,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         else sgnt = 1;
 
  	__syncthreads();
-
 	if(idy < N2){
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
@@ -138,6 +137,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
                 v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
         }
+
 #endif
 	__syncthreads();
 	for(int tt = 0; tt < 1000; ++tt){
@@ -165,7 +165,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #else
 			int iK = Encpairs2_d[si * NB + ii].x;
 			int jK = Encpairs2_d[si * NB + jj + l].x;
-			accEncG3(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
+			accEncG3(x4_s[ii], x4_s[jj + l], a0_s[idy], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
 #endif
 
 		}
@@ -223,7 +223,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #else
 					int iK = Encpairs2_d[si * NB + ii].x;
 					int jK = Encpairs2_d[si * NB + jj + l].x;
-					accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
+					accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
 #endif
 				}
 				__syncthreads();
@@ -272,7 +272,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #else
 						int iK = Encpairs2_d[si * NB + ii].x;
 						int jK = Encpairs2_d[si * NB + jj + l].x;
-						accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
+						accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
 #endif
 					}
 					__syncthreads();
@@ -317,7 +317,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #else
 						int iK = Encpairs2_d[si * NB + ii].x;
 						int jK = Encpairs2_d[si * NB + jj + l].x;
-						accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
+						accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
 #endif
 					}
 					__syncthreads();
@@ -363,7 +363,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #else
 					int iK = Encpairs2_d[si * NB + ii].x;
 					int jK = Encpairs2_d[si * NB + jj + l].x;
-					accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
+					accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, time + t/0.01720209895, K_d[iK * NB + jK]);
 #endif
 				}
 				__syncthreads();
@@ -514,7 +514,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		if(ii < N2 && jj + l < N2){
 			int iK = Encpairs2_d[si * NB + ii].x;
 			int jK = Encpairs2_d[si * NB + jj + l].x;
-				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895);
+				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NB + jK], Kold_d[iK * NB + jK], test, ii, jj + l, time + (t - dt )/0.01720209895, 0);
 		}
         }
         __syncthreads();
@@ -554,7 +554,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 //printf("Correct 2A %d %g %d %d %d\n", iK, a0_s[ii * nb].x, ii, idy * nb, ii*nb);
 		}
 	}
-
 #endif
 	if(idy < N2){
 		x4_d[idi] = x4_s[idy]; 

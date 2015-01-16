@@ -119,7 +119,6 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
-
         if(E == 1){
                 if(idy == 0 && idx == 0){
                         Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel

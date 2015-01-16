@@ -8,7 +8,7 @@
 #define FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define FormatP 1			//0: one file per particle, 1: all particles in the same file
 
-#define Rcut 50.0			//bodies with r > Rcut are Ejected
+#define Rcut 50				//bodies with r > Rcut are Ejected
 #define RcutSun 0.2			//bodies with r < RcutSun fall into the Sun
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
@@ -46,7 +46,7 @@
 
 
 //Maximum number of massive bodies in the test particle mode
-#define NmaxTestParticles 16
+#define NmaxTestParticles 2048
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
@@ -66,8 +66,8 @@
 
 // * Only for testing **
 #define G3 0				//New integrator scheme
-#define G3Limit	2.0e-13
-#define G3Limit2 2.0e-16 //2.0e-14
+#define G3Limit	0.4e-12	//2.0e-12
+#define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
 struct Parameter{

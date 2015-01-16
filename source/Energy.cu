@@ -359,35 +359,39 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	__shared__ volatile double V_s[Bl2];
+	__shared__ double V_s[Bl2];
 	double test;
+
+	V_s[idy] = 0.0;
+	V_s[idy + Bl] = 0.0;
+
+	__syncthreads();
 
 	if(idx < N){
 		if(x4_d[idx].w > 0){
 
-			V_s[idy] = 0.0;
-			V_s[idy + Bl] = 0.0;
-
 			if(x4_d[idy].w > 0 && idy < N){
 				V_s[idy] += PE(x4_d[idx], x4_d[idy], idx, idy);
 			}		
+		}
+	}
+	__syncthreads();
 
-			__syncthreads();
+	if(idy < 32){
+		volatile double *V = V_s;
+		if(Bl >= 32) V[idy] += V[idy + 16];
+		V[idy] += V[idy + 8];
+		V[idy] += V[idy + 4];
+		V[idy] += V[idy + 2];
+		V[idy] += V[idy + 1];
+	}
 
-			if(idy < 32){
-				if(Bl >= 32) V_s[idy] += V_s[idy + 16];
-				V_s[idy] += V_s[idy + 8];
-				V_s[idy] += V_s[idy + 4];
-				V_s[idy] += V_s[idy + 2];
-				V_s[idy] += V_s[idy + 1];
-			}
-
-			__syncthreads();
-			if(idy == 0){
-				V_s[0] *= (0.5 * ksq) * x4_d[idx].w;
-				V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
-				Energy_d[idx] = V_s[0];
-			}
+	__syncthreads();
+	if(idx < N && idy == 0){
+		if(x4_d[idx].w > 0){
+			V_s[0] *= (0.5 * ksq) * x4_d[idx].w;
+			V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
+			Energy_d[idx] = V_s[0];
 		}
 		else Energy_d[idx] = 0.0;
 	}

@@ -51,7 +51,7 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 ////March 2014
 //
 // ****************************************
-__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double time, double K){
+__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K){
 	if(x4i.w >= 0 && x4j.w > 0 && i != j){
 
 		double3 r3;
@@ -73,7 +73,7 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double rc
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
-//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g %g accEnc\n", time, i, j, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K);
+//if(s != 0.0) printf("%.20g %d %d %.20g %g accEnc\n", time, i, j, s, K);
 
 	}
 }
@@ -127,16 +127,13 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int gr
 		ir3 = ir * ir * ir;
 		s = 0.0;
 
-///		if((groupIndexOldi != groupIndexOldj) || groupIndexOldi < 0 || groupIndexOldi > NB){
-			//correct
-			s = -Kold * x4j.w * ir3 * ksq; //Kold == 1.0
+		//correct
+		if(Kold < 1.0) Kold = 0.0;
 
-//		}
+		s = (K - Kold) * x4j.w * ir3 * ksq;
 
 
-		s += K * x4j.w * ir3 * ksq;
-
-//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g i%g %g %g %g %g %g K %g Kold %g C1\n", time, i, j, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
+//if(s != 0.0) printf("%.20g %d %d %.20g %.20g %.20g correct\n", time, i, j, s, Kold, K);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -148,9 +145,8 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int gr
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 //*************************************************
-__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time){
+__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int E){
         if(x4i.w >= 0 && x4j.w > 0 && i != j){
-
                 double3 r3;
                 double rsq;
                 double ir, ir3;
@@ -166,7 +162,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir3 = ir * ir * ir;
 
 		s = K * x4j.w * ir3 * ksq; 
-//if(s != 0.0) printf("%.10g %d %d %g %g %g %g %g %g %g %g %g %g %g %g %g K %g Kold %g C2\n", time, i, j, 0.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, K, Kold);
+//if(s != 0.0) printf("%.20g %d %d %.20g correct2 %d\n", time, i, j, K, E);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
