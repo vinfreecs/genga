@@ -1259,8 +1259,8 @@ __host__ void Data::stopSimulations(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * 16;
-		Nsmall2T += Nsmall_h[st] * 16;
+		NB2T += NB[st] * NmaxTestParticles;
+		Nsmall2T += Nsmall_h[st] * NmaxTestParticles;
 		NEnergyT += max(N_h[st], 8);
 	}
 

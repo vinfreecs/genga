@@ -675,6 +675,7 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], t, groupIndexOld_d);
 			group_kernel16<32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
+
 			BSCall(32, si, t);
 		}
 		if(Ncoll_m[0] > 0){
@@ -1094,18 +1095,16 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 			encountersmall_kernel <<< (Nencpairs_h[0] + Nencpairssmall_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, x4small_d, v4small_d, xoldsmall_d, v4small_d, Nencpairssmall_d, Encpairssmall_d, Nencpairssmall2_d, Encpairssmall2_d, N_h[0], enccount_d, enccountsmall_d, si);
 			cudaMemcpy(Nencpairssmall2_h, Nencpairssmall2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();
+
 			if(Nsmall_h[0] > 0) groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
 			if(Nencpairssmall2_h[0] > 0) groupsmall2_kernel <<< (Nencpairssmall2_h[0] + 127)/128, 128 >>> (Nencpairssmall2_d, Encpairssmall2_d, Nencsmall_d, Encpairssmall_d, Nconst[0]);
-
 			if(NmaxTestParticles <= 512)	group_kernel16 <NmaxTestParticles, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			else if(NmaxTestParticles <= 1024) group1024_kernel <NmaxTestParticles, 512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d, groupIndex_d);
 			else if(NmaxTestParticles <= 2048){
 				cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 				cudaDeviceSynchronize();
-
 				int NF = (Nencpairs2_h[0] + 511)/(512);
 				if(NF > 0) group1024_kernel <NmaxTestParticles, 512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, x4_d, rcrit_d, groupIndex_d);
-
 				if(NF > 1) fusionB_kernel <NmaxTestParticles, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, x4_d, rcrit_d, groupIndex_d);
 			} 
 			cudaDeviceSynchronize();

@@ -1041,8 +1041,8 @@ __host__ void Host::Tsizes(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * 16;
-		Nsmall2T += Nsmall_h[st] * 16;
+		NB2T += NB[st] * NmaxTestParticles;
+		Nsmall2T += Nsmall_h[st] * NmaxTestParticles;
 		NEnergyT += max(NB[st], 8);
 
 	}

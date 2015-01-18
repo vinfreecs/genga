@@ -749,27 +749,27 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 		__syncthreads();
 	
 	}
-	/*At this point Encpairs_d[iy + i].x contains the smallest index of the group*/
+	// At this point Encpairs_d[iy + i].x contains the smallest index of the group
 	__syncthreads();
 	for(int i = 0; i < BN; i += Bl){
 		Encpairs_d[iy + i].y = -1;
 		if(gridDim.x == 1) Encpairs2_d[idy + i].y = 0;
 	}
 	__syncthreads();
-	/*Check now for new groups and increase the total number of groups*/
+	// Check now for new groups and increase the total number of groups
 	for(int i = 0; i < BN; i += Bl){
 		if(Encpairs_d[iy + i].x == (idy + i)){
 			Encpairs_d[iy + i].y = atomicAdd(&Nenc_s[0],1);
 		}		
 	}
 	__syncthreads();
-	/*Transform now the smallest index of the group into a consecutive group index*/
+	// Transform now the smallest index of the group into a consecutive group index
 	for(int i = 0; i < BN; i += Bl){
 	if(Encpairs_d[iy + i].x < BN2){
 			Encpairs_d[iy + i].x = Encpairs_d[idx * BN + Encpairs_d[iy + i].x].y + Bl * idx;
 		}
 	}
-	/*At this point Encpairs_d[iy + i].x contains a consecutive group index*/
+	// At this point Encpairs_d[iy + i].x contains a consecutive group index
 	__syncthreads();
 	if(gridDim.x == 1){
 #if G3 == 1
@@ -777,12 +777,13 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 			groupIndex_d[idy + i] = Encpairs_d[iy + i].x;
 		}
 #endif
+
 #if SERIAL_GROUPING == 0
 		for(int i = 0; i < BN; i += Bl){
 			if(Encpairs_d[idy + i].x < BN2){
 				Encpairs2_d[Encpairs_d[idy + i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1)].x = idy + i;
 			}
-			/*At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups*/
+			//At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups
 
 			__syncthreads();
 		}

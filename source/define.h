@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define Version 3.05
+#define Version 3.06
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -46,7 +46,7 @@
 
 
 //Maximum number of massive bodies in the test particle mode
-#define NmaxTestParticles 2048
+#define NmaxTestParticles 16
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
