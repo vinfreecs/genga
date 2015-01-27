@@ -18,7 +18,6 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 
 		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 		rcritv = fmax(rcritvi, rcritvj);
-
 		rcritv2 = rcritv * rcritv;
 
 		ir = 1.0/sqrt(rsq);
@@ -420,6 +419,7 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		v4_d[id].x +=  __dmul_rn(a_s[idy].x, dtksq) + acck_d[id].x;
 		v4_d[id].y +=  __dmul_rn(a_s[idy].y, dtksq) + acck_d[id].y;
 		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq) + acck_d[id].z;
+//printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, a_s[idy].x, acck_d[id].x);
 	}
 }
 // **************************************
@@ -456,20 +456,21 @@ __global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 		for(int i = 0; i < NI; ++i){
 			int jj = Encpairs2_d[id * NB + i].y;
 			double4 x4j = x4_d[jj];
-//printf("AI %d %d %.40g %.40g\n", id, jj, x4i.x, x4j.x);
+//printf("AI %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
 			double rcritvj = rcritv_d[jj];
 			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
 		}
 		for(int i = 0; i < NJ; ++i){
 			int jj = Encpairs2_d[id * NB + NB - 1 - i].y;
 			double4 x4j = x4_d[jj];
-//printf("AJ %d %d %.40g %.40g\n", id, jj, x4i.x, x4j.x);
+//printf("AJ %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
 			double rcritvj = rcritv_d[jj];
 			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
 		}
-		v4_d[id].x +=  a_s[idy].x * dtksq  + acck_d[id].x;
-		v4_d[id].y +=  a_s[idy].y * dtksq  + acck_d[id].y;
-		v4_d[id].z +=  a_s[idy].z * dtksq  + acck_d[id].z;
+		v4_d[id].x +=  __dmul_rn(a_s[idy].x, dtksq)  + acck_d[id].x;
+		v4_d[id].y +=  __dmul_rn(a_s[idy].y, dtksq)  + acck_d[id].y;
+		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq)  + acck_d[id].z;
+//printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, a_s[idy].x, acck_d[id].x);
 	}
 	else if(id < Nsmall + N){
 		int NI =  Encpairssmall2_d[(id - N) * Nconst].x;
@@ -481,9 +482,9 @@ __global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			double rcritvj = rcritv_d[jj];
 			accA(a_s[idy], x4i, x4j, 0.0, rcritvj, jj, id);
 		}
-		v4small_d[id - N].x +=  __dadd_rn(a_s[idy].x * dtksq, accksmall_d[id - N].x);
-		v4small_d[id - N].y +=  __dadd_rn(a_s[idy].y * dtksq, accksmall_d[id - N].y);
-		v4small_d[id - N].z +=  __dadd_rn(a_s[idy].z * dtksq, accksmall_d[id - N].z);
+		v4small_d[id - N].x +=  __dmul_rn(a_s[idy].x, dtksq) + accksmall_d[id - N].x;
+		v4small_d[id - N].y +=  __dmul_rn(a_s[idy].y, dtksq) + accksmall_d[id - N].y;
+		v4small_d[id - N].z +=  __dmul_rn(a_s[idy].z, dtksq) + accksmall_d[id - N].z;
 	}
 }
 

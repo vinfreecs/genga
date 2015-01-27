@@ -269,8 +269,10 @@ void display(){
 	cudaGraphicsResourceGetMappedPointer((void**)&colors, &num_bytes, colorsVBO_CUDA);
 
 	double time;
-	int er = loop(D, time);
-
+	int er;
+	for(int i = 0; i < 4; ++i){
+		er = loop(D, time);
+	}
 	if(D.N_h[0] + D.Nsmall_h[0] != nold){
 		GLMLimits <<< 1, 512 >>>(D.x4_d, D.N_h[0], MLimits_d);
 	}

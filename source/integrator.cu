@@ -299,8 +299,11 @@ __global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, dou
 
 		rcrit = n1 * r * cbrt(x4_s[idy].w  / ( Msun * 3.0));
 		rcritv = fmax(rcrit, n2 * dt * v);
-		rcrit_d[id] = rcrit;
-		rcritv_d[id] = rcritv;
+
+		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
+		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+//		rcrit_d[id] = rcrit;
+//		rcritv_d[id] = rcritv;
 	}
 	if(id < N + Nsmall){
         	//Check for Ejections or to small distances to the Sun
@@ -443,6 +446,8 @@ __host__ void Data::BSCall(int NB, int si, double t){
 		if(Nenc_m[1] > 0) BSBKStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, BddSign_d, groupIndex_d, groupIndexOld_d);
 		if(Nenc_m[2] > 0) BSBKStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, BddSign_d, groupIndex_d, groupIndexOld_d);
 		if(Nenc_m[3] > 0) BSBKStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, BddSign_d, groupIndex_d, groupIndexOld_d);
+//16 only possible in BSBG3.h
+		if(Nenc_m[4] > 0) BSBKStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, BddSign_d, groupIndex_d, groupIndexOld_d);
 
 //for more than 16 bodies the l loop is needed again
 
