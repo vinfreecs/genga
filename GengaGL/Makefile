@@ -6,7 +6,7 @@ source = gengaGL.cu $(path)Host2.cu $(path)Orbit2.cu $(path)Energy.cu $(path)out
 headers = $(path)define.h $(path)FG2.h $(path)BSSingle.h $(path)Encounter3.h $(path)Kick3.h $(path)HC.h $(path)BSB.h $(path)BSB64.h $(path)BSB128.h $(path)BSBsmall.h $(path)BSB64small.h $(path)BSBM.h $(path)ComEnergy.h $(path)directAcc.h 
 
 ifeq ($(OS), Linux)
-GLUT = -lglut -lGLU
+GLUT = -lglut -lGLU -lGL
 else
 GLUT = -framework OpenGL -framework GLUT
 endif
