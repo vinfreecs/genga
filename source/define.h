@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define Version 3.06
+#define Version 3.07
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define FormatP 1			//0: one file per particle, 1: all particles in the same file
 
-#define Rcut 50				//bodies with r > Rcut are Ejected
-#define RcutSun 0.2			//bodies with r < RcutSun fall into the Sun
+#define Rcut 500				//bodies with r > Rcut are Ejected
+#define RcutSun 0.02			//bodies with r < RcutSun fall into the Sun
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.

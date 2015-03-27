@@ -31,10 +31,11 @@ GLuint colorsVBO;
 struct cudaGraphicsResource* positionsVBO_CUDA;
 struct cudaGraphicsResource* colorsVBO_CUDA;
 static long long ts;
-static GLdouble anglex = 0.0;
-static GLdouble angley = 0.0;
-static GLdouble zoom = 1.0;//0.2;
-static GLdouble izoom = 1.0;//0.2;
+static GLdouble anglex = 0.0; //angle to rotate system around z axis
+static GLdouble angley = 0.0; //angle to rotate z axis
+static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
+static GLdouble zoom = 1.0;
+static GLdouble izoom = 1.0;
 GLdouble yold = 0.0;
 GLdouble xold = 0.0;
 GLint mouseMove = 0;
@@ -63,23 +64,26 @@ int loop(Data D, double &time){
 				er = D.step_small(t);
 				if(er == 0) return 0;
 			}
-			else switch(D.NB[0]){
-				case 16: D.step_16(t);
-				break;
-				case 32: D.step_32(t);
-				break;
-				case 64: D.step_64(t);
-				break;
-				case 128: D.step_128(t);
-				break;
-				case 256: D.step_256(t);
-				break;
-				case 512: D.step_512(t);
-				break;
-				case 1024: D.step_1024(t);
-				break;
-				case 2048: D.step_2048(t);
-				break;
+			else{
+				switch(D.NB[0]){
+					case 16: D.step_16(t);
+					break;
+					case 32: D.step_32(t);
+					break;
+					case 64: D.step_64(t);
+					break;
+					case 128: D.step_128(t);
+					break;
+					case 256: D.step_256(t);
+					break;
+					case 512: D.step_512(t);
+					break;
+					case 1024: D.step_1024(t);
+					break;
+					case 2048: D.step_2048(t);
+					break;
+				}
+				if(D.NB[0] > 2048) D.step_largeN(t);
 			}
 		}
 
@@ -182,6 +186,7 @@ __global__ void GLPositions(double4 *x4_d, double4 *x4small_d, double4 *position
 		colors[id] = color;
 	}
 
+
 }
 
 __global__ void GLMLimits(double4 *x4_d, int N, double *MLimits_d){
@@ -253,6 +258,11 @@ __global__ void GLMLimits(double4 *x4_d, int N, double *MLimits_d){
 
 void display(){
 
+	int modx = int(anglex) % 360;
+	anglex -= modx * 360.0;
+
+	anglex -= omegax;
+
         glLoadIdentity();
 	gluLookAt(0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0, 1, 0);
         glRotated(angley, 1.0, 0.0, 0.0);
@@ -267,6 +277,7 @@ void display(){
 
 	cudaGraphicsMapResources(1, &colorsVBO_CUDA, 0);
 	cudaGraphicsResourceGetMappedPointer((void**)&colors, &num_bytes, colorsVBO_CUDA);
+
 
 	double time;
 	int er;
@@ -309,6 +320,7 @@ glPointSize(1.5);
 	glDisableClientState(GL_COLOR_ARRAY);
 //glDisableClientState(GL_POINT_SIZE_ARRAY_OES);
 
+	anglex += omegax;
 
 	//Draw Axis in scale
 	glColor3d(0, 100, 0);
@@ -346,6 +358,8 @@ glPointSize(1.5);
 		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, mtext[i]);
 	}
 	// Swap buffers
+
+	anglex -= omegax;
 	glutSwapBuffers();
 	glutPostRedisplay();
 
@@ -372,6 +386,13 @@ void mouse(int button, int state, int x, int y){
 			}
 			else mouseMove = 0;
 			break;
+		case GLUT_RIGHT_BUTTON:
+			if (state == GLUT_DOWN){
+				yold = y;
+				mouseMove = 2;
+			}
+			else mouseMove = 0;
+			break;
 		case 3:
 			zoom /= 0.95;
 			izoom *= 0.95;
@@ -394,6 +415,11 @@ void mouse_move (int x, int y){
 		double dx = xold - x;
 		anglex -= dx * 0.2;
   		xold = x;
+	}
+	if(mouseMove == 2){
+		double dy = yold - y;
+		omegax -= dy * 0.001;
+  		yold = y;
 	}
 }
 
@@ -591,23 +617,26 @@ int main(int argc, char*argv[]){
 	}
 	else{
 		if(D.P.UseTestParticles == 1) D.firstKick_small();
-		else switch( D.NB[0] ) {
-			case 16: D.firstKick_16();
-			break;
-			case 32: D.firstKick_32();
-			break;
-			case 64: D.firstKick_64();
-			break;
-			case 128: D.firstKick_128();
-			break;
-			case 256: D.firstKick_256();
-			break;
-			case 512: D.firstKick_512();
-			break;
-			case 1024: D.firstKick_1024();
-			break;
-			case 2048: D.firstKick_2048();
-			break;
+		else{
+			switch( D.NB[0] ) {
+				case 16: D.firstKick_16();
+				break;
+				case 32: D.firstKick_32();
+				break;
+				case 64: D.firstKick_64();
+				break;
+				case 128: D.firstKick_128();
+				break;
+				case 256: D.firstKick_256();
+				break;
+				case 512: D.firstKick_512();
+				break;
+				case 1024: D.firstKick_1024();
+				break;
+				case 2048: D.firstKick_2048();
+				break;
+			}
+			if(D.NB[0] > 2048) D.firstKick_largeN();
 		}
 	}
 	cudaDeviceSynchronize();
@@ -634,15 +663,11 @@ int main(int argc, char*argv[]){
 	glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
 	unsigned int size = (D.N_h[0] + D.Nsmall_h[0]) *  sizeof(double4);
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-error = cudaGetLastError();
-printf("C error = %d = %s\n",error, cudaGetErrorString(error));
 	error = cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);
 
 	glGenBuffers(1, &colorsVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, colorsVBO);
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-error = cudaGetLastError();
-printf("C error = %d = %s\n",error, cudaGetErrorString(error));
 	error = cudaGraphicsGLRegisterBuffer(&colorsVBO_CUDA, colorsVBO, cudaGraphicsMapFlagsWriteDiscard);
 
 	if(error != 0){

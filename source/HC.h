@@ -98,6 +98,90 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
 		}
 	}
 }
+template <int Bl, int E>
+__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
+
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+        if(E == 1){
+                if(idy == 0 && idx == 0){
+                        Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
+                }
+                if(idy < 12 && idx == 0) Nenc_d[idy] = 0;
+        }
+        if(E == 2){
+                if(idy == 0 && idx == 0){
+                        Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
+                }
+        }
+        if(E == 3){
+                if(idy == 0 && idx == 0){
+                        Nencpairs_d[0] = 0;     //This variable is needed in the Kick_kernel
+                }
+        }
+
+	__shared__  double a1_s[Bl];
+
+	a1_s[idy] = 0.0;
+
+	__syncthreads(); 
+	for (int i = 0; i < N; i+= Bl){
+		if(x4_d[idy + i].w > 0 && idy < N){
+			if(idx == 0){
+				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
+			}
+			if(idx == 1){
+				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].y;
+			}
+			if(idx == 2){
+				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].z;
+			}
+		}
+	}
+	__syncthreads();
+
+        if(Bl >= 512){
+                if(idy < 256){
+                        a1_s[idy] += a1_s[idy + 256];
+
+                }
+        }
+        __syncthreads();
+
+	if(Bl >= 256){
+		if(idy < 128){
+			a1_s[idy] += a1_s[idy + 128];
+
+		}
+	}
+	__syncthreads();
+
+	if(Bl >= 128){
+		if(idy < 64){
+			a1_s[idy] += a1_s[idy + 64];
+		}
+	}
+	__syncthreads();
+
+        if(idy < 32){
+                volatile double *a = a1_s;
+                a[idy] += a[idy + 32];
+                a[idy] += a[idy + 16];
+                a[idy] += a[idy + 8];
+                a[idy] += a[idy + 4];
+                a[idy] += a[idy + 2];
+                a[idy] += a[idy + 1];
+        }
+	__syncthreads();
+	for(int i = 0; i < N; i +=  Bl){
+		if(idy < N){
+			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
+			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
+			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
+		}
+	}
+}
 
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.

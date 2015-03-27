@@ -1176,6 +1176,8 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 	if( N > 256) NB = 512;
 	if( N > 512) NB = 1024;
 	if( N > 1024) NB = 2048;
+	if( N > 2048) NB = 4096;
+	if( N > 4096) NB = 8192;
 
 	N4 = N;
 	if(N4 %4 == 3) N4 +=1;

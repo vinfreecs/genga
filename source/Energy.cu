@@ -56,10 +56,10 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 //which is a power of two. Bl is the minimum of NB and 512.
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//March 2015
 //
 // ****************************************/
-template <int NB, int Bl>
+template <int Bl>
 __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, double *test_d, int st, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -68,15 +68,12 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 	double test;
 
 	V_s[idy] = 0.0;
-	if(NB == 16) V_s[idy + 16] = 0.0;
-	if(NB == 32) V_s[idy + 32] = 0.0;
-
 	__syncthreads();
 
 	if(idx < N){
 		if(x4_d[idx].w > 0){
 
-			for (int i = 0; i < NB ;i += Bl){
+			for (int i = 0; i < N; i += Bl){
 				if(x4_d[idy + i].w > 0 && idy + i < N){
 					V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
 				}
@@ -122,10 +119,10 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 // The Kernel is launched with 1 block with Bl threads. Bl is equal to NB, and Bl2 is the minimum of 2*NB and 64.
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//March 2015
 //
 // ****************************************
-template <int NB, int Bl>
+template <int Bl>
 __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
 	int idy = threadIdx.x;
 
@@ -151,7 +148,7 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 
 	__syncthreads();
 
-	for (int i = 0; i < NB ;i += Bl){
+	for (int i = 0; i < N; i += Bl){
 		if(x4_d[idy + i].w > 0 && idy + i < N){
 			m_s[idy] += x4_d[idy + i].w;
 			V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
@@ -297,7 +294,7 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	
 	__syncthreads();
 	
-	for (int i = 0; i < NB ; i += Bl){
+	for (int i = 0; i < N; i += Bl){
 		if(idy + i < N){
 			v4_d[idy + i].x += vcom.x;
 			v4_d[idy + i].y += vcom.y;
@@ -311,7 +308,7 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	T_s[idy] = 0.0;
 	
 	__syncthreads();
-	for (int i = 0; i < NB ;i += Bl){
+	for (int i = 0; i < N; i += Bl){
 		if(x4_d[idy + i].w > 0 && idy + i < N){
 			T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
 		}
@@ -623,10 +620,10 @@ __global__ void EjectionEnergysmall2_kernel(double4 *x4small_d, int i){
 //which is a power of two.
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//March 2015
 //
 // ****************************************
-template < int NB, int Bl>
+template <int Bl>
 __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
 	int idy = threadIdx.x;
 
@@ -651,7 +648,7 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	p_s[idy].y = 0.0;
 	p_s[idy].z = 0.0;
 
-	for(int i = 0; i < NB ;i += Bl){
+	for(int i = 0; i < N; i += Bl){
 		if(x4_d[idy + i].w > 0 && idy + i < N){
 			s_s[idy].x += x4_d[idy + i].w * x4_d[idy + i].x;
 			s_s[idy].y += x4_d[idy + i].w * x4_d[idy + i].y;
@@ -746,7 +743,7 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	}
 	__syncthreads();
 
-	for(int i = 0; i < NB ;i += Bl){
+	for(int i = 0; i < N; i += Bl){
 		if(idy + i < N){
 			V_s[idy] += Energy_d[idy + i];
 			double4 x4 = x4_d[idy + i];
@@ -1131,45 +1128,50 @@ test_d[idy] = E_s[idy];
 __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int E){
 	switch(NB){
 		case 16:{
-			potentialEnergy32_kernel<16, 32><<< NB, 16, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy32_kernel<16, 32> <<< 1, 16, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy32_kernel <16, 32> <<< NB, 16, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy32_kernel <16, 32> <<< 1, 16, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 32:{
-			potentialEnergy32_kernel<32, 64><<< NB, 32, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy32_kernel<32, 64> <<< 1, 32, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy32_kernel <32, 64> <<< NB, 32, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy32_kernel <32, 64> <<< 1, 32, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 64:{
-			potentialEnergy64_kernel<64, 64><<< NB, 64, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy32_kernel<64, 64> <<< 1, 64, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <64> <<< NB, 64, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy32_kernel <64, 64> <<< 1, 64, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 128:{
-			potentialEnergy64_kernel<128, 128><<< NB, 128,  0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy128_kernel<128, 128> <<< 1, 128, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <128> <<< NB, 128,  0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy128_kernel <128> <<< 1, 128, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 256:{
-			potentialEnergy64_kernel<256, 256><<< NB, 256, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy128_kernel<256, 256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <256> <<< NB, 256, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy128_kernel <256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 512:{
-			potentialEnergy64_kernel<512, 512><<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy128_kernel<512, 256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <512> <<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy128_kernel <256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 1024:{
-			potentialEnergy64_kernel<1024, 512><<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy128_kernel<1024,256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <512> <<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy128_kernel <256> <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
 		case 2048:{
-			potentialEnergy64_kernel<2048, 512><<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy128_kernel<2048,256> <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+			potentialEnergy64_kernel <512> <<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+			kineticEnergy128_kernel <256> <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
 		};
 		break;
+	}
+	if(NB > 2048){
+		potentialEnergy64_kernel <512> <<< NB, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
+		kineticEnergy128_kernel <256> <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+
 	}
 }
 // *************************************
@@ -1181,36 +1183,39 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *sp
 __host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
 	switch(NB){
 		case 16:{
-			EjectionEnergy32_kernel<16, 32><<<1, 16>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy32_kernel <16, 32> <<<1, 16>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 32:{
-			EjectionEnergy32_kernel<32, 64><<<1, 32>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy32_kernel <32, 64> <<<1, 32>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 64:{
-			EjectionEnergy64_kernel<64, 64><<<1, 64>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <64> <<<1, 64>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 128:{
-			EjectionEnergy64_kernel<128, 128><<<1, 128>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <128> <<<1, 128>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 256:{
-			EjectionEnergy64_kernel<256, 256><<<1, 256>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <256> <<<1, 256>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 512:{
-			EjectionEnergy64_kernel<512, 512><<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 1024:{
-			EjectionEnergy64_kernel<1024, 512><<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
 		break;
 		case 2048:{
-			EjectionEnergy64_kernel<2048, 512><<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 		};
+	}
+	if(NB > 2048){
+		EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
 	}
 }
 __host__ void Data::EjectionEnergysmallCall(double4 *v4small_d, int Nsmall, double3 *vcomsmall_d){

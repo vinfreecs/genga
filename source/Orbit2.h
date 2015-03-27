@@ -138,6 +138,7 @@ public:
 	__host__ void firstKick_512();
 	__host__ void firstKick_1024();
 	__host__ void firstKick_2048();
+	__host__ void firstKick_largeN();
 	__host__ void firstKick_small();
 	__host__ void firstKick_M();
 
@@ -149,6 +150,7 @@ public:
 	__host__ int step_512(double);
 	__host__ int step_1024(double);
 	__host__ int step_2048(double);
+	__host__ int step_largeN(double);
 	__host__ int step_small(double);
 	__host__ int step_M(double);
 
@@ -175,6 +177,7 @@ public:
 	__host__ void GasAccCall_512(double, double);
 	__host__ void GasAccCall_1024(double, double);
 	__host__ void GasAccCall_2048(double, double);
+	__host__ void GasAccCall_largeN(double, double);
 	__host__ void GasAccCall_small(double, double);
 	__host__ void GasAccCall_M(double, double);
 

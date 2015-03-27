@@ -869,7 +869,7 @@ __host__ int Host::icSize(int st){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
 	}
-	NN = min(NN, 2048);
+	NN = min(NN, 8192);
 	N_h[st] = NN;
 	return 1;
 }
@@ -894,6 +894,9 @@ __host__ int Host::size(){
 		if( N_h[st] > 256) NB[st] = 512;
 		if( N_h[st] > 512) NB[st] = 1024;
 		if( N_h[st] > 1024) NB[st] = 2048;
+		if( N_h[st] > 2048) NB[st] = 4096;
+		if( N_h[st] > 4096) NB[st] = 8192;
+
 
 		N4[st] = N_h[st];
 		if(N4[st] %4 == 3) N4[st] +=1;
@@ -910,10 +913,10 @@ __host__ int Host::size(){
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 2048)){
-			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
-			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
-			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 2048));
+		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 8192)){
+			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
+			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
+			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
 			return 0;
 		}
 		fclose(GSF[st].logfile);

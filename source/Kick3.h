@@ -2109,6 +2109,499 @@ __global__ void kick4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 	}
 }
 
+template <int Bl, int E>
+__global__ void kick4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NB, double t){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	int Bl_2 = Bl/2;
+
+	__shared__ double3 a1_s[Bl/2];
+	__shared__ double3 a2_s[Bl/2];
+	__shared__ double3 a3_s[Bl/2];
+	__shared__ double3 a4_s[Bl/2];
+
+	__shared__ double3 b1_s[Bl/2];
+	__shared__ double3 b2_s[Bl/2];
+	__shared__ double3 b3_s[Bl/2];
+	__shared__ double3 b4_s[Bl/2];
+
+	__shared__ int NencpairsI_s;
+	__shared__ int NencpairsI2_s;
+	__shared__ int NencpairsI3_s;
+	__shared__ int NencpairsI4_s;
+
+	__shared__ int NencpairsJ_s;
+	__shared__ int NencpairsJ2_s;
+	__shared__ int NencpairsJ3_s;
+	__shared__ int NencpairsJ4_s;
+
+	double4 x4i = x4_d[idx];
+	double4 x4i2 = x4_d[idx+N4];
+	double4 x4i3 = x4_d[idx+2*N4];
+	double4 x4i4 = x4_d[idx+3*N4];
+
+	double rcriti = rcrit_d[idx];
+	double rcriti2 = rcrit_d[idx+N4];
+	double rcriti3 = rcrit_d[idx+2*N4];
+	double rcriti4 = rcrit_d[idx+3*N4];
+	double rcritvi = rcritv_d[idx];
+	double rcritvi2 = rcritv_d[idx+N4];
+	double rcritvi3 = rcritv_d[idx+2*N4];
+	double rcritvi4 = rcritv_d[idx+3*N4];
+#if G3 == 1
+	int groupIndexi = groupIndex_d[idx];
+	int groupIndexi2 = groupIndex_d[idx + N4];
+	int groupIndexi3 = groupIndex_d[idx + 2*N4];
+	int groupIndexi4 = groupIndex_d[idx + 3*N4];
+#endif
+	double test;
+
+	if(idy == 0){
+		NencpairsI_s = 0;
+		NencpairsJ_s = 0;
+	}
+	if(idy == 32){
+		NencpairsI2_s = 0;
+		NencpairsJ2_s = 0;
+	}
+	if(idy == 64){
+		NencpairsI3_s = 0;
+		NencpairsJ3_s = 0;
+	}
+	if(idy == 96){
+		NencpairsI4_s = 0;
+		NencpairsJ4_s = 0;
+	}
+	
+
+	__syncthreads();
+
+	if(idy < Bl_2) {
+		a1_s[idy].x = 0.0;
+		a1_s[idy].y = 0.0;
+		a1_s[idy].z = 0.0;
+
+		a3_s[idy].x = 0.0;
+		a3_s[idy].y = 0.0;
+		a3_s[idy].z = 0.0;
+
+		b1_s[idy].x = 0.0;
+		b1_s[idy].y = 0.0;
+		b1_s[idy].z = 0.0;
+
+		b3_s[idy].x = 0.0;
+		b3_s[idy].y = 0.0;
+		b3_s[idy].z = 0.0;
+
+		__syncthreads();
+		for(int i = 0; i < NB; i += Bl_2){
+			if(idy + i < N){
+				double4 x4j = x4_d[idy + i];
+				double rcritj = rcrit_d[idy + i];
+				double rcritvj = rcritv_d[idy + i];
+#if G3 == 0
+				acc<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy + i, idx, icNB, test, 0);
+				acc<E>(a3_s[idy], b3_s[idy], x4i3, x4j, rcriti3, rcritvi3, rcritj, rcritvj, &NencpairsI3_s, &NencpairsJ3_s, Encpairs2_d, idy + i, idx +2*N4, icNB, test, 0);
+#else
+				int groupIndexj = groupIndex_d[idy + i];
+				accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy + i, idx, icNB, test, 0, t);
+				accG3<E>(a3_s[idy], b3_s[idy], x4i3, x4j, rcriti3, rcritvi3, rcritj, rcritvj, groupIndexi3, groupIndexj, &NencpairsI3_s, &NencpairsJ3_s, Encpairs2_d, idy + i, idx +2*N4, icNB, test, 0, t);
+
+
+#endif
+			}	
+		}
+	}
+	else{
+		a2_s[idy-Bl_2].x = 0.0;
+		a2_s[idy-Bl_2].y = 0.0;
+		a2_s[idy-Bl_2].z = 0.0;
+
+		a4_s[idy-Bl_2].x = 0.0;
+		a4_s[idy-Bl_2].y = 0.0;
+		a4_s[idy-Bl_2].z = 0.0;
+
+		b2_s[idy-Bl_2].x = 0.0;
+		b2_s[idy-Bl_2].y = 0.0;
+		b2_s[idy-Bl_2].z = 0.0;
+
+		b4_s[idy-Bl_2].x = 0.0;
+		b4_s[idy-Bl_2].y = 0.0;
+		b4_s[idy-Bl_2].z = 0.0;
+
+		__syncthreads();
+
+		for(int i = 0; i < NB; i += Bl_2){
+			if(idy-Bl_2 + i < N){
+				double4 x4j = x4_d[idy-Bl_2 + i];
+				double rcritj = rcrit_d[idy-Bl_2 + i];
+				double rcritvj = rcritv_d[idy-Bl_2 + i];
+#if G3 == 0
+				acc<E>(a2_s[idy-Bl_2], b2_s[idy-Bl_2], x4i2, x4j, rcriti2, rcritvi2, rcritj, rcritvj, &NencpairsI2_s, &NencpairsJ2_s, Encpairs2_d, idy-Bl_2 + i, idx +N4, icNB, test, 0);
+				acc<E>(a4_s[idy-Bl_2], b4_s[idy-Bl_2], x4i4, x4j, rcriti4, rcritvi4, rcritj, rcritvj, &NencpairsI4_s, &NencpairsJ4_s, Encpairs2_d, idy-Bl_2 + i, idx +3*N4, icNB, test, 0);
+#else
+				int groupIndexj = groupIndex_d[idy-Bl_2 + i];
+				accG3<E>(a2_s[idy-Bl_2], b2_s[idy-Bl_2], x4i2, x4j, rcriti2, rcritvi2, rcritj, rcritvj, groupIndexi2, groupIndexj, &NencpairsI2_s, &NencpairsJ2_s, Encpairs2_d, idy-Bl_2 + i, idx +N4, icNB, test, 0, t);
+				accG3<E>(a4_s[idy-Bl_2], b4_s[idy-Bl_2], x4i4, x4j, rcriti4, rcritvi4, rcritj, rcritvj, groupIndexi4, groupIndexj, &NencpairsI4_s, &NencpairsJ4_s, Encpairs2_d, idy-Bl_2 + i, idx +3*N4, icNB, test, 0, t);
+
+#endif
+			}
+		}
+	}
+	__syncthreads();
+
+	volatile double3 *a1 = a1_s;
+	volatile double3 *a2 = a2_s;
+	volatile double3 *a3 = a3_s;
+	volatile double3 *a4 = a4_s;
+	volatile double3 *b1 = b1_s;
+	volatile double3 *b2 = b2_s;
+	volatile double3 *b3 = b3_s;
+	volatile double3 *b4 = b4_s;
+
+	int s = Bl/4;
+
+	for(int i = 6; i < log2f(Bl/2); ++i){
+		if( idy < s ) {
+			a1[idy].x += a1[idy + s].x;
+			a1[idy].y += a1[idy + s].y;
+			a1[idy].z += a1[idy + s].z;
+
+			a2[idy].x += a2[idy + s].x;
+			a2[idy].y += a2[idy + s].y;
+			a2[idy].z += a2[idy + s].z;
+
+			a3[idy].x += a3[idy + s].x;
+			a3[idy].y += a3[idy + s].y;
+			a3[idy].z += a3[idy + s].z;
+
+			a4[idy].x += a4[idy + s].x;
+			a4[idy].y += a4[idy + s].y;
+			a4[idy].z += a4[idy + s].z;
+
+			if(E <= 1){
+				b1[idy].x += b1[idy + s].x;
+				b1[idy].y += b1[idy + s].y;
+				b1[idy].z += b1[idy + s].z;
+
+				b2[idy].x += b2[idy + s].x;
+				b2[idy].y += b2[idy + s].y;
+				b2[idy].z += b2[idy + s].z;
+
+				b3[idy].x += b3[idy + s].x;
+				b3[idy].y += b3[idy + s].y;
+				b3[idy].z += b3[idy + s].z;
+				
+				b4[idy].x += b4[idy + s].x;
+				b4[idy].y += b4[idy + s].y;
+				b4[idy].z += b4[idy + s].z;
+			}
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+	if(idy < 32){
+		a1[idy].x += a1[idy + 32].x;
+		a1[idy].x += a1[idy + 16].x;
+		a1[idy].x += a1[idy + 8].x;
+		a1[idy].x += a1[idy + 4].x;
+		a1[idy].x += a1[idy + 2].x;
+		a1[idy].x += a1[idy + 1].x;
+
+		a1[idy].y += a1[idy + 32].y;
+		a1[idy].y += a1[idy + 16].y;
+		a1[idy].y += a1[idy + 8].y;
+		a1[idy].y += a1[idy + 4].y;
+		a1[idy].y += a1[idy + 2].y;
+		a1[idy].y += a1[idy + 1].y;
+
+		a1[idy].z += a1[idy + 32].z;
+		a1[idy].z += a1[idy + 16].z;
+		a1[idy].z += a1[idy + 8].z;
+		a1[idy].z += a1[idy + 4].z;
+		a1[idy].z += a1[idy + 2].z;
+		a1[idy].z += a1[idy + 1].z;
+
+		if(E <= 1){
+			b1[idy].x += b1[idy + 32].x;
+			b1[idy].x += b1[idy + 16].x;
+			b1[idy].x += b1[idy + 8].x;
+			b1[idy].x += b1[idy + 4].x;
+			b1[idy].x += b1[idy + 2].x;
+			b1[idy].x += b1[idy + 1].x;
+
+			b1[idy].y += b1[idy + 32].y;
+			b1[idy].y += b1[idy + 16].y;
+			b1[idy].y += b1[idy + 8].y;
+			b1[idy].y += b1[idy + 4].y;
+			b1[idy].y += b1[idy + 2].y;
+			b1[idy].y += b1[idy + 1].y;
+
+			b1[idy].z += b1[idy + 32].z;
+			b1[idy].z += b1[idy + 16].z;
+			b1[idy].z += b1[idy + 8].z;
+			b1[idy].z += b1[idy + 4].z;
+			b1[idy].z += b1[idy + 2].z;
+			b1[idy].z += b1[idy + 1].z;
+		}
+	}
+	else{
+		if(idy < 64){
+			a2[idy-32].x += a2[idy + 32-32].x;
+			a2[idy-32].x += a2[idy + 16-32].x;
+			a2[idy-32].x += a2[idy + 8-32].x;
+			a2[idy-32].x += a2[idy + 4-32].x;
+			a2[idy-32].x += a2[idy + 2-32].x;
+			a2[idy-32].x += a2[idy + 1-32].x;
+
+			a2[idy-32].y += a2[idy + 32-32].y;
+			a2[idy-32].y += a2[idy + 16-32].y;
+			a2[idy-32].y += a2[idy + 8-32].y;
+			a2[idy-32].y += a2[idy + 4-32].y;
+			a2[idy-32].y += a2[idy + 2-32].y;
+			a2[idy-32].y += a2[idy + 1-32].y;
+
+			a2[idy-32].z += a2[idy + 32-32].z;
+			a2[idy-32].z += a2[idy + 16-32].z;
+			a2[idy-32].z += a2[idy + 8-32].z;
+			a2[idy-32].z += a2[idy + 4-32].z;
+			a2[idy-32].z += a2[idy + 2-32].z;
+			a2[idy-32].z += a2[idy + 1-32].z;
+
+			if(E <= 1){
+				b2[idy-32].x += b2[idy + 32-32].x;
+				b2[idy-32].x += b2[idy + 16-32].x;
+				b2[idy-32].x += b2[idy + 8-32].x;
+				b2[idy-32].x += b2[idy + 4-32].x;
+				b2[idy-32].x += b2[idy + 2-32].x;
+				b2[idy-32].x += b2[idy + 1-32].x;
+
+				b2[idy-32].y += b2[idy + 32-32].y;
+				b2[idy-32].y += b2[idy + 16-32].y;
+				b2[idy-32].y += b2[idy + 8-32].y;
+				b2[idy-32].y += b2[idy + 4-32].y;
+				b2[idy-32].y += b2[idy + 2-32].y;
+				b2[idy-32].y += b2[idy + 1-32].y;
+
+				b2[idy-32].z += b2[idy + 32-32].z;
+				b2[idy-32].z += b2[idy + 16-32].z;
+				b2[idy-32].z += b2[idy + 8-32].z;
+				b2[idy-32].z += b2[idy + 4-32].z;
+				b2[idy-32].z += b2[idy + 2-32].z;
+				b2[idy-32].z += b2[idy + 1-32].z;
+			}
+		}
+		else{
+			if(idy < 96){
+				a3[idy-64].x += a3[idy + 32-64].x;
+				a3[idy-64].x += a3[idy + 16-64].x;
+				a3[idy-64].x += a3[idy + 8-64].x;
+				a3[idy-64].x += a3[idy + 4-64].x;
+				a3[idy-64].x += a3[idy + 2-64].x;
+				a3[idy-64].x += a3[idy + 1-64].x;
+
+				a3[idy-64].y += a3[idy + 32-64].y;
+				a3[idy-64].y += a3[idy + 16-64].y;
+				a3[idy-64].y += a3[idy + 8-64].y;
+				a3[idy-64].y += a3[idy + 4-64].y;
+				a3[idy-64].y += a3[idy + 2-64].y;
+				a3[idy-64].y += a3[idy + 1-64].y;
+
+				a3[idy-64].z += a3[idy + 32-64].z;
+				a3[idy-64].z += a3[idy + 16-64].z;
+				a3[idy-64].z += a3[idy + 8-64].z;
+				a3[idy-64].z += a3[idy + 4-64].z;
+				a3[idy-64].z += a3[idy + 2-64].z;
+				a3[idy-64].z += a3[idy + 1-64].z;
+
+				if(E <= 1){
+					b3[idy-64].x += b3[idy + 32-64].x;
+					b3[idy-64].x += b3[idy + 16-64].x;
+					b3[idy-64].x += b3[idy + 8-64].x;
+					b3[idy-64].x += b3[idy + 4-64].x;
+					b3[idy-64].x += b3[idy + 2-64].x;
+					b3[idy-64].x += b3[idy + 1-64].x;
+
+					b3[idy-64].y += b3[idy + 32-64].y;
+					b3[idy-64].y += b3[idy + 16-64].y;
+					b3[idy-64].y += b3[idy + 8-64].y;
+					b3[idy-64].y += b3[idy + 4-64].y;
+					b3[idy-64].y += b3[idy + 2-64].y;
+					b3[idy-64].y += b3[idy + 1-64].y;
+
+					b3[idy-64].z += b3[idy + 32-64].z;
+					b3[idy-64].z += b3[idy + 16-64].z;
+					b3[idy-64].z += b3[idy + 8-64].z;
+					b3[idy-64].z += b3[idy + 4-64].z;
+					b3[idy-64].z += b3[idy + 2-64].z;
+					b3[idy-64].z += b3[idy + 1-64].z;
+				}
+			}
+			else{
+				if(idy < 128){
+					a4[idy-96].x += a4[idy + 32-96].x;
+					a4[idy-96].x += a4[idy + 16-96].x;
+					a4[idy-96].x += a4[idy + 8-96].x;
+					a4[idy-96].x += a4[idy + 4-96].x;
+					a4[idy-96].x += a4[idy + 2-96].x;
+					a4[idy-96].x += a4[idy + 1-96].x;
+
+					a4[idy-96].y += a4[idy + 32-96].y;
+					a4[idy-96].y += a4[idy + 16-96].y;
+					a4[idy-96].y += a4[idy + 8-96].y;
+					a4[idy-96].y += a4[idy + 4-96].y;
+					a4[idy-96].y += a4[idy + 2-96].y;
+					a4[idy-96].y += a4[idy + 1-96].y;
+
+					a4[idy-96].z += a4[idy + 32-96].z;
+					a4[idy-96].z += a4[idy + 16-96].z;
+					a4[idy-96].z += a4[idy + 8-96].z;
+					a4[idy-96].z += a4[idy + 4-96].z;
+					a4[idy-96].z += a4[idy + 2-96].z;
+					a4[idy-96].z += a4[idy + 1-96].z;
+
+					if(E <= 1){
+						b4[idy-96].x += b4[idy + 32-96].x;
+						b4[idy-96].x += b4[idy + 16-96].x;
+						b4[idy-96].x += b4[idy + 8-96].x;
+						b4[idy-96].x += b4[idy + 4-96].x;
+						b4[idy-96].x += b4[idy + 2-96].x;
+						b4[idy-96].x += b4[idy + 1-96].x;
+
+						b4[idy-96].y += b4[idy + 32-96].y;
+						b4[idy-96].y += b4[idy + 16-96].y;
+						b4[idy-96].y += b4[idy + 8-96].y;
+						b4[idy-96].y += b4[idy + 4-96].y;
+						b4[idy-96].y += b4[idy + 2-96].y;
+						b4[idy-96].y += b4[idy + 1-96].y;
+
+						b4[idy-96].z += b4[idy + 32-96].z;
+						b4[idy-96].z += b4[idy + 16-96].z;
+						b4[idy-96].z += b4[idy + 8-96].z;
+						b4[idy-96].z += b4[idy + 4-96].z;
+						b4[idy-96].z += b4[idy + 2-96].z;
+						b4[idy-96].z += b4[idy + 1-96].z;
+					}
+				}
+			}
+		}
+	}
+
+	__shared__ int Ne1;
+	__shared__ int Ne2;
+	__shared__ int Ne3;
+	__shared__ int Ne4;
+
+	__syncthreads();
+
+	if(idy == 0){
+		if(E >= 1){
+			v4_d[idx].x += a1[0].x * dtksq;
+			v4_d[idx].y += a1[0].y * dtksq;
+			v4_d[idx].z += a1[0].z * dtksq;
+		}
+		if(E <= 1){
+			acck_d[idx].x += b1[0].x * dtksq;
+			acck_d[idx].y += b1[0].y * dtksq;
+			acck_d[idx].z += b1[0].z * dtksq;
+		}
+		if(E <= 2){
+			Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
+		}
+	}
+	if(idy == 32){
+		if(E >= 1){
+			v4_d[idx + N4].x += a2[0].x * dtksq;
+			v4_d[idx + N4].y += a2[0].y * dtksq;
+			v4_d[idx + N4].z += a2[0].z * dtksq;
+		}
+		if(E <= 1){
+			acck_d[idx + N4].x += b2[0].x * dtksq;
+			acck_d[idx + N4].y += b2[0].y * dtksq;
+			acck_d[idx + N4].z += b2[0].z * dtksq;
+		}
+		if(E <= 2){
+			Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
+		}
+	}
+	if(idy == 64){
+		if(E >= 1){
+			v4_d[idx + 2*N4].x += a3[0].x * dtksq;
+			v4_d[idx + 2*N4].y += a3[0].y * dtksq;
+			v4_d[idx + 2*N4].z += a3[0].z * dtksq;
+		}
+		if(E <= 1){
+			acck_d[idx + 2*N4].x += b3[0].x * dtksq;
+			acck_d[idx + 2*N4].y += b3[0].y * dtksq;
+			acck_d[idx + 2*N4].z += b3[0].z * dtksq;
+		}
+		if(E <= 2){
+			Ne3 = atomicAdd(Nencpairs_d, NencpairsI3_s);
+		}
+	}
+	if(idy == 96){
+		if(E >= 1){
+			v4_d[idx + 3*N4].x += a4[0].x * dtksq;
+			v4_d[idx + 3*N4].y += a4[0].y * dtksq;
+			v4_d[idx + 3*N4].z += a4[0].z * dtksq;
+		}
+		if(E <= 1){
+			acck_d[idx + 3*N4].x += b4[0].x * dtksq;
+			acck_d[idx + 3*N4].y += b4[0].y * dtksq;
+			acck_d[idx + 3*N4].z += b4[0].z * dtksq;
+		}
+		if(E <= 2){
+			Ne4 = atomicAdd(Nencpairs_d, NencpairsI4_s);
+		}
+	}
+	if(E <= 2){
+
+		__syncthreads();
+		for(int i = 0; i < NencpairsI_s; i += Bl){
+			if(idy + i < NencpairsI_s){
+				Encpairs_d[idy + i + Ne1] = Encpairs2_d[icNB * idx + idy + i];
+			}
+		}
+		__syncthreads();
+		for(int i = 0; i < NencpairsI2_s; i += Bl){
+			if(idy + i < NencpairsI2_s){
+				Encpairs_d[idy + i + Ne2] = Encpairs2_d[icNB * (idx + N4) + idy + i];
+			}
+		}
+		__syncthreads();
+		for(int i = 0; i < NencpairsI3_s; i += Bl){
+			if(idy + i < NencpairsI3_s){
+				Encpairs_d[idy + i + Ne3] = Encpairs2_d[icNB * (idx + 2*N4) + idy + i];
+			}
+		}
+		__syncthreads();
+		for(int i = 0; i < NencpairsI4_s; i += Bl){
+			if(idy + i < NencpairsI4_s){
+			Encpairs_d[idy + i + Ne4] = Encpairs2_d[icNB * (idx + 3*N4) + idy + i];
+			}
+		}
+		__syncthreads();
+		if(idy == 0){
+			Encpairs2_d[icNB * idx].x = NencpairsI_s;
+			Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
+		}
+		if(idy == 32){
+			Encpairs2_d[icNB * (idx + N4)].x = NencpairsI2_s;
+			Encpairs2_d[icNB * (idx + N4) + 1].x = NencpairsJ2_s;
+		}
+		if(idy == 64){
+			Encpairs2_d[icNB * (idx + 2*N4)].x = NencpairsI3_s;
+			Encpairs2_d[icNB * (idx + 2*N4) + 1].x = NencpairsJ3_s;
+		}
+		if(idy == 96){
+			Encpairs2_d[icNB * (idx + 3*N4)].x = NencpairsI4_s;
+			Encpairs2_d[icNB * (idx + 3*N4) + 1].x = NencpairsJ4_s;
+		}
+	}
+}
+
 // **************************************
 //This kernel performs the seccond kick of the time step for test particles
 //It calculates the acceleration between all bodies with respect to the changeover function K.

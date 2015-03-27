@@ -198,23 +198,26 @@ int main(int argc, char*argv[]){
 	}
 	else{
 		if(D.P.UseTestParticles == 1) D.firstKick_small();
-		else switch( D.NB[0] ) {
-			case 16: D.firstKick_16();
-			break;
-			case 32: D.firstKick_32();
-			break;
-			case 64: D.firstKick_64();
-			break;
-			case 128: D.firstKick_128();
-			break;
-			case 256: D.firstKick_256();
-			break;
-			case 512: D.firstKick_512();
-			break;
-			case 1024: D.firstKick_1024();
-			break;
-			case 2048: D.firstKick_2048();
-			break;
+		else{
+			switch( D.NB[0] ) {
+				case 16: D.firstKick_16();
+				break;
+				case 32: D.firstKick_32();
+				break;
+				case 64: D.firstKick_64();
+				break;
+				case 128: D.firstKick_128();
+				break;
+				case 256: D.firstKick_256();
+				break;
+				case 512: D.firstKick_512();
+				break;
+				case 1024: D.firstKick_1024();
+				break;
+				case 2048: D.firstKick_2048();
+				break;
+			}
+			if(D.NB[0] > 2048) D.firstKick_largeN();
 		}
 	}
 	cudaDeviceSynchronize();
@@ -239,23 +242,26 @@ int main(int argc, char*argv[]){
 				if(er == 0) return 0;
 			}
 			//check the number of massive particles
-			else switch(D.NB[0]){
-				case 16: D.step_16(t);
-				break;
-				case 32: D.step_32(t);
-				break;
-				case 64: D.step_64(t);
-				break;
-				case 128: D.step_128(t);
-				break;
-				case 256: D.step_256(t);
-				break;
-				case 512: D.step_512(t);
-				break;
-				case 1024: D.step_1024(t);
-				break;
-				case 2048: D.step_2048(t);
-				break;
+			else{
+				switch(D.NB[0]){
+					case 16: D.step_16(t);
+					break;
+					case 32: D.step_32(t);
+					break;
+					case 64: D.step_64(t);
+					break;
+					case 128: D.step_128(t);
+					break;
+					case 256: D.step_256(t);
+					break;
+					case 512: D.step_512(t);
+					break;
+					case 1024: D.step_1024(t);
+					break;
+					case 2048: D.step_2048(t);
+					break;
+				}
+				if(D.NB[0] > 2048) D.step_largeN(t);
 			}
 		}
 

@@ -104,7 +104,7 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
 // ***********************************************************
-template < int NB, int Bl>
+template < int Bl>
 __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
@@ -116,7 +116,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
         p_s[idy].z = 0.0;
         p_s[idy].w = 0.0;
 
-        for(int i = 0; i < NB ;i += Bl){
+        for(int i = 0; i < N; i += Bl){
 		double m = x4_d[idy + i].w;
                 if(m > 0 && idy + i < N){
                         p_s[idy].x += m * v4_d[idy + i].x;
@@ -192,7 +192,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
 	}
-        for(int i = 0; i < NB ;i += Bl){
+        for(int i = 0; i < N; i += Bl){
                 double m = x4_d[idy + i].w;
                 if(m > 0 && idy + i < N && f == 1){
 			//Convert to Heliocentric coordinates
@@ -202,7 +202,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 
 		}
 	}
-        for(int i = 0; i < NB ;i += Bl){
+        for(int i = 0; i < N; i += Bl){
                 double m = x4_d[idy + i].w;
                 if(m > 0 && idy + i < N && f == -1){
 			//Convert to Democratic coordinates

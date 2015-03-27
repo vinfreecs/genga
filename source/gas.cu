@@ -455,7 +455,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			}
 			v_kep = sqrt(Msun * ksq / r1 - a_r * r1); 
 			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
-			v_gas = v_kep * (1.0 - eta);
+			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
 			rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
 			v_rel3.x = v4.x + v_gas * x4.y / r1; 
@@ -589,6 +589,54 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
         }
 
 }
+template < int Bl>
+__global__ void gasEnergyb_kernel(double *Energy_d, double *U_d, double *test_d, int st, int N){
+
+        int idy = threadIdx.x;
+
+        __shared__ volatile double U_s[Bl];
+
+	U_s[idy] = 0.0;
+
+	__syncthreads();
+
+	for (int i = 0; i < N ;i += Bl){
+		if(idy + i < N){
+			U_s[idy] += Energy_d[idy + i];
+		}
+	}
+//printf("%d %g\n", idy, U_s[idy]);
+	__syncthreads();
+	int s = Bl/2;
+	for(int i = 6; i < log2f(Bl); ++i){
+		if( idy < s ) {
+			U_s[idy] += U_s[idy + s];
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+	if(idy < 32){
+		if(Bl >= 64) U_s[idy] += U_s[idy + 32];
+		if(Bl >= 32) U_s[idy] += U_s[idy + 16];
+		if(Bl >= 16) U_s[idy] += U_s[idy + 8];
+		if(Bl >= 8) U_s[idy] += U_s[idy + 4];
+		if(Bl >= 4) U_s[idy] += U_s[idy + 2];
+		if(Bl >= 2) U_s[idy] += U_s[idy + 1];
+	}
+
+	__syncthreads();
+
+	if(idy == 0){
+		U_d[0] += U_s[0];
+	}
+        for (int i = 0; i < N ;i += Bl){
+		if(idy + i < N){
+                	Energy_d[idy + i] = 0.0;
+		}
+        }
+
+}
 
 //This function calls the Gas Energy kernel
 __host__ void Data::gasEnergyCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
@@ -626,6 +674,9 @@ __host__ void Data::gasEnergyCall(int NB, double* Energy_d, double *test_d, doub
                 };
                 break;
         }
+	if(NB > 2048){
+			gasEnergyb_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+	}
 }
 
 __host__ void Data::GasAccCall_16(double t, double dt){
@@ -651,6 +702,9 @@ __host__ void Data::GasAccCall_1024(double t, double dt){
 }
 __host__ void Data::GasAccCall_2048(double t, double dt){
 	GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
+}
+__host__ void Data::GasAccCall_largeN(double t, double dt){
+	GasAcc <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
 }
 __host__ void Data::GasAccCall_small(double t, double dt){
 	GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, t/365.25, Msun_d, dt, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst);
