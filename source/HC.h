@@ -12,7 +12,7 @@
 //c = 3 : perform C Kick + reset Nencpairs
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//March 2015
 //*****************************************
 template <int Bl, int NB, int E>
 __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
@@ -31,12 +31,6 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
                         Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
                 }
         }
-        if(E == 3){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;     //This variable is needed in the Kick_kernel
-                }
-        }
-
 	__shared__  double a1_s[Bl];
 
 	a1_s[idy] = 0.0;
@@ -114,13 +108,7 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
                 if(idy == 0 && idx == 0){
                         Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
                 }
-        }
-        if(E == 3){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;     //This variable is needed in the Kick_kernel
-                }
-        }
-
+	}
 	__shared__  double a1_s[Bl];
 
 	a1_s[idy] = 0.0;
@@ -195,7 +183,7 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 //c = 3 : perform C Kick + reset Nencpairs
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+////March 2015
 //
 //  *****************************************
 template < int Bl, int Bl2, int E>
@@ -214,11 +202,6 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 			Nencpairs_d[0] = 0;		//This variable is needed in the Kick_kernel
 		}
 	}
-        if(E == 3){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;     //This variable is needed in the Kick_kernel
-                }
-        }
 	__shared__ double a1_s[Bl2];
 
 	if(x4_d[idy].w > 0.0 && idy < N){

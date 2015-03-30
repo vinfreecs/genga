@@ -259,6 +259,7 @@ int main(int argc, char*argv[]){
 					case 1024: D.step_1024(t);
 					break;
 					case 2048: D.step_2048(t);
+					//case 2048: D.step_largeN(t);
 					break;
 				}
 				if(D.NB[0] > 2048) D.step_largeN(t);
