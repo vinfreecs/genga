@@ -15,7 +15,6 @@
 	#include "BSBG3.h"
 #endif
 
-#include "GENGAKick.h"
 #include "Kick4.h"
 
 int SIn;		//Number of direction steps
