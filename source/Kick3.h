@@ -82,7 +82,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
-		if(E <= 2){		
+		if(E <= 2){	
 			if(rsq < pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
 //printf("Precheck %d %d\n", i, j);
 				if( i < j){
@@ -383,6 +383,7 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	if(id < N){
 		int NI = Encpairs2_d[id * icNB].x;
 		int NJ = Encpairs2_d[id * icNB + 1].x;
+
 		double4 x4i = x4_d[id];
 		double rcritvi = rcritv_d[id];
 #if G3 == 1		

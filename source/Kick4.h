@@ -33,10 +33,8 @@ __device__ void  accb(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //printf("Precheck %d %d\n", i, j);
 			if( i < j){
 				Ni = atomicAdd(NencpairsI, 1);
-			//	Nj = atomicAdd(NencpairsJ, 1);
 				Encpairs_d[icNB * i + Ni].x = i;
 				Encpairs_d[icNB * i + Ni].y = j;
-			//	Encpairs_d[icNB * j + icNB - 1 - Nj].y = i;
 			}
 			else{
 				Nj = atomicAdd(NencpairsJ, 1);
@@ -1078,5 +1076,336 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 	}
 
 }
+
+
+//******************************************************
+// This function calculates the force between body i and j
+// it must be called n^2/2 times
+
+//Author: Simon Grimm, Joachim Stadel
+// January 2015
+//********************************************************
+__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int icNB){
+
+	double3 r3ij;
+	int Ni, Nj;
+
+	r3ij.x = x4j.x - x4i.x;
+	r3ij.y = x4j.y - x4i.y;
+	r3ij.z = x4j.z - x4i.z;
+
+	double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+
+	double rcritv = fmax(fi.w, fj.w);
+	int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
+  
+	if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
+		Ni = atomicAdd(NencpairsI, 1);
+		Nj = atomicAdd(NencpairsJ, 1);
+		Encpairs2_d[icNB * i + Ni].y = j;
+		Encpairs2_d[icNB * j + icNB - 1 - Nj].y = i;
+	}
+	
+	double ir = 1.0 / sqrt(rsq);
+
+	double ir3 = ir * ir * ir;
+	double s;
+
+	if(cl){
+		s = 0.0;
+	}
+	else{
+		s = x4j.w * x4i.w * ir3;
+	}
+
+	r3ij.x *= s;
+	r3ij.y *= s;
+	r3ij.z *= s;
+
+	fi.x += r3ij.x;	
+	fi.y += r3ij.y;
+	fi.z += r3ij.z;
+	fj.x -= r3ij.x;
+	fj.y -= r3ij.y;
+	fj.z -= r3ij.z;
+}
+__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int icNB){
+	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+		double rsq, ir, ir3, s;
+		double3 r3ij;
+		double rcritv;
+		int Ni, Nj;
+
+		r3ij.x = x4j.x - x4i.x;
+		r3ij.y = x4j.y - x4i.y;
+		r3ij.z = x4j.z - x4i.z;
+
+		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+		rcritv = fmax(rcritvi, rcritvj);
+
+		int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
+
+		if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
+			if( i < j){
+//printf("Precheck %d %d\n", i, j);
+				Ni = atomicAdd(NencpairsI, 1);
+				Nj = atomicAdd(NencpairsJ, 1);
+				Encpairs2_d[icNB * i + Ni].y = j;
+				Encpairs2_d[icNB * j + icNB - 1 - Nj].y = i;
+			}
+		}
+
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir*ir*ir;
+
+		if(cl){
+			s = 0.0;
+		}
+		else{
+			s = x4j.w * ir3;
+		}
+
+		ac.x += r3ij.x * s;
+		ac.y += r3ij.y * s;
+		ac.z += r3ij.z * s;
+	}
+}
+
+
+//******************************************************
+// This kernel perfomes a Kick operation on the triangle part
+// of the interaction matrix
+// the two indexes I and II must come from a driver routine
+
+//The template arguments are
+//p: number of threads per block, it is set in the driver routine
+//nb:number of threadsblock, it is set in the driver routine
+
+//Author: Simon Grimm, Joachim Stadel
+// January 2015
+//********************************************************
+template <int p>
+__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int I, int II, int nb){
+
+	int idy = threadIdx.x;
+	int T = blockIdx.x;
+
+	int J = (T ^ I);
+	int F = (T & II) != 0;
+	int FF = (F * (2 * nb - 1));
+	int TT = T ^ FF;
+	int JJ = J ^ FF;	
+	__shared__ double4 x4_s[p];
+	__shared__ double4 fj_s[p];
+
+	int iii = idy + TT * p;
+
+	x4_s[idy] = x4_d[idy + JJ * p];
+	double4 x4i = x4_d[iii];
+
+        double4 fi = {0.0, 0.0, 0.0, rcritv_d[iii]};
+        fj_s[idy].x = 0.0;
+        fj_s[idy].y = 0.0;
+        fj_s[idy].z = 0.0;
+	fj_s[idy].w = rcritv_d[idy + JJ * p];	
+	__syncthreads();
+
+	for(int i = 0; i < p; i += 32){
+		for(int ii = 0; ii < 32; ++ii){
+			int j = idy ^ (i + ii);
+			int jjj = j + JJ * p;
+			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+		}
+		__syncthreads();
+//printf("%d %d %d %d\n", TT, JJ, TT * p + i, JJ * p + j);
+	}
+
+	f_d[idy + TT * p].x += fi.x;
+	f_d[idy + TT * p].y += fi.y;
+	f_d[idy + TT * p].z += fi.z;
+	f_d[idy + JJ * p].x += fj_s[idy].x;
+	f_d[idy + JJ * p].y += fj_s[idy].y;
+	f_d[idy + JJ * p].z += fj_s[idy].z;
+}
+
+
+//******************************************************
+// This kernel perfomes a Kick operation on blocks on the diagonal part
+// of the interaction matrix in single precision
+
+//The template arguments are
+//p: number of threads per block, it is set in the driver routine
+
+//Author: Simon Grimm, Joachim Stadel
+// January 2015
+//********************************************************
+template <int p>
+__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB){
+
+	int idy = threadIdx.x;
+	int T = blockIdx.x;
+
+	int J = T;
+	__shared__ double4 x4_s[p];
+	__shared__ double rcritv_s[p];
+
+	int iii = idy + T * p;
+
+	x4_s[idy] = x4_d[idy + J * p];
+	rcritv_s[idy] = rcritv_d[idy + J * p];
+
+	double4 x4i = x4_d[iii];
+	double rcritvi = rcritv_d[iii];
+
+        double3 ai = {0.0, 0.0, 0.0};
+	__syncthreads();
+
+	for(int i = 1; i < p; ++i){
+		int j = idy ^ i;
+		int jjj = j + J * p;
+		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+		__syncthreads();
+	}
+
+        double3 fi = f_d[idy + T * p];
+
+	fi.x += ai.x * x4_s[idy].w;
+	fi.y += ai.y * x4_s[idy].w;
+	fi.z += ai.z * x4_s[idy].w;
+
+        f_d[idy + T * p] = fi;
+}
+
+//******************************************************
+// This kernel perfomes a Kick operation on the lower left square part
+// of the interaction matrix
+// the index I must come from a driver routine
+
+//The template arguments are
+//p: number of threads per block, it is set in the driver routine
+//nb:number of threadsblock, it is set in the driver routine
+
+//Author: Simon Grimm, Joachim Stadel
+// January 2015
+//********************************************************
+template <int p>
+__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int I, int nb){
+
+	int idy = threadIdx.x;
+	int T = blockIdx.x;
+
+	int J = (blockIdx.x ^ I) + nb;
+	__shared__ double4 x4_s[p];
+	__shared__ double4 fj_s[p];
+
+	int iii = idy + T * p;
+
+	x4_s[idy] = x4_d[idy + J * p];
+	double4 x4i = x4_d[iii];
+
+        double4 fi = {0.0, 0.0, 0.0, rcritv_d[iii]};
+        fj_s[idy].x = 0.0;
+        fj_s[idy].y = 0.0;
+        fj_s[idy].z = 0.0;
+	fj_s[idy].w = rcritv_d[idy + J * p];
+	
+	__syncthreads();
+
+	for(int i = 0; i < p; i += 32){
+		for(int ii = 0; ii < 32; ++ii){
+			int j = idy ^ (i + ii);
+			int jjj = j + J * p;
+			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+		}
+		__syncthreads();
+	}
+        f_d[idy + T * p].x += fi.x;
+        f_d[idy + T * p].y += fi.y;
+        f_d[idy + T * p].z += fi.z;
+	f_d[idy + J * p].x += fj_s[idy].x;
+	f_d[idy + J * p].y += fj_s[idy].y;
+	f_d[idy + J * p].z += fj_s[idy].z;
+}
+
+__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int icNB){
+
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+
+	Encpairs2_d[icNB * id].x = 0;
+	Encpairs2_d[icNB * id + 1].x = 0;
+
+	a_d[id].x = 0.0;
+	a_d[id].y = 0.0;
+	a_d[id].z = 0.0;
+
+}
+
+
+__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int icNB, int N){
+
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if(id < N){
+
+		double im = 1.0 / x4_d[id].w;
+
+		f_d[id].x *= im * dtksq;
+		f_d[id].y *= im * dtksq;
+		f_d[id].z *= im * dtksq;
+
+		int NI = Encpairs2_d[id * icNB].x;
+		int Ne = atomicAdd(Nencpairs_d, NI);
+
+		for(int i = 0; i < NI; ++i){
+			Encpairs_d[Ne + i].x = id;
+			Encpairs_d[Ne + i].y = Encpairs2_d[icNB * id + i].y;
+		}
+
+	}
+}
+
+//******************************************************
+// this function is a driver for the Kick kernels
+// it splits thes N * N matrix into smaller blocks of lenght p * p
+// this blocks are devided into 3 sets:
+// set 1: blocks on the diagonal
+// set 2: upper left triangle and lowet right triangle
+// set 3: lower left square
+
+// p sets the size of the blocks and the number of threads per block
+
+//Author: Simon Grimm, Joachim Stadel
+// January 2015
+//********************************************************
+__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int icNB, int NB, int N){
+
+	const int p = 256;
+	const int nb = NB / (2 * p);
+
+	//set NencpairsI and NencpairsJ to zero
+	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, icNB);
+	//Blocks on the Diagonal
+	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB);
+
+	//Combine upper left quarter triangle with lower right quarter triangle
+	for(int ii = 1; ii < nb; ii *= 2){
+                for(int k = 0; k < ii; ++k){
+			int i = ii + k;
+			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB, i, ii, nb);
+		}
+	}
+
+	//Lower left quarter
+	for(int i = 0; i < nb; ++i){
+		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB, i, nb);
+	}
+
+	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dtksq, icNB, N);
+
+}
+
+
+
 
 #endif
