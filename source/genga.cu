@@ -5,13 +5,7 @@
 *
 ****************************************/
 
-
 #include "define.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <math.h>
 
 #include "Host2.h"
 #include "Orbit2.h"

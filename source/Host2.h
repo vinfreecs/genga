@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "define.h"
 
 #ifndef HOST_CLASS

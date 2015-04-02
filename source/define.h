@@ -1,5 +1,13 @@
+#ifndef M_PI
+#define _USE_MATH_DEFINES  //for Windows
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+
 
 #define Version 3.08
 

@@ -1,10 +1,6 @@
 #ifndef ORBIT_H
 #define ORBIT_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include "define.h"
 #include "Host2.h"
 

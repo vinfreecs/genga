@@ -10,12 +10,6 @@
 ****************************************/
 
 #include "../source/define.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <math.h>
-
 #include "../source/Host2.h"
 #include "../source/Orbit2.h"
 
