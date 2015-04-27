@@ -1,3 +1,7 @@
+#ifndef BSSINGLE_H
+#define BSSINGLE_H
+
+
 #include "directAcc.h"
 
 // **************************************
@@ -216,4 +220,4 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	}
 
 }
-
+#endif

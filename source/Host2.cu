@@ -639,6 +639,11 @@ __host__ int Host::Param(int argc, char*argv[]){
 	sprintf(OrigInfilename, "%s", GSF[0].inputfilename);
 	OrigInfile = fopen(OrigInfilename, "r");
 
+	if(OrigInfile == NULL){
+		printf("Error in Simulation %s: Input file not found %s\n", GSF[0].path, GSF[0].inputfilename);
+		fprintf(masterfile, "Error in Simulation %s: Input file not found %s\n", GSF[0].path, GSF[0].inputfilename);
+		return 0;
+	}
 	for(int st = 0; st < Nst; ++st){
 		dtiMsun_h[st] = dt / Msun_h[st];
 		//restart -> inputfilename

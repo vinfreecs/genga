@@ -1,5 +1,26 @@
+#ifndef FG2_H
+#define FG2_H
+
 #include "Orbit2.h"
 #include "BSSingle.h"
+
+//**************************************
+// This function copy aeGrid parameters to constant memory. This functions must be in
+// the same file as the use of the constant memory
+//
+//Authors: Simon Grimm
+//April 2015
+//
+//***************************************/
+__host__ void Data::constantCopy(){
+	float GridaeP[6] = {Gridae.amin, Gridae.amax, Gridae.emin, Gridae.emax, Gridae.deltaa, Gridae.deltae};
+	int GridaeN[2] = {Gridae.Na, Gridae.Ne};
+	cudaMemcpyToSymbol(Gridae_c, GridaeP, 6*sizeof(float), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(GridaeN_c, GridaeN, 2*sizeof(int), 0, cudaMemcpyHostToDevice);
+}
+
+
+
 //**************************************
 //based on a code
 //from Joachim Stadel
@@ -466,3 +487,4 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		}
 	}
 }
+#endif

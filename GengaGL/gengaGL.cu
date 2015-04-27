@@ -30,6 +30,7 @@ static GLdouble angley = 0.0; //angle to rotate z axis
 static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
 static GLdouble zoom = 1.0;
 static GLdouble izoom = 1.0;
+static GLdouble pointsize = 1.5;
 GLdouble yold = 0.0;
 GLdouble xold = 0.0;
 GLint mouseMove = 0;
@@ -276,7 +277,7 @@ void display(){
 
 	double time;
 	int er;
-	for(int i = 0; i < 4; ++i){
+	for(int i = 0; i < 1; ++i){
 		er = loop(D, time);
 	}
 	if(D.N_h[0] + D.Nsmall_h[0] != nold){
@@ -308,7 +309,8 @@ void display(){
 	glColorPointer(4, GL_DOUBLE, 32, 0);
 
 
-glPointSize(1.5);
+//glPointSize(1.5);
+glPointSize(pointsize);
 
 	glDrawArrays(GL_POINTS, 0, D.N_h[0] + D.Nsmall_h[0]);
 	glDisableClientState(GL_VERTEX_ARRAY);
@@ -418,7 +420,10 @@ void mouse_move (int x, int y){
 	}
 }
 
-
+void keyPressed (unsigned char key, int x, int y){
+	if (key == 'r') pointsize *= 0.95;
+	if (key == 't') pointsize /= 0.95;
+}
 
 
 int main(int argc, char*argv[]){
@@ -433,6 +438,7 @@ int main(int argc, char*argv[]){
 	glutReshapeFunc(reshape);
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouse_move);
+	glutKeyboardFunc(keyPressed);
 
 	cudaError_t error;
 

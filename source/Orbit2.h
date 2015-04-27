@@ -4,11 +4,6 @@
 #include "define.h"
 #include "Host2.h"
 
-__constant__ float Gridae_c[6];
-__constant__ int GridaeN_c[2];
-__constant__ double S_c[FGN + 1];
-__constant__ double C_c[FGN + 1];
-
 // *************************************
 // Authors: Simon Grimm, Joachim Stadel
 // March 2014
@@ -102,6 +97,8 @@ public:
 	__host__ void Ejectionsmall(double);
 	__host__ int freeOrbit();
 
+	//FG2
+	__host__ void constantCopy();
 	//output
 	cudaStream_t *hstream;
 	__host__ int firstoutput();

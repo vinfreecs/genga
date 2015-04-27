@@ -14,6 +14,7 @@
 //#include "BSA.h"
 */
 
+
 int main(int argc, char*argv[]){
 
 	cudaError_t error;
@@ -87,8 +88,10 @@ int main(int argc, char*argv[]){
 	// Determine the size of the simulations
 	printf("Read Size\n");
 	er = H.size();
-	if(er == 0) return 0;
-	
+	if(er == 0){
+		cudaDeviceSynchronize();
+		return 0;
+	}
 	printf("Size OK\n");
 	cudaDeviceSynchronize();
 

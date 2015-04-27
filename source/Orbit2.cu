@@ -188,10 +188,7 @@ __host__ int Data::GridaeAlloc(){
 	}
 	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(int)*GridN, cudaMemcpyHostToDevice);
 
-	float GridaeP[6] = {Gridae.amin, Gridae.amax, Gridae.emin, Gridae.emax, Gridae.deltaa, Gridae.deltae};
-	int GridaeN[2] = {Gridae.Na, Gridae.Ne};
-	cudaMemcpyToSymbol(Gridae_c, GridaeP, 6*sizeof(float), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(GridaeN_c, GridaeN, 2*sizeof(int), 0, cudaMemcpyHostToDevice);
+	constantCopy();
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"GrieaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));

@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.08
+#define Version 3.09
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -77,6 +77,11 @@
 #define G3Limit	1.5e-12	//2.0e-12
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
+
+__constant__ float Gridae_c[6];
+__constant__ int GridaeN_c[2];
+__constant__ double S_c[FGN + 1];
+__constant__ double C_c[FGN + 1];
 
 struct Parameter{
 	int dev;                        //Number of device
