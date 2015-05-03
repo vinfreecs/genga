@@ -1223,12 +1223,12 @@ __host__ void Host::Info(){
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", Version);
-            fprintf(infofile, "Mercurial Branch: %s\n", HG_BRANCH);
-            fprintf(infofile, "Mercurial Commit: %s\n", HG_COMMIT);
-            fprintf(infofile, "Build Date: %s\n", BUILD_DATE);
-            fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
-            fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
-            fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
+			fprintf(infofile, "Mercurial Branch: %s\n", HG_BRANCH);
+			fprintf(infofile, "Mercurial Commit: %s\n", HG_COMMIT);
+			fprintf(infofile, "Build Date: %s\n", BUILD_DATE);
+			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
+			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
+			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Use Gas: %d\n", useGas);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
