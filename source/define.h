@@ -104,6 +104,31 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
+//Build Data
+#ifndef HG_BRANCH
+#define HG_BRANCH "Undefined"
+#endif
+
+#ifndef HG_COMMIT
+#define HG_COMMIT "Undefined"
+#endif
+
+#ifndef BUILD_DATE
+#define BUILD_DATE "Undefined"
+#endif
+
+#ifndef BUILD_SYSTEM
+#define BUILD_SYSTEM "Undefined"
+#endif
+
+#ifndef BUILD_PATH
+#define BUILD_PATH "Undefined"
+#endif
+
+#ifndef BUILD_SM
+#define BUILD_SM "Undefined"
+#endif
+
 // * Only for testing **
 #define G3 0				//New integrator scheme
 #define G3Limit	1.5e-12	//2.0e-12
