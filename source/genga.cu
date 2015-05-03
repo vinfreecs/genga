@@ -55,13 +55,6 @@ int main(int argc, char*argv[]){
 	printf("No Gas Disc\n");
 	fprintf(H.masterfile,"No Gas Disc\n");
 #endif
-#if useGridae
-	printf("Use ae Grid\n");
-	fprintf(H.masterfile, "Use ae Grid\n");
-#else
-	printf("No ae Grid\n");
-	fprintf(H.masterfile, "No ae Grid\n");
-#endif
 
 #if SERIAL_GROUPING > 0
 	printf("Using serial grouping!\n");
@@ -113,11 +106,12 @@ int main(int argc, char*argv[]){
 	er = D.CMallocateOrbit();
 	if(er == 0) return 0;
 
-        //Allocate Grideae 
-#if useGridae
-        er = D.GridaeAlloc();
-        if(er == 0) return 0;
-#endif
+        //Allocate aeGride
+	D.constantCopy2();
+	if(H.P.UseaeGrid == 1){
+        	er = D.GridaeAlloc();
+        	if(er == 0) return 0;
+	}
 #if useGas > 0
 	D.GasAlloc();
 #endif
@@ -162,9 +156,9 @@ int main(int argc, char*argv[]){
 	printf("Energy OK\n");
 
 	//read aeGrid at restart time step 
-#if useGridae
-	D.readGridae();	
-#endif
+	if(H.P.UseaeGrid == 1){
+		D.readGridae();	
+	}
 
 	//Set Gas Disc and Gas Table
 #if useGas > 0
@@ -287,18 +281,18 @@ int main(int argc, char*argv[]){
 				D.EnergyOutput(ts, t);
 			}
 
-#if useGridae 
-			if(ts % 10000 == 0){
-				D.copyGridae(ts);
+			if(H.P.UseaeGrid == 1){ 
+				if(ts % 10000 == 0){
+					D.copyGridae(ts);
+				}
 			}
-#endif
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
 			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				D.CoordinateOutput(ts, t);
-#if useGridae
-				D.GridaeOutput(ts);
-#endif
+				if(H.P.UseaeGrid == 1){
+					D.GridaeOutput(ts);
+				}
 #if poincareFlag == 1
 				if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
 					fclose(D.poincarefile);
@@ -327,10 +321,10 @@ int main(int argc, char*argv[]){
 	er = D.freeOrbit();
 	if(er == 0) return 0;
 
-#if useGridae
-	free(D.Gridaecount_h);
-	cudaFree(D.Gridaecount_d);
-#endif
+	if(H.P.UseaeGrid == 1){
+		free(D.Gridaecount_h);
+		cudaFree(D.Gridaecount_d);
+	}
 
 #if useGas > 0
 	er = D.freeGas();

@@ -35,6 +35,9 @@ public:
 	int *Gridaecount_h, *Gridaecount_d;
 	long long *GridaecountS_h;
 	long long *GridaecountT_h;
+	int *Gridaicount_h, *Gridaicount_d;
+	long long *GridaicountS_h;
+	long long *GridaicountT_h;
 
 
 	// G3 Data
@@ -99,6 +102,7 @@ public:
 
 	//FG2
 	__host__ void constantCopy();
+	__host__ void constantCopy2();
 	//output
 	cudaStream_t *hstream;
 	__host__ int firstoutput();
@@ -183,7 +187,8 @@ public:
 # endif
 private:
 	//Total sizes
-	int GridN;
+	int GridNae;
+	int GridNai;
 	__host__ int readic(int);
 	__host__ void resize(int &, int &, int &, int &);
 

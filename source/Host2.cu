@@ -78,6 +78,8 @@ __host__ Host::Host(long long Restart){
         NB2T = 0;
         Nsmall2T = 0;
         NEnergyT = 0;
+
+	
 }
 
 
@@ -172,7 +174,7 @@ __host__ int Host::DeviceInfo(){
 // ************************************************
 //This function allocates memory on the Host
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Mai 2015
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
@@ -193,21 +195,118 @@ __host__ void Host::Halloc(){
 	Nsmall_h = (int*)malloc(Nst*sizeof(int));
 	Msun_h = (double*)malloc(Nst*sizeof(double));
 	dtiMsun_h = (double*)malloc(Nst*sizeof(double));
-	
+
+	//Initialize parameters with default values
+	P.idt = def_TimeStep;
+	P.ei = def_EnergyOutputInterval;
+	P.ci = def_CoordinatesOutputInterval;
+	P.nci = def_OutputsPerInterval;
+	P.delta = def_IntegrationSteps;
+	//Format
+	P.UseTestParticles = def_UseTestParticles;
+	P.tRestart = def_RestartTimeStep;	
+	P.SIO = def_OderOfIntegrator;
+	P.UseaeGrid = def_UseaeGrid;
+	Gridae.amin = def_aeGridamin;
+	Gridae.amax = def_aeGridamax;		
+	Gridae.emin = def_aeGridemin;
+	Gridae.emax = def_aeGridemax;	
+	Gridae.imin = def_aeGridimin;
+	Gridae.imax = def_aeGridimax;	
+	Gridae.Na = def_aeGridNa;
+	Gridae.Ne = def_aeGridNe;	
+	Gridae.Ni = def_aeGridNi;	
+	Gridae.Start = def_aeGridStartCount;
+	sprintf(Gridae.X, def_aeGridName);
+	P.G_dTau_diss = def_GasdTau_diss;
+	P.G_alpha = def_GasAlpha;
+
+	char format[50];
+	sprintf(format, def_InputFileFormat);
+
+	char ff[5 * 30];
+	int er = sscanf(format, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+	 &ff[0 * 5], &ff[1 * 5], &ff[2 * 5], &ff[3 * 5],&ff[4 * 5], &ff[5 * 5], &ff[6 * 5], &ff[7 * 5], &ff[8 * 5],
+	 &ff[9 * 5], &ff[10 * 5], &ff[11 * 5], &ff[12 * 5], &ff[13 * 5], &ff[14 * 5], &ff[15 * 5], &ff[16 * 5], 
+	 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5]);
+
 	for(int st = 0; st < Nst; ++st){
+		for(int i = 0; i < 22; ++i){
+			GSF[st].informat[i] = 0;
+		}
+
+		for(int f = -1; f < er; ++f){
+
+			if(strcmp(ff + f * 5, "x") == 0){
+				GSF[st].informat[f] = 1;
+			}
+			else if(strcmp(ff + f * 5, "y") == 0){
+				GSF[st].informat[f] = 2;
+			}
+			else if(strcmp(ff + f * 5, "z") == 0){
+				GSF[st].informat[f] = 3;
+			}
+			else if(strcmp(ff + f * 5, "m") == 0){
+				GSF[st].informat[f] = 4;
+			}
+			else if(strcmp(ff + f * 5, "vx") == 0){
+				GSF[st].informat[f] = 5;
+			}
+			else if(strcmp(ff + f * 5, "vy") == 0){
+				GSF[st].informat[f] = 6;
+			}
+			else if(strcmp(ff + f * 5, "vz") == 0){
+				GSF[st].informat[f] = 7;
+			}
+			else if(strcmp(ff + f * 5, "r") == 0){
+				GSF[st].informat[f] = 8;
+			}
+			else if(strcmp(ff + f * 5, "rho") == 0){
+				GSF[st].informat[f] = 9;
+			}
+			else if(strcmp(ff + f * 5, "Sx") == 0){
+				GSF[st].informat[f] = 10;
+			}
+			else if(strcmp(ff + f * 5, "Sy") == 0){
+				GSF[st].informat[f] = 11;
+			}
+			else if(strcmp(ff + f * 5, "Sz") == 0){
+				GSF[st].informat[f] = 12;
+			}
+			else if(strcmp(ff + f * 5, "i") == 0){
+				GSF[0].informat[f] = 13;
+			}
+			else if(strcmp(ff + f * 5, "-") == 0){
+				GSF[st].informat[f] = 14;
+			}
+			else if(strcmp(ff + f * 5, "amin") == 0){
+				GSF[st].informat[f] = 15;
+			}
+			else if(strcmp(ff + f * 5, "amax") == 0){
+				GSF[st].informat[f] = 16;
+			}
+			else if(strcmp(ff + f * 5, "emin") == 0){
+				GSF[st].informat[f] = 17;
+			}
+			else if(strcmp(ff + f * 5, "emax") == 0){
+				GSF[st].informat[f] = 18;
+			}
+			else if(strcmp(ff + f * 5, "t") == 0){
+				GSF[st].informat[f] = 19;
+			}
+		}	
 		Nsmall_h[st] = 0;
 		N_h[st] = 32;
 		NB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
-		Msun_h[st] = 1.0;
-		n1_h[st] = 3.0;
-		n2_h[st] = 0.4;
-		rho[st] = 0.0;
-		for(int i = 0; i < 22; ++i){
-			GSF[st].informat[i] = 0;
-		}
-		Nmin[st] = 1;
+		Msun_h[st] = def_CentralMass;
+		n1_h[st] = def_n1;
+		n2_h[st] = def_n2;
+		rho[st] = def_rho;
+		Nmin[st] = def_MinimumNumberOfBodies;
+		sprintf(GSF[st].X, def_Name);
+		sprintf(GSF[st].inputfilename, def_InputFile);
 	}
 	
 	//Read the paths for the individual simulations
@@ -230,309 +329,461 @@ __host__ void Host::Halloc(){
 //Return 1 by sucess and 0 by an error.
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Mai 2015
 // ***********************************************
 __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 	char sp[160];
 	int er;
 
-	//Read time step
-	er = fscanf (paramfile, "%s%s%s%s%2c",sp, sp, sp, sp, sp);
-	er = fscanf (paramfile, "%lf",&P.idt);
+	for(int j = 0; j < 30; ++j){
+		int c;
+		for(int i = 0; i < 50; ++i){
+			c = fgetc(paramfile);
+			if(c == EOF) break;
+			sp[i] = char(c);
+			if(c == '=' || c == ':'){
+				sp[i + 1] = '\0';
+				break;
+			}
+		}
+		if(c == EOF) break;
 
-	if(er <= 0){
-		printf("Error: time step is not valid!\n");
-		return 0;
-	}
+		if(strcmp(sp, "Time step in days =") == 0){
+			er = fscanf (paramfile, "%lf",&P.idt);
+			if(er <= 0){
+				printf("Error: time step is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Output name =") == 0){
+			er = fscanf (paramfile, "%s", &GSF[st].X);
+			if(er <= 0){
+				printf("Error: Output name is not valid!\n");	
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Energy output interval =") == 0){
+			er = fscanf (paramfile, "%d", &P.ei);
+			if(er <= 0 || P.ei <= 0){
+				printf("Error: Energy output interval is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Coordinates output interval =") == 0){
+			er = fscanf (paramfile, "%d", &P.ci);
 
-	//Read output name
-	er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-	er = fscanf (paramfile, "%s", &GSF[st].X);
+			if(er <= 0 || P.ci <= 0){
+				printf("Error: Coordinates outut interval is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		
+		else if(strcmp(sp, "Number of outputs per interval =") == 0){
+			er = fscanf (paramfile, "%d", &P.nci);
 
-	if(er <= 0){
-		printf("Error: Output name is not valid!\n");
-		return 0;
-	}
+			if(er <= 0 || P.nci <= 0 || P.nci > P.ci){
+				printf("Error: Number of outputs per interval is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Integration steps =") == 0){
+			er = fscanf (paramfile, "%lld", &P.delta);
 
-	//Read Energy output intervall
-	er = fscanf (paramfile, "%s%s%s%2c",sp, sp, sp, sp);
-	er = fscanf (paramfile, "%d", &P.ei);
+			if(er <= 0 || P.delta <= 0){
+				printf("Error: Inegration steps are not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Central Mass =") == 0){
 
-	if(er <= 0 || P.ei <= 0){
-		printf("Error: Energy outut intervall is not valid!\n");
-		return 0;
-	}
+			er = fscanf (paramfile, "%lf", &Msun_h[st]);
 
-	//Read Coordinate  output intervall
-	er = fscanf (paramfile, "%s%s%s%2c",sp, sp, sp, sp);
-	er = fscanf (paramfile, "%d", &P.ci);
+			if(er <= 0){
+				printf("Error: Central mass is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "n1 =") == 0){
+			er = fscanf (paramfile, "%lf", &n1_h[st]);
 
-	if(er <= 0 || P.ci <= 0){
-		printf("Error: Coordinates outut intervall is not valid!\n");
-		return 0;
-	}
+			if(er <= 0){
+				printf("Error: n1 is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "n2 =") == 0){
 
-	//Read Number of outputs per intervall
-	er = fscanf (paramfile, "%s%s%s%s%s%2c",sp, sp, sp, sp, sp, sp);
-	er = fscanf (paramfile, "%d", &P.nci);
+			er = fscanf (paramfile, "%lf", &n2_h[st]);
 
-	if(er <= 0 || P.nci <= 0 || P.nci > P.ci){
-		printf("Error: Number of outputs per intervall is not valid!\n");
-		return 0;
-	}
+			if(er <= 0){
+				printf("Error: n2 is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Input file =") == 0){
+			er = fscanf (paramfile, "%s", &GSF[st].inputfilename);
 
-	//Read integration steps
-	er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-	er = fscanf (paramfile, "%lld", &P.delta);
+			if(er <= 0){
+				printf("Error: Input file name is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Input file Format:") == 0){
+			for(int i = 0; i < 22; ++i){
+				GSF[st].informat[i] = 0;
+			}
+			//Read input file Format
+			int f;
+			for(f = -1; f < 22; ++f){
+				er = fscanf (paramfile, "%s", sp);
+				if(strcmp(sp, "x") == 0){
+					GSF[st].informat[f] = 1;
+				}
+				else if(strcmp(sp, "y") == 0){
+					GSF[st].informat[f] = 2;
+				}
+				else if(strcmp(sp, "z") == 0){
+					GSF[st].informat[f] = 3;
+				}
+				else if(strcmp(sp, "m") == 0){
+					GSF[st].informat[f] = 4;
+				}
+				else if(strcmp(sp, "vx") == 0){
+					GSF[st].informat[f] = 5;
+				}
+				else if(strcmp(sp, "vy") == 0){
+					GSF[st].informat[f] = 6;
+				}
+				else if(strcmp(sp, "vz") == 0){
+					GSF[st].informat[f] = 7;
+				}
+				else if(strcmp(sp, "r") == 0){
+					GSF[st].informat[f] = 8;
+				}
+				else if(strcmp(sp, "rho") == 0){
+					GSF[st].informat[f] = 9;
+				}
+				else if(strcmp(sp, "Sx") == 0){
+					GSF[st].informat[f] = 10;
+				}
+				else if(strcmp(sp, "Sy") == 0){
+					GSF[st].informat[f] = 11;
+				}
+				else if(strcmp(sp, "Sz") == 0){
+					GSF[st].informat[f] = 12;
+				}
+				else if(strcmp(sp, "i") == 0){
+					GSF[st].informat[f] = 13;
+				}
+				else if(strcmp(sp, "-") == 0){
+					GSF[st].informat[f] = 14;
+				}
+				else if(strcmp(sp, "amin") == 0){
+					GSF[st].informat[f] = 15;
+				}
+				else if(strcmp(sp, "amax") == 0){
+					GSF[st].informat[f] = 16;
+				}
+				else if(strcmp(sp, "emin") == 0){
+					GSF[st].informat[f] = 17;
+				}
+				else if(strcmp(sp, "emax") == 0){
+					GSF[st].informat[f] = 18;
+				}
+				else if(strcmp(sp, "t") == 0){
+					GSF[st].informat[f] = 19;
+				}
+				else if(strcmp(sp, ">>") == 0){
+					break;
+				}
+				else if(strcmp(sp, "<<") == 0){
+				}
+				else {
+					printf("Error: Input format not valid! Maybe the spaces in << ... >> have been forgotten\n");
+					return 0;
+				}
+			}
+			if(er <= 0){
+				printf("Error: Input file format is not valid!\n");
+				return 0;
+			}
+			if(f >=22){
+				printf("Error: Input file format is not valid, '>>' not found! Maybe the spaces in << ... >> have been forgotten\n");
+				return 0;
 
-	if(er <= 0 || P.delta <= 0){
-		printf("Error: Inegration steps are not valid!\n");
-		return 0;
-	}
+			}
+		fgets(sp, 3, paramfile);
+		}
 
-	//Read Solar Mass
-	er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-	er = fscanf (paramfile, "%lf", &Msun_h[st]);
+		else if(strcmp(sp, "Default rho =") == 0){
+			er = fscanf (paramfile, "%lf", &rho[st]);
+			if(er <= 0 ){
+				printf("Error: Default value for rho is not valid!\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use Test Particles =") == 0){
+			er = fscanf (paramfile, "%d", &P.UseTestParticles);
+			if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 1){
+				printf("Error: Test Particle Mode not valid\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Restart timestep =") == 0){
+			er = fscanf (paramfile, "%lld", &P.tRestart);
+			if(er <= 0 || P.tRestart < 0){
+				printf("Error: Restart time step not valid\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Minimum number of bodies =") == 0){
+			er = fscanf (paramfile, "%d", &Nmin[st]);
+			if(er <= 0 || Nmin < 0){
+				printf("Error: Minimal number of bodies not valid\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Order of integrator =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.SIO);
+				if(er <= 0 || P.SIO < 2 || P.SIO > 6 || P.SIO % 2 == 1){
+					printf("Error: Order of integrator not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use aeGrid =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseaeGrid);
+				if(er <= 0){
+					printf("Error: Use aeGrid not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid amin =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.amin);
+				if(er <= 0){
+					printf("Error: Grid amin not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid amax =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.amax);
+				if(er <= 0){
+					printf("Error: Grid amax not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid emin =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.emin);
+				if(er <= 0){
+					printf("Error: Grid emin not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid emax =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.emax);
+				if(er <= 0){
+					printf("Error: Grid emax not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid imin =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.imin);
+				if(er <= 0){
+					printf("Error: Grid imin not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid imax =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%f", &Gridae.imax);
+				if(er <= 0){
+					printf("Error: Grid imax not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%f", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid Na =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &Gridae.Na);
+				if(er <= 0){
+					printf("Error: Grid Na not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid Ne =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &Gridae.Ne);
+				if(er <= 0){
+					printf("Error: Grid Ne not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid Ni =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &Gridae.Ni);
+				if(er <= 0){
+					printf("Error: Grid Ni not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid Start Count =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lld", &Gridae.Start);
+				if(er <= 0){
+					printf("Error: Grid Start not valid\n");
+					return 0;
+				}
+			}
+			else{
+				long long t;
+				er = fscanf (paramfile, "%lld", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "aeGrid name =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", &Gridae.X);
 
-	if(er <= 0){
-		printf("Error: Solar mass is not valid!\n");
-		return 0;
-	}
+				if(er <= 0){
+					printf("Error: Grid name is not valid!\n");
+					return 0;
+				}	
+			}
+			else{
+				char t[64];
+				er = fscanf (paramfile, "%s", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Gas dTau_diss =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_dTau_diss);
+				if(er <= 0 || P.G_dTau_diss <= 0.0){
+					printf("Error: dTau_diss value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lld", &t);
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Gas alpha =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.G_alpha);
+				if(er <= 0 || !(P.G_alpha == 1 || P.G_alpha == 2)){
+					printf("Error: Gas alpha value is not valid!\n");
+					return 0;
+				}
 
-	//Read n1
-	er = fscanf (paramfile, "%s%2c",sp, sp);
-	er = fscanf (paramfile, "%lf", &n1_h[st]);
-
-	if(er <= 0){
-		printf("Error: n1 is not valid!\n");
-		return 0;
-	}
-
-	//Read n2
-	er = fscanf (paramfile, "%s%2c",sp, sp);
-	er = fscanf (paramfile, "%lf", &n2_h[st]);
-
-	if(er <= 0){
-		printf("Error: n2 is not valid!\n");
-		return 0;
-	}
-
-	//Read input file name
-	er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-	er = fscanf (paramfile, "%s", &GSF[st].inputfilename);
-
-	if(er <= 0){
-		printf("Error: Input file name is not valid!\n");
-		return 0;
-	}
-	//Read input file Format
-	{int f;
-	er = fscanf (paramfile, "%s%s%s%3c",sp, sp, sp, sp);
-	for(f = 0; f < 22; ++f){
-		er = fscanf (paramfile, "%s", sp);
-		if(strcmp(sp, "x") == 0){
-			GSF[st].informat[f] = 1;
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%lld", &t);
+			}
+		fgets(sp, 3, paramfile);
 		}
-		else if(strcmp(sp, "y") == 0){
-			GSF[st].informat[f] = 2;
-		}
-		else if(strcmp(sp, "z") == 0){
-			GSF[st].informat[f] = 3;
-		}
-		else if(strcmp(sp, "m") == 0){
-			GSF[st].informat[f] = 4;
-		}
-		else if(strcmp(sp, "vx") == 0){
-			GSF[st].informat[f] = 5;
-		}
-		else if(strcmp(sp, "vy") == 0){
-			GSF[st].informat[f] = 6;
-		}
-		else if(strcmp(sp, "vz") == 0){
-			GSF[st].informat[f] = 7;
-		}
-		else if(strcmp(sp, "r") == 0){
-			GSF[st].informat[f] = 8;
-		}
-		else if(strcmp(sp, "rho") == 0){
-			GSF[st].informat[f] = 9;
-		}
-		else if(strcmp(sp, "Sx") == 0){
-			GSF[st].informat[f] = 10;
-		}
-		else if(strcmp(sp, "Sy") == 0){
-			GSF[st].informat[f] = 11;
-		}
-		else if(strcmp(sp, "Sz") == 0){
-			GSF[st].informat[f] = 12;
-		}
-		else if(strcmp(sp, "i") == 0){
-			GSF[st].informat[f] = 13;
-		}
-		else if(strcmp(sp, "-") == 0){
-			GSF[st].informat[f] = 14;
-		}
-		else if(strcmp(sp, "amin") == 0){
-			GSF[st].informat[f] = 15;
-		}
-		else if(strcmp(sp, "amax") == 0){
-			GSF[st].informat[f] = 16;
-		}
-		else if(strcmp(sp, "emin") == 0){
-			GSF[st].informat[f] = 17;
-		}
-		else if(strcmp(sp, "emax") == 0){
-			GSF[st].informat[f] = 18;
-		}
-		else if(strcmp(sp, "t") == 0){
-			GSF[st].informat[f] = 19;
-		}
-		else if(strcmp(sp, ">>") == 0){
-			break;
-		}
-		else {
-			printf("Error: Input format not valid! Maybe the spaces in << ... >> have been forgotten\n");
+		else{
+			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
 		}
 	}
-	if(er <= 0){
-		printf("Error: Input file format is not valid!\n");
-		return 0;
-	}
-	if(f >=22){
-		printf("Error: Input file format is not valid, '>>' not found! Maybe the spaces in << ... >> have been forgotten\n");
-		return 0;
 
-	}
-	}
-	//Read Default rho
-	er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-	er = fscanf (paramfile, "%lf", &rho[st]);
-	if(er <= 0 ){
-		printf("Error: Default value for rho is not valid!\n");
-		return 0;
-	}
 
-	//Read Test Particle mode
-	er = fscanf (paramfile, "%s%s%s%3c",sp, sp, sp, sp);
-	er = fscanf (paramfile, "%d", &P.UseTestParticles);
-	if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 1){
-		printf("Error: Test Particle Mode not valid\n");
-		return 0;
-	}
-
-	//Read Restart time step
-	er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-	er = fscanf (paramfile, "%lld", &P.tRestart);
-	if(er <= 0 || P.tRestart < 0){
-		printf("Error: Restart time step not valid\n");
-		return 0;
-	}
-
-	//Read Minimal number of bodies
-	er = fscanf (paramfile, "%s%s%s%s%3c",sp, sp, sp, sp, sp);
-	er = fscanf (paramfile, "%d", &Nmin[st]);
-	if(er <= 0 || Nmin < 0){
-		printf("Error: Minimal number of bodies not valid\n");
-		return 0;
-	}
 
 	if(st == 0){
-		//Read Order of integrator
-		er = fscanf (paramfile, "%s%s%s%3c",sp, sp, sp, sp);
-		er = fscanf (paramfile, "%d", &P.SIO);
-		if(er <= 0 || P.SIO < 2 || P.SIO > 6 || P.SIO % 2 == 1){
-			printf("Error: Order of integrator not valid\n");
-			return 0;
-		}
 
-
-		//Read Grid amin
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%f", &Gridae.amin);
-		if(er <= 0){
-			printf("Error: Grid amin not valid\n");
-			return 0;
-		}
-
-		//Read Grid amax
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%f", &Gridae.amax);
-		if(er <= 0){
-			printf("Error: Grid amax not valid\n");
-			return 0;
-		}
-
-		//Read Grid emin
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%f", &Gridae.emin);
-		if(er <= 0){
-			printf("Error: Grid emin not valid\n");
-			return 0;
-		}
-
-		//Read Grid emax
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%f", &Gridae.emax);
-		if(er <= 0){
-			printf("Error: Grid emax not valid\n");
-			return 0;
-		}
-
-		//Read Grid Na
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%d", &Gridae.Na);
-		if(er <= 0){
-			printf("Error: Grid Na not valid\n");
-			return 0;
-		}
-
-		//Read Grid Ne
-		er = fscanf (paramfile, "%s%s%3c",sp, sp, sp);
-		er = fscanf (paramfile, "%d", &Gridae.Ne);
-		if(er <= 0){
-			printf("Error: Grid Ne not valid\n");
-			return 0;
-		}
-
-		//Read Grid Start
-		er = fscanf (paramfile, "%s%s%s%3c",sp, sp, sp, sp);
-		er = fscanf (paramfile, "%lld", &Gridae.Start);
-		if(er <= 0){
-			printf("Error: Grid Start not valid\n");
-			return 0;
-		}
-
-		//Read Grid name
-		er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-		er = fscanf (paramfile, "%s", &Gridae.X);
-
-		if(er <= 0){
-			printf("Error: Grid name is not valid!\n");
-			return 0;
-		}
-		if(er <= 0){
-			printf("Error: Grid name is not valid!\n");
-			return 0;
-		}
 		Gridae.deltaa = (Gridae.amax - Gridae.amin) / ((float)(Gridae.Na));
 		Gridae.deltae = (Gridae.emax - Gridae.emin) / ((float)(Gridae.Ne));
+		Gridae.deltai = (Gridae.imax - Gridae.imin) / ((float)(Gridae.Ni));
 
-		//Read Gas dTau_diss
-		er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-		er = fscanf (paramfile, "%lf", &P.G_dTau_diss);
-		if(er <= 0 || P.G_dTau_diss <= 0.0){
-			printf("Error: dTau_diss value is not valid!\n");
-			return 0;
-		}
-		//Read Gas alpha
-		er = fscanf (paramfile, "%s%s%2c",sp, sp, sp);
-		er = fscanf (paramfile, "%d", &P.G_alpha);
-		if(er <= 0 || !(P.G_alpha == 1 || P.G_alpha == 2)){
-			printf("Error: Gas alpha value is not valid!\n");
-			return 0;
-		}
 
 	}
 
@@ -618,7 +869,6 @@ __host__ int Host::Param(int argc, char*argv[]){
 		int er;
 		er = readparam(paramfile, st, argc, argv);
 		if(er == 0) return 0;
-
 		fclose(paramfile);
 
 		if(Nst > 1){
@@ -976,16 +1226,15 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Gas: %d\n", useGas);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
-			fprintf(infofile, "Use Gridae: %d\n", useGridae);
 			fprintf(infofile, "FormatS: %d\n", FormatS);
 			fprintf(infofile, "FormatT: %d\n", FormatT);
 			fprintf(infofile, "FormatP: %d\n", FormatP);
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
-			fprintf(infofile, "dt: %g \n", P.idt);                                          // use only argument in simulation 0
+			fprintf(infofile, "Time step in days: %g \n", P.idt);                                          // use only argument in simulation 0
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
-			fprintf(infofile, "Energy output intervall: %d\n", P.ei);                       // use only argument in simulation 0
-			fprintf(infofile, "Coordinates output intervall: %d\n", P.ci);                  // use only argument in simulation 0
-			fprintf(infofile, "Number of outputs per intervall: %d\n", P.nci);              // use only argument in simulation 0
+			fprintf(infofile, "Energy output interval: %d\n", P.ei);                       // use only argument in simulation 0
+			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);                  // use only argument in simulation 0
+			fprintf(infofile, "Number of outputs per interval: %d\n", P.nci);              // use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", P.delta);                        // use only argument in simulation 0
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
@@ -995,7 +1244,32 @@ __host__ void Host::Info(){
 			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
 #endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].inputfilename);
-			fprintf(infofile, "Using device number %d\n", P.dev);                           // use only argument in simulation 0
+			fprintf(infofile, "Input file format: ");
+			for(int f = 0; f < 22; ++f){
+				if(GSF[st].informat[f] == 1) printf("x ");
+				else if(GSF[st].informat[f] == 2) printf("y ");
+				else if(GSF[st].informat[f] == 3) printf("z ");
+				else if(GSF[st].informat[f] == 4) printf("m ");
+				else if(GSF[st].informat[f] == 5) printf("vx ");
+				else if(GSF[st].informat[f] == 6) printf("vy ");
+				else if(GSF[st].informat[f] == 7) printf("vz ");
+				else if(GSF[st].informat[f] == 8) printf("r ");
+				else if(GSF[st].informat[f] == 9) printf("rho ");
+				else if(GSF[st].informat[f] == 10) printf("Sx ");
+				else if(GSF[st].informat[f] == 11) printf("Sy ");
+				else if(GSF[st].informat[f] == 12) printf("Sz ");
+				else if(GSF[st].informat[f] == 13) printf("i ");
+				else if(GSF[st].informat[f] == 14) printf("- ");
+				else if(GSF[st].informat[f] == 15) printf("amin ");
+				else if(GSF[st].informat[f] == 16) printf("amax ");
+				else if(GSF[st].informat[f] == 17) printf("emin ");
+				else if(GSF[st].informat[f] == 18) printf("emax ");
+				else if(GSF[st].informat[f] == 19) printf("t ");
+				else if(GSF[st].informat[f] == 0) break;
+			}
+			fprintf(infofile, "\n");
+			fprintf(infofile, "Default rho: %g\n", rho[st]);
+			fprintf(infofile, "Device number: %d\n", P.dev);                           // use only argument in simulation 0
 			fprintf(infofile, "Rcut: %g\n", (double)(Rcut));
 			fprintf(infofile, "RcutSun: %g\n", (double)(RcutSun));
 			fprintf(infofile, "MaxColl: %d\n", MaxColl);
@@ -1007,12 +1281,16 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
+			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid emin: %f\n", Gridae.emin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid emax: %f\n", Gridae.emax);                            // use only argument in simulation 0
+			fprintf(infofile, "aeGrid imin: %f\n", Gridae.emin);                            // use only argument in simulation 0
+			fprintf(infofile, "aeGrid imax: %f\n", Gridae.emax);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Na: %d\n", Gridae.Na);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Ne: %d\n", Gridae.Ne);                                // use only argument in simulation 0
+			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);                  // use only argument in simulation 0
 			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
 #if useGas > 0

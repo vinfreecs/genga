@@ -34,7 +34,7 @@ When GENGA is started, it creates a Lock file named lock.dat. This file must be 
 
 
 # The param.dat File #
-Simulation parameters are specified in the 'param.dat' file. The used parameters are listed here, the order can not be changed.
+Simulation parameters are specified in the 'param.dat' file. The used parameters are listed here, the order can also be changed. If a line in the 'param.dat' file is missing, then the corresponding default value is taken from the 'define.dat' file.
 
  * The time step, in days
  * The output name
@@ -58,7 +58,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * vx = x-velocity in AU/day * 0.0172020989 (heliocentric)
     * vy = y-velocity in AU/day * 0.0172020989 (heliocentric)
     * vz = z-velocity in AU/day * 0.0172020989 (heliocentric)
-    *  rho = density in g/cm^3; optional, the default value can be specified below.
+    * rho = density in g/cm^3; optional, the default value can be specified below.
     * r = physical radius in AU; optional, if r is not given or the radius is equal to zero, then the program uses the density to calculate the radius. Note that you have many ways to input the radius or density. Look at the input file section.
     * Sx = x-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
     * Sy = y-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
@@ -76,12 +76,16 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
  * The Order of the symplectic integrator. The options are 2, 4 or 6
+ * Use aeGrid, 0 or 1. See [here](#markdown-header-aegrid) for more details
  * Miminal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Miminal eccentricity for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal eccentricity for the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * Miminal inclination for the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * Maximal inclination for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The number of cells in a of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The number of cells in e of the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * The number of cells in i of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The time step when aeCount starts. (In Detail aeCount will start at the next bigger coordinate output step).
  * The name for the aeCount grid
  * The dissipation time for the gas disc in years
@@ -113,18 +117,19 @@ Here i means an integer, f a floating point value, and s a string.
 
 Some Constants are defined as c++ preprocessor directives in the define.h file. After changing one of these constants, the code has to be recompiled.
 
-Here it can also be chosen if the aeCount grid is used and if the gas disc is included or not.
+Here it can also be chosen if the gas disc is included or not.
 
  * FormatS i: Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same files.
  * FormatT i: Output file format for time steps. 0: all time steps write to different files, 1: all time steps write to the same files.
  * FormatP i: Output file format for particles. 0: all particles write to different files, 1: all particles write to the same files.
+ * All default parameters for the 'param.dat' file. See [here](#markdown-header-the-param.dat-file) for more details
+
  * Rcut f: Radius where bodies get ejected, in AU
  * RcutSun f: Radius where bodies fall into the central mass, in AU
  * pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
- * useGridae i: By setting this flag, the [aeGrid](#markdown-header-aegrid) is used.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * useGas i: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
@@ -270,8 +275,10 @@ In this file are listed the details of the ejected particles. An ejection happen
     with: case = -3 for ejected bodies, and case = -2 for bodies falling into the central mass. 
 
 ## The aeGrid file: aeCount<aeGrid name>_<time step>.dat
-If the useGridae value in the 'define.h' file is set to one, then at the coordinate output interval, a new aeGrid file is created. This file contains two Matrices of the size Na x Ne, where Na and Ne are set in the 'param.dat' file. The first matrix contains the number of time steps which a particle was at the corresponding semi major axis and eccentricity bin, since the last output time
+If the use_aeGrid value in the 'param.h' file is set to one, then at the coordinate output interval, a new aeGrid file is created. This file contains two matrices of the size Na x Ne followed by two matrixes of the size Na x Ni, where Na, Ne and Ni are set in the 'param.dat' file. The first matrix contains the number of time steps which a particle was at the corresponding semi major axis and eccentricity bin, since the last output time
 The second matrix contains the same information since the beginning of the simulation.
+The next to matrices contain the same for the inclination.
+
 In the multi simulation mode all sub simulations are contributing to the same files.
 See [here](#markdown-header-aegrid) for more details.
 
@@ -301,10 +308,9 @@ The aeLimits values amin, amax, emin and emax are limits for the semi major axis
 This values can be useful in a stability analysis of planetary systems. 
 
 # aeGrid #
-The aeGrid is a semi major axis versus eccentricity grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity The dimensions of the grid can be set in the 'para.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin and aeGrid_emax values, where the semi major axis 'a' is a positive value in astronomical units, and the eccentricity 'e' a value between zero and one.
-The resolution of the grid can be set by the Na and Ne values.
-In the multi simulation mode all sub simulations are contributing to the same files.
-To use the aeGrid functionality, then in the 'define.h' file, the 'useGridae' value must be set to 1. 
+The aeGrid is a semi-major axis versus eccentricity grid, and/or a semi-major axis versus inclination grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity or inclination. The dimensions of the grid can be set in the 'param.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin, aeGrid_emax, aeGrid_imin and aeGrid_imax values, where the semi-major axis 'a' is a positive value in astronomical units, the eccentricity 'e' a value between zero and one and the inclination 'i' is an angle bwtween -180 and +180.
+The resolution of the grid can be set by the Na, Ne and Ni values.
+In the multi simulation mode all sub-simulations are contributing to the same files.
 
 # The Poincare surface of section #
 By setting the parameter ** poincareFlag 1 ** in the define.h file, GENGA prints the Poincare surface of section. It prints the coordinates of x and v when a particles crosses the positive x coordinate.

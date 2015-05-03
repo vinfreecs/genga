@@ -9,12 +9,46 @@
 #include <sys/resource.h>
 
 
-#define Version 3.09
+#define Version 3.10
 
 //output file structure
 #define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define FormatP 1			//0: one file per particle, 1: all particles in the same file
+
+
+//Default parameter values
+#define def_TimeStep 6
+#define def_Name "test"
+#define def_EnergyOutputInterval 100
+#define def_CoordinatesOutputInterval 100
+#define def_OutputsPerInterval 1
+#define def_IntegrationSteps 1000
+#define def_CentralMass 1.0
+#define def_n1 3.0
+#define def_n2 0.4
+#define def_InputFile "inital.dat"
+#define def_InputFileFormat "<< t i m r x y z vx vy vz >>"
+#define def_rho 2.0
+#define def_UseTestParticles 0			//0 or 1
+#define def_RestartTimeStep 0
+#define def_MinimumNumberOfBodies 0
+#define def_OderOfIntegrator 2			//2, 4  or 6
+#define def_UseaeGrid 0				// 1 or 0
+#define def_aeGridamin 0.0
+#define def_aeGridamax 5.0
+#define def_aeGridemin 0.0
+#define def_aeGridemax 1.0
+#define def_aeGridimin 0.0
+#define def_aeGridimax 0.1
+#define def_aeGridNa 10
+#define def_aeGridNe 10
+#define def_aeGridNi 10
+#define def_aeGridStartCount 0
+#define def_aeGridName "A"
+#define def_GasdTau_diss 10000
+#define def_GasAlpha 1
+
 
 #define Rcut 500				//bodies with r > Rcut are Ejected
 #define RcutSun 0.02			//bodies with r < RcutSun fall into the Sun
@@ -25,8 +59,6 @@
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
-//use aeGrid
-#define useGridae 0			// 1 or 0
 
 //print Poincare Section of surface, in this mode the code can be very slow
 #define poincareFlag 0			//1: print, 0: no print
@@ -78,8 +110,9 @@
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
-__constant__ float Gridae_c[6];
-__constant__ int GridaeN_c[2];
+__constant__ float Gridae_c[9];
+__constant__ int GridaeN_c[3];
+__constant__ int UseaeGrid_c[1];
 __constant__ double S_c[FGN + 1];
 __constant__ double C_c[FGN + 1];
 
@@ -96,6 +129,7 @@ struct Parameter{
 	double ict;                     //initial time
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc
+	int UseaeGrid;			
 };
 
 //File names of Simulstions
@@ -119,10 +153,14 @@ struct GridaeParameter{
 	float amax;
 	float emin;
 	float emax;
+	float imin;
+	float imax;
 	float deltaa;
 	float deltae;
+	float deltai;
 	int Na;
 	int Ne;
+	int Ni;
 	long long Start;
 	char X[64];
 	FILE *file;

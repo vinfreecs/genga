@@ -299,10 +299,13 @@ __host__ void Data::CoordinateOutput(long long ts, double t){
 
 
 __host__ void Data::GridaeOutput(long long ts){
-	int GridN = Gridae.Na * Gridae.Ne;
+	int GridNae = Gridae.Na * Gridae.Ne;
+	int GridNai = Gridae.Na * Gridae.Ni;
 	sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, ts);
 	Gridae.file = fopen(Gridae.filename, "w");
-	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int)*GridN, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int)*GridNae, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int)*GridNai, cudaMemcpyDeviceToHost);
+	//ae grid
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
 			if(ts > Gridae.Start){
@@ -322,9 +325,32 @@ __host__ void Data::GridaeOutput(long long ts){
 		}
 		fprintf(Gridae.file, "\n");
 	}
+	fprintf(Gridae.file, "\n");
+	fprintf(Gridae.file, "\n");
+	//ai grid
+	for(int i = 0; i < Gridae.Ni; ++i){
+		for(int j = 0; j < Gridae.Na; ++j){
+			if(ts > Gridae.Start){
+				GridaicountS_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
+				GridaicountT_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
+			}
+			fprintf(Gridae.file, "%lld ", GridaicountT_h[i * Gridae.Na + j]);
+		}
+		fprintf(Gridae.file, "\n");
+	}
+	fprintf(Gridae.file, "\n");
+	fprintf(Gridae.file, "\n");
+	for(int i = 0; i < Gridae.Ni; ++i){
+		for(int j = 0; j < Gridae.Na; ++j){
+			fprintf(Gridae.file, "%lld ", GridaicountS_h[i * Gridae.Na + j]);
+			GridaicountS_h[i * Gridae.Na + j] = 0;
+		}
+		fprintf(Gridae.file, "\n");
+	}
 
 	fclose(Gridae.file);
-	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridN);
+	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridNae);
+	cudaMemset(Gridaicount_d, 0, sizeof(int)*GridNai);
 }
 
 

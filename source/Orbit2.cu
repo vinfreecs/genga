@@ -175,18 +175,30 @@ __host__ int Data::CMallocateOrbit(){
 //This function allocates the Grida and set values to zero
 __host__ int Data::GridaeAlloc(){
 	cudaError_t error;
-	GridN = Gridae.Na * Gridae.Ne;
-	cudaMalloc((void **) &Gridaecount_d, GridN * sizeof(int));
-	Gridaecount_h = (int*)malloc(GridN * sizeof(int));
-	GridaecountT_h = (long long*)malloc(GridN * sizeof(long long));
-	GridaecountS_h = (long long*)malloc(GridN * sizeof(long long));
+	GridNae = Gridae.Na * Gridae.Ne;
+	cudaMalloc((void **) &Gridaecount_d, GridNae * sizeof(int));
+	Gridaecount_h = (int*)malloc(GridNae * sizeof(int));
+	GridaecountT_h = (long long*)malloc(GridNae * sizeof(long long));
+	GridaecountS_h = (long long*)malloc(GridNae * sizeof(long long));
 
-	for(int i = 0; i < GridN; ++i){
+	for(int i = 0; i < GridNae; ++i){
 	      Gridaecount_h[i] = 0;
 	      GridaecountT_h[i] = 0;
 	      GridaecountS_h[i] = 0;
 	}
-	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(int)*GridN, cudaMemcpyHostToDevice);
+	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(int)*GridNae, cudaMemcpyHostToDevice);
+	GridNai = Gridae.Na * Gridae.Ni;
+	cudaMalloc((void **) &Gridaicount_d, GridNai * sizeof(int));
+	Gridaicount_h = (int*)malloc(GridNai * sizeof(int));
+	GridaicountT_h = (long long*)malloc(GridNai * sizeof(long long));
+	GridaicountS_h = (long long*)malloc(GridNai * sizeof(long long));
+
+	for(int i = 0; i < GridNai; ++i){
+	      Gridaicount_h[i] = 0;
+	      GridaicountT_h[i] = 0;
+	      GridaicountS_h[i] = 0;
+	}
+	cudaMemcpy(Gridaicount_d, Gridaicount_h, sizeof(int)*GridNai, cudaMemcpyHostToDevice);
 
 	constantCopy();
 
@@ -231,9 +243,23 @@ __host__ int Data::readGridae(){
 			printf("Error: aeGrid file not found: aeCount%s_%.12lld.dat\n", Gridae.X, P.tRestart);
 			return 0;
 		}
+		//Read Total aeGrid
 		for(int i = 0; i < Gridae.Ne; ++i){
 			for(int j = 0; j < Gridae.Na; ++j){
 				fscanf(Gridae.file, "%lld",&GridaecountT_h[i * Gridae.Na + j]);
+			}
+		}
+		//Skip Temporal aeGrid
+		int skip;
+		for(int i = 0; i < Gridae.Ne; ++i){
+			for(int j = 0; j < Gridae.Na; ++j){
+				fscanf(Gridae.file, "%d",&skip);
+			}
+		}
+		//Read Total aiGrid
+		for(int i = 0; i < Gridae.Ni; ++i){
+			for(int j = 0; j < Gridae.Na; ++j){
+				fscanf(Gridae.file, "%lld",&GridaicountT_h[i * Gridae.Na + j]);
 			}
 		}
 		fclose(Gridae.file);
@@ -244,8 +270,8 @@ __host__ int Data::readGridae(){
 //This function copies values from the current Gridae to the total and summing host Grid
 __host__ int Data::copyGridae(long long ts){
 	cudaError_t error;
-
-	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int) * GridN, cudaMemcpyDeviceToHost);
+	//ae grid
+	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int) * GridNae, cudaMemcpyDeviceToHost);
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
 			if(ts > Gridae.Start){
@@ -254,7 +280,18 @@ __host__ int Data::copyGridae(long long ts){
 			}
 		}
 	}
-	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridN);
+	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridNae);
+	//ae grid
+	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int) * GridNai, cudaMemcpyDeviceToHost);
+	for(int i = 0; i < Gridae.Ni; ++i){
+		for(int j = 0; j < Gridae.Na; ++j){
+			if(ts > Gridae.Start){
+				GridaicountS_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
+				GridaicountT_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
+			}
+		}
+	}
+	cudaMemset(Gridaicount_d, 0, sizeof(int)*GridNai);
         error = cudaGetLastError();
         fprintf(masterfile,"Grieae copy error = %d = %s\n",error, cudaGetErrorString(error));
         if(error != 0) return 0;
