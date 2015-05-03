@@ -15,4 +15,6 @@ pairs.
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
 News:
-The test particle mode supports up to 2048 massive bodies. Use the NmaxTestParticles parameter in define.h
+ * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.dat' file. The aeGrid contains now also a semi-major axis versus inclination grid. 
+
+ * The test particle mode supports up to 2048 massive bodies. Use the NmaxTestParticles parameter in define.h to increase this value
