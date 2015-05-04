@@ -122,14 +122,14 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 			tt12 = tt1*tt1;
 			delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*c - t12*tt1*cc;
 		}
-		else delta1 = Rcut;
+		else delta1 = 100.0;
 		if(0 <= t2 && t2 <= 1){
 			t22 = t2*t2;
 			tt2 = 1.0-t2;
 			tt22 = tt2*tt2;
 			delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*c - t22*tt2*cc;
 		}
-		else delta2 = Rcut;
+		else delta2 = 100.0;
 
 		delta = min(delta1,delta2);
 		if(delta < 0) delta = 0.0;

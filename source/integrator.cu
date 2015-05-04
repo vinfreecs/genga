@@ -200,7 +200,7 @@ __global__ void test_kernel(double4 *x4_d, double3 *a_d, int *index_d, int N){
 //March 2014
 //****************************************/
 template <int Bl>
-__global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4G3_d, double4 *__restrict__ v4G3_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritv_d, double dt, double *__restrict__ test_d, double n1, double n2, int *EjectionFlag_d, int N){
+__global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4G3_d, double4 *__restrict__ v4G3_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritv_d, double dt, double *__restrict__ test_d, double n1, double n2, double Rcut, double RcutSun, int *EjectionFlag_d, int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -261,7 +261,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 //****************************************/
 
 template <int Bl>
-__global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *rcrit_d, double *rcritv_d, double dt, double *test_d, double n1, double n2, int *EjectionFlag_d, double4 *x4small_d, double4 *v4small_d, int Nsmall, int N){
+__global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *rcrit_d, double *rcritv_d, double dt, double *test_d, double n1, double n2, double Rcut, double RcutSun, int *EjectionFlag_d, double4 *x4small_d, double4 *v4small_d, int Nsmall, int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -331,7 +331,7 @@ __global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, dou
 //
 // ****************************************
 template <int Bl>
-__global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, double *rcrit_d, double *rcritv_d, double dt, double *test_d, double *n1_d, double *n2_d, int *EjectionFlag_d, int *index_d, int Nst, int NT){
+__global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, double *rcrit_d, double *rcritv_d, double dt, double *test_d, double *n1_d, double *n2_d, double *Rcut_d, double *RcutSun_d, int *EjectionFlag_d, int *index_d, int Nst, int NT){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -349,6 +349,8 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, doub
 		double Msun = Msun_d[st];
 		double n1 = n1_d[st];
 		double n2 = n2_d[st];
+		double Rcut = Rcut_d[st];
+		double RcutSun = RcutSun_d[st];
 		x4_s[idy] = x4_d[id];
 		v4_s[idy] = v4_d[id];
 
@@ -379,47 +381,47 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, doub
 
 __host__ void Data::firstKick_16(){
 	initial_kernel < 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick16_kernel < 16, 40, 0 > <<< N_h[0] , 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_32(){
 	initial_kernel < 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 32, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_64(){
 	initial_kernel < 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 64, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB[0], 0.0);
 }
 __host__ void Data::firstKick_128(){
 	initial_kernel < 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick128_kernel < 128, 0 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N2[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_256(){
 	initial_kernel < 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick256_kernel <128, 256, 0> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_512(){
 	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick4_kernel < 256, 512, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_1024(){
 	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 32 > <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick4_kernel < 256, 1024, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_2048(){
 	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 64 > <<< 32, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 64 > <<< 32, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick4_kernel < 256, 2048, 0 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], 0.0);
 }
 __host__ void Data::firstKick_largeN(){
 	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, BddSign_d, StopTime_d, groupIndex_d, NB[0]);
-	Rcrit_kernel < 64 > <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 64 > <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N4[0], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, N_h[0], icNB[0], NB[0], 0.0);
 }
 __host__ void Data::firstKick_small(){
@@ -428,12 +430,12 @@ __host__ void Data::firstKick_small(){
 
 	int nbInitialsmall = (max(Nsmall_h[0], NB[0] * NB[0]) + 255) / 256;
 	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0], groupIndexsmall_d);
-	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
+	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
 	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0]);
 }
 __host__ void Data::firstKick_M(){
 	initialM_kernel <16> <<< (NT + 31) / 32, 32 >>>(Encpairs_d, Encpairs2_d, a_d, NT);
-	RcritM_kernel <32> <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt, test_d, n1_d, n2_d, EjectionFlag_d, index_d, Nst, NT);
+	RcritM_kernel <32> <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0, 16 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq * Kt[SIn - 1], index_d, NT, test_d);
 }
 
@@ -609,7 +611,7 @@ com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 GasAccCall_16(t, dt * Ct[0]);
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -678,7 +680,7 @@ com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 GasAccCall_32(t, dt * Ct[0]);
 com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel <32> <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <32> <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -744,7 +746,7 @@ com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0],
 GasAccCall_64(t, dt * Ct[0]);
 com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel <32> <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <32> <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<2, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -809,7 +811,7 @@ com128_kernel < 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_128(t, dt * Ct[0]);
 com128_kernel < 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 32 > <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -874,7 +876,7 @@ com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_256(t, dt * Ct[0]);
 com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0],  test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -940,7 +942,7 @@ com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_512(t, dt * Ct[0]);
 com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 32 > <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -1008,7 +1010,7 @@ com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_1024(t, dt * Ct[0]);
 com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 32 > <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -1074,7 +1076,7 @@ com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_2048(t, dt * Ct[0]);
 com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 32 > <<< 64, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 32 > <<< 64, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -1148,7 +1150,7 @@ com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 
 GasAccCall_largeN(t, dt * Ct[0]);
 com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcrit_kernel < 64 > <<< (N_h[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel < 64 > <<< (N_h[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<< (NB[0] + 31) / 32, 32 >>>(Encpairs2_d, N_h[0], icNB[0]);
 #endif
@@ -1238,7 +1240,7 @@ GasAccCall_16(t, dt * Ct[0]);
 GasAccCall_small(t, dt * Ct[0]);
 com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
 #endif
-	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
+	Rcritsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt, test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
 	if(Nencpairs_h[0] > 0 || Nencpairssmall_h[0] > 0 || EjectionFlag2 > 0) kickAsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], x4small_d, v4small_d, Encpairssmall2_d, Nsmall_h[0], asmall_d, NB[0], Nconst[0]);
 	else kickBsmall_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, x4small_d, v4small_d, asmall_d, N_h[0], Nsmall_h[0]);
 	EjectionFlag2 = 0;
@@ -1306,7 +1308,7 @@ comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl 
 GasAccCall_M(t, dt * Ct[0]);
 comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, Msun_d, U_d, index_d, NT, test_d, -1);
 #endif
-	RcritM_kernel <128> <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt, test_d, n1_d, n2_d, EjectionFlag_d, index_d, Nst, NT);
+	RcritM_kernel <128> <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT);
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) KickM2_kernel< KM_Bl, KM_Bl2, NmaxM, 3, 16 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq * Kt[SIn - 1], index_d, NT, test_d);
 	else kickMB_kernel <<< (NT + 127) / 128, 128>>> (v4_d, a_d, test_d, NT);
 	EjectionFlag2 = 0;

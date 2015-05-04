@@ -43,6 +43,8 @@ public:
 	int *Nsmall_h, *Nsmall_d;		//number of test particles
 	double *Msun_h, *Msun_d;		//Mass of the star
 	double *dtiMsun_h, *dtiMsun_d;		//dt/Msun
+	double *Rcut_h, *Rcut_d;		//inner truncation radius
+	double *RcutSun_h, *RcutSun_d;		//outer truncation radius
 
 	double dt;
 	double dtksq;

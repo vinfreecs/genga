@@ -33,6 +33,8 @@
 #define def_UseTestParticles 0			//0 or 1
 #define def_RestartTimeStep 0
 #define def_MinimumNumberOfBodies 0
+#define def_Rcut 50.0
+#define def_RcutSun 0.2
 #define def_OderOfIntegrator 2			//2, 4  or 6
 #define def_UseaeGrid 0				// 1 or 0
 #define def_aeGridamin 0.0
@@ -50,8 +52,6 @@
 #define def_GasAlpha 1
 
 
-#define Rcut 500				//bodies with r > Rcut are Ejected
-#define RcutSun 0.02			//bodies with r < RcutSun fall into the Sun
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.

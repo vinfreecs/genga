@@ -66,7 +66,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * i = index of the body; optional, the default value is the line number in the input file. Don't give two bodies the same index.
     * t = start time of the simulation in years, optional. The default is zero.
     *  amin = minimal value of semi major axis range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
-    * amax = maximal value of semi major axis range for aecount; optional, the default value is Rcut. See [here](#markdown-header-aelimits) for more details
+    * amax = maximal value of semi major axis range for aecount; optional, the default value is 100. See [here](#markdown-header-aelimits) for more details
     * emin = minimal value of eccentricity range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
     *  emax = maximal value of eccentricity range for aecount; optional, the default value is 1.0. See [here](#markdown-header-aelimits) for more details
     * \- = skip this column, optional
@@ -75,6 +75,8 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies.
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
+ * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
+ * The outer truncation radius in AU, bodies with a separation to the Sun larger than this are taken out of the simulation. (Rcut in older versions)
  * The Order of the symplectic integrator. The options are 2, 4 or 6
  * Use aeGrid, 0 or 1. See [here](#markdown-header-aegrid) for more details
  * Miminal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
@@ -124,8 +126,6 @@ Here it can also be chosen if the gas disc is included or not.
  * FormatP i: Output file format for particles. 0: all particles write to different files, 1: all particles write to the same files.
  * All default parameters for the 'param.dat' file. See [here](#markdown-header-the-param.dat-file) for more details
 
- * Rcut f: Radius where bodies get ejected, in AU
- * RcutSun f: Radius where bodies fall into the central mass, in AU
  * pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
@@ -265,7 +265,7 @@ In this file are listed the details of the collisions between particle i and j j
     .
 
 ## The ejection file Ejections<name>.dat
-In this file are listed the details of the ejected particles. An ejection happens if the distance of a particle to the central mass is greater than the Rcut value specified in the 'defines.h' file, or smaller than the 'RcutSun' value.
+In this file are listed the details of the ejected particles. An ejection happens if the distance of a particle to the central mass is greater than the outer truncation radius (Rcut) value specified in the 'defines.h' file, or smaller than the inner truncation radius (RcutSun) value.
 
     time index m r x y z vx vy vz Sx Sy Sz case
     .
@@ -308,7 +308,7 @@ The aeLimits values amin, amax, emin and emax are limits for the semi major axis
 This values can be useful in a stability analysis of planetary systems. 
 
 # aeGrid #
-The aeGrid is a semi-major axis versus eccentricity grid, and/or a semi-major axis versus inclination grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity or inclination. The dimensions of the grid can be set in the 'param.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin, aeGrid_emax, aeGrid_imin and aeGrid_imax values, where the semi-major axis 'a' is a positive value in astronomical units, the eccentricity 'e' a value between zero and one and the inclination 'i' is an angle bwtween -180 and +180.
+The aeGrid is a semi-major axis versus eccentricity grid, and/or a semi-major axis versus inclination grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity or inclination. The dimensions of the grid can be set in the 'param.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin, aeGrid_emax, aeGrid_imin and aeGrid_imax values, where the semi-major axis 'a' is a positive value in astronomical units, the eccentricity 'e' a value between zero and one and the inclination 'i' is an angle bwtween 0 and pi.
 The resolution of the grid can be set by the Na, Ne and Ni values.
 In the multi simulation mode all sub-simulations are contributing to the same files.
 

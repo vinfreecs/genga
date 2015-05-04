@@ -271,9 +271,9 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
 	v4[j].y = 0.0;
 	v4[j].z = 0.0;
 
-	x4[j].x = Rcut;
-	x4[j].y = Rcut;
-	x4[j].z = Rcut;
+	x4[j].x = 0.0;
+	x4[j].y = 1.0;
+	x4[j].z = 0.0;
 
 	spin[indexj].x = 0.0;
 	spin[indexj].y = 0.0;
@@ -348,9 +348,9 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 		v4[j].y = 0.0;
 		v4[j].z = 0.0;
 
-		x4[j].x = Rcut;
-		x4[j].y = Rcut;
-		x4[j].z = Rcut;
+		x4[j].x = 0.0;
+		x4[j].y = 1.0;
+		x4[j].z = 0.0;
 
 		x4[i].w = mtot;
 		x4[j].w = -1.0e-12;
@@ -397,9 +397,9 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 		v4[j].y = 0.0;
 		v4[j].z = 0.0;
 
-		x4[j].x = Rcut;
-		x4[j].y = Rcut;
-		x4[j].z = Rcut;
+		x4[j].x = 0.0;
+		x4[j].y = 1.0;
+		x4[j].z = 0.0;
 	}
 }
 #endif

@@ -212,6 +212,7 @@ int main(int argc, char*argv[]){
 		}
 	}
 	cudaDeviceSynchronize();
+	printf("first kick OK\n");
 	//Print first informations about close encounter pairs
 	D.firstInfo();
 	D.setStartTime();

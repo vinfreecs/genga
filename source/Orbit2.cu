@@ -300,7 +300,7 @@ __host__ int Data::copyGridae(long long ts){
 }
 
 
-//This function initialized the data
+//This function initializes the data
 __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
@@ -341,7 +341,7 @@ __host__ int Data::init(){
 		spin_h[i].y = 0.0;
 		spin_h[i].z = 0.0;
 		aelimits_h[i].x = 0.0f;
-		aelimits_h[i].y = (float)(Rcut);
+		aelimits_h[i].y = 1.0f;
 		aelimits_h[i].z = 0.0f;
 		aelimits_h[i].w = 1.0f;
 		aecount_h[i] = 0;
@@ -375,7 +375,7 @@ __host__ int Data::init(){
 		spinsmall_h[i].y = 0.0;
 		spinsmall_h[i].z = 0.0;
 		aelimitssmall_h[i].x = 0.0f;
-		aelimitssmall_h[i].y = (float)(Rcut);
+		aelimitssmall_h[i].y = 1.0f;
 		aelimitssmall_h[i].z = 0.0f;
 		aelimitssmall_h[i].w = 1.0f;
 		aecountsmall_h[i] = 0;
@@ -871,9 +871,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				x4_d[j + NBS] = x4_d[N-1 + NBS];
 				v4_d[j + NBS] = v4_d[N-1 + NBS];
 
-				x4_d[N-1 + NBS].x = Rcut;
-				x4_d[N-1 + NBS].y = Rcut;
-				x4_d[N-1 + NBS].z = Rcut;
+				x4_d[N-1 + NBS].x = 0.0;
+				x4_d[N-1 + NBS].y = 1.0;
+				x4_d[N-1 + NBS].z = 0.0;
 				x4_d[N-1 + NBS].w = -1.0e-12;
 	
 				v4_d[N-1 + NBS].x = 0.0;
@@ -979,9 +979,9 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 				x4small_d[j + NsmallS] = x4small_d[Nsmall-1 + NsmallS];
 				v4small_d[j + NsmallS] = v4small_d[Nsmall-1 + NsmallS];
 
-				x4small_d[Nsmall-1 + NsmallS].x = Rcut;
-				x4small_d[Nsmall-1 + NsmallS].y = Rcut;
-				x4small_d[Nsmall-1 + NsmallS].z = Rcut;
+				x4small_d[Nsmall-1 + NsmallS].x = 0.0;
+				x4small_d[Nsmall-1 + NsmallS].y = 1.0;
+				x4small_d[Nsmall-1 + NsmallS].z = 0.0;
 				x4small_d[Nsmall-1 + NsmallS].w = -1.0e-12;
 	
 				v4small_d[Nsmall-1 + NsmallS].x = 0.0;
@@ -1064,7 +1064,7 @@ __host__ void Data::Ejection(double time){
 				cudaMemcpy(vcomsmall_d + st, vcomsmall_h + st, sizeof(double3), cudaMemcpyHostToDevice);
 				c = 0;
 				double rsq = x4_h[i + NBS].x*x4_h[i + NBS].x + x4_h[i + NBS].y*x4_h[i + NBS].y + x4_h[i + NBS].z*x4_h[i + NBS].z;
-				if(rsq > Rcut * Rcut && x4_h[i + NBS].w >= 0){
+				if(rsq > Rcut_h[st] * Rcut_h[st] && x4_h[i + NBS].w >= 0){
 					c = -3;
 					if(Nst == 1){
 						printf("Body %d ejected\n", index_h[i + NBS]);
@@ -1075,7 +1075,7 @@ __host__ void Data::Ejection(double time){
 						fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % 100);
 					}
 				}
-				if( rsq < RcutSun * RcutSun && x4_h[i + NBS].w >= 0){
+				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4_h[i + NBS].w >= 0){
 					c = -2;
 					if(Nst == 1){
 						printf("Body %d too close to central mass -> removed\n", index_h[i + NBS]);
@@ -1122,7 +1122,7 @@ __host__ void Data::Ejectionsmall(double time){
 			for(int i = 0; i < Nsmall_h[st]; ++i){
 				c = 0;
 				double rsq = x4small_h[i + NsmallS].x*x4small_h[i + NsmallS].x + x4small_h[i + NsmallS].y*x4small_h[i + NsmallS].y + x4small_h[i + NsmallS].z*x4small_h[i + NsmallS].z;
-				if(rsq > Rcut * Rcut && x4small_h[i + NsmallS].w >= 0){
+				if(rsq > Rcut_h[st] * Rcut_h[st] && x4small_h[i + NsmallS].w >= 0){
 					c = -3;
 					if(Nst == 1){
 						printf("Test particle %d ejected\n", indexsmall_h[i + NsmallS]);
@@ -1133,7 +1133,7 @@ __host__ void Data::Ejectionsmall(double time){
 						fprintf(logfile, "Test particle %d ejected\n", indexsmall_h[i + NsmallS] % 100);
 					}
 				}
-				if( rsq < RcutSun * RcutSun && x4small_h[i + NsmallS].w >= 0){
+				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4small_h[i + NsmallS].w >= 0){
 					c = -2;
 					if(Nst == 1){
 						printf("Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
@@ -1328,6 +1328,8 @@ __host__ void Data::stopSimulations(){
 				Nmin[sst] = Nmin[sst + 1];
 				dtiMsun_h[sst] = dtiMsun_h[sst + 1];
 				Nconst[sst] = Nconst[sst + 1];
+				Rcut_h[sst] = Rcut_h[sst + 1];
+				RcutSun_h[sst] = RcutSun_h[sst + 1];
 
 				U_h[sst] = U_h[sst + 1];
 				LI_h[sst] = LI_h[sst + 1];
@@ -1352,6 +1354,8 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst*sizeof(double), cudaMemcpyHostToDevice);

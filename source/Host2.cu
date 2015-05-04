@@ -195,6 +195,8 @@ __host__ void Host::Halloc(){
 	Nsmall_h = (int*)malloc(Nst*sizeof(int));
 	Msun_h = (double*)malloc(Nst*sizeof(double));
 	dtiMsun_h = (double*)malloc(Nst*sizeof(double));
+	Rcut_h = (double*)malloc(Nst*sizeof(double));
+	RcutSun_h = (double*)malloc(Nst*sizeof(double));
 
 	//Initialize parameters with default values
 	P.idt = def_TimeStep;
@@ -307,6 +309,9 @@ __host__ void Host::Halloc(){
 		Nmin[st] = def_MinimumNumberOfBodies;
 		sprintf(GSF[st].X, def_Name);
 		sprintf(GSF[st].inputfilename, def_InputFile);
+		Rcut_h[st] = def_Rcut;
+		RcutSun_h[st] = def_RcutSun;
+
 	}
 	
 	//Read the paths for the individual simulations
@@ -554,6 +559,22 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			er = fscanf (paramfile, "%d", &Nmin[st]);
 			if(er <= 0 || Nmin < 0){
 				printf("Error: Minimal number of bodies not valid\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Inner truncation radius =") == 0){
+			er = fscanf (paramfile, "%lf", &RcutSun_h[st]);
+			if(er <= 0 || Nmin < 0){
+				printf("Error: Inner truncation radius not valid\n");
+				return 0;
+			}
+		fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Outer truncation radius =") == 0){
+			er = fscanf (paramfile, "%lf", &Rcut_h[st]);
+			if(er <= 0 || Nmin < 0){
+				printf("Error: Outer truncation radius not valid\n");
 				return 0;
 			}
 		fgets(sp, 3, paramfile);
@@ -1192,12 +1213,16 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &Nsmall_d,Nst*sizeof(int));
 	cudaMalloc((void **) &Msun_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dtiMsun_d,Nst*sizeof(double));
+	cudaMalloc((void **) &Rcut_d,Nst*sizeof(double));
+	cudaMalloc((void **) &RcutSun_d,Nst*sizeof(double));
 
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 }
 
 // ************************************************
@@ -1276,8 +1301,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "\n");
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
 			fprintf(infofile, "Device number: %d\n", P.dev);                           // use only argument in simulation 0
-			fprintf(infofile, "Rcut: %g\n", (double)(Rcut));
-			fprintf(infofile, "RcutSun: %g\n", (double)(RcutSun));
+			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
+			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
 			fprintf(infofile, "MaxColl: %d\n", MaxColl);
 			fprintf(infofile, "pc: %g\n", pc);
 			fprintf(infofile, "cef: %g\n", cef);
@@ -1292,8 +1317,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid emin: %f\n", Gridae.emin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid emax: %f\n", Gridae.emax);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid imin: %f\n", Gridae.emin);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid imax: %f\n", Gridae.emax);                            // use only argument in simulation 0
+			fprintf(infofile, "aeGrid imin: %f\n", Gridae.imin);                            // use only argument in simulation 0
+			fprintf(infofile, "aeGrid imax: %f\n", Gridae.imax);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Na: %d\n", Gridae.Na);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Ne: %d\n", Gridae.Ne);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);                                // use only argument in simulation 0
@@ -1362,6 +1387,8 @@ __host__ int Host::freeHost(){
 	free(Nsmall_h);
 	free(Msun_h);
 	free(dtiMsun_h);
+	free(Rcut_h);
+	free(RcutSun_h);
 	
 	cudaFree(n1_d);
 	cudaFree(n2_d);
@@ -1369,6 +1396,8 @@ __host__ int Host::freeHost(){
 	cudaFree(Nsmall_d);
 	cudaFree(Msun_d);
 	cudaFree(dtiMsun_d);
+	cudaFree(Rcut_d);
+	cudaFree(RcutSun_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){
