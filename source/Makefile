@@ -4,7 +4,7 @@ ARCH = -arch sm_$(SM)
 # Build Data
 HG_BRANCH := `hg branch`
 HG_COMMIT := `hg id -i`
-BUILD_DATE := "`date '+%F %T'`"
+BUILD_DATE := "`date`"
 BUILD_SYSTEM := "`uname -a`"
 BUILD_PATH := "`pwd`"
 BUILD_DATA = -DHG_BRANCH=\"$(HG_BRANCH)\" -DHG_COMMIT=\"$(HG_COMMIT)\" -DBUILD_DATE=\"$(BUILD_DATE)\" -DBUILD_SYSTEM=\"$(BUILD_SYSTEM)\" -DBUILD_PATH=\"$(BUILD_PATH)\" -DBUILD_SM=\"$(SM)\"
