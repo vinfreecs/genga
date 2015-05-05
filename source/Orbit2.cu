@@ -495,7 +495,7 @@ __host__ int Data::readic(int st){
 	double AU = 1.49597870700e13; //in cm
 	double Solarmass = 1.98892e33; //in g
 
-	if(FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
+	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 
 	int ii = 0;
 	int iismall = 0;
@@ -579,10 +579,10 @@ __host__ int Data::readic(int st){
 		double time = 0.0;
 		double aecount = 0.0;
 
-		if(FormatP == 1){
+		if(P.FormatP == 1){
 			//skip previous time steps
-			if(FormatT == 0) fscanf (infile, "%lf",&time);
-			if(FormatT == 1){
+			if(P.FormatT == 0) fscanf (infile, "%lf",&time);
+			if(P.FormatT == 1){
 				fscanf (infile, "%lf",&time);
 				while(time < Et){
 					if(time == Et) break;
@@ -594,7 +594,7 @@ __host__ int Data::readic(int st){
 			}
 
 			//skip previous simulation data
-			if(FormatS == 1){
+			if(P.FormatS == 1){
 				for(int i = 0; i < NBS * 21; ++i){
 					fscanf (infile, "%lf",&skip);
 				}
@@ -623,7 +623,7 @@ __host__ int Data::readic(int st){
 				fscanf (infile, "%lld",&enccountT_h[i + NBS]);
 				fscanf (infile, "%lf",&ttest);
 
-				if(FormatS == 0) index_h[i + NBS] += 100*st;
+				if(P.FormatS == 0) index_h[i + NBS] += 100*st;
 				aecountT_h[i + NBS] = (long long)(aecount * P.tRestart);
 
 				++ii;
@@ -657,7 +657,7 @@ __host__ int Data::readic(int st){
 				++ii;
 			}
 		}
-		if(FormatP == 0){
+		if(P.FormatP == 0){
 			ii = 0;
 			int iismall = 0;
 		
@@ -720,7 +720,7 @@ __host__ int Data::readic(int st){
 					fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
 					fscanf (infile, "%lf",&ttest);
 
-					if(FormatS == 0) index_h[ii + NBS] += 100*st;
+					if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
 					aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
 
 					++ii;
@@ -758,7 +758,7 @@ __host__ int Data::readic(int st){
 			fclose(OrigInfile);
 		}
 	}
-	if(FormatP == 1 || P.tRestart == 0) fclose(infile);
+	if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
 	return ii + iismall;
 } 
 

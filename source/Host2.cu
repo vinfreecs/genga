@@ -204,7 +204,6 @@ __host__ void Host::Halloc(){
 	P.ci = def_CoordinatesOutputInterval;
 	P.nci = def_OutputsPerInterval;
 	P.delta = def_IntegrationSteps;
-	//Format
 	P.UseTestParticles = def_UseTestParticles;
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
@@ -222,6 +221,9 @@ __host__ void Host::Halloc(){
 	sprintf(Gridae.X, def_aeGridName);
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
+	P.FormatS = def_FormatS;
+	P.FormatT = def_FormatT;
+	P.FormatP = def_FormatP;
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -341,7 +343,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 
-	for(int j = 0; j < 30; ++j){
+	for(int j = 0; j < 37; ++j){
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -360,7 +362,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: time step is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Output name =") == 0){
 			er = fscanf (paramfile, "%s", &GSF[st].X);
@@ -368,7 +370,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Output name is not valid!\n");	
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Energy output interval =") == 0){
 			er = fscanf (paramfile, "%d", &P.ei);
@@ -376,7 +378,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Energy output interval is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Coordinates output interval =") == 0){
 			er = fscanf (paramfile, "%d", &P.ci);
@@ -385,7 +387,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Coordinates outut interval is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		
 		else if(strcmp(sp, "Number of outputs per interval =") == 0){
@@ -395,7 +397,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Number of outputs per interval is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Integration steps =") == 0){
 			er = fscanf (paramfile, "%lld", &P.delta);
@@ -404,7 +406,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Inegration steps are not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Central Mass =") == 0){
 
@@ -414,7 +416,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Central mass is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "n1 =") == 0){
 			er = fscanf (paramfile, "%lf", &n1_h[st]);
@@ -423,7 +425,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: n1 is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "n2 =") == 0){
 
@@ -433,7 +435,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: n2 is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file =") == 0){
 			er = fscanf (paramfile, "%s", &GSF[st].inputfilename);
@@ -442,7 +444,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Input file name is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
 			for(int i = 0; i < 22; ++i){
@@ -528,7 +530,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				return 0;
 
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 
 		else if(strcmp(sp, "Default rho =") == 0){
@@ -537,7 +539,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Default value for rho is not valid!\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Use Test Particles =") == 0){
 			er = fscanf (paramfile, "%d", &P.UseTestParticles);
@@ -545,7 +547,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Test Particle Mode not valid\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Restart timestep =") == 0){
 			er = fscanf (paramfile, "%lld", &P.tRestart);
@@ -553,7 +555,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Restart time step not valid\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Minimum number of bodies =") == 0){
 			er = fscanf (paramfile, "%d", &Nmin[st]);
@@ -561,7 +563,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Minimal number of bodies not valid\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Inner truncation radius =") == 0){
 			er = fscanf (paramfile, "%lf", &RcutSun_h[st]);
@@ -569,7 +571,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Inner truncation radius not valid\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Outer truncation radius =") == 0){
 			er = fscanf (paramfile, "%lf", &Rcut_h[st]);
@@ -577,7 +579,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Outer truncation radius not valid\n");
 				return 0;
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Order of integrator =") == 0){
 			if(st == 0){
@@ -591,7 +593,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				int t;
 				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Use aeGrid =") == 0){
 			if(st == 0){
@@ -605,7 +607,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				int t;
 				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid amin =") == 0){
 			if(st == 0){
@@ -619,7 +621,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid amax =") == 0){
 			if(st == 0){
@@ -633,7 +635,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid emin =") == 0){
 			if(st == 0){
@@ -647,7 +649,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid emax =") == 0){
 			if(st == 0){
@@ -661,7 +663,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid imin =") == 0){
 			if(st == 0){
@@ -675,7 +677,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid imax =") == 0){
 			if(st == 0){
@@ -689,7 +691,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				double t;
 				er = fscanf (paramfile, "%f", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid Na =") == 0){
 			if(st == 0){
@@ -703,7 +705,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				int t;
 				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid Ne =") == 0){
 			if(st == 0){
@@ -717,7 +719,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				int t;
 				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid Ni =") == 0){
 			if(st == 0){
@@ -731,7 +733,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				int t;
 				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid Start Count =") == 0){
 			if(st == 0){
@@ -745,7 +747,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				long long t;
 				er = fscanf (paramfile, "%lld", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "aeGrid name =") == 0){
 			if(st == 0){
@@ -760,7 +762,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				char t[64];
 				er = fscanf (paramfile, "%s", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Gas dTau_diss =") == 0){
 			if(st == 0){
@@ -772,9 +774,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			else{
 				double t;
-				er = fscanf (paramfile, "%lld", &t);
+				er = fscanf (paramfile, "%lf", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Gas alpha =") == 0){
 			if(st == 0){
@@ -787,9 +789,54 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			else{
 				int t;
-				er = fscanf (paramfile, "%lld", &t);
+				er = fscanf (paramfile, "%d", &t);
 			}
-		fgets(sp, 3, paramfile);
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "FormatS =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.FormatS);
+				if(er <= 0){
+					printf("Error: FormatS value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "FormatT =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.FormatT);
+				if(er <= 0){
+					printf("Error: FormatT value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "FormatP =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.FormatP);
+				if(er <= 0){
+					printf("Error: FormatP value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
 		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
@@ -918,14 +965,14 @@ __host__ int Host::Param(int argc, char*argv[]){
 	for(int st = 0; st < Nst; ++st){
 		dtiMsun_h[st] = dt / Msun_h[st];
 		//restart -> inputfilename
-		if(P.tRestart > 0 && FormatP == 1){
-			if(Nst == 1 || FormatS == 0){
-				if(FormatT == 0) sprintf(GSF[st].inputfilename, "%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
-				if(FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+		if(P.tRestart > 0 && P.FormatP == 1){
+			if(Nst == 1 || P.FormatS == 0){
+				if(P.FormatT == 0) sprintf(GSF[st].inputfilename, "%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
 			}
 			else{
-				if(FormatT == 0) sprintf(GSF[st].inputfilename, "Out%s_%.12lld.dat", GSF[st].X, P.tRestart);
-				if(FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.dat", GSF[st].X);
+				if(P.FormatT == 0) sprintf(GSF[st].inputfilename, "Out%s_%.12lld.dat", GSF[st].X, P.tRestart);
+				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.dat", GSF[st].X);
 			}
 		}
 		sprintf(GSF[st].logfilename, "%sinfo%s.dat", GSF[st].path, GSF[st].X);
@@ -994,7 +1041,7 @@ __host__ int Host::icSize(int st){
 	//Determine the simulation start time
 	if(st == 0) icict(Nformat);
 
-	if(P.tRestart > 0 && FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
+	if(P.tRestart > 0 && P.FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
 
 	char t[500];
 	double time = 0.0;
@@ -1026,7 +1073,7 @@ __host__ int Host::icSize(int st){
 	for(int i = 0; i < 1000000000; ++i){
 		for(int f = 0; f < Nformat; ++f){
 
-			if(P.tRestart == 0 || FormatP == 0){
+			if(P.tRestart == 0 || P.FormatP == 0){
 				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&m);
 				else er = fscanf(infile, "%s", t);
 			}
@@ -1042,12 +1089,12 @@ __host__ int Host::icSize(int st){
 			}
 
 		}
-		if(FormatT == 1 && time > Et) break;
+		if(P.FormatT == 1 && time > Et) break;
 
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
-			if(FormatP == 1){ // All particles in one time file
-				if(FormatS == 0 || P.tRestart == 0 || Nst == 1){
+			if(P.FormatP == 1){ // All particles in one time file
+				if(P.FormatS == 0 || P.tRestart == 0 || Nst == 1){
 					if(Et == time){
 						if(m > 0.0) ++NN;
 						else ++Nsmall_h[st];
@@ -1060,7 +1107,7 @@ __host__ int Host::icSize(int st){
 					}
 				}
 			}
-			if(FormatP == 0){
+			if(P.FormatP == 0){
 				if(P.tRestart == 0){
 					if(m > 0.0) ++NN;
 					else ++Nsmall_h[st];
@@ -1072,7 +1119,7 @@ __host__ int Host::icSize(int st){
 	}
 	fclose(infile);
 
-	if(FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
+	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
 		int NNNsmall = 0;
 		Nformat = 21;
@@ -1116,7 +1163,7 @@ __host__ int Host::icSize(int st){
 				if(time > Et) break;
 			
 				if(er1 == 1){
-					if(Nst == 1 || FormatS == 0){
+					if(Nst == 1 || P.FormatS == 0){
 						if(Et == time){
 							if(m > 0.0) ++NNN;
 							else ++NNNsmall;
@@ -1257,9 +1304,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Gas: %d\n", useGas);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
-			fprintf(infofile, "FormatS: %d\n", FormatS);
-			fprintf(infofile, "FormatT: %d\n", FormatT);
-			fprintf(infofile, "FormatP: %d\n", FormatP);
+			fprintf(infofile, "FormatS: %d\n", P.FormatS);
+			fprintf(infofile, "FormatT: %d\n", P.FormatT);
+			fprintf(infofile, "FormatP: %d\n", P.FormatP);
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
 			fprintf(infofile, "Time step in days: %g \n", P.idt);                                          // use only argument in simulation 0
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
@@ -1277,25 +1324,25 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Input file: %s\n", GSF[st].inputfilename);
 			fprintf(infofile, "Input file format: ");
 			for(int f = 0; f < 22; ++f){
-				if(GSF[st].informat[f] == 1) printf("x ");
-				else if(GSF[st].informat[f] == 2) printf("y ");
-				else if(GSF[st].informat[f] == 3) printf("z ");
-				else if(GSF[st].informat[f] == 4) printf("m ");
-				else if(GSF[st].informat[f] == 5) printf("vx ");
-				else if(GSF[st].informat[f] == 6) printf("vy ");
-				else if(GSF[st].informat[f] == 7) printf("vz ");
-				else if(GSF[st].informat[f] == 8) printf("r ");
-				else if(GSF[st].informat[f] == 9) printf("rho ");
-				else if(GSF[st].informat[f] == 10) printf("Sx ");
-				else if(GSF[st].informat[f] == 11) printf("Sy ");
-				else if(GSF[st].informat[f] == 12) printf("Sz ");
-				else if(GSF[st].informat[f] == 13) printf("i ");
-				else if(GSF[st].informat[f] == 14) printf("- ");
-				else if(GSF[st].informat[f] == 15) printf("amin ");
-				else if(GSF[st].informat[f] == 16) printf("amax ");
-				else if(GSF[st].informat[f] == 17) printf("emin ");
-				else if(GSF[st].informat[f] == 18) printf("emax ");
-				else if(GSF[st].informat[f] == 19) printf("t ");
+				if(GSF[st].informat[f] == 1) fprintf(infofile, "x ");
+				else if(GSF[st].informat[f] == 2) fprintf(infofile, "y ");
+				else if(GSF[st].informat[f] == 3) fprintf(infofile, "z ");
+				else if(GSF[st].informat[f] == 4) fprintf(infofile, "m ");
+				else if(GSF[st].informat[f] == 5) fprintf(infofile, "vx ");
+				else if(GSF[st].informat[f] == 6) fprintf(infofile, "vy ");
+				else if(GSF[st].informat[f] == 7) fprintf(infofile, "vz ");
+				else if(GSF[st].informat[f] == 8) fprintf(infofile, "r ");
+				else if(GSF[st].informat[f] == 9) fprintf(infofile, "rho ");
+				else if(GSF[st].informat[f] == 10) fprintf(infofile, "Sx ");
+				else if(GSF[st].informat[f] == 11) fprintf(infofile, "Sy ");
+				else if(GSF[st].informat[f] == 12) fprintf(infofile, "Sz ");
+				else if(GSF[st].informat[f] == 13) fprintf(infofile, "i ");
+				else if(GSF[st].informat[f] == 14) fprintf(infofile, "- ");
+				else if(GSF[st].informat[f] == 15) fprintf(infofile, "amin ");
+				else if(GSF[st].informat[f] == 16) fprintf(infofile, "amax ");
+				else if(GSF[st].informat[f] == 17) fprintf(infofile, "emin ");
+				else if(GSF[st].informat[f] == 18) fprintf(infofile, "emax ");
+				else if(GSF[st].informat[f] == 19) fprintf(infofile, "t ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");

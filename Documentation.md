@@ -92,6 +92,9 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The name for the aeCount grid
  * The dissipation time for the gas disc in years
  * The power law exponent for the gas disc, alpha 
+ * FormatS:  Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same file.
+ * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
+ * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
 
 # Console Arguments #
 Instead of using the parameter file, some arguments can also be passed as console arguments. The console arguments have the highest priority and are overwriting the arguments of the param.dat file. The options are:
@@ -121,9 +124,6 @@ Some Constants are defined as c++ preprocessor directives in the define.h file. 
 
 Here it can also be chosen if the gas disc is included or not.
 
- * FormatS i: Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same files.
- * FormatT i: Output file format for time steps. 0: all time steps write to different files, 1: all time steps write to the same files.
- * FormatP i: Output file format for particles. 0: all particles write to different files, 1: all particles write to the same files.
  * All default parameters for the 'param.dat' file. See [here](#markdown-header-the-param.dat-file) for more details
 
  * pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
@@ -219,9 +219,9 @@ In this format, at each coordinate output interval, a new file is created which 
  * test can be used for some individual values
 
 ### FormatS = 1, FormatT = 0 FormatP = 1: Out<name>.dat
-Here is the difference that in the multi simulation mode, the coordinate are not written in the sub simulation folders, but in the main folder. The output files contains all particles from all sub simulation.
+Here the difference is that in the multi simulation mode, the coordinates are not written in the sub simulation folders, but in the main folder. The output files contain all particles from all sub simulations.
 ### FormatS = 0, FormatT = 1 FormatP = 1: Out<name>.dat
-Here all time steps are written to the same file, containing all time steps and all particles.
+Here all the time steps are written to the same file, containing all time steps and all particles.
 ### FormatS = 1, FormatT = 1 FormatP = 1: Out<name>.dat
 Here all time steps are written to the same file, containing all time steps and all particles from all sub simulations.
 ### FormatP = 0: Outp< index>.dat

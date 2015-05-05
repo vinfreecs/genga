@@ -30,3 +30,6 @@ aeGrid Start Count = 1
 aeGrid name = A
 Gas dTau_diss = 10000
 Gas alpha = 1
+FormatS = 0
+FormatT = 0
+FormatP = 1

@@ -11,11 +11,6 @@
 
 #define Version 3.10
 
-//output file structure
-#define FormatS 0			//0: one file per simulation, 1: all simulations in the same file
-#define FormatT 0			//0: one file per time step, 1: all time steps in the same file
-#define FormatP 1			//0: one file per particle, 1: all particles in the same file
-
 
 //Default parameter values
 #define def_TimeStep 6
@@ -50,6 +45,10 @@
 #define def_aeGridName "A"
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
+#define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
+#define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
+#define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
+
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
@@ -83,7 +82,6 @@
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units
 #define Kg 2.959122082855911e-4         //Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
-
 
 //Maximum number of massive bodies in the test particle mode
 #define NmaxTestParticles 16
@@ -155,6 +153,9 @@ struct Parameter{
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc
 	int UseaeGrid;			
+	int FormatS;			//Output file structure
+	int FormatT;			
+	int FormatP;			
 };
 
 //File names of Simulstions

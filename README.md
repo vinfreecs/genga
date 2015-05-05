@@ -18,5 +18,6 @@ pairs.
 
  * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.dat' file. The aeGrid contains now also a semi-major axis versus inclination grid.
  * Version 3.10: The Rcut and RcutSun parameters are moved to the param.dat file and are called now outer- and inner truncation radius. 
+ * Version 3.10: The FormatP, FormatT and FormatS parameters are moved to the param.dat file.
 
  * The test particle mode supports up to 2048 massive bodies. Use the NmaxTestParticles parameter in define.h to increase this value
