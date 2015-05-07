@@ -32,7 +32,6 @@ public:
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 
-
 	struct Parameter P;			//parameters, for all Simulations the same
 	struct GSFiles *GSF;			//Information for the different simulations
 	struct GridaeParameter Gridae;
@@ -42,12 +41,14 @@ public:
 	int *N_h, *N_d;				//number of bodies
 	int *Nsmall_h, *Nsmall_d;		//number of test particles
 	double *Msun_h, *Msun_d;		//Mass of the star
+	double *idt_h, *idt_d;			//initial time step 
+	double *ict_h, *ict_d;			//initial time
 	double *dtiMsun_h, *dtiMsun_d;		//dt/Msun
 	double *Rcut_h, *Rcut_d;		//inner truncation radius
 	double *RcutSun_h, *RcutSun_d;		//outer truncation radius
-
-	double dt;
-	double dtksq;
+	double *time_h, *time_d;
+	double *dt_h, *dt_d;			//time step in code units
+	double *dtksq_h, *dtksq_d;
 
 	//Total sizes
 	int NT;
@@ -76,6 +77,6 @@ public:
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
 	__host__ int icSize(int);
-	__host__ void icict(int);
+	__host__ int icict(int, int);
 };
 #endif

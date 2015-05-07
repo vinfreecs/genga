@@ -344,14 +344,18 @@ The test particle mode can be started with the -TP 1 console argument are by set
 # Multi simulation mode
 The multi simulation mode can be used to simulate a large number of small simulations with up to 16 massive particles. For each simulation a new directory is needed, containing the initial condition file and the param.dat file. Note that not all parameters in the 'param.dat' file can be chosen individually, these are only:
 
+ * the time step
  * the name
  * the central mass
  * the n1 parameter
  * the n2 parameter
  * the initial condition file
+ * the default rho
  * the Nmin value
+ * the inner truncation radius
+ * the outer truncation radius
 
-All the other parameters ore read from the simulation number 0.
+All the other parameters are read from the simulation number 0.
 To start a multi simulation run, an additional file is needed, which contains a list of all sub simulation directory names. For example:
 
  * path.dat:

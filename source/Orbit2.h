@@ -96,8 +96,8 @@ public:
 	__host__ void DemoToHelio(double4 *, double4 *, double, int, double4 *, double4 *, int);
 	__host__ int remove();
 	__host__ void stopSimulations();
-	__host__ void Ejection(double);
-	__host__ void Ejectionsmall(double);
+	__host__ void Ejection();
+	__host__ void Ejectionsmall();
 	__host__ int freeOrbit();
 
 	//FG2
@@ -111,13 +111,13 @@ public:
 	__host__ void setStartTime();
 	__host__ void printLastTime();
 	__host__ void printTime(long long);
-	__host__ void CoordinateOutput(long long, double);
-	__host__ int MaxGroups(long long, double);
+	__host__ void CoordinateOutput(long long);
+	__host__ int MaxGroups(long long);
 	__host__ void printMaxColl(long long);
 	__host__ void GridaeOutput(long long);
 	__host__ void printCollisions();
 	__host__ int firstEnergy();
-	__host__ void EnergyOutput(long long, double);
+	__host__ void EnergyOutput(long long);
 
 	//Energy
 	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);
@@ -137,27 +137,27 @@ public:
 	__host__ void firstKick_2048();
 	__host__ void firstKick_largeN();
 	__host__ void firstKick_small();
-	__host__ void firstKick_M();
+	__host__ void firstKick_M(long long);
 
-	__host__ int step_16(double);
-	__host__ int step_32(double);
-	__host__ int step_64(double);
-	__host__ int step_128(double);
-	__host__ int step_256(double);
-	__host__ int step_512(double);
-	__host__ int step_1024(double);
-	__host__ int step_2048(double);
-	__host__ int step_largeN(double);
-	__host__ int step_small(double);
-	__host__ int step_M(double);
+	__host__ int step_16();
+	__host__ int step_32();
+	__host__ int step_64();
+	__host__ int step_128();
+	__host__ int step_256();
+	__host__ int step_512();
+	__host__ int step_1024();
+	__host__ int step_2048();
+	__host__ int step_largeN();
+	__host__ int step_small();
+	__host__ int step_M(long long);
 
 	__host__ int CollisionCall();
 	__host__ void CollisionMCall();
-	__host__ int EjectionCall(double);
-	__host__ void EjectionMCall(double);
+	__host__ int EjectionCall();
+	__host__ void EjectionMCall();
 	__host__ void BSCall(int, int, double);
 	__host__ void BSsmallCall(int, double);
-	__host__ void BSBMCall(int, double);
+	__host__ void BSBMCall(int);
 
 	//gas
 	__host__ void GasAlloc();
@@ -166,17 +166,17 @@ public:
 	__host__ int freeGas();
 	__host__ void gasEnergyCall(int, double *, double *, double *, cudaStream_t, int, int);
 	__host__ void gasEnergyMCall(int, double *, double *, double *, cudaStream_t, int, int);
-	__host__ void GasAccCall_16(double, double);
-	__host__ void GasAccCall_32(double, double);
-	__host__ void GasAccCall_64(double, double);
-	__host__ void GasAccCall_128(double, double);
-	__host__ void GasAccCall_256(double, double);
-	__host__ void GasAccCall_512(double, double);
-	__host__ void GasAccCall_1024(double, double);
-	__host__ void GasAccCall_2048(double, double);
-	__host__ void GasAccCall_largeN(double, double);
-	__host__ void GasAccCall_small(double, double);
-	__host__ void GasAccCall_M(double, double);
+	__host__ void GasAccCall_16(double *, double *, double);
+	__host__ void GasAccCall_32(double *, double *, double);
+	__host__ void GasAccCall_64(double *, double *, double);
+	__host__ void GasAccCall_128(double *, double *, double);
+	__host__ void GasAccCall_256(double *, double *, double);
+	__host__ void GasAccCall_512(double *, double *, double);
+	__host__ void GasAccCall_1024(double *, double *, double);
+	__host__ void GasAccCall_2048(double *, double *, double);
+	__host__ void GasAccCall_largeN(double *, double *, double);
+	__host__ void GasAccCall_small(double *, double *, double);
+	__host__ void GasAccCall_M(double *, double *, double);
 
 #if poincareFlag == 1
 	int *PFlag_h;

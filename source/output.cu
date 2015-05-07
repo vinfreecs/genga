@@ -20,7 +20,7 @@ __host__ int Data::firstoutput(){
 			int NsmallS = NsmallS_h[st];
 			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
 			cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
-			fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", P.ict, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
+			fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
 			fclose(GSF[st].Energyfile);
 
 			if(P.FormatP == 1){
@@ -37,7 +37,7 @@ __host__ int Data::firstoutput(){
 				}
 			}
 
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, P.ict, 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		}
 		else if(N_h[st] + Nsmall_h[st] > 0){
@@ -45,7 +45,7 @@ __host__ int Data::firstoutput(){
 			double skip;
 			double Et;
 			char Ets[160];
-			sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
+			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
 			fscanf (GSF[st].Energyfile, "%lf",&Et);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
@@ -114,7 +114,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 				sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
 			}
 			else sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
-			if(t > P.ict) outputfile = fopen(outputfilename, "a");
+			if(t > ict_h[st]) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");
 		}
 
@@ -132,7 +132,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		if(P.FormatP == 0){
 			char outputfilename[160];
 			sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, indexsmall_h[j]);
-			if(t > P.ict) outputfile = fopen(outputfilename, "a");
+			if(t > ict_h[st]) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");
 		}
 
@@ -177,7 +177,7 @@ __host__ int Data::firstEnergy(){
 }
 
 //This function calls the Energy function and prints informations
-__host__ void Data::EnergyOutput(long long ts, double t){
+__host__ void Data::EnergyOutput(long long ts){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
@@ -200,10 +200,11 @@ __host__ void Data::EnergyOutput(long long ts, double t){
 	}
 
 	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
 		cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
-		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", t/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
+		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
 		fclose(GSF[st].Energyfile);
 	
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -232,7 +233,7 @@ __host__ void Data::EnergyOutput(long long ts, double t){
 }
 
 //This function copies the data from the device to host and calls the printoutput function
-__host__ void Data::CoordinateOutput(long long ts, double t){
+__host__ void Data::CoordinateOutput(long long ts){
 	cudaMemcpy(x4_h, x4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(v4_h, v4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(index_h, index_d, sizeof(int)*NT, cudaMemcpyDeviceToHost);
@@ -253,6 +254,8 @@ __host__ void Data::CoordinateOutput(long long ts, double t){
 	cudaMemcpy(enccountsmall_h, enccountsmall_d, sizeof(int)*NsmallT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aecountsmallT_h, aecountsmallT_d, sizeof(long long)*NsmallT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(enccountsmallT_h, enccountsmallT_d, sizeof(long long)*NsmallT, cudaMemcpyDeviceToHost);
+
+	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
 
 	cudaDeviceSynchronize();
 
@@ -285,7 +288,7 @@ __host__ void Data::CoordinateOutput(long long ts, double t){
 		}
 
 
-		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, t/365.25, ts, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, ts, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
 
 		if(P.FormatP == 1) fclose(GSF[st].outputfile);
 
@@ -379,7 +382,7 @@ __host__ void Data::printMaxColl(long long ts){
 
 
 //This function prints information if a too big close encounter group occurs and stops the integrations
-__host__ int Data::MaxGroups(long long ts, double t){
+__host__ int Data::MaxGroups(long long ts){
 	for(int nm = 7; nm < 12; ++nm){
 		if(Nenc_m[nm] > 0){
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
@@ -410,7 +413,7 @@ __host__ int Data::MaxGroups(long long ts, double t){
 			cudaMemcpy(enccountsmallT_h, enccountsmallT_d, sizeof(long long)*Nsmall_h[0], cudaMemcpyDeviceToHost);
 
 			GSF[0].outputfile = fopen(GSF[0].outputfilename, "w");	
-			printOutput(x4_h, v4_h, index_h, test_h, t/365.25, ts, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, ts, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), ts);

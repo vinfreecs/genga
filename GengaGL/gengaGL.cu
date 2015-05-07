@@ -46,40 +46,40 @@ double *MLimits_d;
 */
 
 int loop(Data D, double &time){
-		double t = ts * D.P.idt + D.P.ict * 365.25;
-		time = t / 365.25;
+		D.time_h[0] = ts * D.idt_h[0] + D.ict_h[0] * 365.25;
+		time = D.time_h[0] / 365.25;
 		int er;
 		cudaError_t error;
 		if(D.Nst > 1){
-			er = D.step_M(t);
+			er = D.step_M(ts);
 			if(er == 0) return 0;
 		}
 		else{
 			if(D.P.UseTestParticles == 1){
-				er = D.step_small(t);
+				er = D.step_small();
 				if(er == 0) return 0;
 			}
 			else{
 				switch(D.NB[0]){
-					case 16: D.step_16(t);
+					case 16: D.step_16();
 					break;
-					case 32: D.step_32(t);
+					case 32: D.step_32();
 					break;
-					case 64: D.step_64(t);
+					case 64: D.step_64();
 					break;
-					case 128: D.step_128(t);
+					case 128: D.step_128();
 					break;
-					case 256: D.step_256(t);
+					case 256: D.step_256();
 					break;
-					case 512: D.step_512(t);
+					case 512: D.step_512();
 					break;
-					case 1024: D.step_1024(t);
+					case 1024: D.step_1024();
 					break;
-					//case 2048: D.step_2048(t);
-					case 2048: D.step_largeN(t);
+					//case 2048: D.step_2048();
+					case 2048: D.step_largeN();
 					break;
 				}
-				if(D.NB[0] > 2048) D.step_largeN(t);
+				if(D.NB[0] > 2048) D.step_largeN();
 			}
 		}
 
@@ -93,7 +93,7 @@ int loop(Data D, double &time){
 
 			//Check for too big groups//
 			if(D.Nst == 1){
-				er = D.MaxGroups(ts, t);
+				er = D.MaxGroups(ts);
 				if(er == 0) return 0;
 			}
 
@@ -104,7 +104,7 @@ int loop(Data D, double &time){
 			}
 			//Print Energy and log information//
 			if(ts % D.P.ei == 0){
-				D.EnergyOutput(ts, t);
+				D.EnergyOutput(ts);
 			}
 
 #if useGridae 
@@ -115,7 +115,7 @@ int loop(Data D, double &time){
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
 			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
-				D.CoordinateOutput(ts, t);
+				D.CoordinateOutput(ts);
 #if useGridae
 				D.GridaeOutput(ts);
 #endif
@@ -614,7 +614,7 @@ int main(int argc, char*argv[]){
 	fflush(D.masterfile);
 
 	if(D.Nst > 1){
-		D.firstKick_M();
+		D.firstKick_M(0);
 	}
 	else{
 		if(D.P.UseTestParticles == 1) D.firstKick_small();

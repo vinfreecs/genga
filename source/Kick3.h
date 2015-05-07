@@ -2224,7 +2224,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E, int NB>
-__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double dtksqKt, int *index_d, int NT, double *test_d){
+__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dtksq_d, double Kt, int *index_d, int NT, double *test_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
@@ -2243,11 +2243,14 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	b_s[idy].y = 0.0;
 	b_s[idy].z = 0.0;
 
+	double dtksqKt = 0.0;
+
 	if(id < NT && id >= 0){
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
 		//rcrit_s[idy] = rcrit_d[id];
 		rcritv_s[idy] = rcritv_d[id];
+		dtksqKt = dtksq_d[st_s[idy]] * Kt;
 	}
 	else{
 		st_s[idy] = -idy-1;

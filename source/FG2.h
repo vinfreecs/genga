@@ -497,7 +497,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 //
 // *****************************************
 template <int Bl>
-__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double dt, const double *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si){
+__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -516,6 +516,7 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		vold_d[id] = v4_s[idy];
 		double test;
 		double Msun = Msun_d[st];
+		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
 		//fastfg(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
 		fgfull(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id);

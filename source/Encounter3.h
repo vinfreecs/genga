@@ -229,7 +229,7 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 ////March 2014
 //
 // ****************************************
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -239,6 +239,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 
 	int st = 0;
 	int NBS = 0;
+	double dt = 0.0;
 
 	if(id < Nencpairs_d[0]){
 		ii = Encpairs_d[id].x;
@@ -246,6 +247,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 		if(ii >= 0 && jj >= 0){
 			st = index_d[ii] / 100;
 			NBS = NBS_d[st];
+			dt = dt_d[st];
 		}
 	}
 	__syncthreads();

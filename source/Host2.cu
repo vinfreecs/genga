@@ -186,7 +186,6 @@ __host__ void Host::Halloc(){
 	rho = (double*)malloc(Nst*sizeof(double));
 	
 	P.dev = 0;
-	P.ict = 0.0;
 	GSF = (struct GSFiles*)malloc(Nst*sizeof(struct GSFiles));
 	
 	n1_h = (double*)malloc(Nst*sizeof(double));
@@ -194,12 +193,16 @@ __host__ void Host::Halloc(){
 	N_h = (int*)malloc(Nst*sizeof(int));
 	Nsmall_h = (int*)malloc(Nst*sizeof(int));
 	Msun_h = (double*)malloc(Nst*sizeof(double));
+	idt_h = (double*)malloc(Nst*sizeof(double));
+	ict_h = (double*)malloc(Nst*sizeof(double));
 	dtiMsun_h = (double*)malloc(Nst*sizeof(double));
 	Rcut_h = (double*)malloc(Nst*sizeof(double));
 	RcutSun_h = (double*)malloc(Nst*sizeof(double));
+	time_h = (double*)malloc(Nst*sizeof(double));
+	dt_h = (double*)malloc(Nst*sizeof(double));
+	dtksq_h = (double*)malloc(Nst*sizeof(double));
 
 	//Initialize parameters with default values
-	P.idt = def_TimeStep;
 	P.ei = def_EnergyOutputInterval;
 	P.ci = def_CoordinatesOutputInterval;
 	P.nci = def_OutputsPerInterval;
@@ -299,20 +302,29 @@ __host__ void Host::Halloc(){
 				GSF[st].informat[f] = 19;
 			}
 		}	
-		Nsmall_h[st] = 0;
-		N_h[st] = 32;
-		NB[st] = N_h[st];
-		N4[st] = N_h[st]/4;
-		N2[st] = N_h[st]/2;
-		Msun_h[st] = def_CentralMass;
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
-		rho[st] = def_rho;
-		Nmin[st] = def_MinimumNumberOfBodies;
-		sprintf(GSF[st].X, def_Name);
-		sprintf(GSF[st].inputfilename, def_InputFile);
+		N_h[st] = 32;
+		Nsmall_h[st] = 0;
+		Msun_h[st] = def_CentralMass;
+		idt_h[st] = def_TimeStep;
+		ict_h[st] = 0.0;
+		dtiMsun_h[st] = 0.0;		
 		Rcut_h[st] = def_Rcut;
 		RcutSun_h[st] = def_RcutSun;
+		time_h[st] = 0.0;
+		dt_h[st] = 0.0;
+		dtksq_h[st] = 0.0;
+
+		NB[st] = N_h[st];
+		icNB[st] = N_h[st];
+		N4[st] = N_h[st]/4;
+		N2[st] = N_h[st]/2;
+		Nconst[st] = N_h[st];
+		Nmin[st] = def_MinimumNumberOfBodies;
+		rho[st] = def_rho;
+		sprintf(GSF[st].X, def_Name);
+		sprintf(GSF[st].inputfilename, def_InputFile);
 
 	}
 	
@@ -357,7 +369,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		if(c == EOF) break;
 
 		if(strcmp(sp, "Time step in days =") == 0){
-			er = fscanf (paramfile, "%lf",&P.idt);
+			er = fscanf (paramfile, "%lf", &idt_h[st]);
 			if(er <= 0){
 				printf("Error: time step is not valid!\n");
 				return 0;
@@ -373,38 +385,62 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Energy output interval =") == 0){
-			er = fscanf (paramfile, "%d", &P.ei);
-			if(er <= 0 || P.ei <= 0){
-				printf("Error: Energy output interval is not valid!\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.ei);
+				if(er <= 0 || P.ei <= 0){
+					printf("Error: Energy output interval is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Coordinates output interval =") == 0){
-			er = fscanf (paramfile, "%d", &P.ci);
-
-			if(er <= 0 || P.ci <= 0){
-				printf("Error: Coordinates outut interval is not valid!\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.ci);
+	
+				if(er <= 0 || P.ci <= 0){
+					printf("Error: Coordinates outut interval is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
 		
 		else if(strcmp(sp, "Number of outputs per interval =") == 0){
-			er = fscanf (paramfile, "%d", &P.nci);
-
-			if(er <= 0 || P.nci <= 0 || P.nci > P.ci){
-				printf("Error: Number of outputs per interval is not valid!\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.nci);
+	
+				if(er <= 0 || P.nci <= 0 || P.nci > P.ci){
+					printf("Error: Number of outputs per interval is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Integration steps =") == 0){
-			er = fscanf (paramfile, "%lld", &P.delta);
-
-			if(er <= 0 || P.delta <= 0){
-				printf("Error: Inegration steps are not valid!\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%lld", &P.delta);
+	
+				if(er <= 0 || P.delta <= 0){
+					printf("Error: Inegration steps are not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -542,18 +578,30 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Use Test Particles =") == 0){
-			er = fscanf (paramfile, "%d", &P.UseTestParticles);
-			if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 1){
-				printf("Error: Test Particle Mode not valid\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseTestParticles);
+				if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 1){
+					printf("Error: Test Particle Mode not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Restart timestep =") == 0){
-			er = fscanf (paramfile, "%lld", &P.tRestart);
-			if(er <= 0 || P.tRestart < 0){
-				printf("Error: Restart time step not valid\n");
-				return 0;
+			if(st == 0){
+				er = fscanf (paramfile, "%lld", &P.tRestart);
+				if(er <= 0 || P.tRestart < 0){
+					printf("Error: Restart time step not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -859,7 +907,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	for(int i = 1; i < argc; i += 2){
 
 		if(strcmp(argv[i], "-dt") == 0){
-			P.idt = atof(argv[i + 1]);
+			idt_h[st] = atof(argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-ei") == 0){
 			P.ei = atoi(argv[i + 1]);
@@ -903,7 +951,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			sprintf(Gridae.X, "%s", argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-t") == 0){
-			P.ict = atof(argv[i + 1]);
+			ict_h[st] = atof(argv[i + 1]);
 		}
 		else{
 			printf("Error: Console arguments not valid!\n");
@@ -945,25 +993,17 @@ __host__ int Host::Param(int argc, char*argv[]){
 			sprintf(GSF[st].inputfilename, "%s", tname);
 			P.UseTestParticles = 0;
 		}
+		dt_h[st] = idt_h[st] * dayUnit;
+		dtksq_h[st] = dt_h[st] * ksq;
 	}
 	if(P.ei > P.ci){
 		P.ei = P.ci;
 		printf("**** Energy output interval decreased equal to coordinate output interval ****\n");
 		fprintf(masterfile, "**** Energy output interval decreased equal to coordinate output interval ****\n");
 	}
-	dt = P.idt * dayUnit;
-	dtksq = dt * ksq;
 
-	sprintf(OrigInfilename, "%s", GSF[0].inputfilename);
-	OrigInfile = fopen(OrigInfilename, "r");
-
-	if(OrigInfile == NULL){
-		printf("Error in Simulation %s: Input file not found %s\n", GSF[0].path, GSF[0].inputfilename);
-		fprintf(masterfile, "Error in Simulation %s: Input file not found %s\n", GSF[0].path, GSF[0].inputfilename);
-		return 0;
-	}
 	for(int st = 0; st < Nst; ++st){
-		dtiMsun_h[st] = dt / Msun_h[st];
+		dtiMsun_h[st] = dt_h[st] / Msun_h[st];
 		//restart -> inputfilename
 		if(P.tRestart > 0 && P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
@@ -1006,22 +1046,30 @@ __host__ int Host::Param(int argc, char*argv[]){
 
 // **************************************
 // This function determines the starting time of the simulation using the input file 
-// specified in the param file. In the multi simulation mode, the first simulation is used.
+// specified in the param file.
 
 //Authors: Simon Grimm, Joachim Stadel
-//April 2014
+//Mai 2015
 // ************************************3
-__host__ void Host::icict(int Nformat){
+__host__ int Host::icict(int Nformat, int st){
 	double time = 0.0;
 	int er = 1;
+	sprintf(OrigInfilename, "%s", GSF[st].inputfilename);
+	OrigInfile = fopen(OrigInfilename, "r");
+	if(OrigInfile == NULL){
+		printf("Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
+		fprintf(masterfile, "Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
+		return 0;
+	}
 	for(int f = 0; f < Nformat; ++f){
 		if(GSF[0].informat[f] == 19){
 			er = fscanf (OrigInfile, "%lf",&time);
 			break;
 		}
 	}
-	if(er > 0 && P.ict == 0.0 && P.tRestart > 0) P.ict = time;
+	if(er > 0 && ict_h[st] == 0.0 && P.tRestart > 0) ict_h[st] = time;
 	fclose(OrigInfile);
+	return 1;
 }
 // ************************************************
 //This function counts the number of bodies in the initial condition file
@@ -1039,22 +1087,23 @@ __host__ int Host::icSize(int st){
 	}
 
 	//Determine the simulation start time
-	if(st == 0) icict(Nformat);
+	double time = 0.0;
+	if(ict_h[st] > 0.0) time = ict_h[st];
+	
+	int er = icict(Nformat, st);
+	if(er == 0) return 0;
 
 	if(P.tRestart > 0 && P.FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
-
 	char t[500];
-	double time = 0.0;
-	int er = 1;
+	er = 1;
 	int NN = 0;
 	int er1 = 1;
 	double m;
 	int index;
 	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-	sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
+	sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
 	double Et = atof(Ets);
 	
-
 	FILE *infile;
 	infile = fopen(GSF[st].inputfilename, "r");
 	if(infile == NULL){
@@ -1204,6 +1253,7 @@ __host__ int Host::icSize(int st){
 // ***********************************************3
 __host__ int Host::size(){
 	for(int st = 0; st < Nst; ++st){
+printf("%d\n", st);
 		//Determine the size of the simulations
 		int er = icSize(st);
 
@@ -1259,17 +1309,27 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &N_d,Nst*sizeof(int));
 	cudaMalloc((void **) &Nsmall_d,Nst*sizeof(int));
 	cudaMalloc((void **) &Msun_d,Nst*sizeof(double));
+	cudaMalloc((void **) &idt_d,Nst*sizeof(double));
+	cudaMalloc((void **) &ict_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dtiMsun_d,Nst*sizeof(double));
 	cudaMalloc((void **) &Rcut_d,Nst*sizeof(double));
 	cudaMalloc((void **) &RcutSun_d,Nst*sizeof(double));
+	cudaMalloc((void **) &time_d,Nst*sizeof(double));
+	cudaMalloc((void **) &dt_d,Nst*sizeof(double));
+	cudaMalloc((void **) &dtksq_d,Nst*sizeof(double));
 
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 }
 
 // ************************************************
@@ -1308,7 +1368,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);
 			fprintf(infofile, "FormatP: %d\n", P.FormatP);
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
-			fprintf(infofile, "Time step in days: %g \n", P.idt);                                          // use only argument in simulation 0
+			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
 			fprintf(infofile, "Energy output interval: %d\n", P.ei);                       // use only argument in simulation 0
 			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);                  // use only argument in simulation 0
@@ -1433,18 +1493,28 @@ __host__ int Host::freeHost(){
 	free(N_h);
 	free(Nsmall_h);
 	free(Msun_h);
+	free(idt_h);
+	free(ict_h);
 	free(dtiMsun_h);
 	free(Rcut_h);
 	free(RcutSun_h);
+	free(time_h);
+	free(dt_h);
+	free(dtksq_h);
 	
 	cudaFree(n1_d);
 	cudaFree(n2_d);
 	cudaFree(N_d);
 	cudaFree(Nsmall_d);
 	cudaFree(Msun_d);
+	cudaFree(idt_d);
+	cudaFree(ict_d);
 	cudaFree(dtiMsun_d);
 	cudaFree(Rcut_d);
 	cudaFree(RcutSun_d);
+	cudaFree(time_d);
+	cudaFree(dt_d);
+	cudaFree(dtksq_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

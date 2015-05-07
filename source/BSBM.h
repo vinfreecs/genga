@@ -12,7 +12,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, int *NBS_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB){
+__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, int Nst, int *NBS_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -65,6 +65,8 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
         double Msun = Msun_d[sstt];
 	int NBS = NBS_d[sstt];
+        double time = time_d[sstt];
+	double dt = dt_d[sstt] * FGt;
 	dt1 = dt;
 
         if(dt < 0.0){

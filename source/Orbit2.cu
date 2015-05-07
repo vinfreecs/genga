@@ -543,7 +543,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 17) fscanf (infile, "%f",&aelimits.z);
 				else if (GSF[st].informat[f] == 18) fscanf (infile, "%f",&aelimits.w);
 				else if (GSF[st].informat[f] == 19){
-					if(P.ict == 0) fscanf (infile, "%lf",&P.ict);
+					if(ict_h[st] == 0) fscanf (infile, "%lf",&ict_h[st]);
 					else fscanf (infile, "%lf",&skip);
 					}
 			}
@@ -574,7 +574,7 @@ __host__ int Data::readic(int st){
 	else{
 	//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-		sprintf(Ets, "%.16g", (P.tRestart * P.idt) / 365.25 + P.ict);
+		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
 		double Et = atof(Ets);
 		double time = 0.0;
 		double aecount = 0.0;
@@ -1034,14 +1034,15 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 //It Updates the lost Energy term U
 //
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Mai 2015
 //****************************************
-__host__ void Data::Ejection(double time){
+__host__ void Data::Ejection(){
 
 	FILE *ejectfile;
 	FILE *logfile;
 
 	if(Nst == 1) EjectionFlag_m[1] = 1;
+	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 
 	for(int st = 0; st < Nst; ++st){
 		if(EjectionFlag_m[st + 1] > 0){
@@ -1087,8 +1088,8 @@ __host__ void Data::Ejection(double time){
 					}
 				}
 				if(c < 0){
-					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
 					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcomsmall_d + st, N_h[st]);
 					
@@ -1101,7 +1102,7 @@ __host__ void Data::Ejection(double time){
 	}
 }
 
-__host__ void Data::Ejectionsmall(double time){
+__host__ void Data::Ejectionsmall(){
 
 	FILE *ejectfile;
 	FILE *logfile;
@@ -1145,8 +1146,8 @@ __host__ void Data::Ejectionsmall(double time){
 					}
 				}
 				if(c < 0){
-					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time/365.25, indexsmall_h[i + NsmallS] % 100, x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
+					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
+					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, indexsmall_h[i + NsmallS] % 100, x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
 					EjectionEnergysmall2Call(x4small_d + NsmallS, i);
 				}
 
@@ -1316,20 +1317,26 @@ __host__ void Data::stopSimulations(){
 			for(int sst = st; sst < Nst - 1; ++sst){
 				GSF[sst] = GSF[sst + 1];
 
-				Nsmall_h[sst] = Nsmall_h[sst + 1];
-				N_h[sst] = N_h[sst + 1];
 				NB[sst] = NB[sst + 1];
+				icNB[sst] = icNB[sst + 1];
 				N4[sst] = N4[sst + 1];
 				N2[sst] = N2[sst + 1];
-				Msun_h[sst] = Msun_h[sst + 1];
+				Nconst[sst] = Nconst[sst + 1];
+				Nmin[sst] = Nmin[sst + 1];
+				rho[sst] = rho[sst + 1];
 				n1_h[sst] = n1_h[sst + 1];
 				n2_h[sst] = n2_h[sst + 1];
-				rho[sst] = rho[sst + 1];
-				Nmin[sst] = Nmin[sst + 1];
+				N_h[sst] = N_h[sst + 1];
+				Nsmall_h[sst] = Nsmall_h[sst + 1];
+				Msun_h[sst] = Msun_h[sst + 1];
+				idt_h[sst] = idt_h[sst + 1];
+				ict_h[sst] = ict_h[sst + 1];
 				dtiMsun_h[sst] = dtiMsun_h[sst + 1];
-				Nconst[sst] = Nconst[sst + 1];
 				Rcut_h[sst] = Rcut_h[sst + 1];
 				RcutSun_h[sst] = RcutSun_h[sst + 1];
+				time_h[sst] = time_h[sst + 1];
+				dt_h[sst] = dt_h[sst + 1];
+				dtksq_h[sst] = dtksq_h[sst + 1];
 
 				U_h[sst] = U_h[sst + 1];
 				LI_h[sst] = LI_h[sst + 1];
@@ -1353,9 +1360,14 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst*sizeof(double), cudaMemcpyHostToDevice);

@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.10
+#define Version 3.11
 
 
 //Default parameter values
@@ -148,8 +148,6 @@ struct Parameter{
 	long long tRestart;             //timestep for restart
 	long long delta;                //Number of time steps to do
 	int SIO;
-	double idt;                     //modified time step
-	double ict;                     //initial time
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc
 	int UseaeGrid;			
