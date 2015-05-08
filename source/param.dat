@@ -34,4 +34,3 @@ Gas alpha = 1
 FormatS = 0
 FormatT = 0
 FormatP = 1
-Ignore lockfile = 1

@@ -817,7 +817,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Use gas disk =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.Usegas);
-				if(er <= 0 || P.G_dTau_diss <= 0.0){
+				if(er <= 0){
 					printf("Error: Use gas Disk value is not valid!\n");
 					return 0;
 				}
