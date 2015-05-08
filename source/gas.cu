@@ -709,7 +709,7 @@ __host__ void Data::GasAccCall_largeN(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);

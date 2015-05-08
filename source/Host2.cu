@@ -50,19 +50,20 @@ __host__ Host::Host(long long Restart){
 	}
 
 #if IgnoreLockFile == 1
-	Lock = 0;
+        Lock = 0;
 #endif
-	if(Lock == 0){
-		if(Restart == 0LL){
-        		masterfile = fopen(masterfilename, "w");
-		}
-		else{
-        		masterfile = fopen(masterfilename, "a");
-		}
-	}
-	else{
-		masterfile = fopen(masterfilename, "a");
-	}
+        if(Lock == 0){
+                if(Restart == 0LL){
+                        masterfile = fopen(masterfilename, "w");
+                }
+                else{
+                        masterfile = fopen(masterfilename, "a");
+                }
+        }
+        else{
+                masterfile = fopen(masterfilename, "a");
+        }
+
 
 
 
@@ -222,6 +223,7 @@ __host__ void Host::Halloc(){
 	Gridae.Ni = def_aeGridNi;	
 	Gridae.Start = def_aeGridStartCount;
 	sprintf(Gridae.X, def_aeGridName);
+	P.Usegas = def_Usegas;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.FormatS = def_FormatS;
@@ -439,7 +441,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				int t;
+				long long t;
 				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -586,7 +588,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				int t;
+				long long t;
 				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -600,7 +602,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				int t;
+				long long t;
 				er = fscanf (paramfile, "%lld", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -812,6 +814,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use gas disk =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.Usegas);
+				if(er <= 0 || P.G_dTau_diss <= 0.0){
+					printf("Error: Use gas Disk value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Gas dTau_diss =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%lf", &P.G_dTau_diss);
@@ -890,6 +906,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
 		}
+
 	}
 
 
@@ -899,7 +916,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		Gridae.deltaa = (Gridae.amax - Gridae.amin) / ((float)(Gridae.Na));
 		Gridae.deltae = (Gridae.emax - Gridae.emin) / ((float)(Gridae.Ne));
 		Gridae.deltai = (Gridae.imax - Gridae.imin) / ((float)(Gridae.Ni));
-
 
 	}
 
@@ -1361,12 +1377,11 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
-			fprintf(infofile, "Use Gas: %d\n", useGas);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
-			fprintf(infofile, "FormatS: %d\n", P.FormatS);
-			fprintf(infofile, "FormatT: %d\n", P.FormatT);
-			fprintf(infofile, "FormatP: %d\n", P.FormatP);
+			fprintf(infofile, "FormatS: %d\n", P.FormatS);					// use only argument in simulation 0
+			fprintf(infofile, "FormatT: %d\n", P.FormatT);					// use only argument in simulation 0
+			fprintf(infofile, "FormatP: %d\n", P.FormatP);					// use only argument in simulation 0
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
@@ -1431,10 +1446,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);                  // use only argument in simulation 0
 			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
-#if useGas > 0
+			fprintf(infofile, "Use gas dik: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
-#endif
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

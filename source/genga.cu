@@ -32,11 +32,11 @@ int main(int argc, char*argv[]){
 	Data H(Restart);
 
 	if(H.Lock == 1){
-	printf("lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
-	fprintf(H.masterfile, "lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+		printf("lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+		fprintf(H.masterfile, "lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
 		return 0;
-
 	}
+
 
 	if(RRestart == 0){
        		printf("Start GENGA\n");
@@ -47,14 +47,6 @@ int main(int argc, char*argv[]){
 		fprintf(H.masterfile,"\n \n **************************************** \n \n");
         	fprintf(H.masterfile,"Restart GENGA\n");
 	}
-
-#if useGas > 0
-	printf("Use Gas Disc\n");
-	fprintf(H.masterfile,"Use Gas Disc\n");
-#else
-	printf("No Gas Disc\n");
-	fprintf(H.masterfile,"No Gas Disc\n");
-#endif
 
 #if SERIAL_GROUPING > 0
 	printf("Using serial grouping!\n");
@@ -77,6 +69,7 @@ int main(int argc, char*argv[]){
 	int er = H.Param(argc, argv);
 	if(er == 0) return 0;
 	printf("Parameters OK\n");
+
 
 	// Determine the size of the simulations
 	printf("Read Size\n");
@@ -112,9 +105,9 @@ int main(int argc, char*argv[]){
         	er = D.GridaeAlloc();
         	if(er == 0) return 0;
 	}
-#if useGas > 0
-	D.GasAlloc();
-#endif
+	if(D.P.Usegas == 1){
+		D.GasAlloc();
+	}
 
 	//Table for fastfg//
 	er = D.FGAlloc();
@@ -161,12 +154,12 @@ int main(int argc, char*argv[]){
 	}
 
 	//Set Gas Disc and Gas Table
-#if useGas > 0
-	printf("Set Gas Table\n");
-	er = D.setGasDisk();
-	if(er == 0) return 0;
-	printf("Gas Table OK\n");
-#endif
+	if(D.P.Usegas == 1){
+		printf("Set Gas Table\n");
+		er = D.setGasDisk();
+		if(er == 0) return 0;
+		printf("Gas Table OK\n");
+	}
 
 	// Set Order and Coefficients of the symplectic integrator //
 	D.SymplecticP();
@@ -328,10 +321,10 @@ int main(int argc, char*argv[]){
 		cudaFree(D.Gridaecount_d);
 	}
 
-#if useGas > 0
-	er = D.freeGas();
-	if(er == 0) return 0;
-#endif
+	if(D.P.Usegas == 1){
+		er = D.freeGas();
+		if(er == 0) return 0;
+	}
 	er = H.freeHost();
 	if(er == 0) return 0;
 

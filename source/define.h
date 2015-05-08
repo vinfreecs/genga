@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.11
+#define Version 3.12
 
 
 //Default parameter values
@@ -43,12 +43,12 @@
 #define def_aeGridNi 10
 #define def_aeGridStartCount 0
 #define def_aeGridName "A"
+#define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
-
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
@@ -58,15 +58,14 @@
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
-
 //print Poincare Section of surface, in this mode the code can be very slow
 #define poincareFlag 0			//1: print, 0: no print
 
 //ignore the lock file and start GENGA anyway
 #define IgnoreLockFile 1
 
-//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
-#define useGas 0			// 1 or 0
+//gas disk constants 
+// See Morishima, Stadel and Moore 2010 for more details
 #define Gasnr_g 189
 #define Gasnz_g 50
 #define Gasnr_p 150
@@ -154,6 +153,7 @@ struct Parameter{
 	int FormatS;			//Output file structure
 	int FormatT;			
 	int FormatP;			
+	int Usegas;
 };
 
 //File names of Simulstions

@@ -14,8 +14,9 @@ pairs.
 
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
-** News: **
+ ** News: **
 
+ * Verion 3.12: The gas disk can now be started from the 'param.dat' file
  * Version 3.11: The multi simulation mode can now have individual time steps for each sub-simulation.
  * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.dat' file. The aeGrid contains now also a semi-major axis versus inclination grid.
  * Version 3.10: The Rcut and RcutSun parameters are moved to the param.dat file and are called now outer- and inner truncation radius. 

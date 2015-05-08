@@ -90,6 +90,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The number of cells in i of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The time step when aeCount starts. (In Detail aeCount will start at the next bigger coordinate output step).
  * The name for the aeCount grid
+ * use gas disk: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
  * The dissipation time for the gas disc in years
  * The power law exponent for the gas disc, alpha 
  * FormatS:  Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same file.
@@ -132,7 +133,6 @@ Here it can also be chosen if the gas disc is included or not.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
- * useGas i: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
  * NmaxTestParticles i: Set the maximal number of massive bodies in the test particle mode.
 
 
