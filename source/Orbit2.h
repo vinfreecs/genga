@@ -80,6 +80,8 @@ public:
 	double *Coll_h, *Coll_d;
 	double *test_h, *test_d;
 
+	double *coordinateBuffer_h, *coordinateBuffer_d;
+
 	cudaError_t error;
 
 	__host__ Data(long long);
@@ -118,6 +120,7 @@ public:
 	__host__ void printCollisions();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput(long long);
+	__host__ void CoordinateToBuffer(int);
 
 	//Energy
 	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);

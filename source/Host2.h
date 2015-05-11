@@ -16,8 +16,6 @@ public:
 	FILE *pathfile;				//used in multisim mode, contains list of directories
 	char pathfilename[64];
 
-	FILE *OrigInfile;			//this is the inputfile defined in tha paramfile, it is used to determine the simulation start time
-	char OrigInfilename[160];
 	int Nst;				//Number of simulations
 
 	int devCount;

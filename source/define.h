@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.12
+#define Version 3.13
 
 
 //Default parameter values
@@ -98,9 +98,6 @@
 #define PI_N M_PI/FGN
 #define N_PI FGN/M_PI
 
-#ifndef STRUCT_H
-#define STRUCT_H
-
 //Build Data
 #ifndef HG_BRANCH
 #define HG_BRANCH "Undefined"
@@ -132,6 +129,12 @@
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
+#define BUFFER 1 			//must be 1 for now
+
+
+#ifndef STRUCT_H
+#define STRUCT_H
+
 __constant__ float Gridae_c[9];
 __constant__ int GridaeN_c[3];
 __constant__ int UseaeGrid_c[1];
@@ -161,6 +164,7 @@ struct GSFiles{
 	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile;
 	char outputfilename[128];
 	char inputfilename[128];
+	char Originputfilename[128];
 	char Energyfilename[128];
 	char logfilename[128];
 	char timefilename[128];

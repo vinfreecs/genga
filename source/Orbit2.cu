@@ -10,78 +10,82 @@ __host__ Data::Data(long long Restart): Host(Restart){
 __host__ void Data::AllocateOrbitt(){
 
 	//allocate memory on host//
-	rcrit_h = (double*)malloc(NT*sizeof(double));
-	x4_h = (double4*)malloc(NT*sizeof(double4));
-	v4_h = (double4*)malloc(NT*sizeof(double4));
-	xold_h = (double4*)malloc(NT*sizeof(double4));
-	vold_h = (double4*)malloc(NT*sizeof(double4));
-	index_h = (int*)malloc(NT*sizeof(int));
-	spin_h = (double3*)malloc(NT*sizeof(double3));
-	U_h = (double*)malloc(Nst*sizeof(double));
-	LI_h = (double*)malloc(Nst*sizeof(double));
-	Energy_h = (double*)malloc(NEnergyT*sizeof(double));
-	Energy0_h = (double*)malloc(Nst*sizeof(double));
-	LI0_h = (double*)malloc(Nst*sizeof(double));
-	Coll_h = (double*)malloc(25*MaxColl*Nst*sizeof(double));
-	aelimits_h = (float4*)malloc(NT*sizeof(float4));
-	aecount_h = (int*)malloc(NT*sizeof(int));
-	enccount_h = (int*)malloc(NT*sizeof(int));
-	aecountT_h = (long long*)malloc(NT*sizeof(long long));
-	enccountT_h = (long long*)malloc(NT*sizeof(long long));
+	rcrit_h = (double*)malloc(NT * sizeof(double));
+	x4_h = (double4*)malloc(NT * sizeof(double4));
+	v4_h = (double4*)malloc(NT * sizeof(double4));
+	xold_h = (double4*)malloc(NT * sizeof(double4));
+	vold_h = (double4*)malloc(NT * sizeof(double4));
+	index_h = (int*)malloc(NT * sizeof(int));
+	spin_h = (double3*)malloc(NT * sizeof(double3));
+	U_h = (double*)malloc(Nst * sizeof(double));
+	LI_h = (double*)malloc(Nst * sizeof(double));
+	Energy_h = (double*)malloc(NEnergyT * sizeof(double));
+	Energy0_h = (double*)malloc(Nst * sizeof(double));
+	LI0_h = (double*)malloc(Nst * sizeof(double));
+	Coll_h = (double*)malloc(25 * MaxColl * Nst * sizeof(double));
+	aelimits_h = (float4*)malloc(NT * sizeof(float4));
+	aecount_h = (int*)malloc(NT * sizeof(int));
+	enccount_h = (int*)malloc(NT * sizeof(int));
+	aecountT_h = (long long*)malloc(NT * sizeof(long long));
+	enccountT_h = (long long*)malloc(NT * sizeof(long long));
 
-	x4small_h = (double4*)malloc(NsmallT*sizeof(double4));
-	v4small_h = (double4*)malloc(NsmallT*sizeof(double4));
-	xoldsmall_h = (double4*)malloc(NsmallT*sizeof(double4));
-	voldsmall_h = (double4*)malloc(NsmallT*sizeof(double4));
-	indexsmall_h = (int*)malloc(NsmallT*sizeof(int));
-	spinsmall_h = (double3*)malloc(NsmallT*sizeof(double3));
-	rcritvsmall_h = (double*)malloc(NsmallT*sizeof(double));
-	vcomsmall_h = (double3*)malloc(Nst*sizeof(double3));
-	aelimitssmall_h = (float4*)malloc(NsmallT*sizeof(float4));
-	aecountsmall_h = (int*)malloc(NsmallT*sizeof(int));
-	enccountsmall_h = (int*)malloc(NsmallT*sizeof(int));
-	aecountsmallT_h = (long long*)malloc(NsmallT*sizeof(long long));
-	enccountsmallT_h = (long long*)malloc(NsmallT*sizeof(long long));
+	coordinateBuffer_h = (double*)malloc(BUFFER * 21 * (NT + NsmallT) * sizeof(double));
 
-	cudaHostAlloc((void **)&test_h, NT*sizeof(double), cudaHostAllocDefault);
+	x4small_h = (double4*)malloc(NsmallT * sizeof(double4));
+	v4small_h = (double4*)malloc(NsmallT * sizeof(double4));
+	xoldsmall_h = (double4*)malloc(NsmallT * sizeof(double4));
+	voldsmall_h = (double4*)malloc(NsmallT * sizeof(double4));
+	indexsmall_h = (int*)malloc(NsmallT * sizeof(int));
+	spinsmall_h = (double3*)malloc(NsmallT * sizeof(double3));
+	rcritvsmall_h = (double*)malloc(NsmallT * sizeof(double));
+	vcomsmall_h = (double3*)malloc(Nst * sizeof(double3));
+	aelimitssmall_h = (float4*)malloc(NsmallT * sizeof(float4));
+	aecountsmall_h = (int*)malloc(NsmallT * sizeof(int));
+	enccountsmall_h = (int*)malloc(NsmallT * sizeof(int));
+	aecountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
+	enccountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
+
+	cudaHostAlloc((void **)&test_h, NT * sizeof(double), cudaHostAllocDefault);
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
 #endif
 	//allocate pinned memory on host//
-	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairssmall_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairssmall2_h, (Nst + 1)*sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairssmall_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairssmall2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 
 	//allocate memory on device//
-	cudaMalloc((void **) &x4_d,NT*sizeof(double4));
-	cudaMalloc((void **) &v4_d,NT*sizeof(double4));
-	cudaMalloc((void **) &xold_d,NT*sizeof(double4));
-	cudaMalloc((void **) &vold_d,NT*sizeof(double4));
-	cudaMalloc((void **) &rcrit_d,NT*sizeof(double));
-	cudaMalloc((void **) &rcritv_d,NT*sizeof(double));
-	cudaMalloc((void **) &test_d,NT*sizeof(double));
-	cudaMalloc((void **) &index_d,NT*sizeof(int));
-	cudaMalloc((void **) &spin_d,NT*sizeof(double3));
-	cudaMalloc((void **) &U_d,Nst*sizeof(double));
-	cudaMalloc((void **) &LI_d,Nst*sizeof(double));
-	cudaMalloc((void **) &a_d, NT*sizeof(double3));
-	cudaMalloc((void **) &Energy_d, NEnergyT*sizeof(double));
-	cudaMalloc((void **) &Energy0_d, Nst*sizeof(double));
-	cudaMalloc((void **) &LI0_d, Nst*sizeof(double));
-	cudaMalloc((void **) &Nenc_d, 12*sizeof(int));
+	cudaMalloc((void **) &x4_d, NT * sizeof(double4));
+	cudaMalloc((void **) &v4_d, NT * sizeof(double4));
+	cudaMalloc((void **) &xold_d, NT * sizeof(double4));
+	cudaMalloc((void **) &vold_d, NT * sizeof(double4));
+	cudaMalloc((void **) &rcrit_d, NT * sizeof(double));
+	cudaMalloc((void **) &rcritv_d, NT * sizeof(double));
+	cudaMalloc((void **) &test_d, NT * sizeof(double));
+	cudaMalloc((void **) &index_d, NT * sizeof(int));
+	cudaMalloc((void **) &spin_d, NT * sizeof(double3));
+	cudaMalloc((void **) &U_d, Nst * sizeof(double));
+	cudaMalloc((void **) &LI_d, Nst *sizeof(double));
+	cudaMalloc((void **) &a_d, NT * sizeof(double3));
+	cudaMalloc((void **) &Energy_d, NEnergyT * sizeof(double));
+	cudaMalloc((void **) &Energy0_d, Nst * sizeof(double));
+	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
+	cudaMalloc((void **) &Nenc_d, 12 * sizeof(int));
 	cudaMalloc((void **) &Ncoll_d, sizeof(int));
-	cudaMalloc((void **) &Nencpairs_d, (Nst + 1)*sizeof(int));
-	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1)*sizeof(int));
-	cudaMalloc((void **) &Encpairs_d, sizeof(int2)*NB2T);
-	cudaMalloc((void **) &Encpairs2_d, sizeof(int2)*NB2T);
-	cudaMalloc((void **) &Coll_d, sizeof(double)*Nst*25*MaxColl);
-	cudaMalloc((void **) &aelimits_d,NT*sizeof(float4));
-	cudaMalloc((void **) &aecount_d,NT*sizeof(int));
-	cudaMalloc((void **) &enccount_d,NT*sizeof(int));
-	cudaMalloc((void **) &aecountT_d,NT*sizeof(long long));
-	cudaMalloc((void **) &enccountT_d,NT*sizeof(long long));
+	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NB2T);
+	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NB2T);
+	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
+	cudaMalloc((void **) &aelimits_d, NT * sizeof(float4));
+	cudaMalloc((void **) &aecount_d, NT * sizeof(int));
+	cudaMalloc((void **) &enccount_d, NT * sizeof(int));
+	cudaMalloc((void **) &aecountT_d, NT * sizeof(long long));
+	cudaMalloc((void **) &enccountT_d, NT * sizeof(long long));
+
+	cudaMalloc((void **) &coordinateBuffer_d, BUFFER * 21 * (NT + NsmallT) * sizeof(double));
 
 #if G3 == 1
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
@@ -108,28 +112,28 @@ __host__ void Data::AllocateOrbitt(){
 	
 #endif
 
-	cudaMalloc((void **) &x4small_d,NsmallT*sizeof(double4));
-	cudaMalloc((void **) &v4small_d,NsmallT*sizeof(double4));
-	cudaMalloc((void **) &xoldsmall_d,NsmallT*sizeof(double4));
-	cudaMalloc((void **) &voldsmall_d,NsmallT*sizeof(double4));
-	cudaMalloc((void **) &indexsmall_d,NsmallT*sizeof(int));
-	cudaMalloc((void **) &spinsmall_d,NsmallT*sizeof(double3));
-	cudaMalloc((void **) &rcritvsmall_d,NsmallT*sizeof(double));
-	cudaMalloc((void **) &asmall_d, NsmallT*sizeof(double3));
-	cudaMalloc((void **) &Nencsmall_d, 12*sizeof(int));
-	cudaMalloc((void **) &Nencpairssmall_d, (Nst + 1)*sizeof(int));
-	cudaMalloc((void **) &Nencpairssmall2_d, (Nst + 1)*sizeof(int));
-	cudaMalloc((void **) &Encpairssmall_d, sizeof(int2)*Nsmall2T);
-	cudaMalloc((void **) &Encpairssmall2_d, sizeof(int2)*Nsmall2T);
-	cudaMalloc((void **) &vcomsmall_d, Nst*sizeof(double3));
-	cudaMalloc((void **) &aelimitssmall_d,NsmallT*sizeof(float4));
-	cudaMalloc((void **) &aecountsmall_d,NsmallT*sizeof(int));
-	cudaMalloc((void **) &enccountsmall_d,NsmallT*sizeof(int));
-	cudaMalloc((void **) &aecountsmallT_d,NsmallT*sizeof(long long));
-	cudaMalloc((void **) &enccountsmallT_d,NsmallT*sizeof(long long));
+	cudaMalloc((void **) &x4small_d, NsmallT * sizeof(double4));
+	cudaMalloc((void **) &v4small_d, NsmallT * sizeof(double4));
+	cudaMalloc((void **) &xoldsmall_d, NsmallT * sizeof(double4));
+	cudaMalloc((void **) &voldsmall_d, NsmallT * sizeof(double4));
+	cudaMalloc((void **) &indexsmall_d, NsmallT * sizeof(int));
+	cudaMalloc((void **) &spinsmall_d, NsmallT * sizeof(double3));
+	cudaMalloc((void **) &rcritvsmall_d, NsmallT * sizeof(double));
+	cudaMalloc((void **) &asmall_d, NsmallT * sizeof(double3));
+	cudaMalloc((void **) &Nencsmall_d, 12 * sizeof(int));
+	cudaMalloc((void **) &Nencpairssmall_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &Nencpairssmall2_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &Encpairssmall_d, sizeof(int2) * Nsmall2T);
+	cudaMalloc((void **) &Encpairssmall2_d, sizeof(int2) * Nsmall2T);
+	cudaMalloc((void **) &vcomsmall_d, Nst * sizeof(double3));
+	cudaMalloc((void **) &aelimitssmall_d, NsmallT * sizeof(float4));
+	cudaMalloc((void **) &aecountsmall_d, NsmallT * sizeof(int));
+	cudaMalloc((void **) &enccountsmall_d, NsmallT * sizeof(int));
+	cudaMalloc((void **) &aecountsmallT_d, NsmallT * sizeof(long long));
+	cudaMalloc((void **) &enccountsmallT_d, NsmallT * sizeof(long long));
 
 #if poincareFlag == 1
-	cudaMalloc((void **) &PFlag_d,sizeof(int));
+	cudaMalloc((void **) &PFlag_d, sizeof(int));
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
 };
@@ -299,6 +303,11 @@ __host__ int Data::copyGridae(long long ts){
         return 1;
 }
 
+__global__ void BufferInit_kernel(double *coordinateBuffer_d){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	coordinateBuffer_d[id] = 0.0;
+}
 
 //This function initializes the data
 __host__ int Data::init(){
@@ -349,6 +358,10 @@ __host__ int Data::init(){
 		aecountT_h[i] = 0;
 		enccountT_h[i] = 0;
 	}
+	for(int i = 0; i < BUFFER * 21 * (NT + NsmallT); ++i){
+		coordinateBuffer_h[i] = 0.0;
+	}
+	BufferInit_kernel <<< (BUFFER * 21 * (NT + NsmallT) + 511) / 512, 512 >>> (coordinateBuffer_d);
 	for(int i = 0; i < NEnergyT; ++i){
 		Energy_h[i] = 0.0;
 	}
@@ -660,8 +673,8 @@ __host__ int Data::readic(int st){
 		if(P.FormatP == 0){
 			ii = 0;
 			int iismall = 0;
-		
-			OrigInfile = fopen(OrigInfilename, "r");
+			FILE *OrigInfile;	
+			OrigInfile = fopen(GSF[st].Originputfilename, "r");
 			for(int k = 0; k < 1000000000; ++k){
 				int i;
 				double skip = 0.0;
@@ -1399,6 +1412,8 @@ __host__ int Data::freeOrbit(){
 	free(aecountT_h);
 	free(enccountT_h);
 
+	free(coordinateBuffer_h);
+
 	free(x4small_h);
 	free(v4small_h);
 	free(xoldsmall_h);
@@ -1441,6 +1456,8 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Nencpairs2_d);
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
+
+	cudaFree(coordinateBuffer_d);
 
 	cudaFree(aelimits_d);
 	cudaFree(aecount_d);

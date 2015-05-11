@@ -974,6 +974,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			return 0;
 		}
 	}
+	sprintf(GSF[st].Originputfilename, "%s", GSF[st].inputfilename);
 	return 1;
 }
 
@@ -1070,8 +1071,10 @@ __host__ int Host::Param(int argc, char*argv[]){
 __host__ int Host::icict(int Nformat, int st){
 	double time = 0.0;
 	int er = 1;
-	sprintf(OrigInfilename, "%s", GSF[st].inputfilename);
-	OrigInfile = fopen(OrigInfilename, "r");
+	FILE *OrigInfile;
+	char Origfilename[160];
+	sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
+	OrigInfile = fopen(Origfilename, "r");
 	if(OrigInfile == NULL){
 		printf("Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
 		fprintf(masterfile, "Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
@@ -1119,7 +1122,6 @@ __host__ int Host::icSize(int st){
 	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
 	sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
 	double Et = atof(Ets);
-	
 	FILE *infile;
 	infile = fopen(GSF[st].inputfilename, "r");
 	if(infile == NULL){
@@ -1129,8 +1131,8 @@ __host__ int Host::icSize(int st){
 			return 0;
 		}
 		else{
-			fprintf(masterfile,"Skip Simulation %s: Input file not found\n", GSF[st].path);
-			printf("Skip Simulation %s: Input file not found\n", GSF[st].path);
+			fprintf(masterfile,"Skip Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
+			printf("Skip Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
 			N_h[st] = 0;
 			Nsmall_h[st] = 0;
 		}
@@ -1188,8 +1190,10 @@ __host__ int Host::icSize(int st){
 		int NNN = 0;
 		int NNNsmall = 0;
 		Nformat = 21;
-
-		OrigInfile = fopen(OrigInfilename, "r");
+		FILE *OrigInfile;
+		char Origfilename[160];
+		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
+		OrigInfile = fopen(Origfilename, "r");
 		for(int k = 0; k < 1000000000; ++k){
 			int i;
 			double skip = 0.0;
@@ -1269,7 +1273,6 @@ __host__ int Host::icSize(int st){
 // ***********************************************3
 __host__ int Host::size(){
 	for(int st = 0; st < Nst; ++st){
-printf("%d\n", st);
 		//Determine the size of the simulations
 		int er = icSize(st);
 
@@ -1396,7 +1399,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "G3Limit: %g\n", G3Limit);
 			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
 #endif
-			fprintf(infofile, "Input file: %s\n", GSF[st].inputfilename);
+			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
 			for(int f = 0; f < 22; ++f){
 				if(GSF[st].informat[f] == 1) fprintf(infofile, "x ");
