@@ -3,6 +3,7 @@ Output name = test
 Energy output interval = 100
 Coordinates output interval = 100
 Number of outputs per interval = 1
+Coordinate output buffer = 1
 Integration steps = 100000
 Central Mass = 1.0
 n1 = 3.0

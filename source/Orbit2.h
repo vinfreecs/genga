@@ -81,6 +81,7 @@ public:
 	double *test_h, *test_d;
 
 	double *coordinateBuffer_h, *coordinateBuffer_d;
+	int *timestepBuffer;
 
 	cudaError_t error;
 
@@ -114,12 +115,13 @@ public:
 	__host__ void printLastTime();
 	__host__ void printTime(long long);
 	__host__ void CoordinateOutput(long long);
+	__host__ void CoordinateOutputBuffer(long long);
 	__host__ int MaxGroups(long long);
 	__host__ void printMaxColl(long long);
 	__host__ void GridaeOutput(long long);
 	__host__ void printCollisions();
 	__host__ int firstEnergy();
-	__host__ void EnergyOutput(long long);
+	__host__ void EnergyOutput(long long, int);
 	__host__ void CoordinateToBuffer(int);
 
 	//Energy

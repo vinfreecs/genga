@@ -17,6 +17,7 @@ public:
 	char pathfilename[64];
 
 	int Nst;				//Number of simulations
+	int NconstT;
 
 	int devCount;
 	int runtimeVersion;

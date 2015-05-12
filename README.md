@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.14: The corrdinate outputs can now be buffered on the GPU. This increases the performance when lots of consecutive outputs are written. Use the 'Coordinate output buffer' argument to set the buffer size. Energy outputs within a buffer size are skipped.
  * Verion 3.12: The gas disk can now be started from the 'param.dat' file
  * Version 3.11: The multi simulation mode can now have individual time steps for each sub-simulation.
  * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.dat' file. The aeGrid contains now also a semi-major axis versus inclination grid.

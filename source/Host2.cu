@@ -229,6 +229,7 @@ __host__ void Host::Halloc(){
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
+	P.Buffer = def_Buffer;
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -902,6 +903,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Coordinate output buffer =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.Buffer);
+				if(er <= 0){
+					printf("Error: Coordinate output buffer value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -1391,6 +1407,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Energy output interval: %d\n", P.ei);                       // use only argument in simulation 0
 			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);                  // use only argument in simulation 0
 			fprintf(infofile, "Number of outputs per interval: %d\n", P.nci);              // use only argument in simulation 0
+			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);               // use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", P.delta);                        // use only argument in simulation 0
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
@@ -1493,6 +1510,7 @@ __host__ void Host::Tsizes(){
 		NB2T = NB[0] * NB[0];
 		Nsmall2T = Nsmall_h[0] * 2 * NmaxTestParticles;
 	}
+	NconstT = NT + NsmallT;
 }
 
 __host__ int Host::freeHost(){

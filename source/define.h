@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.13
+#define Version 3.14
 
 
 //Default parameter values
@@ -49,6 +49,7 @@
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
+#define def_Buffer 10
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
@@ -129,7 +130,6 @@
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
-#define BUFFER 1 			//must be 1 for now
 
 
 #ifndef STRUCT_H
@@ -155,7 +155,8 @@ struct Parameter{
 	int UseaeGrid;			
 	int FormatS;			//Output file structure
 	int FormatT;			
-	int FormatP;			
+	int FormatP;
+	int Buffer;
 	int Usegas;
 };
 

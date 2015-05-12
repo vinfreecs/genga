@@ -176,21 +176,21 @@ __host__ int Data::firstEnergy(){
 	return 1;
 }
 
-//This function calls the Energy function and prints informations
-__host__ void Data::EnergyOutput(long long ts){
+//This function calls the Energy function and prints information
+__host__ void Data::EnergyOutput(long long ts, int bufferCount){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
 	}
-if(P.Usegas == 1){
-	if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0]);
-	else{
-		for(int st = 0; st < Nst; ++st){
-			int NBS = NBS_h[st];
-			gasEnergyMCall(NB[st], Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], st, N_h[st]);
+	if(P.Usegas == 1){
+		if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0]);
+		else{
+			for(int st = 0; st < Nst; ++st){
+				int NBS = NBS_h[st];
+				gasEnergyMCall(NB[st], Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], st, N_h[st]);
+			}
 		}
 	}
-}
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
 		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st], Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], 1);
@@ -199,14 +199,14 @@ if(P.Usegas == 1){
 		cudaStreamDestroy(hstream[hst]);
 	}
 
-	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(Energy_h, Energy_d, sizeof(double) * NEnergyT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
-		cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
 		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
 		fclose(GSF[st].Energyfile);
-	
+
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
@@ -228,42 +228,65 @@ if(P.Usegas == 1){
 		fclose(GSF[st].logfile);
 
 	}
-	cudaMemset(Energy_d, 0, NEnergyT*sizeof(double));
+	cudaMemset(Energy_d, 0, NEnergyT * sizeof(double));
 	
 }
 
 
-__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, float4 *aelimits_d, int* aecount_d, long long *aecountT_d, long long *enccountT_d, double *test_d, double *coordinateBuffer_d, int NT, int bufferCount){
+__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, float4 *aelimits_d, int* aecount_d, long long *aecountT_d, long long *enccountT_d, double *test_d, double4 *x4small_d, double4 *v4small_d, int *indexsmall_d, double3 *spinsmall_d, float4 *aelimitssmall_d, int* aecountsmall_d, long long *aecountsmallT_d, long long *enccountsmallT_d, double *coordinateBuffer_d, int NT, int NsmallT, int NconstT, int bufferCount){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < NT){
 		//time
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 1] = index_d[id];
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 2] = x4_d[id].w;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 3] = v4_d[id].w;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 4] = x4_d[id].x;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 5] = x4_d[id].y;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 6] = x4_d[id].z;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 7] = v4_d[id].x;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 8] = v4_d[id].y;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 9] = v4_d[id].z;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 10] = spin_d[id].x;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 11] = spin_d[id].y;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 12] = spin_d[id].z;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 13] = aelimits_d[id].x;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 14] = aelimits_d[id].y;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 15] = aelimits_d[id].z;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 16] = aelimits_d[id].w;
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 17] = aecount_d[id];
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 18] = aecountT_d[id];
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 19] = enccountT_d[id];
-		coordinateBuffer_d[21 * NT * bufferCount + 21 * id + 20] = test_d[id];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 1] = index_d[id];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 2] = x4_d[id].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 3] = v4_d[id].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 4] = x4_d[id].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 5] = x4_d[id].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 6] = x4_d[id].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 7] = v4_d[id].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 8] = v4_d[id].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 9] = v4_d[id].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 10] = spin_d[id].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 11] = spin_d[id].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 12] = spin_d[id].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 13] = aelimits_d[id].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 14] = aelimits_d[id].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 15] = aelimits_d[id].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 16] = aelimits_d[id].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 17] = aecount_d[id];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 18] = aecountT_d[id];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 19] = enccountT_d[id];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 20] = test_d[id];
+	}
+	else if(id < NT + NsmallT){
+		//time
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 1] = indexsmall_d[id - NT];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 2] = x4small_d[id - NT].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 3] = v4small_d[id - NT].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 4] = x4small_d[id - NT].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 5] = x4small_d[id - NT].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 6] = x4small_d[id - NT].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 7] = v4small_d[id - NT].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 8] = v4small_d[id - NT].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 9] = v4small_d[id - NT].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 10] = spinsmall_d[id - NT].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 11] = spinsmall_d[id - NT].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 12] = spinsmall_d[id - NT].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 13] = aelimitssmall_d[id - NT].x;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 14] = aelimitssmall_d[id - NT].y;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 15] = aelimitssmall_d[id - NT].z;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 16] = aelimitssmall_d[id - NT].w;
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 17] = aecountsmall_d[id - NT];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 18] = aecountsmallT_d[id - NT];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 19] = enccountsmallT_d[id - NT];
+		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 20] = 0.0;
 	}
 }
 
 __host__ void Data::CoordinateToBuffer(int bufferCount){
-	CoordinateToBuffer_kernel <<< (NT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, NT, bufferCount);
+	CoordinateToBuffer_kernel <<< (NT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, x4small_d, v4small_d, indexsmall_d, spinsmall_d, aelimitssmall_d, aecountsmall_d, aecountsmallT_d, enccountsmallT_d, coordinateBuffer_d, NT, NsmallT, NconstT, bufferCount);
 }
 
 //This function copies the data from the device to host and calls the printoutput function
@@ -333,14 +356,60 @@ __host__ void Data::CoordinateOutput(long long ts){
 	cudaMemset(aecount_d, 0, sizeof(int)*NT);
 	cudaMemset(aecountsmall_d, 0, sizeof(int)*NsmallT);
 }
-/*
+
 //This function copies the data from the coordinate buffer and calls the printoutput function
 __host__ void Data::CoordinateOutputBuffer(long long ts){
 
-	cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, BUFFER * 21 * (NT + NsmallT) * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaDeviceSynchronize();
 
-	for(int bf = 0; bf < BUFFER; ++bf){
+	for(int bf = 0; bf < P.Buffer; ++bf){
+		for(int i = 0; i < NT; ++i){
+			index_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 1];
+			x4_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 2];
+			v4_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 3];
+			x4_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 4];
+			x4_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 5];
+			x4_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 6];
+			v4_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 7];
+			v4_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 8];
+			v4_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 9];
+			spin_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 10];
+			spin_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 11];
+			spin_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 12];
+			aelimits_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 13];
+			aelimits_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 14];
+			aelimits_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 15];
+			aelimits_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 16];
+			aecount_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 17];
+			aecountT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 18];
+			enccountT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 19];
+			test_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 20];
+
+		}
+		for(int i = 0; i < NsmallT; ++i){
+			int ii = i + NT;
+			indexsmall_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 1];
+			x4small_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 2];
+			v4small_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 3];
+			x4small_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 4];
+			x4small_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 5];
+			x4small_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 6];
+			v4small_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 7];
+			v4small_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 8];
+			v4small_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 9];
+			spinsmall_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 10];
+			spinsmall_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 11];
+			spinsmall_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 12];
+			aelimitssmall_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 13];
+			aelimitssmall_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 14];
+			aelimitssmall_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 15];
+			aelimitssmall_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 16];
+			aecountsmall_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 17];
+			aecountsmallT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 18];
+			enccountsmallT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * ii + 19];
+
+		}
 		for(int st = 0; st < Nst; ++st){
 			int NBS = NBS_h[st];
 			int NsmallS = NsmallS_h[st];
@@ -348,7 +417,7 @@ __host__ void Data::CoordinateOutputBuffer(long long ts){
 			if(P.FormatP == 1){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
-						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, ts);
+						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					}
 					if(P.FormatT == 1){
@@ -358,7 +427,7 @@ __host__ void Data::CoordinateOutputBuffer(long long ts){
 				}
 				else{
 					if(P.FormatT == 0){
-						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, ts);
+						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
 						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 					}
@@ -368,9 +437,10 @@ __host__ void Data::CoordinateOutputBuffer(long long ts){
 					}
 				}
 			}
+	
+			double time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;		
 
-
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, ts, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 
@@ -382,7 +452,7 @@ __host__ void Data::CoordinateOutputBuffer(long long ts){
 	cudaMemset(aecount_d, 0, sizeof(int)*NT);
 	cudaMemset(aecountsmall_d, 0, sizeof(int)*NsmallT);
 }
-*/
+
 
 __host__ void Data::GridaeOutput(long long ts){
 	int GridNae = Gridae.Na * Gridae.Ne;

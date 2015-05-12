@@ -214,7 +214,7 @@ int main(int argc, char*argv[]){
 	D.poincarefile = fopen(D.poincarefilename, "w");
 #endif
 
-	int bufferCount = 0;
+	int bufferCount = 1;
 	for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
 		D.time_h[0] = ts * D.idt_h[0] + D.ict_h[0] * 365.25;
 		//Multi simulation mode
@@ -274,7 +274,9 @@ int main(int argc, char*argv[]){
 			}
 			//Print Energy and log information//
 			if(ts % D.P.ei == 0){
-				D.EnergyOutput(ts);
+				if(bufferCount >= D.P.Buffer){
+					D.EnergyOutput(ts, bufferCount - 1);
+				}
 			}
 
 			if(H.P.UseaeGrid == 1){ 
@@ -285,14 +287,19 @@ int main(int argc, char*argv[]){
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
 			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
-				if(BUFFER == 1){
+				if(D.P.Buffer == 1){
 					D.CoordinateOutput(ts);
 				}
-				else if(bufferCount >= BUFFER - 1){
-					//write buffer
+				else if(bufferCount >= D.P.Buffer){
+					//write out buffer
+					D.timestepBuffer[bufferCount - 1] = ts;
+					D.CoordinateToBuffer(bufferCount - 1);
+					D.CoordinateOutputBuffer(ts - D.P.Buffer);
 				}
 				else{
-					D.CoordinateToBuffer(bufferCount);
+					//store in buffer
+					D.timestepBuffer[bufferCount - 1] = ts;
+					D.CoordinateToBuffer(bufferCount - 1);
 				}
 				if(H.P.UseaeGrid == 1){
 					D.GridaeOutput(ts);
@@ -308,17 +315,17 @@ int main(int argc, char*argv[]){
 			}
 			// print time information //
 			if(ts % D.P.ci == 0){
-				if(bufferCount >= BUFFER - 1){
+				if(bufferCount >= D.P.Buffer){
 					D.printTime(ts);
 					fflush(D.masterfile);
 				}
 			}
 
-			if(bufferCount >= BUFFER - 1){
-				bufferCount = 0;
-			}
-			else{
+			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				++bufferCount;
+			}
+			if(bufferCount > D.P.Buffer){
+				bufferCount = 1;
 			}
 	} // end of time step loop
 #if poincareFlag == 1

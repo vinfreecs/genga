@@ -41,6 +41,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Energy output interval, in time steps
  * The Coordinates output interval, in time steps
  * The number of outputs per Coordinate output interval
+ * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
  * The total number of integration steps
  * The central Mass, in solar masses
  * Value of close encounter parameter n1
