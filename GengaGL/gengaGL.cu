@@ -35,6 +35,7 @@ GLdouble yold = 0.0;
 GLdouble xold = 0.0;
 GLint mouseMove = 0;
 GLint nold = 0;
+static GLint stop = 0;
 
 char mtext[80];
 
@@ -104,7 +105,7 @@ int loop(Data D, double &time){
 			}
 			//Print Energy and log information//
 			if(ts % D.P.ei == 0){
-				D.EnergyOutput(ts);
+				D.EnergyOutput(ts,0);
 			}
 
 #if useGridae 
@@ -277,8 +278,10 @@ void display(){
 
 	double time;
 	int er;
-	for(int i = 0; i < 1; ++i){
-		er = loop(D, time);
+	if(stop == 0){
+		for(int i = 0; i < 1; ++i){
+			er = loop(D, time);
+		}
 	}
 	if(D.N_h[0] + D.Nsmall_h[0] != nold){
 		GLMLimits <<< 1, 512 >>>(D.x4_d, D.N_h[0], MLimits_d);
@@ -387,6 +390,13 @@ void mouse(int button, int state, int x, int y){
 			if (state == GLUT_DOWN){
 				yold = y;
 				mouseMove = 2;
+			}
+			else mouseMove = 0;
+			break;
+		case GLUT_MIDDLE_BUTTON:
+			if (state == GLUT_DOWN){
+				if(stop == 0) stop = 1;
+				if(stop == 1) stop = 0;
 			}
 			else mouseMove = 0;
 			break;
