@@ -30,6 +30,7 @@ public:
 	int *Nconst;				//number of massive bodies in test particle run
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
+	long long *delta;			//number of timesteps
 
 	struct Parameter P;			//parameters, for all Simulations the same
 	struct GSFiles *GSF;			//Information for the different simulations
@@ -48,7 +49,6 @@ public:
 	double *time_h, *time_d;
 	double *dt_h, *dt_d;			//time step in code units
 	double *dtksq_h, *dtksq_d;
-
 	//Total sizes
 	int NT;
 	int NsmallT;

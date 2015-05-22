@@ -273,13 +273,13 @@ __host__ int Data::readGridae(){
 }
 
 //This function copies values from the current Gridae to the total and summing host Grid
-__host__ int Data::copyGridae(long long ts){
+__host__ int Data::copyGridae(){
 	cudaError_t error;
 	//ae grid
 	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int) * GridNae, cudaMemcpyDeviceToHost);
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			if(ts > Gridae.Start){
+			if(timeStep > Gridae.Start){
 				GridaecountS_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 				GridaecountT_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 			}
@@ -290,7 +290,7 @@ __host__ int Data::copyGridae(long long ts){
 	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int) * GridNai, cudaMemcpyDeviceToHost);
 	for(int i = 0; i < Gridae.Ni; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			if(ts > Gridae.Start){
+			if(timeStep > Gridae.Start){
 				GridaicountS_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 				GridaicountT_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 			}
@@ -425,7 +425,6 @@ __host__ int Data::init(){
 
 //This function calls the readic function and copies the data to the GPU.
 __host__ int Data::ic(){
-
 	for(int st = 0; st < Nst; ++st){
 		if(N_h[st] + Nsmall_h[st] > 0){
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -444,6 +443,7 @@ __host__ int Data::ic(){
 		}
 	}
 	//Copy memory to device//
+
 	cudaMemcpy(x4_d, x4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(xold_d, x4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
@@ -1178,7 +1178,7 @@ __host__ void Data::Ejectionsmall(){
 
 
 //This function removes ghost particles and reorders the arrays
-//It returns 1 if a simulations has less than the minimal number of bodies, otherwise zero
+//It returns 1 if a simulation has less than the minimal number of bodies, otherwise zero
 __host__ int Data::remove(){
 
 	int NminFlag = 0;
@@ -1245,12 +1245,17 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
-__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double *test_d, int *index_d, double *rcrit_d, double *rcritv_d, double4 *x4small_d, double4 *v4small_d, double3 *spinsmall_d, int *indexsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *enccount_d, int *enccountsmall_d, long long *aecountT_d, long long *aecountsmallT_d, long long *enccountT_d, long long *enccountsmallT_d){
+__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
+double *rcritv_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *spinsmall_d, double3 *asmall_d, int *indexsmall_d, 
+double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *enccount_d, int *enccountsmall_d, long long *aecountT_d, long long *aecountsmallT_d, long long *enccountT_d, long long *enccountsmallT_d){
 
 	for(int j = 0; j < N_d[st]; ++j){
 		x4_d[j + NT] = x4_d[j + NBS];
 		v4_d[j + NT] = v4_d[j + NBS];
+		xold_d[j + NT] = xold_d[j + NBS];
+		vold_d[j + NT] = vold_d[j + NBS];
 		spin_d[j + NT] = spin_d[j + NBS];
+		a_d[j + NT] = a_d[j + NBS];
 		test_d[j + NT] = test_d[j + NBS];
 		index_d[j + NT] = index_d[j + NBS];
 		rcrit_d[j + NT] = rcrit_d[j + NBS];
@@ -1261,12 +1266,16 @@ __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, do
 		aecountT_d[j + NT] = aecountT_d[j + NBS];
 		enccountT_d[j + NT] = enccountT_d[j + NBS];
 	}
-
+//G3
 	for(int j = 0; j < Nsmall_d[st]; ++j){
 		x4small_d[j + NsmallT] = x4small_d[j + NsmallS];
 		v4small_d[j + NsmallT] = v4small_d[j + NsmallS];
+		xoldsmall_d[j + NsmallT] = xoldsmall_d[j + NsmallS];
+		voldsmall_d[j + NsmallT] = voldsmall_d[j + NsmallS];
 		spinsmall_d[j + NsmallT] = spinsmall_d[j + NsmallS];
+		asmall_d[j + NsmallT] = asmall_d[j + NsmallS];
 		indexsmall_d[j + NsmallT] = indexsmall_d[j + NsmallS];
+		rcritvsmall_d[j + NsmallT] = rcritvsmall_d[j + NsmallS];
 		aelimitssmall_d[j + NsmallT] = aelimitssmall_d[j + NsmallS];
 		aecountsmall_d[j + NsmallT] = aecountsmall_d[j + NsmallS];
 		enccountsmall_d[j + NsmallT] = enccountsmall_d[j + NsmallS];
@@ -1294,7 +1303,9 @@ __global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
 
 
 
-//This function stopps simulations with less than the minimal number of bodies, and rearanges the memory
+// This function stopps simulations with less than the minimal number of bodies 
+// or if the simulation ended.
+// it rearanges the memory
 __host__ void Data::stopSimulations(){
 	NT = 0;
 	NsmallT = 0;
@@ -1304,7 +1315,9 @@ __host__ void Data::stopSimulations(){
 
 	for(int st = 0; st < Nst; ++st){
 		//rearange arrays//
-		removeM_kernel <<< 1, 1>>>(x4_d, v4_d, spin_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, spinsmall_d, indexsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d, aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d);
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, a_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d,
+					    spinsmall_d, asmall_d, indexsmall_d, rcritvsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
+					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d);
 
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
@@ -1324,13 +1337,25 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(LI0_h, LI0_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 
 	for(int st = 0; st < Nst; ++st){
-		if(N_h[st] < Nmin[st]){
+		int s = 0;
+		if(timeStep >= delta[st]){
+			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
+			fprintf(masterfile,"In Simulation %s: Rreached the end, simulation stopped\n", GSF[st].path);
+			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+			fprintf(GSF[st].logfile,"Reached the end, simulation stopped\n");
+			fclose(GSF[st].logfile);
+			s = 1;
+		}
+		else if(N_h[st] < Nmin[st]){
 			printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
 			fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
 			fclose(GSF[st].logfile);
+			s = 1;
+		}
 
+		if(s == 1){
 			for(int sst = st; sst < Nst - 1; ++sst){
 				GSF[sst] = GSF[sst + 1];
 
@@ -1341,6 +1366,7 @@ __host__ void Data::stopSimulations(){
 				Nconst[sst] = Nconst[sst + 1];
 				Nmin[sst] = Nmin[sst + 1];
 				rho[sst] = rho[sst + 1];
+				delta[sst] = delta[sst + 1];
 				n1_h[sst] = n1_h[sst + 1];
 				n2_h[sst] = n2_h[sst + 1];
 				N_h[sst] = N_h[sst + 1];

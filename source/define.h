@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.14
+#define Version 3.15
 
 
 //Default parameter values
@@ -148,7 +148,7 @@ struct Parameter{
 	int nci;                        //Number of outputs per intervall
 	int UseTestParticles;
 	long long tRestart;             //timestep for restart
-	long long delta;                //Number of time steps to do
+	long long deltaT;               //Number of time steps to do
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc

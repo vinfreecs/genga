@@ -184,8 +184,9 @@ __host__ void Host::Halloc(){
 	N2 = (int*)malloc(Nst*sizeof(int));
 	Nconst = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int*)malloc(Nst*sizeof(int));
-	rho = (double*)malloc(Nst*sizeof(double));
-	
+	rho = (double*)malloc(Nst*sizeof(double));	
+	delta = (long long*)malloc(Nst*sizeof(long long));
+
 	P.dev = 0;
 	GSF = (struct GSFiles*)malloc(Nst*sizeof(struct GSFiles));
 	
@@ -207,7 +208,7 @@ __host__ void Host::Halloc(){
 	P.ei = def_EnergyOutputInterval;
 	P.ci = def_CoordinatesOutputInterval;
 	P.nci = def_OutputsPerInterval;
-	P.delta = def_IntegrationSteps;
+	P.deltaT = def_IntegrationSteps;
 	P.UseTestParticles = def_UseTestParticles;
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
@@ -326,6 +327,7 @@ __host__ void Host::Halloc(){
 		Nconst[st] = N_h[st];
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
+		delta[st] = def_IntegrationSteps;
 		sprintf(GSF[st].X, def_Name);
 		sprintf(GSF[st].inputfilename, def_InputFile);
 
@@ -433,19 +435,15 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Integration steps =") == 0){
-			if(st == 0){
-				er = fscanf (paramfile, "%lld", &P.delta);
+			er = fscanf (paramfile, "%lld", &delta[st]);
 	
-				if(er <= 0 || P.delta <= 0){
-					printf("Error: Inegration steps are not valid!\n");
-					return 0;
-				}
-			}
-			else{
-				long long t;
-				er = fscanf (paramfile, "%lld", &t);
+			if(er <= 0 || delta[st] <= 0){
+				printf("Error: Inegration steps are not valid!\n");
+				return 0;
 			}
 			fgets(sp, 3, paramfile);
+			if(st == 0) P.deltaT = delta[st];
+			else P.deltaT = max(P.deltaT, delta[st]);
 		}
 		else if(strcmp(sp, "Central Mass =") == 0){
 
@@ -910,6 +908,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Coordinate output buffer value is not valid!\n");
 					return 0;
 				}
+				if(P.Buffer < 1) P.Buffer = 1;
 
 			}
 			else{
@@ -948,7 +947,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			P.ci = atoi(argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-I") == 0){
-			P.delta = atol(argv[i + 1]);
+			P.deltaT = atol(argv[i + 1]);
+			delta[st] = P.deltaT;
 		}
 		else if(strcmp(argv[i], "-n1") == 0){
 			n1_h[st] = atof(argv[i + 1]);
@@ -1407,8 +1407,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Energy output interval: %d\n", P.ei);                       // use only argument in simulation 0
 			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);                  // use only argument in simulation 0
 			fprintf(infofile, "Number of outputs per interval: %d\n", P.nci);              // use only argument in simulation 0
-			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);               // use only argument in simulation 0
-			fprintf(infofile, "Integration steps: %lld\n", P.delta);                        // use only argument in simulation 0
+			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);                 // use only argument in simulation 0
+			fprintf(infofile, "Integration steps: %lld\n", delta[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
@@ -1522,6 +1522,7 @@ __host__ int Host::freeHost(){
 	free(Nconst);
 	free(Nmin);
 	free(rho);
+	free(delta);
 	
 	free(n1_h);
 	free(n2_h);

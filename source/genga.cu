@@ -215,11 +215,14 @@ int main(int argc, char*argv[]){
 #endif
 
 	int bufferCount = 1;
-	for(long long ts = D.P.tRestart + 1; ts <= D.P.delta; ++ts){
-		D.time_h[0] = ts * D.idt_h[0] + D.ict_h[0] * 365.25;
+	int MultiSim = 0;
+	if(D.Nst > 1) MultiSim = 1;
+	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
+		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
 		//Multi simulation mode
-		if(D.Nst > 1){
-			er = D.step_M(ts);
+	//	if(D.Nst > 1){
+		if(MultiSim == 1){
+			er = D.step_M();
 			if(er == 0) return 0;
 		}
 		else{
@@ -263,71 +266,72 @@ int main(int argc, char*argv[]){
 
 			//Check for too big groups//
 			if(D.Nst == 1){
-				er = D.MaxGroups(ts);
+				er = D.MaxGroups();
 				if(er == 0) return 0;
 			}
 
 			//Check for too many Collisions//
 			if(D.Ncoll_m[0] >= MaxColl-1){
-				D.printMaxColl(ts);
+				D.printMaxColl();
 				return 0;
 			}
 			//Print Energy and log information//
-			if(ts % D.P.ei == 0){
+			if(D.timeStep % D.P.ei == 0){
 				if(bufferCount >= D.P.Buffer){
-					D.EnergyOutput(ts, bufferCount - 1);
+					D.EnergyOutput(bufferCount - 1);
 				}
 			}
 
 			if(H.P.UseaeGrid == 1){ 
-				if(ts % 10000 == 0){
-					D.copyGridae(ts);
+				if(D.timeStep % 10000 == 0){
+					D.copyGridae();
 				}
 			}
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
-			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
+			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				if(D.P.Buffer == 1){
-					D.CoordinateOutput(ts);
+					D.CoordinateOutput();
 				}
 				else if(bufferCount >= D.P.Buffer){
 					//write out buffer
-					D.timestepBuffer[bufferCount - 1] = ts;
+					D.timestepBuffer[bufferCount - 1] = D.timeStep;
 					D.CoordinateToBuffer(bufferCount - 1);
-					D.CoordinateOutputBuffer(ts - D.P.Buffer);
+					D.CoordinateOutputBuffer();
 				}
 				else{
 					//store in buffer
-					D.timestepBuffer[bufferCount - 1] = ts;
+					D.timestepBuffer[bufferCount - 1] = D.timeStep;
 					D.CoordinateToBuffer(bufferCount - 1);
 				}
 				if(H.P.UseaeGrid == 1){
-					D.GridaeOutput(ts);
+					D.GridaeOutput();
 				}
 #if poincareFlag == 1
-				if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
+				if((D.timeStep - 1) % D.P.ci == D.P.ci - D.P.nci){
 					fclose(D.poincarefile);
-					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, ts);
+					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, D.timeStep);
 					//Erase old Poincare files
 					D.poincarefile = fopen(D.poincarefilename, "w");
 				}
 #endif
 			}
 			// print time information //
-			if(ts % D.P.ci == 0){
+			if(D.timeStep % D.P.ci == 0){
 				if(bufferCount >= D.P.Buffer){
-					D.printTime(ts);
+					D.printTime();
 					fflush(D.masterfile);
 				}
 			}
 
-			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
+			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				++bufferCount;
 			}
 			if(bufferCount > D.P.Buffer){
 				bufferCount = 1;
 			}
 	} // end of time step loop
+
 #if poincareFlag == 1
 	fclose(D.poincarefile);
 #endif
@@ -335,6 +339,7 @@ int main(int argc, char*argv[]){
 	//print last informations
 	D.printLastTime();
 	D.LastInfo();
+      
 
 	//free all the memory on the Host and on the Device
 	er = D.freeOrbit();

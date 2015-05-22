@@ -11,6 +11,9 @@
 // *************************************
 class Data : public Host{
 public:
+
+	long long timeStep;
+
 	double4 *x4_h, *x4_d;
 	double4 *v4_h, *v4_d;
 	double4 *xold_h, *xold_d;
@@ -92,7 +95,7 @@ public:
 	__host__ int GridaeAlloc();
 	__host__ int FGAlloc();
 	__host__ int readGridae();
-	__host__ int copyGridae(long long);
+	__host__ int copyGridae();
 	__host__ int init();
 	__host__ int ic();
 	__host__ void HelioToDemo(double4 *, double4 *, double, int, double4 *, double4 *, int);
@@ -113,15 +116,15 @@ public:
 	__host__ void LastInfo();
 	__host__ void setStartTime();
 	__host__ void printLastTime();
-	__host__ void printTime(long long);
-	__host__ void CoordinateOutput(long long);
-	__host__ void CoordinateOutputBuffer(long long);
-	__host__ int MaxGroups(long long);
-	__host__ void printMaxColl(long long);
-	__host__ void GridaeOutput(long long);
+	__host__ void printTime();
+	__host__ void CoordinateOutput();
+	__host__ void CoordinateOutputBuffer();
+	__host__ int MaxGroups();
+	__host__ void printMaxColl();
+	__host__ void GridaeOutput();
 	__host__ void printCollisions();
 	__host__ int firstEnergy();
-	__host__ void EnergyOutput(long long, int);
+	__host__ void EnergyOutput(int);
 	__host__ void CoordinateToBuffer(int);
 
 	//Energy
@@ -154,7 +157,7 @@ public:
 	__host__ int step_2048();
 	__host__ int step_largeN();
 	__host__ int step_small();
-	__host__ int step_M(long long);
+	__host__ int step_M();
 
 	__host__ int CollisionCall();
 	__host__ void CollisionMCall();

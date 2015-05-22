@@ -24,7 +24,8 @@ GLuint positionsVBO;
 GLuint colorsVBO;
 struct cudaGraphicsResource* positionsVBO_CUDA;
 struct cudaGraphicsResource* colorsVBO_CUDA;
-static long long ts;
+static int bufferCount = 1;
+static long long ts = 1;
 static GLdouble anglex = 0.0; //angle to rotate system around z axis
 static GLdouble angley = 0.0; //angle to rotate z axis
 static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
@@ -47,12 +48,13 @@ double *MLimits_d;
 */
 
 int loop(Data D, double &time){
-		D.time_h[0] = ts * D.idt_h[0] + D.ict_h[0] * 365.25;
+		D.timeStep = ts;
+		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
 		time = D.time_h[0] / 365.25;
 		int er;
 		cudaError_t error;
 		if(D.Nst > 1){
-			er = D.step_M(ts);
+			er = D.step_M();
 			if(er == 0) return 0;
 		}
 		else{
@@ -94,47 +96,73 @@ int loop(Data D, double &time){
 
 			//Check for too big groups//
 			if(D.Nst == 1){
-				er = D.MaxGroups(ts);
+				er = D.MaxGroups();
 				if(er == 0) return 0;
 			}
 
 			//Check for too many Collisions//
 			if(D.Ncoll_m[0] >= MaxColl-1){
-				D.printMaxColl(ts);
+				D.printMaxColl();
 				return 0;
 			}
 			//Print Energy and log information//
-			if(ts % D.P.ei == 0){
-				D.EnergyOutput(ts,0);
+			if(D.timeStep % D.P.ei == 0){
+				if(bufferCount >= D.P.Buffer){
+					D.EnergyOutput(bufferCount - 1);
+				}
 			}
 
-#if useGridae 
-			if(ts % 10000 == 0){
-				D.copyGridae(ts);
+			if(D.P.UseaeGrid == 1){ 
+				if(D.timeStep % 10000 == 0){
+					D.copyGridae();
+				}
 			}
-#endif
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
-			if((ts - 1) % D.P.ci >= D.P.ci - D.P.nci){
-				D.CoordinateOutput(ts);
-#if useGridae
-				D.GridaeOutput(ts);
-#endif
+			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
+				if(D.P.Buffer == 1){
+					D.CoordinateOutput();
+				}
+				else if(bufferCount >= D.P.Buffer){
+					//write out buffer
+					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					D.CoordinateToBuffer(bufferCount - 1);
+					D.CoordinateOutputBuffer();
+				}
+				else{
+					//store in buffer
+					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					D.CoordinateToBuffer(bufferCount - 1);
+				}
+
+				if(D.P.UseaeGrid == 1){
+					D.GridaeOutput();
+				}
 #if poincareFlag == 1
-				if((ts - 1) % D.P.ci == D.P.ci - D.P.nci){
+				if((D.timeStep - 1) % D.P.ci == D.P.ci - D.P.nci){
 					fclose(D.poincarefile);
-					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, ts);
+					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, D.timeStep);
 					//Erase old Poincare files
 					D.poincarefile = fopen(D.poincarefilename, "w");
 				}
 #endif
 			}
 			// print time information //
-			if(ts % D.P.ci == 0){
-				D.printTime(ts);
-				fflush(D.masterfile);
+			if(D.timeStep % D.P.ci == 0){
+				if(bufferCount >= D.P.Buffer){
+					D.printTime();
+					fflush(D.masterfile);
+				}
 			}
-			ts += 1;
+
+			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
+				++bufferCount;
+			}
+			if(bufferCount > D.P.Buffer){
+				bufferCount = 1;
+			}
+
+			++ts;
 			return 1;
 }
 
@@ -277,10 +305,9 @@ void display(){
 
 
 	double time;
-	int er;
 	if(stop == 0){
 		for(int i = 0; i < 1; ++i){
-			er = loop(D, time);
+			int er = loop(D, time);
 		}
 	}
 	if(D.N_h[0] + D.Nsmall_h[0] != nold){
@@ -396,7 +423,7 @@ void mouse(int button, int state, int x, int y){
 		case GLUT_MIDDLE_BUTTON:
 			if (state == GLUT_DOWN){
 				if(stop == 0) stop = 1;
-				if(stop == 1) stop = 0;
+				else stop = 0;
 			}
 			else mouseMove = 0;
 			break;
@@ -481,21 +508,6 @@ int main(int argc, char*argv[]){
         	fprintf(H.masterfile,"Restart GENGA\n");
 	}
 
-#if useGas > 0
-	printf("Use Gas Disc\n");
-	fprintf(H.masterfile,"Use Gas Disc\n");
-#else
-	printf("No Gas Disc\n");
-	fprintf(H.masterfile,"No Gas Disc\n");
-#endif
-#if useGridae
-	printf("Use ae Grid\n");
-	fprintf(H.masterfile, "Use ae Grid\n");
-#else
-	printf("No ae Grid\n");
-	fprintf(H.masterfile, "No ae Grid\n");
-#endif
-
 #if SERIAL_GROUPING > 0
 	printf("Using serial grouping!\n");
 	fprintf(H.masterfile, "Using serial grouping!\n");
@@ -547,13 +559,14 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 
         //Allocate Grideae 
-#if useGridae
-        er = D.GridaeAlloc();
-        if(er == 0) return 0;
-#endif
-#if useGas > 0
-	D.GasAlloc();
-#endif
+	D.constantCopy2();
+	if(H.P.UseaeGrid == 1){
+      		er = D.GridaeAlloc();
+       		if(er == 0) return 0;
+	}
+	if(D.P.Usegas == 1){
+		D.GasAlloc();
+	}
 
 	//Table for fastfg//
 	er = D.FGAlloc();
@@ -595,17 +608,17 @@ int main(int argc, char*argv[]){
 	printf("Energy OK\n");
 
 	//read aeGrid at restart time step 
-#if useGridae
-	D.readGridae();	
-#endif
+	if(H.P.UseaeGrid == 1){
+		D.readGridae();	
+	}
 
 	//Set Gas Disc and Gas Table
-#if useGas > 0
-	printf("Set Gas Table\n");
-	er = D.setGasDisk();
-	if(er == 0) return 0;
-	printf("Gas Table OK\n");
-#endif
+	if(D.P.Usegas == 1){
+		printf("Set Gas Table\n");
+		er = D.setGasDisk();
+		if(er == 0) return 0;
+		printf("Gas Table OK\n");
+	}
 
 	// Set Order and Coefficients of the symplectic integrator //
 	D.SymplecticP();
@@ -661,7 +674,7 @@ int main(int argc, char*argv[]){
 
 
 	//Start time loop here
-	ts = D.P.tRestart + 1;
+	D.timeStep = D.P.tRestart + 1;
 
 	cudaDeviceSynchronize();
       //  cudaDeviceReset();

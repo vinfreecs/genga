@@ -177,7 +177,7 @@ __host__ int Data::firstEnergy(){
 }
 
 //This function calls the Energy function and prints information
-__host__ void Data::EnergyOutput(long long ts, int bufferCount){
+__host__ void Data::EnergyOutput(int bufferCount){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
@@ -290,7 +290,19 @@ __host__ void Data::CoordinateToBuffer(int bufferCount){
 }
 
 //This function copies the data from the device to host and calls the printoutput function
-__host__ void Data::CoordinateOutput(long long ts){
+__host__ void Data::CoordinateOutput(){
+
+	if(Nst > 1 && timeStep < P.deltaT){
+		int s = 0;
+		for(int st = 0; st < Nst; ++st){
+			if(timeStep >= delta[st]){
+				s = 1;
+				N_h[st] = 0;
+			}
+		}
+		if(s == 1) stopSimulations();
+	}
+
 	cudaMemcpy(x4_h, x4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(v4_h, v4_d, sizeof(double4)*NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(index_h, index_d, sizeof(int)*NT, cudaMemcpyDeviceToHost);
@@ -323,7 +335,7 @@ __host__ void Data::CoordinateOutput(long long ts){
 		if(P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
-					sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, ts);
+					sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
 				if(P.FormatT == 1){
@@ -333,7 +345,7 @@ __host__ void Data::CoordinateOutput(long long ts){
 			}
 			else{
 				if(P.FormatT == 0){
-					sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, ts);
+					sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
@@ -345,7 +357,7 @@ __host__ void Data::CoordinateOutput(long long ts){
 		}
 
 
-		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, ts, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
 
 		if(P.FormatP == 1) fclose(GSF[st].outputfile);
 
@@ -358,7 +370,7 @@ __host__ void Data::CoordinateOutput(long long ts){
 }
 
 //This function copies the data from the coordinate buffer and calls the printoutput function
-__host__ void Data::CoordinateOutputBuffer(long long ts){
+__host__ void Data::CoordinateOutputBuffer(){
 
 	cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaDeviceSynchronize();
@@ -451,20 +463,31 @@ __host__ void Data::CoordinateOutputBuffer(long long ts){
 
 	cudaMemset(aecount_d, 0, sizeof(int)*NT);
 	cudaMemset(aecountsmall_d, 0, sizeof(int)*NsmallT);
+
+	if(timeStep < P.deltaT){
+		int s = 0;
+		for(int st = 0; st < Nst; ++st){
+			if(timeStep >= delta[st]){
+				s = 1;
+				N_h[st] = 0;
+			}
+		}
+		if(s == 1) stopSimulations();
+	}
 }
 
 
-__host__ void Data::GridaeOutput(long long ts){
+__host__ void Data::GridaeOutput(){
 	int GridNae = Gridae.Na * Gridae.Ne;
 	int GridNai = Gridae.Na * Gridae.Ni;
-	sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, ts);
+	sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, timeStep);
 	Gridae.file = fopen(Gridae.filename, "w");
 	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int)*GridNae, cudaMemcpyDeviceToHost);
 	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int)*GridNai, cudaMemcpyDeviceToHost);
 	//ae grid
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			if(ts > Gridae.Start){
+			if(timeStep > Gridae.Start){
 				GridaecountS_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 				GridaecountT_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 			}
@@ -486,7 +509,7 @@ __host__ void Data::GridaeOutput(long long ts){
 	//ai grid
 	for(int i = 0; i < Gridae.Ni; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			if(ts > Gridae.Start){
+			if(timeStep > Gridae.Start){
 				GridaicountS_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 				GridaicountT_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 			}
@@ -512,11 +535,11 @@ __host__ void Data::GridaeOutput(long long ts){
 
 //This function prints information if there are too many Collisions which fit not in allocated memory
 //It stops the integration
-__host__ void Data::printMaxColl(long long ts){
-	printf("Error: Too many Collisions, MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], ts);
+__host__ void Data::printMaxColl(){
+	printf("Error: Too many Collisions, MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
 	if(Nst ==1){
 		GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-		fprintf(GSF[0].logfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], ts);
+		fprintf(GSF[0].logfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
 		fprintf(GSF[0].logfile, "Total number of groups when Error accured: %d, 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9], Nenc_m[10], Nenc_m[11]);
 		cudaMemcpy(Coll_h, Coll_d, sizeof(double)*25*MaxColl, cudaMemcpyDeviceToHost);
 		for(int nc = 0; nc < MaxColl; ++nc){
@@ -529,13 +552,13 @@ __host__ void Data::printMaxColl(long long ts){
 		fclose(GSF[0].logfile);
 	}
 	else{
-		fprintf(masterfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], ts);
+		fprintf(masterfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
 	}
 }
 
 
 //This function prints information if a too big close encounter group occurs and stops the integrations
-__host__ int Data::MaxGroups(long long ts){
+__host__ int Data::MaxGroups(){
 	for(int nm = 7; nm < 12; ++nm){
 		if(Nenc_m[nm] > 0){
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
@@ -566,11 +589,11 @@ __host__ int Data::MaxGroups(long long ts){
 			cudaMemcpy(enccountsmallT_h, enccountsmallT_d, sizeof(long long)*Nsmall_h[0], cudaMemcpyDeviceToHost);
 
 			GSF[0].outputfile = fopen(GSF[0].outputfilename, "w");	
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, ts, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci);
 			fclose(GSF[0].outputfile);
 
-			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), ts);
-			printf("Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), ts);
+			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);
+			printf("Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);
 			fclose(GSF[0].logfile);
 			return 0;
 		}
@@ -589,7 +612,7 @@ __host__ void Data::setStartTime(){
 
 
 //This function prints information how long the integration takes
-__host__ void Data::printTime(long long ts){
+__host__ void Data::printTime(){
 	gettimeofday( &tt3, NULL );
 	for(int st = 0; st < Nst; ++st){
 		times = (tt3.tv_sec - tt2.tv_sec);
@@ -598,17 +621,17 @@ __host__ void Data::printTime(long long ts){
 		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
 		fprintf(GSF[st].timefile, "%g\n", times + timems/1000000.0);
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", ts, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
+		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
 		fclose(GSF[st].timefile);
 		fclose(GSF[st].logfile);
 
 		if(Nst == 1){
-			printf("Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", ts, N_h[0], Nsmall_h[0], Energy_h[4]);
-			fprintf(masterfile, "Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", ts, N_h[0], Nsmall_h[0], Energy_h[4]);
+			printf("Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[0], Nsmall_h[0], Energy_h[4]);
+			fprintf(masterfile, "Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[0], Nsmall_h[0], Energy_h[4]);
 		}
 		else if(st == 0) {
-			printf("Reached timestep %lld with %d simulations\n", ts, Nst);
-			fprintf(masterfile, "Reached timestep %lld with %d simulations\n", ts, Nst);
+			printf("Reached timestep %lld with %d simulations\n", timeStep, Nst);
+			fprintf(masterfile, "Reached timestep %lld with %d simulations\n", timeStep, Nst);
 		}
 	}
 	gettimeofday( &tt2, NULL );
