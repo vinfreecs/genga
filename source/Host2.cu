@@ -1124,7 +1124,7 @@ __host__ int Host::icSize(int st){
 	//Determine the simulation start time
 	double time = 0.0;
 	if(ict_h[st] > 0.0) time = ict_h[st];
-	
+
 	int er = icict(Nformat, st);
 	if(er == 0) return 0;
 
@@ -1151,6 +1151,7 @@ __host__ int Host::icSize(int st){
 			printf("Skip Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
 			N_h[st] = 0;
 			Nsmall_h[st] = 0;
+			return 1;
 		}
 	}
 	for(int i = 0; i < 1000000000; ++i){
