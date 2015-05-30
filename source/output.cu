@@ -41,11 +41,14 @@ __host__ int Data::firstoutput(){
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		}
 		else if(N_h[st] + Nsmall_h[st] > 0){
+			int tsign = 1;
+			if(idt_h[st] < 0) tsign = -1;
 			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "r");
 			double skip;
 			double Et;
 			char Ets[160];
 			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
+printf("%s %d %g %g\n", Ets, P.tRestart, idt_h[st], ict_h[st]);
 			fscanf (GSF[st].Energyfile, "%lf",&Et);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
@@ -57,7 +60,7 @@ __host__ int Data::firstoutput(){
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			int er = 0;
-			while(Et <= atof(Ets)){
+			while(Et * tsign <= atof(Ets) * tsign){
 				fscanf (GSF[st].Energyfile, "%lf",&Et);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
@@ -68,7 +71,7 @@ __host__ int Data::firstoutput(){
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				fscanf (GSF[st].Energyfile, "%lf",&skip);
 				er = fscanf (GSF[st].Energyfile, "%lf",&skip);
-				if(Et >= atof(Ets)) break;
+				if(Et * tsign >= atof(Ets) * tsign) break;
 
 				if(er <= 0){
 					break;

@@ -4,35 +4,37 @@
 #include <cuda.h>
 
 
-void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc){
+void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w){
 
 	double rsq, vsq, u, ir, ia;
 	double t1, ria, ien2, ec, es2;
-	double3 h3;
-	double h2, h, t;
 
-        rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z;
-        vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z;
-        u =  x4i.x*v4i.x + x4i.y*v4i.y + x4i.z*v4i.z;
-        ir = rsqrt(rsq);
-        ia = 2.0*ir-vsq/mu;
+        rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
+        vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+        u =  x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z;
+        ir = 1.0 / sqrtf(rsq);
+        ia = 2.0 * ir - vsq / mu;
 
 	a = 1.0 / ia;
 
-        t1 = ia*ia;
-        ria = rsq*ir*ia;
-        ien2 = 1.0 / (mu*t1*ia);
-        ec = 1.0-ria;
+        t1 = ia * ia;
+        ria = rsq * ir * ia;
+        ien2 = 1.0 / (mu * t1 * ia);
+        ec = 1.0 - ria;
         es2 = u * u * t1 * t1 * ien2;
-        e = sqrt(ec*ec + es2);
+        e = sqrtf(ec * ec + es2);
 
 
+	//inclination
+
+	double3 h3;
+	double h2, h, t;
 	h3.x = x4i.y * v4i.z - x4i.z * v4i.y;
 	h3.y = -x4i.x * v4i.z + x4i.z * v4i.x;
 	h3.z = x4i.x * v4i.y - x4i.y * v4i.x;
 
 	h2 = h3.x * h3.x + h3.y * h3.y + h3.z * h3.z;
-	h = sqrt(h2);
+	h = sqrtf(h2);
 
 	t = h3.z / h;
 
@@ -45,6 +47,28 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc)
 		}
 		else inc = 0.0;
 	}
+
+	//longitude of ascending node
+
+	double n = sqrtf(h3.x * h3.x + h3.y * h3.y);
+	if(h3.x >= 0.0){
+		Omega = acos(-h3.y / n);
+	}
+	else{
+		Omega = 2.0 * M_PI - acos(-h3.y / n);
+	}	
+	if(inc == 0.0) Omega = 0.0;
+
+	//argument of periapsis
+	
+	double3 e3;
+	e3.x = ( x4i.y * h3.z - x4i.z * h3.y) / mu - x4i.x * ir;
+	e3.y = (-x4i.x * h3.z + x4i.z * h3.x) / mu - x4i.y * ir;
+	e3.z = ( x4i.x * h3.y - x4i.y * h3.x) / mu - x4i.z * ir;
+
+	t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
+	w = acos(t);
+	if(e3.z < 0.0) w = 2.0 * M_PI - w;
 }
 
 int main(int argc, char*argv[]){
@@ -83,7 +107,7 @@ int main(int argc, char*argv[]){
 
 	double3 x, v, spin;
 	double xOld;
-	double m, r, a, e, inc;
+	double m, r, a, e, inc, Omega, w;
 	double s, t;
 	int index;
 
@@ -133,8 +157,8 @@ printf("%s\n", inputfilename);
 printf("%d\n", NN);
                                 break;
                         }
-			aei(x, v, Msun + m, a, e, inc);
-			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, m, r);
+			aei(x, v, Msun + m, a, e, inc, Omega, w);
+			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, m, r);
 		}
 		fclose(outputfile);
 	}

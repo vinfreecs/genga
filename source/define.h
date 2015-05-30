@@ -49,7 +49,7 @@
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
-#define def_Buffer 10
+#define def_Buffer 1
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
