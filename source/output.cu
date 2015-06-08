@@ -420,7 +420,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else{
-						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
@@ -440,7 +440,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else{
-						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
+						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");

@@ -214,6 +214,16 @@ int main(int argc, char*argv[]){
 	D.poincarefile = fopen(D.poincarefilename, "w");
 #endif
 
+	D.irrTimeStep = 0;
+	if(D.P.IrregularOutputs == 1){
+		er = D.readIrregularOutputs();
+		if(er == 0){
+			return 0;
+		}
+	}
+
+
+
 	int bufferCount = 1;
 	int bufferCountIrr = 1;
 	D.MultiSim = 0;
@@ -293,45 +303,61 @@ int main(int argc, char*argv[]){
 				}
 			}
 
-// print irregular outputs
+			// print irregular outputs
+			if(D.P.IrregularOutputs == 1 && D.irrTimeStep < D.NIrrOutputs && D.time_h[0] >= D.IrrOutputs[D.irrTimeStep]){
 
-if(D.P.IrregularOutputs == 1){
-	double dTau = 0.3;
+				int ni = 1;
+				for(int i = 0; i < ni; ++i){
+					double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
 
-	D.IrregularStep(dTau);
-	for(int st = 0; st < Nst; ++st){
-		D.time_h[st] += dTau * D.idt_h[st];
-	}
-	if(Nst > 1){
-		cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
-	}
+					D.IrregularStep(dTau);
+					for(int st = 0; st < Nst; ++st){
+						D.time_h[st] += dTau * D.idt_h[st];
+					}
+					if(Nst > 1){
+						cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+					}
 
-	D.step();
+					D.step();
 
-	if(D.P.Buffer == 1){
-		D.CoordinateOutput(1);
-	}
-	else if(bufferCountIrr >= D.P.Buffer){
-		//write out buffer
-		D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
-		D.CoordinateToBuffer(bufferCountIrr - 1, 1);
-		D.CoordinateOutputBuffer(1);
-	}
-	else{
-		//store in buffer
-		D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
-		D.CoordinateToBuffer(bufferCountIrr - 1, 1);
-	}
+					if(D.P.Buffer == 1){
+						D.CoordinateOutput(1);
+					}
+					else if(bufferCountIrr >= D.P.Buffer){
+						//write out buffer
+						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+						D.CoordinateOutputBuffer(1);
+					}
+					else{
+						//store in buffer
+						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+					}
 
-	D.IrregularStep(-dTau);
-	D.step();
-	D.SymplecticP(1);
+					D.IrregularStep(-dTau);
+					for(int st = 0; st < Nst; ++st){
+						D.time_h[st] -= dTau * D.idt_h[st];
+					}
+					if(Nst > 1){
+						cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+					}
 
-	++bufferCountIrr;
-	if(bufferCountIrr > D.P.Buffer){
-		bufferCountIrr = 1;
-	}
-}
+					D.step();
+					D.SymplecticP(1);
+
+					++bufferCountIrr;
+					if(bufferCountIrr > D.P.Buffer){
+						bufferCountIrr = 1;
+					}
+					++D.irrTimeStep;
+				
+					dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
+					if(dTau <= 0) ++ni;
+
+					if(ni + D.irrTimeStep - 1 > D.NIrrOutputs) break;
+				}
+			}
 
 			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				++bufferCount;

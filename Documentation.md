@@ -42,6 +42,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Coordinates output interval, in time steps
  * The number of outputs per Coordinate output interval
  * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
+ * The file name of irregular coordinarte output calendar. "-" means no irregular outputs. See [here](#markdown-header-irregular-coodinate-output) for more details. 
  * The total number of integration steps
  * The central Mass, in solar masses
  * Value of close encounter parameter n1
@@ -295,6 +296,14 @@ The crossing events are written consecutively the the file. After each coordinat
 
 ##The master file: master.out
 The master file contains information about the used hardware and simulation progress. If an error occurs than the master file contains more details about that. 
+
+# Irregular coodinate output #
+In the 'param.dat' file can be specified the name of a calendar file, using the argument 'Irregular output calendar = <fileName>'
+This file must contain line by line the desired output times of the coordinates in years.
+When this option is used, then output files with names OutIrr... similar to the orignial output files are created. They contain the coordinate outputs of the 
+specified time. When the multi simulation mode is uses, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
+When the argument of 'Irregular output calendar' is equal to "-", or if this line is missing in the 'param.dat', then no irregular output files are generated
+ 
 
 # Restart a simulation #
 A simulation can be restarted from each coordinate output file, by using the -R time step console argument or specify a restart time in the 'param.dat' file. Before you restart a simulation you can also change things in the param.dat file, but the Output name must be the same as in the original run! To be able to restart a simulation, the corresponding coordinate output file, the corresponding line in the energy file and if used, the corresponding aeGrid file, must exist.

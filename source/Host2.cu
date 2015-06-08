@@ -1537,7 +1537,11 @@ __host__ void Host::Tsizes(){
 	NconstT = NT + NsmallT;
 }
 
-/*
+// **************************************
+// This function reads the irregular output times and stores them in IrrOutputs
+// Authors: Simon Grimm
+// June 2015
+// ******************************************
 __host__ int Host::readIrregularOutputs(){
 
 	FILE *Irrfile;
@@ -1565,15 +1569,17 @@ __host__ int Host::readIrregularOutputs(){
 	IrrOutputs = (double*)malloc(n * sizeof(double));
 	for(int i = 0; i < n; ++i){
 		er = fscanf(Irrfile, "%lf", &IrrOutputs[i]);
+		IrrOutputs[i] *= 365.25;
 		if(er <= 0){
 			n = i;
 			break;
 		}
 	}
+	NIrrOutputs = n;
 
 	return 1;
 }
-*/
+
 
 __host__ int Host::freeHost(){
 	cudaError_t error;

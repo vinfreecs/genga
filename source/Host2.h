@@ -65,6 +65,9 @@ public:
 
 	int *NBS_h, *NBS_d;
 
+	//data for irregular outputs
+	int irrTimeStep;
+	int NIrrOutputs;
 	double *IrrOutputs;
 	
 	__host__ Host(long long);
@@ -76,6 +79,7 @@ public:
 	__host__ void Calloc();
 	__host__ void Info();
 	__host__ void Tsizes();
+	__host__ int readIrregularOutputs();
 	__host__ int freeHost();
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);

@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.17: A calendar file can be used to generate irregular coordinate outputs.
  * Verions 3.15: The multi simulation mode can now have individual time step sizes and an individual number of integration steps for each sub-simulation.
  * Version 3.14: The coordinate outputs can now be buffered on the GPU. This increases the performance when lots of consecutive outputs are written. Use the 'Coordinate output buffer' argument to set the buffer size. Energy outputs within a buffer size are skipped.
  * Verion 3.12: The gas disk can now be started from the 'param.dat' file
