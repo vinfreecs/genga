@@ -23,6 +23,8 @@ public:
 	int runtimeVersion;
 	int driverVersion;
 
+	int MultiSim;
+
 	int *NB;				//number of bodies increased to integer block size
 	int *icNB;				//initial number of NB
 	int *N4;				//number of bodies divided by 4
@@ -62,6 +64,8 @@ public:
 	int *NEnergy;
 
 	int *NBS_h, *NBS_d;
+
+	double *IrrOutputs;
 	
 	__host__ Host(long long);
 	__host__ int NSimulations(int, char*argv[]);

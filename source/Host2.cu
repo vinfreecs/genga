@@ -208,6 +208,7 @@ __host__ void Host::Halloc(){
 	P.ei = def_EnergyOutputInterval;
 	P.ci = def_CoordinatesOutputInterval;
 	P.nci = def_OutputsPerInterval;
+	P.Buffer = def_Buffer;
 	P.deltaT = def_IntegrationSteps;
 	P.UseTestParticles = def_UseTestParticles;
 	P.tRestart = def_RestartTimeStep;	
@@ -230,7 +231,8 @@ __host__ void Host::Halloc(){
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
-	P.Buffer = def_Buffer;
+	P.IrregularOutputs = 0;
+	sprintf(P.IrregularOutputsfilename, "%s", "-");
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -431,6 +433,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else{
 				int t;
 				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Irregular output calendar =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", &P.IrregularOutputsfilename);
+	
+				if(er <= 0){
+					printf("Error: Irregular output calendar is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -991,6 +1008,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 	}
 	sprintf(GSF[st].Originputfilename, "%s", GSF[st].inputfilename);
+	if(strcmp(P.IrregularOutputsfilename, "-") != 0){
+		P.IrregularOutputs = 1;
+	}
+
 	return 1;
 }
 
@@ -1399,16 +1420,18 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
-			fprintf(infofile, "FormatS: %d\n", P.FormatS);					// use only argument in simulation 0
-			fprintf(infofile, "FormatT: %d\n", P.FormatT);					// use only argument in simulation 0
-			fprintf(infofile, "FormatP: %d\n", P.FormatP);					// use only argument in simulation 0
+			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
+			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
+			fprintf(infofile, "FormatP: %d\n", P.FormatP);						// use only argument in simulation 0
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
-			fprintf(infofile, "Energy output interval: %d\n", P.ei);                       // use only argument in simulation 0
-			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);                  // use only argument in simulation 0
-			fprintf(infofile, "Number of outputs per interval: %d\n", P.nci);              // use only argument in simulation 0
-			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);                 // use only argument in simulation 0
+			fprintf(infofile, "Energy output interval: %d\n", P.ei);				// use only argument in simulation 0
+			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);				// use only argument in simulation 0
+			fprintf(infofile, "Number of outputs per interval: %d\n", P.nci);			// use only argument in simulation 0
+			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);				// use only argument in simulation 0
+			fprintf(infofile, "Use Irregular outputs: %d\n", P.IrregularOutputs);			// use only argument in simulation 0
+			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
@@ -1513,6 +1536,44 @@ __host__ void Host::Tsizes(){
 	}
 	NconstT = NT + NsmallT;
 }
+
+/*
+__host__ int Host::readIrregularOutputs(){
+
+	FILE *Irrfile;
+	Irrfile = fopen(P.IrregularOutputsfilename, "r");
+	if(Irrfile == NULL){
+		printf("Error: Irregular output file not found: %s\n", P.IrregularOutputsfilename);		
+		fprintf(masterfile, "Error: Irregular output file not found: %s\n", P.IrregularOutputsfilename);		
+		return 0;
+	}
+	
+	//determine the lengh of the file
+	double t;
+	int er;
+	int n = 0;
+	for(int i = 0; i < 1000000; ++i){
+		er = fscanf(Irrfile, "%lf", &t);
+		if(er <= 0){
+			n = i;
+			break;
+		}
+	}
+	fclose(Irrfile);
+	Irrfile = fopen(P.IrregularOutputsfilename, "r");
+
+	IrrOutputs = (double*)malloc(n * sizeof(double));
+	for(int i = 0; i < n; ++i){
+		er = fscanf(Irrfile, "%lf", &IrrOutputs[i]);
+		if(er <= 0){
+			n = i;
+			break;
+		}
+	}
+
+	return 1;
+}
+*/
 
 __host__ int Host::freeHost(){
 	cudaError_t error;

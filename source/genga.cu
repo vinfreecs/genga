@@ -162,7 +162,7 @@ int main(int argc, char*argv[]){
 	}
 
 	// Set Order and Coefficients of the symplectic integrator //
-	D.SymplecticP();
+	D.SymplecticP(0);
 
 	cudaDeviceSynchronize();
 	cudaMemset(D.Energy_d, 0, D.NEnergyT*sizeof(double));
@@ -215,47 +215,13 @@ int main(int argc, char*argv[]){
 #endif
 
 	int bufferCount = 1;
-	int MultiSim = 0;
-	if(D.Nst > 1) MultiSim = 1;
+	int bufferCountIrr = 1;
+	D.MultiSim = 0;
+	if(D.Nst > 1) D.MultiSim = 1;
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
 		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
-		//Multi simulation mode
-	//	if(D.Nst > 1){
-		if(MultiSim == 1){
-			er = D.step_M();
-			if(er == 0) return 0;
-		}
-		else{
-			//Test particles
-			if(D.P.UseTestParticles == 1){
-				er = D.step_small();
-				if(er == 0) return 0;
-			}
-			//check the number of massive particles
-			else{
-				switch(D.NB[0]){
-					case 16: D.step_16();
-					break;
-					case 32: D.step_32();
-					break;
-					case 64: D.step_64();
-					break;
-					case 128: D.step_128();
-					break;
-					case 256: D.step_256();
-					break;
-					case 512: D.step_512();
-					break;
-					case 1024: D.step_1024();
-					break;
-					case 2048: D.step_2048();
-					//case 2048: D.step_largeN();
-					break;
-				}
-				if(D.NB[0] > 2048) D.step_largeN();
-			}
-		}
-
+		
+		D.step();
 			cudaDeviceSynchronize();
 			error = cudaGetLastError();
 			if(error != 0){
@@ -287,22 +253,25 @@ int main(int argc, char*argv[]){
 					D.copyGridae();
 				}
 			}
+
+
+
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
 			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				if(D.P.Buffer == 1){
-					D.CoordinateOutput();
+					D.CoordinateOutput(0);
 				}
 				else if(bufferCount >= D.P.Buffer){
 					//write out buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
-					D.CoordinateToBuffer(bufferCount - 1);
-					D.CoordinateOutputBuffer();
+					D.CoordinateToBuffer(bufferCount - 1, 0);
+					D.CoordinateOutputBuffer(0);
 				}
 				else{
 					//store in buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
-					D.CoordinateToBuffer(bufferCount - 1);
+					D.CoordinateToBuffer(bufferCount - 1, 0);
 				}
 				if(H.P.UseaeGrid == 1){
 					D.GridaeOutput();
@@ -323,6 +292,46 @@ int main(int argc, char*argv[]){
 					fflush(D.masterfile);
 				}
 			}
+
+// print irregular outputs
+
+if(D.P.IrregularOutputs == 1){
+	double dTau = 0.3;
+
+	D.IrregularStep(dTau);
+	for(int st = 0; st < Nst; ++st){
+		D.time_h[st] += dTau * D.idt_h[st];
+	}
+	if(Nst > 1){
+		cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+	}
+
+	D.step();
+
+	if(D.P.Buffer == 1){
+		D.CoordinateOutput(1);
+	}
+	else if(bufferCountIrr >= D.P.Buffer){
+		//write out buffer
+		D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+		D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+		D.CoordinateOutputBuffer(1);
+	}
+	else{
+		//store in buffer
+		D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+		D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+	}
+
+	D.IrregularStep(-dTau);
+	D.step();
+	D.SymplecticP(1);
+
+	++bufferCountIrr;
+	if(bufferCountIrr > D.P.Buffer){
+		bufferCountIrr = 1;
+	}
+}
 
 			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
 				++bufferCount;

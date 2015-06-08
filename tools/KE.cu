@@ -125,7 +125,7 @@ printf("%s skipped\n", inputfilename);
 		}
 printf("%s\n", inputfilename);
                 FILE *outputfile;
-                outputfile = fopen(outputfilename, "a");
+                outputfile = fopen(outputfilename, "w");
 		index = -1;
 		x.x = 0.0;
 		for(int i = 0; i < N; ++i){
@@ -161,6 +161,7 @@ printf("%d\n", NN);
 			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, m, r);
 		}
 		fclose(outputfile);
+		fclose(inputfile);
 	}
 
 }

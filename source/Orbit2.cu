@@ -31,6 +31,7 @@ __host__ void Data::AllocateOrbitt(){
 
 	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
 	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
+	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 
 	x4small_h = (double4*)malloc(NsmallT * sizeof(double4));
 	v4small_h = (double4*)malloc(NsmallT * sizeof(double4));
@@ -87,6 +88,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &enccountT_d, NT * sizeof(long long));
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
+	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
 
 #if G3 == 1
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
@@ -364,8 +366,10 @@ __host__ int Data::init(){
 	}
 	for(int i = 0; i < P.Buffer; ++i){
 		timestepBuffer[i] = 0;
+		timestepBufferIrr[i] = 0;
 	}
 	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d);
+	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d);
 	for(int i = 0; i < NEnergyT; ++i){
 		Energy_h[i] = 0.0;
 	}
@@ -1444,6 +1448,7 @@ __host__ int Data::freeOrbit(){
 
 	free(coordinateBuffer_h);
 	free(timestepBuffer);
+	free(timestepBufferIrr);
 
 	free(x4small_h);
 	free(v4small_h);
@@ -1489,6 +1494,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs2_d);
 
 	cudaFree(coordinateBuffer_d);
+	cudaFree(coordinateBufferIrr_d);
 
 	cudaFree(aelimits_d);
 	cudaFree(aecount_d);

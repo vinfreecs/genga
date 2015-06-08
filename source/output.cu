@@ -10,8 +10,8 @@ long long times, timems;			//elapsed time in seconds and microseconds
 //This function prints the initial Energy and Coordinate output
 //If Restart is set, then it reads the corespondent initial conditions from the files and writes no output
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Author: Simon Grimm
+//June 2015
 // *************************************
 __host__ int Data::firstoutput(){
 	for(int st = 0; st < Nst; ++st){
@@ -25,19 +25,73 @@ __host__ int Data::firstoutput(){
 
 			if(P.FormatP == 1){
 				if(Nst == 1 || P.FormatS == 0){
+					//clear Irregular output files
+					if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+					if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
+					FILE *file;
+					file = fopen(GSF[st].outputfilename, "r");
+					if(file != NULL){
+						fclose(file);
+						file = fopen(GSF[st].outputfilename, "w");
+						fclose(file);
+					}
+		
+	
 					if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
 					if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
 				else{
+					//clear Irregular output files
+					if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+					if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
+					FILE *file;
+					file = fopen(GSF[st].outputfilename, "r");
+					if(file != NULL){
+						fclose(file);
+						file = fopen(GSF[st].outputfilename, "w");
+						fclose(file);
+					}
+			
+
 					if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
 					if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
 			}
+			else{
+				//clear Irregular output files
+				if(Nst == 1 || P.FormatS == 0){
+					for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
+						char name[160];
+						sprintf(name, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+						FILE *file;
+						file = fopen(name, "r");
+						if(file != NULL){
+							fclose(file);
+							file = fopen(name, "w");
+							fclose(file);
+						}
+					}
+				}
+				else{
+					for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
+						char name[160];
+						sprintf(name, "%s../OutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+						FILE *file;
+						file = fopen(name, "r");
+						if(file != NULL){
+							fclose(file);
+							file = fopen(name, "w");
+							fclose(file);
+						}
+					}
 
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+				}
+			}
+
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, 0);
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		}
 		else if(N_h[st] + Nsmall_h[st] > 0){
@@ -101,7 +155,7 @@ __host__ int Data::firstoutput(){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double t, long long ts, int N, FILE *outputfile, double Msun, double3 *spin_h, double4 *x4small_h, double4 *v4small_h, double3 *spinsmall_h, int *indexsmall_h, int Nsmall, int Nst, float4 *aelimits_h, float4 *aelimitssmall_h, int *aecount_h, int *aecountsmall_h, int *enccount_h, int *enccountsmall_h, long long *aecountT_h, long long *aecountsmallT_h, long long *enccountT_h, long long *enccountsmallT_h, int ci){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double t, long long timeStep, int N, FILE *outputfile, double Msun, double3 *spin_h, double4 *x4small_h, double4 *v4small_h, double3 *spinsmall_h, int *indexsmall_h, int Nsmall, int Nst, float4 *aelimits_h, float4 *aelimitssmall_h, int *aecount_h, int *aecountsmall_h, int *enccount_h, int *enccountsmall_h, long long *aecountT_h, long long *aecountsmallT_h, long long *enccountT_h, long long *enccountsmallT_h, int ci, int irregular){
 
 	DemoToHelio(x4_h, v4_h, Msun, N, x4small_h, v4small_h, Nsmall);
 
@@ -113,9 +167,22 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		if(P.FormatP == 0){
 			char outputfilename[160];
 			if(Nst == 1){
-				sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+				if(irregular == 0){
+					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+				}
+				else{
+					sprintf(outputfilename, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
+				}
 			}
-			else sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+			else{
+				if(irregular == 0){
+					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+				}
+				else{
+					sprintf(outputfilename, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+
+				}
+			}
 			if(t > ict_h[st]) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");
 		}
@@ -126,14 +193,19 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
 
-		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/ts, enccountT_h[j], test_h[j]);
+		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
 		if(P.FormatP == 0) fclose(outputfile);
 	}
 	for(int j = 0; j < Nsmall; j+=1){
 		int st = 0;
 		if(P.FormatP == 0){
 			char outputfilename[160];
-			sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, indexsmall_h[j]);
+			if(irregular == 0){
+				sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, indexsmall_h[j]);
+			}
+			else{
+				sprintf(outputfilename, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, indexsmall_h[j]);
+			}
 			if(t > ict_h[st]) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");
 		}
@@ -143,7 +215,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		aecountsmallT_h[j] += aecountsmall_h[j];
 		enccountsmallT_h[j] += enccountsmall_h[j];
-		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/ts, enccountsmallT_h[j], -1.0);
+		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/timeStep, enccountsmallT_h[j], -1.0);
 		if(P.FormatP == 0) fclose(outputfile);
 	}
 }
@@ -287,12 +359,19 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 	}
 }
 
-__host__ void Data::CoordinateToBuffer(int bufferCount){
-	CoordinateToBuffer_kernel <<< (NT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, x4small_d, v4small_d, indexsmall_d, spinsmall_d, aelimitssmall_d, aecountsmall_d, aecountsmallT_d, enccountsmallT_d, coordinateBuffer_d, NT, NsmallT, NconstT, bufferCount);
+__host__ void Data::CoordinateToBuffer(int bufferCount, int irregular){
+	if(irregular == 0){
+		CoordinateToBuffer_kernel <<< (NT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, x4small_d, v4small_d, indexsmall_d, spinsmall_d, aelimitssmall_d, aecountsmall_d, aecountsmallT_d, enccountsmallT_d, coordinateBuffer_d, NT, NsmallT, NconstT, bufferCount);
+	}
+	else{
+		CoordinateToBuffer_kernel <<< (NT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, x4small_d, v4small_d, indexsmall_d, spinsmall_d, aelimitssmall_d, aecountsmall_d, aecountsmallT_d, enccountsmallT_d, coordinateBufferIrr_d, NT, NsmallT, NconstT, bufferCount);
+
+	}
 }
 
 //This function copies the data from the device to host and calls the printoutput function
-__host__ void Data::CoordinateOutput(){
+// irregular indicates irregular output intervals, which are read from a calendar file
+__host__ void Data::CoordinateOutput(int irregular){
 
 	if(Nst > 1 && timeStep < P.deltaT){
 		int s = 0;
@@ -337,29 +416,49 @@ __host__ void Data::CoordinateOutput(){
 		if(P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
-					sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
+					if(irregular == 0){
+						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
+					}
+					else{
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
+					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
 				if(P.FormatT == 1){
-					sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
+					if(irregular == 0){
+						sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
+					}
+					else{
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
+					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 					}
 			}
 			else{
 				if(P.FormatT == 0){
-					sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
+					if(irregular == 0){
+						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
+					}
+					else{
+						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
+					}
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
 				if(P.FormatT == 1){
-					sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+					if(irregular == 0){
+						sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+					}
+					else{
+						sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
+					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
 			}
 		}
 
 
-		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
 
 		if(P.FormatP == 1) fclose(GSF[st].outputfile);
 
@@ -372,9 +471,14 @@ __host__ void Data::CoordinateOutput(){
 }
 
 //This function copies the data from the coordinate buffer and calls the printoutput function
-__host__ void Data::CoordinateOutputBuffer(){
+__host__ void Data::CoordinateOutputBuffer(int irregular){
 
-	cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+	if(irregular == 0){
+		cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+	}
+	else{
+		cudaMemcpy(coordinateBuffer_h, coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+	}
 	cudaDeviceSynchronize();
 
 	for(int bf = 0; bf < P.Buffer; ++bf){
@@ -431,30 +535,56 @@ __host__ void Data::CoordinateOutputBuffer(){
 			if(P.FormatP == 1){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
-						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+						if(irregular == 0){
+							sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+						}
+						else{
+							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBufferIrr[bf]);
+						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					}
 					if(P.FormatT == 1){
-						sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
+						if(irregular == 0){
+							sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
+						}
+						else{
+							sprintf(GSF[st].outputfilename,"%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
+						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 						}
 				}
 				else{
 					if(P.FormatT == 0){
-						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+						if(irregular == 0){
+							sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+						}
+						else{
+							sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBufferIrr[bf]);
+						}
 						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 					}
 					if(P.FormatT == 1){
-						sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+						if(irregular == 0){
+							sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+						}
+						else{
+							sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
+						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 					}
 				}
 			}
 	
-			double time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;		
-
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci);
+			double time;
+			if(irregular == 0){
+				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;		
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
+			}
+			else{
+				time = timestepBufferIrr[bf] * idt_h[st] + ict_h[st] * 365.25;		
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
+			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 
@@ -591,7 +721,7 @@ __host__ int Data::MaxGroups(){
 			cudaMemcpy(enccountsmallT_h, enccountsmallT_d, sizeof(long long)*Nsmall_h[0], cudaMemcpyDeviceToHost);
 
 			GSF[0].outputfile = fopen(GSF[0].outputfilename, "w");	
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0], spin_h, x4small_h, v4small_h, spinsmall_h, indexsmall_h, Nsmall_h[0], Nst, aelimits_h, aelimitssmall_h, aecount_h, aecountsmall_h, enccount_h, enccountsmall_h, aecountT_h, aecountsmallT_h, enccountT_h, enccountsmallT_h, P.ci, 0);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);

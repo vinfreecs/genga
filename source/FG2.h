@@ -43,7 +43,7 @@ __host__ void Data::constantCopy2(){
 ////March 2014
 //
 //***************************************/
-__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id){
+__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id, int index){
 
 	if(x4i.w >= 0){
 
@@ -318,7 +318,7 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 //March 2014
 //
 // ******************************************
-__global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double Msun, int N, int si, int *PFlag_d){
+__global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, double Msun, int N, int si, int *PFlag_d){
 
         int idy = threadIdx.x;
         int id = blockIdx.x * blockDim.x + idy;
@@ -338,10 +338,11 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		double4 x4i = x4_d[id];
 		double4 x4oldi = xold_d[id];
 		double4 v4oldi = vold_d[id];
+		int index = index_d[id];
 		if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
 			PFlag_d[0] = 1;
 			double dtt = -x4oldi.y / v4oldi.y;
-			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id);
+			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index);
 //			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
 			xold_d[id] = x4oldi;
 			vold_d[id] = v4oldi;
@@ -364,7 +365,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //
 // *****************************************
 template <int Bl>
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -390,9 +391,10 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		groupIndexOld_d[id] = groupIndex_d[id];
 #endif
 		double test;
-		float4 aelimits = aelimits_d[idy];
+		float4 aelimits = aelimits_d[id];
+		int index = index_d[id];
 		//fastfg(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id);
+		fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
 //		BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt, test, test);
 		__syncthreads();
 		x4_d[id] = x4_s[idy];
@@ -415,7 +417,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //
 // *****************************************
 template <int Bl>
-__global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *asmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int *Gridaicount_d, int si){
+__global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *asmall_d, int *indexsmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int *Gridaicount_d, int si){
 
         int idy = threadIdx.x;
         int id = blockIdx.x * blockDim.x + idy;
@@ -425,6 +427,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 	float4 aelimits;
 	int aecount = 0;
+	int index;
 
 	if(id < N){
         	x4_s[idy] = x4_d[id];
@@ -435,6 +438,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
+		index = index_d[id];
 	}
 	else if(id < N + Nsmall){
 		x4_s[idy] = x4small_d[id - N];
@@ -445,6 +449,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		asmall_d[id - N].x = 0.0;
 		asmall_d[id - N].y = 0.0;
 		asmall_d[id - N].z = 0.0;
+		index = indexsmall_d[id - N];
 	}
 	else{
                 x4_s[idy].x = 0.0;
@@ -459,6 +464,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		aelimits.y = 0.0f;
 		aelimits.z = 0.0f;
 		aelimits.w = 0.0f;
+		index = -1;
 		
 	}
         __syncthreads();
@@ -467,7 +473,7 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 	if(id < N + Nsmall){
         	//fastfg(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-        	fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id);
+        	fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
         	//BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt, test, id);
         }
         __syncthreads();
@@ -518,8 +524,9 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		double Msun = Msun_d[st];
 		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
+		int index = index_d[id];
 		//fastfg(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id);
+		fgfull(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
 		//BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt * FGt, test, test);
 		__syncthreads();
 		x4_d[id] = x4_s[idy];

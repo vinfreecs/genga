@@ -84,7 +84,9 @@ public:
 	double *test_h, *test_d;
 
 	double *coordinateBuffer_h, *coordinateBuffer_d;
+	double *coordinateBufferIrr_d;
 	int *timestepBuffer;
+	int *timestepBufferIrr;
 
 	cudaError_t error;
 
@@ -117,15 +119,15 @@ public:
 	__host__ void setStartTime();
 	__host__ void printLastTime();
 	__host__ void printTime();
-	__host__ void CoordinateOutput();
-	__host__ void CoordinateOutputBuffer();
+	__host__ void CoordinateOutput(int);
+	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
 	__host__ void printMaxColl();
 	__host__ void GridaeOutput();
 	__host__ void printCollisions();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput(int);
-	__host__ void CoordinateToBuffer(int);
+	__host__ void CoordinateToBuffer(int, int);
 
 	//Energy
 	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);
@@ -134,7 +136,8 @@ public:
 	__host__ void EjectionEnergysmall2Call(double4 *, int);
 
 	//integrator
-	__host__ void SymplecticP();
+	__host__ void SymplecticP(int);
+	__host__ void IrregularStep(double);
 	__host__ void firstKick_16();
 	__host__ void firstKick_32();
 	__host__ void firstKick_64();
@@ -147,6 +150,7 @@ public:
 	__host__ void firstKick_small();
 	__host__ void firstKick_M(long long);
 
+	__host__ int step();
 	__host__ int step_16();
 	__host__ int step_32();
 	__host__ int step_64();
@@ -201,7 +205,7 @@ private:
 	__host__ void resize(int &, int &, int &, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, double4 *, double4 *, double3 *, int *, int, int, float4 *, float4 *, int *, int *, int *, int *, long long *, long long *, long long *, long long *, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, double4 *, double4 *, double3 *, int *, int, int, float4 *, float4 *, int *, int *, int *, int *, long long *, long long *, long long *, long long *, int, int);
 
 };
 #endif
