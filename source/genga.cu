@@ -366,6 +366,14 @@ int main(int argc, char*argv[]){
 				bufferCount = 1;
 			}
 	} // end of time step loop
+	//write out the remaining buffer
+	if(D.P.IrregularOutputs == 1){
+		D.P.Buffer = bufferCountIrr;
+		D.CoordinateOutputBuffer(1);
+	}
+	D.P.Buffer = bufferCount;
+	D.CoordinateOutputBuffer(0);
+	
 
 #if poincareFlag == 1
 	fclose(D.poincarefile);
