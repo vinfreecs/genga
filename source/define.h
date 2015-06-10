@@ -45,6 +45,7 @@
 #define def_aeGridStartCount 0
 #define def_aeGridName "A"
 #define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -158,6 +159,7 @@ struct Parameter{
 	int FormatP;
 	int Buffer;
 	int Usegas;
+	int UseForce;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 };

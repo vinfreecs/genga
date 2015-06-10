@@ -226,6 +226,7 @@ __host__ void Host::Halloc(){
 	Gridae.Start = def_aeGridStartCount;
 	sprintf(Gridae.X, def_aeGridName);
 	P.Usegas = def_Usegas;
+	P.UseForce = def_UseForce;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.FormatS = def_FormatS;
@@ -873,6 +874,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use force =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseForce);
+				if(er <= 0){
+					printf("Error: Use force value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "FormatS =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.FormatS);
@@ -1478,7 +1493,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
-			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                            // use only argument in simulation 0
+			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid emin: %f\n", Gridae.emin);                            // use only argument in simulation 0
@@ -1493,6 +1508,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas dik: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
+			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

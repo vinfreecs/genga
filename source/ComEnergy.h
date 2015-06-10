@@ -1,5 +1,6 @@
 // *********************************************************
-//This kernel computes the kinetic energy of the center of mass
+// This kernel computes the kinetic energy of the center of mass
+// it converts the velocities between heliocentric and democratic coordinates
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
@@ -79,27 +80,30 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
                 if(Bl >= 2) p[idy].w += p[idy + 1].w;
         }
         __syncthreads();
+	double iMsun = 1.0 / Msun;
 	if(idy == 0){
-                volatile double Tsun = 0.5 / Msun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
 	}
 	if(idy < N && f == 1){
 		//Convert to Heliocentric coordinates
-		v4_d[idy].x += p_s[0].x / Msun;
-		v4_d[idy].y += p_s[0].y / Msun;
-		v4_d[idy].z += p_s[0].z / Msun;
+		v4_d[idy].x += p_s[0].x * iMsun;
+		v4_d[idy].y += p_s[0].y * iMsun;
+		v4_d[idy].z += p_s[0].z * iMsun;
 
 	}
 	if(idy < N && f == -1){
 		//Convert to Democratic coordinates
-		v4_d[idy].x -= p_s[0].x / (Msun + p_s[0].w);
-		v4_d[idy].y -= p_s[0].y / (Msun + p_s[0].w);
-		v4_d[idy].z -= p_s[0].z / (Msun + p_s[0].w);
+		double iMsunp = 1.0 / (Msun + p_s[0].w);
+		v4_d[idy].x -= p_s[0].x * iMsunp;
+		v4_d[idy].y -= p_s[0].y * iMsunp;
+		v4_d[idy].z -= p_s[0].z * iMsunp;
 	}
 }
 // *********************************************************
 //This kernel computes the kinetic energy of the center of mass
+// it converts the velocities between heliocentric and democratic coordinates
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2014
@@ -187,8 +191,11 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                 p[idy].w += p[idy + 1].w;
         }
         __syncthreads();
+
+	double iMsun = 1.0 / Msun;
+
         if(idy == 0){
-                volatile double Tsun = 0.5 / Msun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
 	}
@@ -196,19 +203,150 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                 double m = x4_d[idy + i].w;
                 if(m > 0 && idy + i < N && f == 1){
 			//Convert to Heliocentric coordinates
-			v4_d[idy + i].x += p_s[0].x / Msun;
-			v4_d[idy + i].y += p_s[0].y / Msun;
-			v4_d[idy + i].z += p_s[0].z / Msun;
+			v4_d[idy + i].x += p_s[0].x * iMsun;
+			v4_d[idy + i].y += p_s[0].y * iMsun;
+			v4_d[idy + i].z += p_s[0].z * iMsun;
 
 		}
+		if(m > 0 && idy + i < N && f == -1){
+			//Convert to Democratic coordinates
+			double iMsunp = 1.0 / (Msun + p_s[0].w);
+			v4_d[idy + i].x -= p_s[0].x * iMsunp;
+			v4_d[idy + i].y -= p_s[0].y * iMsunp;
+			v4_d[idy + i].z -= p_s[0].z * iMsunp;
+		}
+	}
+}
+
+// *********************************************************
+//This kernel computes the kinetic energy of the center of mass
+// it converts the velocities between heliocentric and democratic coordinates
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+// ***********************************************************
+template < int Bl>
+__global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d, double4 *v4small_d, double* U_d, double Msun, double *test_d, int N, int Nsmall, int f){
+
+	int idy = threadIdx.x;
+
+        __shared__ double4 p_s[Bl];
+
+        p_s[idy].x = 0.0;
+        p_s[idy].y = 0.0;
+        p_s[idy].z = 0.0;
+        p_s[idy].w = 0.0;
+
+        for(int i = 0; i < N; i += Bl){
+		double m = x4_d[idy + i].w;
+                if(m > 0 && idy + i < N){
+                        p_s[idy].x += m * v4_d[idy + i].x;
+                        p_s[idy].y += m * v4_d[idy + i].y;
+                        p_s[idy].z += m * v4_d[idy + i].z;
+                        p_s[idy].w += m;
+                }
+        }
+        __syncthreads();
+
+        if(Bl >= 512){
+                if(idy < 256){
+                        p_s[idy].x += p_s[idy + 256].x;
+                        p_s[idy].y += p_s[idy + 256].y;
+                        p_s[idy].z += p_s[idy + 256].z;
+                        p_s[idy].w += p_s[idy + 256].w;
+                }
+        }
+        __syncthreads();
+
+        if(Bl >= 256){
+                if(idy < 128){
+                        p_s[idy].x += p_s[idy + 128].x;
+                        p_s[idy].y += p_s[idy + 128].y;
+                        p_s[idy].z += p_s[idy + 128].z;
+                        p_s[idy].w += p_s[idy + 128].w;
+                }
+        }
+        __syncthreads();
+
+        if(Bl >= 128){
+                if(idy < 64){
+                        p_s[idy].x += p_s[idy + 64].x;
+                        p_s[idy].y += p_s[idy + 64].y;
+                        p_s[idy].z += p_s[idy + 64].z;
+                        p_s[idy].w += p_s[idy + 64].w;
+                }
+        }
+        __syncthreads();
+	if(idy < 32){
+                volatile double4*p = p_s;
+                p[idy].x += p[idy + 32].x;
+                p[idy].x += p[idy + 16].x;
+                p[idy].x += p[idy + 8].x;
+                p[idy].x += p[idy + 4].x;
+                p[idy].x += p[idy + 2].x;
+                p[idy].x += p[idy + 1].x;
+
+                p[idy].y += p[idy + 32].y;
+                p[idy].y += p[idy + 16].y;
+                p[idy].y += p[idy + 8].y;
+                p[idy].y += p[idy + 4].y;
+                p[idy].y += p[idy + 2].y;
+                p[idy].y += p[idy + 1].y;
+
+                p[idy].z += p[idy + 32].z;
+                p[idy].z += p[idy + 16].z;
+                p[idy].z += p[idy + 8].z;
+                p[idy].z += p[idy + 4].z;
+                p[idy].z += p[idy + 2].z;
+                p[idy].z += p[idy + 1].z;
+    
+	        p[idy].w += p[idy + 32].w;
+                p[idy].w += p[idy + 16].w;
+                p[idy].w += p[idy + 8].w;
+                p[idy].w += p[idy + 4].w;
+                p[idy].w += p[idy + 2].w;
+                p[idy].w += p[idy + 1].w;
+        }
+        __syncthreads();
+
+	double iMsun = 1.0 / Msun;
+	double iMsunp = 1.0 / (Msun + p_s[0].w);
+
+        if(idy == 0){
+                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+//printf("Tsun %.40g %d\n", Tsun, f);
+		U_d[0] += f * Tsun;
 	}
         for(int i = 0; i < N; i += Bl){
                 double m = x4_d[idy + i].w;
+                if(m > 0 && idy + i < N && f == 1){
+			//Convert to Heliocentric coordinates
+			v4_d[idy + i].x += p_s[0].x * iMsun;
+			v4_d[idy + i].y += p_s[0].y * iMsun;
+			v4_d[idy + i].z += p_s[0].z * iMsun;
+
+		}
                 if(m > 0 && idy + i < N && f == -1){
 			//Convert to Democratic coordinates
-			v4_d[idy + i].x -= p_s[0].x / (Msun + p_s[0].w);
-			v4_d[idy + i].y -= p_s[0].y / (Msun + p_s[0].w);
-			v4_d[idy + i].z -= p_s[0].z / (Msun + p_s[0].w);
+			v4_d[idy + i].x -= p_s[0].x * iMsunp;
+			v4_d[idy + i].y -= p_s[0].y * iMsunp;
+			v4_d[idy + i].z -= p_s[0].z * iMsunp;
+		}
+	}
+        for(int i = 0; i < Nsmall; i += Bl){
+                double m = x4small_d[idy + i].w;
+                if(m >= 0 && idy + i < Nsmall && f == 1){
+			//Convert to Heliocentric coordinates
+			v4small_d[idy + i].x += p_s[0].x * iMsun;
+			v4small_d[idy + i].y += p_s[0].y * iMsun;
+			v4small_d[idy + i].z += p_s[0].z * iMsun;
+
+		}
+                if(m >= 0 && idy + i < Nsmall && f == -1){
+			//Convert to Democratic coordinates
+			v4small_d[idy + i].x -= p_s[0].x * iMsunp;
+			v4small_d[idy + i].y -= p_s[0].y * iMsunp;
+			v4small_d[idy + i].z -= p_s[0].z * iMsunp;
 		}
 	}
 }
@@ -339,20 +477,22 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 	p_s[idy].w += pw;
 
 	__syncthreads();
+	double iMsun = 1.0 / Msun;
 	//now the sum is complete
 	if(index == 0){
-                volatile double Tsun = 0.5 / Msun * ( p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
+                volatile double Tsun = 0.5 * iMsun * ( p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[st_s[idy]] += ff * Tsun;
 	}
 	if(id < NT && id >= 0 && f == 1){
-		v4_d[id].x += p_s[idy].x / Msun;
-		v4_d[id].y += p_s[idy].y / Msun;
-		v4_d[id].z += p_s[idy].z / Msun;
+		v4_d[id].x += p_s[idy].x * iMsun;
+		v4_d[id].y += p_s[idy].y * iMsun;
+		v4_d[id].z += p_s[idy].z * iMsun;
 	}
 	if(id < NT && id >= 0 && f == -1){
-		v4_d[id].x -= p_s[idy].x / (Msun + p_s[idy].w);
-		v4_d[id].y -= p_s[idy].y / (Msun + p_s[idy].w);
-		v4_d[id].z -= p_s[idy].z / (Msun + p_s[idy].w);
+		double iMsunp = 1.0 / (Msun + p_s[idy].w);
+		v4_d[id].x -= p_s[idy].x * iMsunp;
+		v4_d[id].y -= p_s[idy].y * iMsunp;
+		v4_d[id].z -= p_s[idy].z * iMsunp;
 	}
 }

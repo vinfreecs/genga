@@ -33,6 +33,7 @@ aeGrid name = A
 Use gas disk = 0
 Gas dTau_diss = 10000
 Gas alpha = 1
+Use force = 0
 FormatS = 0
 FormatT = 0
 FormatP = 1

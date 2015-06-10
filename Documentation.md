@@ -95,6 +95,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * use gas disk: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
  * The dissipation time for the gas disc in years
  * The power law exponent for the gas disc, alpha 
+ * use additional force, which is specified in the file force.h See [here](#markdown-additional-forces) for more details
  * FormatS:  Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
@@ -379,4 +380,9 @@ To start a multi simulation run, an additional file is needed, which contains a 
 
 The simulation can then be started with './genga -M path.dat'
 The sub simulations can all have a different number of bodies. If a sub simulation contains less particles than specified in the Nmin value, then this specific simulation is stopped, and the total number of simulations gets reduced.
-In the multi simulation mode, the indexes of the particles should not be greater than 100. 
+In the multi simulation mode, the indexes of the particles should not be greater than 100.
+
+# Additional Forces #
+in the file 'force.h' can be included additional forces. In this kernel, all coordinates have already been converted into heliocentric coordinates.
+In the 'param.dat' can be specified a number 'doForce' for different forces. The kernel is executed for doForce > 0.
+
