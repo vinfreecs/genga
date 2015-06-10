@@ -368,12 +368,15 @@ int main(int argc, char*argv[]){
 	} // end of time step loop
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
-		D.P.Buffer = bufferCountIrr;
-		D.CoordinateOutputBuffer(1);
+		if(bufferCountIrr > 1){
+			D.P.Buffer = bufferCountIrr - 1;
+			D.CoordinateOutputBuffer(1);
+		}
 	}
-	D.P.Buffer = bufferCount;
-	D.CoordinateOutputBuffer(0);
-	
+	if(bufferCount > 1){
+		D.P.Buffer = bufferCount - 1;
+		D.CoordinateOutputBuffer(0);
+	}
 
 #if poincareFlag == 1
 	fclose(D.poincarefile);
