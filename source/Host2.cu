@@ -234,6 +234,7 @@ __host__ void Host::Halloc(){
 	P.FormatP = def_FormatP;
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
+	sprintf(P.setElementsfilename, "%s", "-");
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -363,7 +364,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 
-	for(int j = 0; j < 37; ++j){
+	for(int j = 0; j < 40; ++j){
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -949,6 +950,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Set Elements file name =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", &P.setElementsfilename);
+	
+				if(er <= 0){
+					printf("Error: Set Elements file name = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -1025,6 +1041,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	sprintf(GSF[st].Originputfilename, "%s", GSF[st].inputfilename);
 	if(strcmp(P.IrregularOutputsfilename, "-") != 0){
 		P.IrregularOutputs = 1;
+	}
+	if(strcmp(P.setElementsfilename, "-") != 0){
+		P.setElements = 1;
 	}
 
 	return 1;
@@ -1509,6 +1528,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
+			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
+			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}
@@ -1593,6 +1614,140 @@ __host__ int Host::readIrregularOutputs(){
 	}
 	NIrrOutputs = n;
 
+	return 1;
+}
+// **************************************
+// This function reads the Set Elements file with the Kepler elements
+// Authors: Simon Grimm
+// June 2015
+// ******************************************
+__host__ int Host::readSetElements(){
+
+	FILE *Efile;
+	Efile = fopen(P.setElementsfilename, "r");
+	if(Efile == NULL){
+		printf("Error: Set Elements file not found: %s\n", P.setElementsfilename);		
+		fprintf(masterfile, "Error: Set Elements file not found: %s\n", P.setElementsfilename);		
+		return 0;
+	}
+
+	int Elements[10];
+	for(int i = 0; i < 10; ++i){
+		Elements[i] = 0;
+	}
+	int nelements = 0;
+	//determine the specified elements
+	for(int i = 0; i < 12; ++i){
+		int c = fgetc(Efile);
+		char sp[16];
+
+		if(c == 't'){
+			Elements[i] = 1;
+			printf("t ");
+			++nelements;
+		}
+		else if(c == 'j'){
+			Elements[i] = 2;
+			printf("j ");
+			++nelements;
+		}
+		else if(c == 'a'){
+			Elements[i] = 3;
+			printf("a ");
+			++nelements;
+		}
+		else if(c == 'e'){
+			Elements[i] = 4;
+			printf("e ");
+			++nelements;
+		}
+		else if(c == 'i'){
+			Elements[i] = 5;
+			printf("i ");
+			++nelements;
+		}
+		else if(c == 'N'){
+			Elements[i] = 6;
+			printf("N ");
+			++nelements;
+		}
+		else if(c == 'w'){
+			Elements[i] = 7;
+			printf("w ");
+			++nelements;
+		}
+		else if(c == 'm'){
+			Elements[i] = 8;
+			printf("m ");
+			++nelements;
+		}
+		else if(c == 'r'){
+			Elements[i] = 9;
+			printf("r ");
+			++nelements;
+		}
+		else{
+			printf("\n");
+			break;
+		}
+
+		fgets(sp, 2, Efile);
+	}
+	int er;
+	er = 1;
+	for(int i = 0; i < 10; ++i){
+		if(Elements[i] == 1) er = 0;
+	}
+	if(er == 1){
+		printf("Error: time is missing in Set Elements file\n");
+		return 0;
+	}
+	er = 1;
+	fclose(Efile);
+	//determine the lenght of the file
+	Efile = fopen(P.setElementsfilename, "r");
+	//skip header
+	double t;
+	for(int i = 0; i < nelements; ++i){
+		char c[16];
+		er = fscanf(Efile, "%s", &c);
+	}
+	int nlines;
+	int nbodies = 1;
+	for(int j = 0; j < 1000000; ++j){
+		for(int i = 0; i < nelements; ++i){
+			er = fscanf(Efile, "%lf", &t);
+			if(er <= 0) break;
+		}
+		if(er <= 0){
+			nlines = j;
+			break;
+		}
+	}
+	fclose(Efile);
+//printf("%d lines, %d\n", nlines, nbodies);
+
+	constantCopy3(Elements, nelements, nbodies, nlines);
+	//allocate memory
+	setElementsData_h = (double*)malloc(nelements * nlines * sizeof(double));	
+	cudaMalloc((void **) &setElementsData_d, nelements * nlines * sizeof(double));
+	Efile = fopen(P.setElementsfilename, "r");
+
+	//skip header
+	for(int i = 0; i < nelements; ++i){
+		char c[16];
+		er = fscanf(Efile, "%s", &c);
+	}
+	for(int j = 0; j < nlines; ++j){
+		for(int i = 0; i < nelements; ++i){
+			er = fscanf(Efile, "%lf", &setElementsData_h[j * nelements + i]);
+			
+		}
+	}
+	cudaMemcpy(setElementsData_d, setElementsData_h, nelements * nlines * sizeof(double), cudaMemcpyHostToDevice);
+
+	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
+	cudaMemset(setElementsLine_d, 0, sizeof(int));
 	return 1;
 }
 

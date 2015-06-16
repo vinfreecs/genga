@@ -69,6 +69,9 @@ public:
 	int irrTimeStep;
 	int NIrrOutputs;
 	double *IrrOutputs;
+
+	double *setElementsData_h, *setElementsData_d;
+	int *setElementsLine_d;
 	
 	__host__ Host(long long);
 	__host__ int NSimulations(int, char*argv[]);
@@ -80,7 +83,12 @@ public:
 	__host__ void Info();
 	__host__ void Tsizes();
 	__host__ int readIrregularOutputs();
+	__host__ int readSetElements();
 	__host__ int freeHost();
+
+	//force
+	__host__ void constantCopy3(int *, int, int, int);
+
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
 	__host__ int icSize(int);

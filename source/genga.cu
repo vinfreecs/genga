@@ -221,6 +221,12 @@ int main(int argc, char*argv[]){
 			return 0;
 		}
 	}
+	if(D.P.setElements == 1){
+		er = D.readSetElements();
+		if(er == 0){
+			return 0;
+		}
+	}
 
 
 
@@ -230,6 +236,7 @@ int main(int argc, char*argv[]){
 	if(D.Nst > 1) D.MultiSim = 1;
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
 		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
+		cudaMemcpy(D.time_d, D.time_h, sizeof(double), cudaMemcpyHostToDevice);
 		
 		D.step();
 			cudaDeviceSynchronize();

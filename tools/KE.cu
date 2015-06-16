@@ -4,7 +4,7 @@
 #include <cuda.h>
 
 
-void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w){
+void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w, double &E){
 
 	double rsq, vsq, u, ir, ia;
 	double t1, ria, ien2, ec, es2;
@@ -29,9 +29,9 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 
 	double3 h3;
 	double h2, h, t;
-	h3.x = x4i.y * v4i.z - x4i.z * v4i.y;
+	h3.x =  x4i.y * v4i.z - x4i.z * v4i.y;
 	h3.y = -x4i.x * v4i.z + x4i.z * v4i.x;
-	h3.z = x4i.x * v4i.y - x4i.y * v4i.x;
+	h3.z =  x4i.x * v4i.y - x4i.y * v4i.x;
 
 	h2 = h3.x * h3.x + h3.y * h3.y + h3.z * h3.z;
 	h = sqrtf(h2);
@@ -62,13 +62,23 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	//argument of periapsis
 	
 	double3 e3;
-	e3.x = ( x4i.y * h3.z - x4i.z * h3.y) / mu - x4i.x * ir;
-	e3.y = (-x4i.x * h3.z + x4i.z * h3.x) / mu - x4i.y * ir;
-	e3.z = ( x4i.x * h3.y - x4i.y * h3.x) / mu - x4i.z * ir;
+	e3.x = ( v4i.y * h3.z - v4i.z * h3.y) / mu - x4i.x * ir;
+	e3.y = (-v4i.x * h3.z + v4i.z * h3.x) / mu - x4i.y * ir;
+	e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
 
 	t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
 	w = acos(t);
 	if(e3.z < 0.0) w = 2.0 * M_PI - w;
+
+
+	//True Anomaly
+	t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
+	double Theta = acos(t);
+	if(u < 0.0) Theta = 2.0 * M_PI - Theta;
+
+	//Eccentric Anomaly
+	E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
+	if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 }
 
 int main(int argc, char*argv[]){
@@ -107,7 +117,7 @@ int main(int argc, char*argv[]){
 
 	double3 x, v, spin;
 	double xOld;
-	double m, r, a, e, inc, Omega, w;
+	double m, r, a, e, inc, Omega, w, E;
 	double s, t;
 	int index;
 
@@ -157,8 +167,8 @@ printf("%s\n", inputfilename);
 printf("%d\n", NN);
                                 break;
                         }
-			aei(x, v, Msun + m, a, e, inc, Omega, w);
-			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, m, r);
+			aei(x, v, Msun + m, a, e, inc, Omega, w, E);
+			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, E, m, r);
 		}
 		fclose(outputfile);
 		fclose(inputfile);

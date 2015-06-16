@@ -88,6 +88,7 @@ public:
 	int *timestepBuffer;
 	int *timestepBufferIrr;
 
+
 	cudaError_t error;
 
 	__host__ Data(long long);

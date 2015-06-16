@@ -666,7 +666,7 @@ if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
 }
 
 __host__ int Data::step_16(){
-
+if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[0]);

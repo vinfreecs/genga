@@ -162,6 +162,8 @@ struct Parameter{
 	int UseForce;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
+	int setElements;
+	char setElementsfilename[128];
 };
 
 //File names of Simulstions
