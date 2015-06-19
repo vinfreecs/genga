@@ -109,7 +109,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 				h3.z = x4i.x * v4i.y - x4i.y * v4i.x;
 
 				double h2 = h3.x * h3.x + h3.y * h3.y + h3.z * h3.z;
-				double h = sqrtf(h2);
+				double h = sqrt(h2);
 
 				double t = h3.z / h;
 

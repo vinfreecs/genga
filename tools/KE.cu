@@ -12,7 +12,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
         rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
         vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
         u =  x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z;
-        ir = 1.0 / sqrtf(rsq);
+        ir = 1.0 / sqrt(rsq);
         ia = 2.0 * ir - vsq / mu;
 
 	a = 1.0 / ia;
@@ -22,7 +22,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
         ien2 = 1.0 / (mu * t1 * ia);
         ec = 1.0 - ria;
         es2 = u * u * t1 * t1 * ien2;
-        e = sqrtf(ec * ec + es2);
+        e = sqrt(ec * ec + es2);
 
 
 	//inclination
@@ -34,7 +34,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	h3.z =  x4i.x * v4i.y - x4i.y * v4i.x;
 
 	h2 = h3.x * h3.x + h3.y * h3.y + h3.z * h3.z;
-	h = sqrtf(h2);
+	h = sqrt(h2);
 
 	t = h3.z / h;
 
@@ -50,7 +50,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 
 	//longitude of ascending node
 
-	double n = sqrtf(h3.x * h3.x + h3.y * h3.y);
+	double n = sqrt(h3.x * h3.x + h3.y * h3.y);
 	if(h3.x >= 0.0){
 		Omega = acos(-h3.y / n);
 	}

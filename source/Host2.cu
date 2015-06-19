@@ -235,6 +235,7 @@ __host__ void Host::Halloc(){
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	sprintf(P.setElementsfilename, "%s", "-");
+	P.setElements = 0;
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -1725,7 +1726,7 @@ __host__ int Host::readSetElements(){
 		}
 	}
 	fclose(Efile);
-//printf("%d lines, %d\n", nlines, nbodies);
+printf("%d lines, %d\n", nlines, nbodies);
 
 	constantCopy3(Elements, nelements, nbodies, nlines);
 	//allocate memory
