@@ -336,7 +336,6 @@ __global__ void groupsmall2_kernel(int *Nencpairssmall2_d, int2 *Encpairssmall2_
 		int i = Encpairssmall2_d[id].x;
 		int j = Encpairssmall2_d[id].y;
 		int Nj = atomicAdd(&Encpairssmall_d[j * Nconst].y, 1);
-
 		Encpairssmall_d[j * Nconst + Nj].x = i;
 		if(Nj == 1){
 			int Ne = atomicAdd(&Nencsmall_d[0], 1);

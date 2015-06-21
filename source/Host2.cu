@@ -329,7 +329,7 @@ __host__ void Host::Halloc(){
 		icNB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
-		Nconst[st] = N_h[st];
+		Nconst[st] = max(N_h[st], 2);
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
 		delta[st] = def_IntegrationSteps;
@@ -1374,7 +1374,7 @@ __host__ int Host::size(){
 		N2[st] /= 2;
 		
 		icNB[st] = NB[st];
-		Nconst[st] = N_h[st];
+		Nconst[st] = max(N_h[st], 2);
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
@@ -1632,14 +1632,15 @@ __host__ int Host::readSetElements(){
 		return 0;
 	}
 
-	int Elements[10];
-	for(int i = 0; i < 10; ++i){
+	int Elements[12];
+	for(int i = 0; i < 12; ++i){
 		Elements[i] = 0;
 	}
 	int nelements = 0;
 	//determine the specified elements
 	for(int i = 0; i < 12; ++i){
 		int c = fgetc(Efile);
+		printf("%d\n", c);
 		char sp[16];
 
 		if(c == 't'){
@@ -1696,7 +1697,7 @@ __host__ int Host::readSetElements(){
 	}
 	int er;
 	er = 1;
-	for(int i = 0; i < 10; ++i){
+	for(int i = 0; i < 12; ++i){
 		if(Elements[i] == 1) er = 0;
 	}
 	if(er == 1){

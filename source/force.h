@@ -46,7 +46,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 
 
 __constant__ int setElementsNumbers_c[3];
-__constant__ int setElements_c[10];
+__constant__ int setElements_c[12];
 //**************************************
 // This function copies the setElements parameters to constant memor. This functions must be iny
 // the same file as the use of the constant memory
@@ -57,7 +57,7 @@ __constant__ int setElements_c[10];
 //***************************************/
 __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines){
 	int setElementsNumbers[3] = {nelements, nbodies, nlines};	
-        cudaMemcpyToSymbol(setElements_c, Elements, 10 * sizeof(int), 0, cudaMemcpyHostToDevice);
+        cudaMemcpyToSymbol(setElements_c, Elements, 12 * sizeof(int), 0, cudaMemcpyHostToDevice);
         cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
