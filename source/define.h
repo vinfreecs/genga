@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.18
+#define Version 3.19
 
 
 //Default parameter values

@@ -52,7 +52,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	N2 = Encpairssmall_d[si * Nconst].y;
 	if(idy < N2){
 		idi = Encpairssmall_d[si * Nconst + idy].x;
-//printf("BSs %d %d %d N2 %d\n", idx, st, idi, N2);
+//printf("A BSs %d %d %d %d N2 %d %d %d\n", idx, idy, st, idi, N2, si, Nconst);
 	}
 	else idi = 0;
 

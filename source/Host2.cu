@@ -329,7 +329,7 @@ __host__ void Host::Halloc(){
 		icNB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
-		Nconst[st] = max(N_h[st], 2);
+		Nconst[st] = N_h[st] + 1;
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
 		delta[st] = def_IntegrationSteps;
@@ -1374,7 +1374,7 @@ __host__ int Host::size(){
 		N2[st] /= 2;
 		
 		icNB[st] = NB[st];
-		Nconst[st] = max(N_h[st], 2);
+		Nconst[st] = N_h[st] + 1;
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
