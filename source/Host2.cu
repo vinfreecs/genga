@@ -1525,7 +1525,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);                                // use only argument in simulation 0
 			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);                  // use only argument in simulation 0
 			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
-			fprintf(infofile, "Use gas dik: %d\n", P.Usegas);				// use only argument in simulation 0
+			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
@@ -1636,12 +1636,20 @@ __host__ int Host::readSetElements(){
 	for(int i = 0; i < 12; ++i){
 		Elements[i] = 0;
 	}
+
+
+	//read the number of planets
+	int nbodies = 1;
+	int er = fscanf(Efile, "%d", &nbodies);
+	if(er <= 0) return 0;
+
+printf("%d\n", nbodies);
 	int nelements = 0;
+	char sp[16];
+	fgets(sp, 2, Efile);
 	//determine the specified elements
 	for(int i = 0; i < 12; ++i){
 		int c = fgetc(Efile);
-		printf("%d\n", c);
-		char sp[16];
 
 		if(c == 't'){
 			Elements[i] = 1;
@@ -1688,6 +1696,11 @@ __host__ int Host::readSetElements(){
 			printf("r ");
 			++nelements;
 		}
+		else if(c == 'T'){
+			Elements[i] = 10;
+			printf("T ");
+			++nelements;
+		}
 		else{
 			printf("\n");
 			break;
@@ -1695,11 +1708,8 @@ __host__ int Host::readSetElements(){
 
 		fgets(sp, 2, Efile);
 	}
-	int er;
-	er = 1;
-	for(int i = 0; i < 12; ++i){
-		if(Elements[i] == 1) er = 0;
-	}
+	er = 0;
+	if(Elements[0] != 1) er = 1;
 	if(er == 1){
 		printf("Error: time is missing in Set Elements file\n");
 		return 0;
@@ -1710,14 +1720,15 @@ __host__ int Host::readSetElements(){
 	Efile = fopen(P.setElementsfilename, "r");
 	//skip header
 	double t;
+	fscanf(Efile, "%g", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
 		er = fscanf(Efile, "%s", &c);
 	}
 	int nlines;
-	int nbodies = 1;
+	int ncolumns = (nelements - 1) * nbodies + 1;
 	for(int j = 0; j < 1000000; ++j){
-		for(int i = 0; i < nelements; ++i){
+		for(int i = 0; i < ncolumns; ++i){
 			er = fscanf(Efile, "%lf", &t);
 			if(er <= 0) break;
 		}
@@ -1727,26 +1738,26 @@ __host__ int Host::readSetElements(){
 		}
 	}
 	fclose(Efile);
-printf("%d lines, %d\n", nlines, nbodies);
+printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelements, ncolumns);
 
-	constantCopy3(Elements, nelements, nbodies, nlines);
+	constantCopy3(Elements, nelements, nbodies, nlines, ncolumns);
 	//allocate memory
-	setElementsData_h = (double*)malloc(nelements * nlines * sizeof(double));	
-	cudaMalloc((void **) &setElementsData_d, nelements * nlines * sizeof(double));
+	setElementsData_h = (double*)malloc(ncolumns * nlines * sizeof(double));	
+	cudaMalloc((void **) &setElementsData_d, ncolumns * nlines * sizeof(double));
 	Efile = fopen(P.setElementsfilename, "r");
 
 	//skip header
+	fscanf(Efile, "%g", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
 		er = fscanf(Efile, "%s", &c);
 	}
 	for(int j = 0; j < nlines; ++j){
-		for(int i = 0; i < nelements; ++i){
-			er = fscanf(Efile, "%lf", &setElementsData_h[j * nelements + i]);
-			
+		for(int i = 0; i < ncolumns; ++i){
+			er = fscanf(Efile, "%lf", &setElementsData_h[j * ncolumns + i]);
 		}
 	}
-	cudaMemcpy(setElementsData_d, setElementsData_h, nelements * nlines * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(setElementsData_d, setElementsData_h, ncolumns * nlines * sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
 	cudaMemset(setElementsLine_d, 0, sizeof(int));

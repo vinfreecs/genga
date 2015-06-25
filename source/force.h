@@ -45,7 +45,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 }
 
 
-__constant__ int setElementsNumbers_c[3];
+__constant__ int setElementsNumbers_c[4];
 __constant__ int setElements_c[12];
 //**************************************
 // This function copies the setElements parameters to constant memor. This functions must be iny
@@ -55,10 +55,10 @@ __constant__ int setElements_c[12];
 //June 2015
 //
 //***************************************/
-__host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines){
-	int setElementsNumbers[3] = {nelements, nbodies, nlines};	
+__host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines, int ncolumns){
+	int setElementsNumbers[4] = {nelements, nbodies, nlines, ncolumns};	
         cudaMemcpyToSymbol(setElements_c, Elements, 12 * sizeof(int), 0, cudaMemcpyHostToDevice);
-        cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int), 0, cudaMemcpyHostToDevice);
+        cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
 
@@ -67,12 +67,14 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockIdx.x + idy;
 
-	if(id < 1 /*N*/){
+	int line = setElementsLine_d[0];
+	int nelements = setElementsNumbers_c[0];
+	int nbodies = setElementsNumbers_c[1];
+	int nlines = setElementsNumbers_c[2];
+	int ncolumns = setElementsNumbers_c[3];
 
+	if(id < nbodies){
 
-		int line = setElementsLine_d[0];
-		int nelements = setElementsNumbers_c[0];
-		int nlines = setElementsNumbers_c[2];
 
 		//Compute the Kepler Elements
 		int st = 0;
@@ -212,7 +214,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 			E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
-printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+//printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 		}
 		//modify Elements
 
@@ -226,14 +228,14 @@ printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 		double i0, i1;
 		double Omega0, Omega1;
 		double w0, w1;
+		double M0, M1, M;
+
 		for(int i = 0; i < nelements; ++i){
-			double t0 = setElementsData_d[line * nelements + i];
-			double t1 = setElementsData_d[line1 * nelements + i];
 			if(setElements_c[i] == 1){
-				time0 = t0;
-				time1 = t1;
-//printf("t %g %g %g %d %d\n", t0, t1, time, line, line1);
-				if(time >= t1 && line < nlines - 1){
+				time0 = setElementsData_d[line * ncolumns + i];
+				time1 = setElementsData_d[line1 * ncolumns + i];
+//printf("t %g %g %g %d %d\n", time0, time1, time, line, line1);
+				if(time >= time1 && line < nlines - 1){
 					++line;
 					if(line1 < nlines - 1){
 						++line1;
@@ -242,34 +244,40 @@ printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 				}
 			}
 			if(setElements_c[i] == 3){
-				a0 = t0;
-				a1 = t1;
+				a0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				a1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+//printf("a %g %g\n", a0, a1);
 			}
 			if(setElements_c[i] == 4){
-				e0 = t0;
-				e1 = t1;
+				e0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				e1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
 			}
 			if(setElements_c[i] == 5){
-				i0 = t0;
-				i1 = t1;
+				i0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				i1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
 			}
 			if(setElements_c[i] == 6){
-				Omega0 = t0;
-				Omega1 = t1;
+				Omega0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				Omega1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
 			}
 			if(setElements_c[i] == 7){
-				w0 = t0;
-				w1 = t1;
+				w0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				w1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
 			}
 			if(setElements_c[i] == 8){
-				m0 = t0;
-				m1 = t1;
-//printf("m %g %g\n", t0, t1);
+				m0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				m1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+//printf("m %g %g\n", m0, m1);
 			}
 			if(setElements_c[i] == 9){
-				r0 = t0;
-				r1 = t1;
-//printf("r %g %g\n", t0, t1);
+				r0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				r1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+//printf("r %g %g\n", r0, r1);
+			}
+			if(setElements_c[i] == 10){
+				M0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+				M1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+//printf("r %g %g\n", r0, r1);
 			}
 
 		}
@@ -300,8 +308,25 @@ printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 			if(setElements_c[i] == 9){
 				v4i.w = (r0 + (r1 - r0) * x) * 6.68458712e-14; //convert cm in AU
 			}
+			if(setElements_c[i] == 10){
+				M = (M0 + (M1 - M0) * x) * dayUnit;	//t0 epoch time day to day'
+				M *= sqrt(mu / (a * a * a));		//Mean anomaly
+//if(id == 0) printf("%g ", M);
+				M = fmod(M, 2.0*M_PI);
+//if(id == 0) printf("%g\n", M);
+			}
 		}
-
+		for(int i = 0; i < nelements; ++i){
+			if(setElements_c[i] == 10){
+				E = M + e * 0.5;
+				double Eold = E;
+				for(int j = 0; j < 32; ++j){
+					E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
+					if(fabs(E - Eold) < 1.0e-15) break;
+					Eold = E;
+				}
+			}
+		}
 
 		if(doConversion == 1){
 			//Convert to Cartesian Coordinates

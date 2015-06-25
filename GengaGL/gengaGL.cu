@@ -517,8 +517,8 @@ int main(int argc, char*argv[]){
 	Data H(Restart);
 
 	if(H.Lock == 1){
-	printf("lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
-	fprintf(H.masterfile, "lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+		printf("lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
+		fprintf(H.masterfile, "lock.dat file already exists for the current start time. Delete or modify the file to continue\n");
 		return 0;
 
 	}
@@ -710,10 +710,13 @@ int main(int argc, char*argv[]){
 			return 0;
 		}
 	}
-
+	
+	D.MultiSim = 0;
+	if(D.Nst > 1) D.MultiSim = 1;
 
 	//Start time loop here
 	D.timeStep = D.P.tRestart + 1;
+	ts = D.timeStep;
 
 	cudaDeviceSynchronize();
       //  cudaDeviceReset();

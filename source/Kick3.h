@@ -397,7 +397,7 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			double rcritvj = rcritv_d[jj];
 #if G3 == 1
 			int groupIndexj = groupIndex_d[jj];
-			accAG3(a_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, jj, id, icNB, t);
+//			accAG3(a_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, jj, id, icNB, t);
 #else
 			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
 
@@ -411,7 +411,7 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			double rcritvj = rcritv_d[jj];
 #if G3 == 1
 			int groupIndexj = groupIndex_d[jj];
-			accAG3(a_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, jj, id, icNB, t);
+//			accAG3(a_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, jj, id, icNB, t);
 #else
 			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
 #endif
