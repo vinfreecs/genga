@@ -260,6 +260,10 @@ int main(int argc, char*argv[]){
 			}
 			//Print Energy and log information//
 			if(D.timeStep % D.P.ei == 0){
+				if(D.CollisionFlag == 1){
+					int rem = D.RemoveCall();
+					if( rem == 0) return 0;
+				}
 				if(bufferCount >= D.P.Buffer){
 					D.EnergyOutput(bufferCount - 1);
 				}

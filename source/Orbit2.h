@@ -80,6 +80,7 @@ public:
 	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
+	int CollisionFlag;
 	double *Coll_h, *Coll_d;
 	double *test_h, *test_d;
 
@@ -166,6 +167,7 @@ public:
 
 	__host__ int CollisionCall();
 	__host__ void CollisionMCall();
+	__host__ int RemoveCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
 	__host__ void BSCall(int, int, double);

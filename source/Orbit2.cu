@@ -139,6 +139,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
+	CollisionFlag = 0;
 };
 
 

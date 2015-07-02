@@ -558,19 +558,27 @@ __host__ void Data::BSBMCall(int si){
 	cudaDeviceSynchronize();
 }
 
-__host__ int Data::CollisionCall(){
-	printCollisions();
+
+__host__ int Data::RemoveCall(){
 	int NminFlag = remove();
 	if(NminFlag == 1){
 		fprintf(masterfile, "Number of bodies smaller than Nmin, simulation stopped\n");
 		printf("Number of bodies smaller than Nmin, simulation stopped\n");
 		return 0;
 	}
+	CollisionFlag = 0;
+	return 1;
+}
+
+__host__ int Data::CollisionCall(){
+	printCollisions();
+	CollisionFlag = 1;
 	Ncoll_m[0] = 0;
 	return 1;
 }
 __host__ void Data::CollisionMCall(){
 	printCollisions();
+	CollisionFlag = 1;
 	int NminFlag = remove();
 
 	if(NminFlag == 1){
@@ -584,12 +592,6 @@ __host__ void Data::CollisionMCall(){
 __host__ int Data::EjectionCall(){
 	Ejection();
 	Ejectionsmall();
-	int NminFlag = remove();
-	if(NminFlag == 1){
-		fprintf(masterfile, "Number of bodies smaller than Nmin, simulation stopped\n");
-		printf("Number of bodies smaller than Nmin, simulation stopped\n");
-		return 0;
-	}
 	EjectionFlag_m[0] = 0;
 	EjectionFlag_m[1] = 0;
 	EjectionFlag2 = 1;

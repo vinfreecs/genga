@@ -27,6 +27,7 @@ struct cudaGraphicsResource* colorsVBO_CUDA;
 static int bufferCount = 1;
 static int bufferCountIrr = 1;
 static long long ts = 1;
+static int CollisionFlag = 1;
 static GLdouble anglex = 0.0; //angle to rotate system around z axis
 static GLdouble angley = 0.0; //angle to rotate z axis
 static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
@@ -50,6 +51,7 @@ double *MLimits_d;
 
 int loop(Data D, double &time){
 		D.timeStep = ts;
+		D.CollisionFlag = CollisionFlag;
 		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
 		cudaMemcpy(D.time_d, D.time_h, sizeof(double), cudaMemcpyHostToDevice);
 		time = D.time_h[0] / 365.25;
@@ -77,6 +79,10 @@ int loop(Data D, double &time){
 			}
 			//Print Energy and log information//
 			if(D.timeStep % D.P.ei == 0){
+				if(D.CollisionFlag == 1){
+					int rem = D.RemoveCall();
+					if( rem == 0) return 0;
+				}
 				if(bufferCount >= D.P.Buffer){
 					D.EnergyOutput(bufferCount - 1);
 				}
@@ -186,6 +192,7 @@ int loop(Data D, double &time){
 			if(bufferCount > D.P.Buffer){
 				bufferCount = 1;
 			}
+			CollisionFlag = D.CollisionFlag;
 
 			++ts;
 			return 1;
