@@ -670,7 +670,7 @@ if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
 }
 
 __host__ int Data::step_16(){
-if(P.Usegas == 1 || P.UseForce > 0 ||P.setElements > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com32_kernel < 16, 32 > <<<1, 16 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[0]);
@@ -743,8 +743,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 
 __host__ int Data::step_32(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 32, 64 > <<<1, 32 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -812,8 +813,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	return 1;
 }
 __host__ int Data::step_64(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 64, 64 > <<<1, 64 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -880,8 +882,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	return 1;
 }
 __host__ int Data::step_128(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[0]);
 	com128_kernel < 128 > <<<1, 128 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -948,8 +951,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	return 1;
 }
 __host__ int Data::step_256(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0],  test_d, N_h[0], -1);
@@ -1017,8 +1021,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 
 __host__ int Data::step_512(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -1088,8 +1093,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	return 1;
 }
 __host__ int Data::step_1024(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -1157,8 +1163,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 
 __host__ int Data::step_2048(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
@@ -1234,8 +1241,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 
 __host__ int Data::step_largeN(){
-if(P.Usegas == 1 || P.UseForce > 0){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 255, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[0]);
 	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 255, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<<1, 256 >>>(x4_d, v4_d, U_d, Msun_h[0], test_d, N_h[0], -1);
