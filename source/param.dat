@@ -37,4 +37,7 @@ Use force = 0
 FormatS = 0
 FormatT = 0
 FormatP = 1
-Set Elements file name = - 
+Set Elements file name = -
+Report Encounters = 0
+Report Encounters Radius = 3
+

@@ -277,7 +277,9 @@ if(dt < 0) sgnt = -1;
 						__syncthreads();
 
 						for(int j = 0; j < N2; ++j){
-							encounter<1>(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], v4_s[idy].w, v4_s[j].w, 0.0, 0.0, dt1, idy, j, &test, Colpairs_s, Ncol[0], 0); 
+							double3 spini = {0.0, 0.0, 0.0};
+							double3 spinj = {0.0, 0.0, 0.0};
+							encounter<1>(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], v4_s[idy].w, v4_s[j].w, 0.0, 0.0, spini, spinj, 0, 0, dt1, idy, j, &test, Colpairs_s, Ncol[0], 0.0, 0, 0, 0, NULL, NULL); 
 						}
 						__syncthreads();
 						if(idy == 0){

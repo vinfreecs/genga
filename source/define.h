@@ -51,10 +51,12 @@
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
-
+#define def_WriteEncounters 0		//Write all close encounters to a file
+#define def_WriteEncountersRadius 3
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
+#define MaxWriteEnc 128			//Maximum number of Encounter per time step which can be written to file
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
@@ -164,11 +166,13 @@ struct Parameter{
 	char IrregularOutputsfilename[128];
 	int setElements;
 	char setElementsfilename[128];
+	int WriteEncounters;
+	double WriteEncountersRadius;
 };
 
 //File names of Simulstions
 struct GSFiles{
-	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile;
+	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile, *encounterfile;
 	char outputfilename[128];
 	char inputfilename[128];
 	char Originputfilename[128];
@@ -177,6 +181,7 @@ struct GSFiles{
 	char timefilename[128];
 	char collisionfilename[128];
 	char ejectfilename[128];
+	char encounterfilename[128];
 	char X[128];
 	int informat[22];
 	char path[128];

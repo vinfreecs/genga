@@ -814,7 +814,7 @@ __host__ void Data::printCollisions(){
 				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * 25 + in]));
 				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * 25 + in])) % 100);
 			}
-			else fprintf(collisionfile, "%g ", Coll_h[nc * 25 + in]);
+			else fprintf(collisionfile, "%.20g ", Coll_h[nc * 25 + in]);
 		}
 		if(Nst == 1) fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]), (int)(Coll_h[nc * 25 + 13]));
 		else{

@@ -23,6 +23,7 @@ __host__ void Data::AllocateOrbitt(){
 	Energy0_h = (double*)malloc(Nst * sizeof(double));
 	LI0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(25 * MaxColl * Nst * sizeof(double));
+	writeEnc_h = (double*)malloc(25 * MaxWriteEnc * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NT * sizeof(float4));
 	aecount_h = (int*)malloc(NT * sizeof(int));
 	enccount_h = (int*)malloc(NT * sizeof(int));
@@ -76,11 +77,13 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &Nenc_d, 12 * sizeof(int));
 	cudaMalloc((void **) &Ncoll_d, sizeof(int));
+	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NB2T);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
+	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * MaxWriteEnc);
 	cudaMalloc((void **) &aelimits_d, NT * sizeof(float4));
 	cudaMalloc((void **) &aecount_d, NT * sizeof(int));
 	cudaMalloc((void **) &enccount_d, NT * sizeof(int));
@@ -140,6 +143,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
 	CollisionFlag = 0;
+	writeEncFlag = 0;
 };
 
 
@@ -162,8 +166,10 @@ __host__ int Data::CMallocateOrbit(){
 	if(error != 0) return 0;
 
 	cudaHostAlloc((void **)&Ncoll_m, sizeof(int), cudaHostAllocMapped);
-
 	cudaHostGetDevicePointer((void **)&Ncoll_d, (void *)Ncoll_m, 0);
+
+	cudaHostAlloc((void **)&NWriteEnc_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&NWriteEnc_d, (void *)NWriteEnc_m, 0);
 
 	cudaHostAlloc((void **)&EjectionFlag_m, (Nst + 1)*sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&EjectionFlag_d, (void *)EjectionFlag_m, 0);
@@ -317,6 +323,7 @@ __global__ void BufferInit_kernel(double *coordinateBuffer_d){
 __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
+	NWriteEnc_m[0] = 0;
 	for(int i = 0; i < 12; ++i){
 		Nenc_m[i] = 0;
 		Nencsmall_m[i] = 0;
@@ -409,6 +416,9 @@ __host__ int Data::init(){
 	for(int i = 0; i < Nst * 25 * MaxColl; ++i){
 		Coll_h[i] = 0.0;
 	}
+	for(int i = 0; i < Nst * 25 * MaxWriteEnc; ++i){
+		writeEnc_h[i] = 0.0;
+	}
 
 	for(int st = 0; st < Nst + 1; ++st){    
 		Nencpairs_h[st] = 0;
@@ -464,9 +474,10 @@ __host__ int Data::ic(){
 	cudaMemcpy(index_d, index_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(spin_d, spin_h, sizeof(double3) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1)*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1)*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst*25*MaxColl, cudaMemcpyHostToDevice);
+	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * 25 * MaxColl, cudaMemcpyHostToDevice);
+	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * MaxWriteEnc, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(aecount_d, aecount_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
 	cudaMemcpy(enccount_d, enccount_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
@@ -1474,8 +1485,10 @@ __host__ int Data::freeOrbit(){
 	free(Energy0_h);
 	free(LI0_h);
 	cudaFreeHost(Ncoll_m);
+	cudaFreeHost(NWriteEnc_m);
 	cudaFreeHost(EjectionFlag_m);
 	free(Coll_h);
+	free(writeEnc_h);
 	cudaFreeHost(test_h);
 #if poincareFlag == 1
 	free(PFlag_h);
@@ -1544,6 +1557,7 @@ __host__ int Data::freeOrbit(){
 #endif
 
 	cudaFree(Coll_d);
+	cudaFree(writeEnc_d);
 	cudaFree(test_d);
 	
 	error = cudaGetLastError();

@@ -82,6 +82,9 @@ public:
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int CollisionFlag;
 	double *Coll_h, *Coll_d;
+	int writeEncFlag;
+	double *writeEnc_h, *writeEnc_d;
+	int *NWriteEnc_m, *NWriteEnc_d;
 	double *test_h, *test_d;
 
 	double *coordinateBuffer_h, *coordinateBuffer_d;

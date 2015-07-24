@@ -232,6 +232,8 @@ __host__ void Host::Halloc(){
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
+	P.WriteEncounters = def_WriteEncounters;
+	P.WriteEncountersRadius = def_WriteEncountersRadius;
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	sprintf(P.setElementsfilename, "%s", "-");
@@ -935,6 +937,36 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Report Encounters =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.WriteEncounters);
+				if(er <= 0){
+					printf("Error: Report Encounters value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Report Encounters Radius =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.WriteEncountersRadius);
+				if(er <= 0){
+					printf("Error: Report Encounters Radius value is not valid!\n");
+					return 0;
+				}
+
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Coordinate output buffer =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.Buffer);
@@ -1109,6 +1141,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(GSF[st].Energyfilename, "%sEnergy%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].collisionfilename, "%sCollisions%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].ejectfilename, "%sEjections%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].encounterfilename, "%sEncounters%s.dat", GSF[st].path, GSF[st].X);
 		
 		//create files or erase content//
 		if(P.tRestart == 0){
@@ -1122,6 +1155,10 @@ __host__ int Host::Param(int argc, char*argv[]){
 			fclose(GSF[st].collisionfile);  
 			GSF[st].ejectfile = fopen(GSF[st].ejectfilename, "w");
 			fclose(GSF[st].ejectfile);
+			if(P.WriteEncounters > 0){
+				GSF[st].encounterfile = fopen(GSF[st].encounterfilename, "w");
+				fclose(GSF[st].encounterfile);  
+			}
 		}
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -1531,6 +1568,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
+			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
+			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);		// use only argument in simulation 0
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

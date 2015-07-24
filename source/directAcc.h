@@ -192,6 +192,7 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
 	double3 L;
 	double rcrit;
 
+
 	Coll[nc * 25 + 0] = time/365.25;
 	Coll[nc * 25 + 1] = (double)(index[indexi]);
 	Coll[nc * 25 + 2] = x4[i].w;
@@ -368,7 +369,7 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 		Coll[nc * 25 + 3] = v4[i].w;
 		Coll[nc * 25 + 4] = x4[i].x;
 		Coll[nc * 25 + 5] = x4[i].y;
-		Coll[nc * 25 + 6] = v4[i].z;
+		Coll[nc * 25 + 6] = x4[i].z;
 		Coll[nc * 25 + 7] = v4[i].x;
 		Coll[nc * 25 + 8] = v4[i].y;
 		Coll[nc * 25 + 9] = v4[i].z;

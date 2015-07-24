@@ -459,7 +459,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-                                        	encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0);
+						double3 spini = {0.0, 0.0, 0.0};
+						double3 spinj = {0.0, 0.0, 0.0};
+						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, spini, spinj, 0, 0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0.0, 0, 0, 0, NULL, NULL);
 					}
                                         __syncthreads();
                                         if(idy == 0) {
@@ -469,7 +471,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-                                                        	collide(xt_s, vt_s, i, j, Encpairs2_d[si * NB + i].x, Encpairs2_d[si * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, 0, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								collide(xt_s, vt_s, i, j, Encpairs2_d[si * NB + i].x, Encpairs2_d[si * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, 0, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 #if G3 == 1
 									int iK = Encpairs2_d[si * NB + i].x;
 									int jK = Encpairs2_d[si * NB + j].x;
