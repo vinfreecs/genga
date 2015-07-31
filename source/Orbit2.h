@@ -82,7 +82,6 @@ public:
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int CollisionFlag;
 	double *Coll_h, *Coll_d;
-	int writeEncFlag;
 	double *writeEnc_h, *writeEnc_d;
 	int *NWriteEnc_m, *NWriteEnc_d;
 	double *test_h, *test_d;
@@ -130,6 +129,7 @@ public:
 	__host__ void printMaxColl();
 	__host__ void GridaeOutput();
 	__host__ void printCollisions();
+	__host__ void printEncounters();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput(int);
 	__host__ void CoordinateToBuffer(int, int);
@@ -171,6 +171,8 @@ public:
 	__host__ int CollisionCall();
 	__host__ void CollisionMCall();
 	__host__ int RemoveCall();
+	__host__ int writeEncCall();
+	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
 	__host__ void BSCall(int, int, double);

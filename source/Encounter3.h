@@ -24,7 +24,7 @@
 //
 // ****************************************
 template<int E>
-__device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double3 spini, double3 spinj, int indexi, int indexj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double time, int writeEncounters, double writeEncountersRadius, double *writeEnc_d, int *NWriteEnc_d){
+__device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &time, int writeEncounters, double writeEncountersRadius){
 
 //if((E == 0 || E >= 2))printf("E %d %d %d %d\n", i ,j - N, E, N);
 //if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
@@ -166,54 +166,26 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 		}
 
 
-		if(writeEncounters > 0 && (E == 0 || E >= 2)){
-			//Write Close Encounters to file
+		if(writeEncounters > 0 && E == 1){
 			double writeRadius = 0.0;
 			if(writeEncounters == 1){
 				//in scales of planetary Radius
-				writeRadius = rcrit;//writeEncountersRadius * fmax(v4i.w, v4j.w);
+				writeRadius = writeEncountersRadius * fmax(v4i.w, v4j.w);
 
 			}
 			if(delta < writeRadius * writeRadius){
 
-//dont do it at each time step but check for minial distance over consecutive timesteps
-				double t = t1;
-				if(delta2 < delta1) t = t2;
+				double t = 0.0;
+				if(0 <= t1 && t1 <= 1) t = t1;
+				if(0 <= t2 && t2 <= 1 && delta2 < delta1) t = t2;
 
-{//				if(t > 0.0 || t < 1.0){
-					int ne = atomicAdd(NWriteEnc_d, 1);	
-					if(ne >= MaxWriteEnc) ne = MaxWriteEnc;
-//printf("%d %d %d %g %g %g %g\n", ne, indexi, indexj, time, fmin(t1, t2), writeRadius * writeRadius, delta);	
-					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
-					writeEnc_d[ne * 25 + 1] = (double)(indexi);
-					writeEnc_d[ne * 25 + 2] = x4i.w;
-					writeEnc_d[ne * 25 + 3] = v4i.w;
-					writeEnc_d[ne * 25 + 4] = x4i.x;
-					writeEnc_d[ne * 25 + 5] = x4i.y;
-					writeEnc_d[ne * 25 + 6] = x4i.z;
-					writeEnc_d[ne * 25 + 7] = v4i.x;
-					writeEnc_d[ne * 25 + 8] = v4i.y;
-					writeEnc_d[ne * 25 + 9] = v4i.z;
-					writeEnc_d[ne * 25 + 10] = spini.x;
-					writeEnc_d[ne * 25 + 11] = spini.y;
-					writeEnc_d[ne * 25 + 12] = spini.z;
-					writeEnc_d[ne * 25 + 13] = (double)(indexj);
-					writeEnc_d[ne * 25 + 14] = x4j.w;
-					writeEnc_d[ne * 25 + 15] = v4j.w;
-					writeEnc_d[ne * 25 + 16] = x4j.x;
-					writeEnc_d[ne * 25 + 17] = x4j.y;
-					writeEnc_d[ne * 25 + 18] = x4j.z;
-					writeEnc_d[ne * 25 + 19] = v4j.x;
-					writeEnc_d[ne * 25 + 20] = v4j.y;
-					writeEnc_d[ne * 25 + 21] = v4j.z;
-					writeEnc_d[ne * 25 + 22] = spinj.x;
-					writeEnc_d[ne * 25 + 23] = spinj.y;
-					writeEnc_d[ne * 25 + 24] = spinj.z;
-				}
+				if(t > 0.0 && t < 1.0){
+					time = t;
+printf("Enc %g %g %g\n", t, writeRadius, sqrt(delta));	
+/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
+*/				}
 			}
 		}
-		
-
 
 
 		return Enc;
@@ -233,7 +205,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 ////March 2014
 //
 // ****************************************
-__global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double3 *spin_d, int *index_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *spinsmall_d, int *indexsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int N, int *enccount_d, int *enccountsmall_d, int si, double time, int writeEncounters, double writeEncountersRadius, double *writeEnc_d, int *NWriteEnc_d){
+__global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int N, int *enccount_d, int *enccountsmall_d, int si, double time, int writeEncounters, double writeEncountersRadius){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -257,14 +229,14 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 	__syncthreads();
 	
 	if(id < *Nencpairs_d){
-		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], spin_d[ii], spin_d[jj], index_d[ii], index_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius, writeEnc_d, NWriteEnc_d);
+		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius);
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);
 		}
 	}
 	else if(id < *Nencpairs_d + *Nencpairssmall_d){
-		enccount = encounter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], spinsmall_d[ii], spin_d[jj], indexsmall_d[ii], index_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N, time, writeEncounters, writeEncountersRadius, writeEnc_d, NWriteEnc_d);
+		enccount = encounter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N, time, writeEncounters, writeEncountersRadius);
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccountsmall_d[ii], 1);
 		}
@@ -282,7 +254,7 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 ////March 2014
 //
 // ****************************************
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double3 *spin_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius, double *writeEnc_d, int *NWriteEnc_d){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -308,7 +280,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__syncthreads();
 
 	if(id < Nencpairs_d[0] && ii >= 0 && jj >= 0 && st < Nst){
-		int enccount = encounter<3>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], spin_d[ii], spin_d[jj], index_d[ii], index_d[jj], dt * FGt, ii, jj , test_d, Encpairs2_d, Nencpairs2_d[st], 0, time, writeEncounters, writeEncountersRadius, writeEnc_d, NWriteEnc_d);
+		int enccount = encounter<3>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, Encpairs2_d, Nencpairs2_d[st], 0, time, writeEncounters, writeEncountersRadius);
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
@@ -343,7 +315,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 ////March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double3 *spin_d, int *index_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int *groupIndexOld_d, int writeEncounters, double writeEncountersRadius, double *writeEnc_d, int *NWriteEnc_d){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int *groupIndexOld_d, int writeEncounters, double writeEncountersRadius){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -360,7 +332,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	
 	if(id < *Nencpairs_d){
 #if G3 == 0
-		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], spin_d[ii], spin_d[jj], index_d[ii], index_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius, writeEnc_d, NWriteEnc_d);
+		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius);
 #else
 //change here ii and jj to index[ii], index[jj]
 		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, groupIndexOld_d[ii], groupIndexOld_d[jj]);

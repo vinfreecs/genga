@@ -99,6 +99,8 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * FormatS:  Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
+ * Report Encounters: When this is set to one, then close encounters with a separation less than a factor times the physical radius of the body are reported to a file.
+ * Report Encounters Radius: This option sets the factor of the close encounter separation.
 
 # Console Arguments #
 Instead of using the parameter file, some arguments can also be passed as console arguments. The console arguments have the highest priority and are overwriting the arguments of the param.dat file. The options are:
@@ -276,6 +278,16 @@ In this file are listed the details of the ejected particles. An ejection happen
     .
 
     with: case = -3 for ejected bodies, and case = -2 for bodies falling into the central mass. 
+
+
+## The encounter file Encounters<name>.dat
+This file is only generated when the 'Report Encounters' argument in the 'param.dat' file is greater than zero. It contains the coordinates before the cloasest encounter between two bodies.
+
+    time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
+    .
+    .
+    .
+
 
 ## The aeGrid file: aeCount<aeGrid name>_<time step>.dat
 If the use_aeGrid value in the 'param.h' file is set to one, then at the coordinate output interval, a new aeGrid file is created. This file contains two matrices of the size Na x Ne followed by two matrixes of the size Na x Ni, where Na, Ne and Ni are set in the 'param.dat' file. The first matrix contains the number of time steps which a particle was at the corresponding semi major axis and eccentricity bin, since the last output time

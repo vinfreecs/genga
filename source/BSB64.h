@@ -14,7 +14,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int *groupIndexOld_d){
+__global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int *groupIndexOld_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -48,6 +48,8 @@ __global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 
 	__shared__ double error_s[NN];
 	double test;
+	int writeEncounters = writeEncounters_d;
+	double writeEncountersRadius = writeEncountersRadius_d;
 	int idi;
 	int si = Encpairs2_d[ (st+1) * NB + idx].y; 
 		
@@ -389,9 +391,14 @@ __global__ void BSBStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						double3 spini = {0.0, 0.0, 0.0};
-						double3 spinj = {0.0, 0.0, 0.0};
-						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, spini, spinj, 0, 0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0.0, 0, 0,0, NULL, NULL);
+						double enct = 0.0;
+						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
+						//write Encounters to file
+						if(enct > 0.0){
+							int ne = atomicAdd(NWriteEnc_d, 1);
+							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
+							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[si * NB + ii].x, Encpairs2_d[si * NB + jj + l].x, index_d, ne, writeEnc_d, time + t/0.01720209895, spin_d);
+						}
 					}
                                         __syncthreads();
 

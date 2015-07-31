@@ -797,7 +797,7 @@ __host__ void Data::LastInfo(){
 //This function prints details of the Collisions
 __host__ void Data::printCollisions(){
   
-	cudaMemcpy(Coll_h, Coll_d, sizeof(double)*25*Ncoll_m[0], cudaMemcpyDeviceToHost);
+	cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
 	FILE *collisionfile;
 	FILE *logfile;
 	for(int nc = 0; nc < Ncoll_m[0]; ++nc){
@@ -824,6 +824,30 @@ __host__ void Data::printCollisions(){
 		fprintf(collisionfile, "\n");
 		fclose(collisionfile);
 		fclose(logfile);
+	}
+}
+
+//This function prints details of the Encounters
+__host__ void Data::printEncounters(){
+  
+	cudaMemcpy(writeEnc_h, writeEnc_d, sizeof(double) * 25 * NWriteEnc_m[0], cudaMemcpyDeviceToHost);
+
+	FILE *encounterfile;
+	for(int nc = 0; nc < NWriteEnc_m[0]; ++nc){
+		int st;
+		if(Nst == 1) st = 0;
+		else st = (int)(writeEnc_h[nc * 25 + 1]) / 100;
+		encounterfile = fopen(GSF[st].encounterfilename, "a");
+
+		for(int in = 0; in < 25; ++in){
+			if(in == 1 || in == 13){
+				if(Nst == 1) fprintf(encounterfile, "%d ", (int)(writeEnc_h[nc * 25 + in]));
+				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * 25 + in])) % 100);
+			}
+			else fprintf(encounterfile, "%.20g ", writeEnc_h[nc * 25 + in]);
+		}
+		fprintf(encounterfile, "\n");
+		fclose(encounterfile);
 	}
 }
 
