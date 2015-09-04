@@ -181,7 +181,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 
 				if(t > 0.0 && t < 1.0){
 					time = t;
-printf("Enc %g %g %g\n", t, writeRadius, sqrt(delta));	
+//printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
 /*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
 */				}
 			}

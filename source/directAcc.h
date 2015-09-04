@@ -413,30 +413,30 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 __device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
 
 	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexi]);
-	Coll[nc * 25 + 2] = x4[i].w;
-	Coll[nc * 25 + 3] = v4[i].w;
-	Coll[nc * 25 + 4] = x4[i].x;
-	Coll[nc * 25 + 5] = x4[i].y;
-	Coll[nc * 25 + 6] = x4[i].z;
-	Coll[nc * 25 + 7] = v4[i].x;
-	Coll[nc * 25 + 8] = v4[i].y;
-	Coll[nc * 25 + 9] = v4[i].z;
-	Coll[nc * 25 + 10] = spin[indexi].x;
-	Coll[nc * 25 + 11] = spin[indexi].y;
-	Coll[nc * 25 + 12] = spin[indexi].z;
-	Coll[nc * 25 + 13] = (double)(index[indexj]);
-	Coll[nc * 25 + 14] = x4[j].w;
-	Coll[nc * 25 + 15] = v4[j].w;
-	Coll[nc * 25 + 16] = x4[j].x;
-	Coll[nc * 25 + 17] = x4[j].y;
-	Coll[nc * 25 + 18] = x4[j].z;
-	Coll[nc * 25 + 19] = v4[j].x;
-	Coll[nc * 25 + 20] = v4[j].y;
-	Coll[nc * 25 + 21] = v4[j].z;
-	Coll[nc * 25 + 22] = spin[indexj].x;
-	Coll[nc * 25 + 23] = spin[indexj].y;
-	Coll[nc * 25 + 24] = spin[indexj].z;
+	Coll[nc * 25 + 1] = (double)(index[indexj]);
+	Coll[nc * 25 + 2] = x4[j].w;
+	Coll[nc * 25 + 3] = v4[j].w;
+	Coll[nc * 25 + 4] = x4[j].x;
+	Coll[nc * 25 + 5] = x4[j].y;
+	Coll[nc * 25 + 6] = x4[j].z;
+	Coll[nc * 25 + 7] = v4[j].x;
+	Coll[nc * 25 + 8] = v4[j].y;
+	Coll[nc * 25 + 9] = v4[j].z;
+	Coll[nc * 25 + 10] = spin[indexj].x;
+	Coll[nc * 25 + 11] = spin[indexj].y;
+	Coll[nc * 25 + 12] = spin[indexj].z;
+	Coll[nc * 25 + 13] = (double)(index[indexi]);
+	Coll[nc * 25 + 14] = x4[i].w;
+	Coll[nc * 25 + 15] = v4[i].w;
+	Coll[nc * 25 + 16] = x4[i].x;
+	Coll[nc * 25 + 17] = x4[i].y;
+	Coll[nc * 25 + 18] = x4[i].z;
+	Coll[nc * 25 + 19] = v4[i].x;
+	Coll[nc * 25 + 20] = v4[i].y;
+	Coll[nc * 25 + 21] = v4[i].z;
+	Coll[nc * 25 + 22] = spin[indexi].x;
+	Coll[nc * 25 + 23] = spin[indexi].y;
+	Coll[nc * 25 + 24] = spin[indexi].z;
 }
 // **************************************
 // This function stores the details of close encounters
@@ -447,30 +447,32 @@ __device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int inde
 //****************************************
 __device__ void storeEncounterssmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
 
+
+printf("S Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], indexsmall[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexi]);
-	Coll[nc * 25 + 2] = x4[i].w;
-	Coll[nc * 25 + 3] = v4[i].w;
-	Coll[nc * 25 + 4] = x4[i].x;
-	Coll[nc * 25 + 5] = x4[i].y;
-	Coll[nc * 25 + 6] = x4[i].z;
-	Coll[nc * 25 + 7] = v4[i].x;
-	Coll[nc * 25 + 8] = v4[i].y;
-	Coll[nc * 25 + 9] = v4[i].z;
-	Coll[nc * 25 + 10] = spin[indexi].x;
-	Coll[nc * 25 + 11] = spin[indexi].y;
-	Coll[nc * 25 + 12] = spin[indexi].z;
-	Coll[nc * 25 + 13] = (double)(indexsmall[indexj]);
-	Coll[nc * 25 + 14] = x4[j].w;
-	Coll[nc * 25 + 15] = v4[j].w;
-	Coll[nc * 25 + 16] = x4[j].x;
-	Coll[nc * 25 + 17] = x4[j].y;
-	Coll[nc * 25 + 18] = x4[j].z;
-	Coll[nc * 25 + 19] = v4[j].x;
-	Coll[nc * 25 + 20] = v4[j].y;
-	Coll[nc * 25 + 21] = v4[j].z;
-	Coll[nc * 25 + 22] = spinsmall[indexj].x;
-	Coll[nc * 25 + 23] = spinsmall[indexj].y;
-	Coll[nc * 25 + 24] = spinsmall[indexj].z;
+	Coll[nc * 25 + 1] = (double)(index[indexj]);
+	Coll[nc * 25 + 2] = x4[j].w;
+	Coll[nc * 25 + 3] = v4[j].w;
+	Coll[nc * 25 + 4] = x4[j].x;
+	Coll[nc * 25 + 5] = x4[j].y;
+	Coll[nc * 25 + 6] = x4[j].z;
+	Coll[nc * 25 + 7] = v4[j].x;
+	Coll[nc * 25 + 8] = v4[j].y;
+	Coll[nc * 25 + 9] = v4[j].z;
+	Coll[nc * 25 + 10] = spin[indexj].x;
+	Coll[nc * 25 + 11] = spin[indexj].y;
+	Coll[nc * 25 + 12] = spin[indexj].z;
+	Coll[nc * 25 + 13] = (double)(indexsmall[indexi]);
+	Coll[nc * 25 + 14] = x4[i].w;
+	Coll[nc * 25 + 15] = v4[i].w;
+	Coll[nc * 25 + 16] = x4[i].x;
+	Coll[nc * 25 + 17] = x4[i].y;
+	Coll[nc * 25 + 18] = x4[i].z;
+	Coll[nc * 25 + 19] = v4[i].x;
+	Coll[nc * 25 + 20] = v4[i].y;
+	Coll[nc * 25 + 21] = v4[i].z;
+	Coll[nc * 25 + 22] = spinsmall[indexi].x;
+	Coll[nc * 25 + 23] = spinsmall[indexi].y;
+	Coll[nc * 25 + 24] = spinsmall[indexi].z;
 }
 #endif

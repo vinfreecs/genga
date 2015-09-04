@@ -9,7 +9,7 @@
 __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
 /*
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockIdx.x + idy;
+	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < N){
 		
@@ -65,7 +65,7 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
 __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double *Msun_d, double *dt_d, double *time_d, int N, int Nst){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockIdx.x + idy;
+	int id = blockIdx.x * blockDim.x + idy;
 
 	int line = setElementsLine_d[0];
 	int nelements = setElementsNumbers_c[0];

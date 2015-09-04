@@ -292,7 +292,7 @@ __host__ void Host::Halloc(){
 				GSF[st].informat[f] = 12;
 			}
 			else if(strcmp(ff + f * 5, "i") == 0){
-				GSF[0].informat[f] = 13;
+				GSF[st].informat[f] = 13;
 			}
 			else if(strcmp(ff + f * 5, "-") == 0){
 				GSF[st].informat[f] = 14;
@@ -954,7 +954,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Report Encounters Radius =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%d", &P.WriteEncountersRadius);
+				er = fscanf (paramfile, "%lf", &P.WriteEncountersRadius);
 				if(er <= 0){
 					printf("Error: Report Encounters Radius value is not valid!\n");
 					return 0;
@@ -962,8 +962,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 			}
 			else{
-				int t;
-				er = fscanf (paramfile, "%d", &t);
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1569,7 +1569,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
-			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);		// use only argument in simulation 0
+			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}
