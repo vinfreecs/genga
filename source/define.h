@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.22
+#define Version 3.23
 
 
 //Default parameter values
@@ -138,11 +138,6 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
-__constant__ float Gridae_c[9];
-__constant__ int GridaeN_c[3];
-__constant__ int UseaeGrid_c[1];
-__constant__ double S_c[FGN + 1];
-__constant__ double C_c[FGN + 1];
 
 struct Parameter{
 	int dev;                        //Number of device

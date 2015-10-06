@@ -312,7 +312,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //The number of close encounter pairs is stored in Nencpairs2_d.
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2014
 //
 // ****************************************
 __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int *groupIndexOld_d, int writeEncounters, double writeEncountersRadius){
@@ -343,6 +343,188 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		}
 	}
 }
+
+
+
+// ******************************************
+// This kernel set the encounter pairs counting variable for eeach particle to zero
+
+// Author: Simon Grimm
+// September 2015
+// ******************************************3
+__global__ void Init_group_kernel(int2 *Encpairs_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		Encpairs_d[id].x = 0;
+		Encpairs_d[id].y = 0;
+		Encpairs_d[id + NB].y = id;
+		Encpairs_d[id + 2 * NB].y = id;	//used for convergence check
+		Encpairs_d[id + 3 * NB].y = 0;	//used to count the members
+		Encpairs_d[id + 4 * NB].y = -1;	//used for consecutive group index
+	}
+}
+
+// *****************************************
+// This kernel reads the encounter pairs and writes a new table with
+// the encounter pairs for each each particle.
+// This kernel is applyed for large N simulations where all close encounters are
+// computed with linear global kernels
+
+// Authos: Simon Grimm
+// September 2015
+// *********************************************
+__global__ void group_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+
+	int Ne = Nencpairs2_d[0];
+
+	if(id < Ne){
+		int2 encpairs = Encpairs2_d[id];
+		int Ni = atomicAdd(&Encpairs_d[encpairs.x].y, 1);
+		Encpairs_d[encpairs.x * NB + Ni].x = encpairs.y;
+		int Nj = atomicAdd(&Encpairs_d[encpairs.y].y, 1);
+		Encpairs_d[encpairs.y * NB + Nj].x = encpairs.x;
+	}
+}
+// *****************************************
+// This kernel distributes the smallest index of the group to all group members
+// it must be iterated from the host
+// Authos: Simon Grimm
+// September 2015
+// *********************************************
+__global__ void group_Index_kernel(int2 *Encpairs_d, int *groupIterate_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	if(id == 0) groupIterate_d[0] = 0;
+
+	if(id < N){
+		int Ne = Encpairs_d[id].y;
+		for(int i = 0; i < Ne; ++i){
+			int j = Encpairs_d[id * NB + i].x;
+//printf("aa %d %d %d\n", id, Ne, j);
+			atomicMin(&Encpairs_d[id + NB].y, Encpairs_d[j + NB].y);
+			atomicMin(&Encpairs_d[j + NB].y, Encpairs_d[id + NB].y);
+		}
+	}
+}
+// *****************************************
+// This kernel checks if the grouping algorithm did converge
+// Authos: Simon Grimm
+// September 2015
+// *********************************************
+__global__ void group_diff_kernel(int2 *Encpairs_d, int *groupIterate_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		int minOld = Encpairs_d[id + 2 * NB].y;
+		int minNew = Encpairs_d[id + NB].y;
+		Encpairs_d[id + 2 * NB].y = minNew;
+		if(minOld != minNew){
+			groupIterate_d[0] = 1;
+		}
+	}
+}
+
+
+__global__ void group_print(int2 *Encpairs_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		if(Encpairs_d[id].y > 0){
+printf("a %d %d %d\n", id, Encpairs_d[id].y, Encpairs_d[id + NB].y);
+		}
+	}
+}
+
+__global__ void group_MemberCount(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		Encpairs2_d[id].y = 0;
+		int Ne = Encpairs_d[id].y; //number of pairs
+		int gi = Encpairs_d[id + NB].y; //group index;
+		if(Ne > 0){
+			atomicAdd(&Encpairs_d[gi + 3 * NB].y, 1);
+		}
+		if(gi == id && Ne > 0){
+			int n = atomicAdd(&Nenc_d[0],1);
+			Encpairs_d[id + 4 * NB].y = n; //consecutive group index
+		}
+	}
+}
+
+__global__ void group_Rearrange(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		int Ne = Encpairs_d[id].y; //number of pairs
+		int gi = Encpairs_d[id + NB].y; //group index
+		int nn = Encpairs_d[id + 3 * NB].y; //number of members
+		if(Ne > 0){
+			int n = Encpairs_d[gi + 4 * NB].y; //consecutive group index
+			int Nn = atomicAdd(&Encpairs2_d[n].y, 1);
+			Encpairs2_d[n * NB + Nn].x = id;
+//printf("c %d %d %d %d %d %d\n", id, Ne, gi, nn, n, Nn);
+			if(id == gi){
+				int ne2 = 2;
+				for(int ii = 0; ii < 11; ++ii){
+					if(nn <= ne2){
+						Encpairs2_d[ (ii+1) * NB + atomicAdd(&Nenc_d[ii + 1],1)].y = n;
+						break;
+					} 
+					else{
+						ne2 *= 2;
+					}
+				}
+			}
+		}
+	}
+}
+
+__global__ void group_print2(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int N, int NB){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		int Ne = Encpairs_d[id].y; //number of pairs
+		int gi = Encpairs_d[id + NB].y; //group index
+		int nn = Encpairs_d[id + 3 * NB].y; //number of members
+		if(Ne > 0){
+			int n = Encpairs_d[gi + 4 * NB].y; //consecutive group index
+printf("cc %d %d %d %d %d\n", id, Ne, gi, nn, n);
+		}
+	}
+
+
+	if(id < 11){
+printf("Nenc %d %d\n", id, Nenc_d[id]);
+	}
+
+	if(id < Nenc_d[0]){
+		int Ne = Encpairs2_d[id].y;
+printf("b %d %d\n", id, Ne);
+		for(int i = 0; i < Ne; ++i){
+printf("%d %d\n", id, Encpairs2_d[id * NB + i].x);
+		}
+	}
+}
+
 
 __global__ void groupsmall1_kernel(int *Nencpairssmall_d, int2 *Encpairssmall_d, const int Nconst, int Nsmall){
 	int idx = blockIdx.x;
@@ -491,7 +673,7 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 	// *Check now for new groups and increase the total number of groups* /
 	if(idy < BN){
 		if(B_s[idy] == idy){
-			B2_s[idy] =  atomicAdd(&Nenc_s[0],1);
+			B2_s[idy] = atomicAdd(&Nenc_s[0],1);
 		}		
 	}
 	__syncthreads();
@@ -554,120 +736,6 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 
 }
 
-
-//**************************************
-//not up to date
-
-//This Kernel sorts a sub-set of close encounter pairs into independent groups, using a 
-//parallel sorting algorithm. 
-//This kernel works in the case of more than 512 close encounter pairs, and 
-//less than 1025 Bodies.
-//
-//This Kernel is launched with Ne/512 blocks a 512 threads, with Ne the number of close encounters.
-//A Fusion Kernel has to be called to merger the sub sets.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
-//
-//****************************************
-template <int BN, int Bl>
-__global__ void group512_kernel(double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d){
-
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + idy;
-
-	__shared__ int2 encpairs_s[Bl];
-	__shared__ int A_s[Bl];
-	__shared__ int AOld_s[Bl];
-	__shared__ int B_s[BN];
-	__shared__ int B2_s[BN];
-	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
-
-	int Ne = *Nencpairs2_d;
-	int BN2 = BN * BN -1;
-	
-	__syncthreads();
-
-	if(idy == 0){
-		T_s = 1;
-	}
-	if(idy < 12) Nenc_s[idy] = 0;
-	__syncthreads();
-	
-
-	if(id  < Ne){ 
-		encpairs_s[idy] = Encpairs2_d[id];
-		A_s[idy] = encpairs_s[idy].x;
-	}
-	else{
-		encpairs_s[idy].x = -1;
-		encpairs_s[idy].y = -1;
-		A_s[idy] = -1;
-	}
-	for(int i = 0; i < BN; i += Bl){
-		B_s[idy + i] = BN2;
-		B2_s[idy + i] = BN2;
-	}
-	__syncthreads();
-	
-	AOld_s[idy] = A_s[idy];
-
-	for(int tt = 0; tt < 100; ++tt){
-		T_s = 0;
-		if(id < Ne){
-			if (A_s[idy] < B_s[encpairs_s[idy].x]) atomicMin(&B_s[encpairs_s[idy].x], A_s[idy]);
-		}
-		__syncthreads();
-		if(id < Ne){
-			if (A_s[idy] < B_s[encpairs_s[idy].y]) atomicMin(&B_s[encpairs_s[idy].y], A_s[idy]);
-		}
-		__syncthreads();
-
-		for(int i = 0; i < BN; i += Bl){
-			if(B_s[idy + i] < BN2) B2_s[idy + i] = B_s[B_s[idy + i]];
-		}
-		__syncthreads();
-		if(A_s[idy] > -1) {
-			A_s[idy] = min(B2_s[encpairs_s[idy].x], B2_s[encpairs_s[idy].y]);
-		}
-		__syncthreads();
-
-		if(AOld_s[idy] != A_s[idy]) T_s = 1;
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			B_s[idy + i] = B2_s[idy + i];
-		}
-		AOld_s[idy] = A_s[idy];
-		__syncthreads();
-		if(T_s == 0) break;
-		__syncthreads();
-	}
-
-	__syncthreads();
-
-	for(int i = 0; i < BN; i += Bl){
-		B2_s[idy + i] = -1;
-	}
-	__syncthreads();
-
-	for(int i = 0; i < BN; i += Bl){
-		if(B_s[idy + i] == idy + i){
-			B2_s[idy + i] =  atomicAdd(&Nenc_s[0],1);
-		}		
-	}
-	__syncthreads();
-
-	for(int i = 0; i < BN; i += Bl){
-		if(B_s[idy + i] < BN2){
-			B_s[idy + i] = B2_s[B_s[idy + i]] + Bl * idx;
-		}
-		Encpairs_d[idx * BN + idy + i].x = B_s[idy + i];
-		Encpairs_d[idx * BN + idy + i].y = BN2;
-	}
-}
-
 // **************************************
 //This Kernel sorts all close encounter pairs into independent groups, using a 
 //parallel sorting algorithm. 
@@ -691,174 +759,8 @@ __global__ void group512_kernel(double *test_d, int *Nencpairs2_d, int2 *Encpair
 ////March 2014
 //
 // ****************************************
-template <int BN, int Bl>
-__global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d){
-
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + idy;
-	int iy = idx * BN + idy;
-
-	__shared__ int2 encpairs_s[Bl];
-	__shared__ int A_s[Bl];
-	__shared__ int AOld_s[Bl];
-	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
-	
-	int BN2 = BN * BN -1;
-
-	int Ne = *Nencpairs2_d;
-	__syncthreads();
-
-	if(idy == 0){
-		T_s = 1;
-	}
-	if(idy < 12) Nenc_s[idy] = 0;
-	__syncthreads();
-	
-
-	if(id < Ne){ 
-		encpairs_s[idy] = Encpairs2_d[id];
-		A_s[idy] = encpairs_s[idy].x;
-	}
-	/*encpairs_s[idy] contains the two close encounter pairs*/
-	else{
-		encpairs_s[idy].x = -1;
-		encpairs_s[idy].y = -1;
-		A_s[idy] = -1;
-	}
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[iy + i].x = BN2; //B
-		Encpairs_d[iy + i].y = BN2; //B2
-	}
-	__syncthreads();
-
-	AOld_s[idy] = A_s[idy];
-
-	__syncthreads();
-
-	for(int tt = 0; tt < 100; ++ tt){ 
-		T_s = 0;	
-		if(id < Ne){
-			if (A_s[idy] < Encpairs_d[idx * BN + encpairs_s[idy].x].x){
-				atomicMin(&Encpairs_d[idx * BN + encpairs_s[idy].x].x, A_s[idy]);
-			}
-		}
-		__syncthreads();
-
-		if(id < Ne){	
-			if (A_s[idy] < Encpairs_d[idx * BN + encpairs_s[idy].y].x){
-				atomicMin(&Encpairs_d[idx * BN + encpairs_s[idy].y].x, A_s[idy]);
-			}
-		}
-
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			if(Encpairs_d[iy + i].x < BN2){
-				Encpairs_d[iy + i].y = Encpairs_d[idx * BN + Encpairs_d[iy + i].x].x;
-			}
-		}
-
-		__syncthreads();
-		if(id < Ne){
-			if(A_s[idy] > -1) A_s[idy] = min(Encpairs_d[idx * BN + encpairs_s[idy].x].y, Encpairs_d[idx * BN + encpairs_s[idy].y].y);
-		}
-		__syncthreads();
-
-		if(AOld_s[idy] - A_s[idy] != 0){
-			T_s = 1;
-		}
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			Encpairs_d[iy + i].x = Encpairs_d[iy + i].y;
-		}
-		AOld_s[idy] = A_s[idy];
-		__syncthreads();
-		if(T_s == 0) break;
-		__syncthreads();
-	
-	}
-	// At this point Encpairs_d[iy + i].x contains the smallest index of the group
-	__syncthreads();
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[iy + i].y = -1;
-		if(gridDim.x == 1) Encpairs2_d[idy + i].y = 0;
-	}
-	__syncthreads();
-	// Check now for new groups and increase the total number of groups
-	for(int i = 0; i < BN; i += Bl){
-		if(Encpairs_d[iy + i].x == (idy + i)){
-			Encpairs_d[iy + i].y = atomicAdd(&Nenc_s[0],1);
-		}		
-	}
-	__syncthreads();
-	// Transform now the smallest index of the group into a consecutive group index
-	for(int i = 0; i < BN; i += Bl){
-	if(Encpairs_d[iy + i].x < BN2){
-			Encpairs_d[iy + i].x = Encpairs_d[idx * BN + Encpairs_d[iy + i].x].y + Bl * idx;
-		}
-	}
-	// At this point Encpairs_d[iy + i].x contains a consecutive group index
-	__syncthreads();
-	if(gridDim.x == 1){
-#if G3 == 1
-		for(int i = 0; i < BN; i += Bl){
-			groupIndex_d[idy + i] = Encpairs_d[iy + i].x;
-		}
-#endif
-
-#if SERIAL_GROUPING == 0
-		for(int i = 0; i < BN; i += Bl){
-			if(Encpairs_d[idy + i].x < BN2){
-				Encpairs2_d[Encpairs_d[idy + i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1)].x = idy + i;
-			}
-			//At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups
-
-			__syncthreads();
-		}
-#endif
-#if SERIAL_GROUPING == 1
-	if(idy == 0){
-		for(int i = BN - 1; i >=0; --i){
-			if(Encpairs_d[i].x < BN2){
-				Encpairs2_d[Encpairs_d[i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1)].x = i;
-			}
-		}
-	}
-#endif
-
-		__syncthreads();
-
-		for(int i = 0; i < BN; i += Bl){
-			int nn = Encpairs2_d[idy + i].y;
-//			if(Encpairs_d[idy + i].x < BN2) nn = Encpairs2_d[Encpairs_d[idy + i].x].y;
-//			else nn = 0;
-			int ne2 = 2;
-			if(nn > 0){
-				for(int ii = 0; ii < 11; ++ii){
-					if(nn <= ne2){
-						Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1], 1)].y = idy + i;
-						break;
-					}
-					else{
-						ne2 *= 2;
-					}
-				}
-			} 
-		}
-		__syncthreads();
-		if(idy < 12){
-			Nenc_d[idy] = Nenc_s[idy];
-		}
-	}
-	else{
-		for(int i = 0; i < BN; i += Bl){
-			Encpairs_d[iy + i].y = BN2;
-		}
-	}
-}
 template <int Bl>
-__global__ void group1024b_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d, int BN){
+__global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int *groupIndex_d, int BN){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -1025,7 +927,7 @@ __global__ void group1024b_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d
 }
 
 // **************************************
-//This kernel merges differrent sub-sets of close encounter groups, usig
+//This kernel merges differrent sub-sets of close encounter groups, using
 //a parallel sorting algorithm.
 //It classifies the groups into sets of equal sizes.
 //The size of group i is stored in Encpairs2_d[i].y, the elements j of the 
@@ -1039,7 +941,7 @@ __global__ void group1024b_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d
 //This Kernel must be launched  with only one block!
 // ****************************************
 template <int BN, int Bl> 
-__global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, double4 *x4_d, double *rcrit_d, int *groupIndex_d){
+__global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NBlock, double *test_d, int *groupIndex_d){
 
 	int idy = threadIdx.x;
 	__shared__ int encpairs_s[BN];
@@ -1325,7 +1227,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 //
 // ****************************************
 template <int BN, int Bl>	//fusion tree
-__global__ void fusionA_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB2, double *test_d){
+__global__ void fusionA_kernel(int2 *Encpairs_d, int NB2, double *test_d){
 
 	int idx = blockIdx.x;
 	int idy = threadIdx.x;
@@ -1584,7 +1486,7 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 //
 // ****************************************
 template <int Bl>  //fusion tree for 2048 bodies
-__global__ void fusionA2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int BN, int NB2, double *test_d){
+__global__ void fusionA2_kernel(int2 *Encpairs_d, int BN, int NB2, double *test_d){
 
 	int idx = blockIdx.x;
 	int idy = threadIdx.x;

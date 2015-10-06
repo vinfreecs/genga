@@ -238,7 +238,10 @@ int main(int argc, char*argv[]){
 		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
 		cudaMemcpy(D.time_d, D.time_h, sizeof(double), cudaMemcpyHostToDevice);
 		
-		D.step();
+		int er = D.step();
+		if(er == 0){
+			 return 0;
+		}
 			cudaDeviceSynchronize();
 			error = cudaGetLastError();
 			if(error != 0){

@@ -27,6 +27,7 @@ public:
 	int *groupIndexOld_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
+	int *groupIterate_h, *groupIterate_d;
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
 	int *Nenc_m, *Nenc_d;
@@ -42,6 +43,16 @@ public:
 	long long *GridaicountS_h;
 	long long *GridaicountT_h;
 
+	//arrays for BSA
+	double4 *xt_d;
+	double4 *vt_d;
+	double4 *xp_d;
+	double4 *vp_d;
+	double3 *dx_d;
+	double3 *dv_d;
+	double *dt1_d;
+	double *t1_d;
+	int *BSAstop_h, *BSAstop_d;
 
 	// G3 Data
 	double *K_d;
@@ -115,6 +126,7 @@ public:
 	//FG2
 	__host__ void constantCopy();
 	__host__ void constantCopy2();
+	__host__ void constantCopySC(double *, double *);
 	//output
 	cudaStream_t *hstream;
 	__host__ int firstoutput();
@@ -175,9 +187,12 @@ public:
 	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
+	__host__ void groupCall();
 	__host__ void BSCall(int, int, double);
 	__host__ void BSsmallCall(int, double);
 	__host__ void BSBMCall(int);
+
+	__host__ void BSACall();
 
 	//gas
 	__host__ void GasAlloc();

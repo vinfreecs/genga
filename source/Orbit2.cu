@@ -48,6 +48,8 @@ __host__ void Data::AllocateOrbitt(){
 	aecountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
 	enccountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
 
+	groupIterate_h = (int*)malloc(sizeof(int));
+
 	cudaHostAlloc((void **)&test_h, NT * sizeof(double), cudaHostAllocDefault);
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
@@ -80,6 +82,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NB2T);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
@@ -93,6 +96,17 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
 
+	//arrays for BSA
+	cudaMalloc((void **) &xt_d, NT * sizeof(double4));
+	cudaMalloc((void **) &vt_d, NT * sizeof(double4));
+	cudaMalloc((void **) &xp_d, NT * sizeof(double4));
+	cudaMalloc((void **) &vp_d, NT * sizeof(double4));
+	cudaMalloc((void **) &dx_d, NT * 8 * sizeof(double3));
+	cudaMalloc((void **) &dv_d, NT * 8 * sizeof(double3));
+	cudaMalloc((void **) &dt1_d, NT * sizeof(double));
+	cudaMalloc((void **) &t1_d, NT * sizeof(double));
+	cudaMalloc((void **) &BSAstop_d, sizeof(int));
+	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 == 1
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
@@ -234,8 +248,7 @@ __host__ int Data::FGAlloc(){
                 S_h[j] = sin(dEj);
                 C_h[j] = cos(dEj);
         }
-        cudaMemcpyToSymbol(S_c, S_h, sizeof(S_h), 0, cudaMemcpyHostToDevice);
-        cudaMemcpyToSymbol(C_c, C_h, sizeof(C_h), 0, cudaMemcpyHostToDevice);
+	constantCopySC(S_h, C_h);
 	error = cudaGetLastError();
 	fprintf(masterfile,"FGAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
@@ -1477,6 +1490,7 @@ __host__ int Data::freeOrbit(){
 	free(enccountsmall_h);
 	free(aecountsmallT_h);
 	free(enccountsmallT_h);
+	free(groupIterate_h);
 
 	free(U_h);
 	free(LI_h);
@@ -1492,6 +1506,8 @@ __host__ int Data::freeOrbit(){
 #if poincareFlag == 1
 	free(PFlag_h);
 #endif	
+	free(BSAstop_h);
+
 	cudaFree(x4_d);
 	cudaFree(v4_d);
 	cudaFree(xold_d);
@@ -1503,11 +1519,22 @@ __host__ int Data::freeOrbit(){
 	cudaFree(rcritv_d);
 	cudaFree(Nencpairs_d);
 	cudaFree(Nencpairs2_d);
+	cudaFree(groupIterate_d);
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
 
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);
+
+	cudaFree(xt_d);
+	cudaFree(vt_d);
+	cudaFree(xp_d);
+	cudaFree(vp_d);
+	cudaFree(dx_d);
+	cudaFree(dv_d);
+	cudaFree(dt1_d);
+	cudaFree(t1_d);
+	cudaFree(BSAstop_d);
 
 	cudaFree(aelimits_d);
 	cudaFree(aecount_d);

@@ -249,7 +249,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 				__syncthreads();
 				if(idy < NN){
 					accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun);
-
 					xt_s[idy].x = x4_s[idy].x + dt22 * vp_s[idy].x;
 					xt_s[idy].y = x4_s[idy].y + dt22 * vp_s[idy].y;
 					xt_s[idy].z = x4_s[idy].z + dt22 * vp_s[idy].z;
@@ -389,13 +388,14 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 				if(idy < N2){
 					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
-					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * vt_s[idy].x);
-					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * vt_s[idy].y);
-					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + xp_s[idy].z + dt2 * vt_s[idy].z);
 
-					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + vp_s[idy].x + dt2 * a_s[idy * nb].x);
-					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + vp_s[idy].y + dt2 * a_s[idy * nb].y);
-					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + vp_s[idy].z + dt2 * a_s[idy * nb].z);	
+					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + (xp_s[idy].x + (dt2 * vt_s[idy].x)));
+					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + (xp_s[idy].y + (dt2 * vt_s[idy].y)));
+					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + (xp_s[idy].z + (dt2 * vt_s[idy].z)));
+
+					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy * nb].x)));
+					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy * nb].y)));
+					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy * nb].z)));	
 				}
 				
 				if(idy < N2){
@@ -416,7 +416,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					}
 					double errorx = dx_s[idy][0].x * dx_s[idy][0].x * scalex.x;
 					double errorv = dv_s[idy][0].x * dv_s[idy][0].x * scalev.x;
-
 					errorx = fmax(errorx, dx_s[idy][0].y * dx_s[idy][0].y * scalex.y);
 					errorv = fmax(errorv, dv_s[idy][0].y * dv_s[idy][0].y * scalev.y);
 
@@ -501,6 +500,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(idy < N2){
 						x4_s[idy] = xt_s[idy];
 						v4_s[idy] = vt_s[idy];
+//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
 					}
 					f = 0;
 
@@ -512,7 +512,11 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 			__syncthreads();
 			dt1 *= 0.5;
 		}
-		if(sgnt * t >= sgnt * dt) break;
+		if(sgnt * t >= sgnt * dt){
+			break;
+		}
+
+
 		__syncthreads();
 	}
 #if G3 == 1

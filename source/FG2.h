@@ -4,6 +4,13 @@
 #include "Orbit2.h"
 #include "BSSingle.h"
 
+__constant__ float Gridae_c[9];
+__constant__ int GridaeN_c[3];
+__constant__ double S_c[FGN + 1];
+__constant__ double C_c[FGN + 1];
+__constant__ int UseaeGrid_c[1];
+
+
 //**************************************
 // This function copies the aeGrid parameters to constant memory. This functions must be in
 // the same file as the use of the constant memory
@@ -32,6 +39,11 @@ __host__ void Data::constantCopy2(){
 
 }
 
+
+__host__ void Data::constantCopySC(double *S_h, double *C_h){
+        cudaMemcpyToSymbol(S_c, S_h, sizeof(S_h), 0, cudaMemcpyHostToDevice);
+        cudaMemcpyToSymbol(C_c, C_h, sizeof(C_h), 0, cudaMemcpyHostToDevice);
+}
 
 
 //**************************************
