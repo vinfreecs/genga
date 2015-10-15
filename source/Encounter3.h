@@ -381,7 +381,6 @@ __global__ void group_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-
 	int Ne = Nencpairs2_d[0];
 
 	if(id < Ne){
@@ -392,26 +391,27 @@ __global__ void group_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs
 		Encpairs_d[encpairs.y * NB + Nj].x = encpairs.x;
 	}
 }
+
 // *****************************************
 // This kernel distributes the smallest index of the group to all group members
 // it must be iterated from the host
 // Authos: Simon Grimm
 // September 2015
 // *********************************************
-__global__ void group_Index_kernel(int2 *Encpairs_d, int *groupIterate_d, int N, int NB){
+__global__ void group_Index_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *groupIterate_d, int *Nencpairs2_d, int N, int NB){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	if(id == 0) groupIterate_d[0] = 0;
 
-	if(id < N){
-		int Ne = Encpairs_d[id].y;
-		for(int i = 0; i < Ne; ++i){
-			int j = Encpairs_d[id * NB + i].x;
-//printf("aa %d %d %d\n", id, Ne, j);
-			atomicMin(&Encpairs_d[id + NB].y, Encpairs_d[j + NB].y);
-			atomicMin(&Encpairs_d[j + NB].y, Encpairs_d[id + NB].y);
-		}
+	int Ne = Nencpairs2_d[0];
+
+	if(id < Ne){
+		int2 encpairs = Encpairs2_d[id];
+
+		atomicMin(&Encpairs_d[encpairs.x + NB].y, Encpairs_d[encpairs.y + NB].y);
+		atomicMin(&Encpairs_d[encpairs.y + NB].y, Encpairs_d[encpairs.x + NB].y);
+
 	}
 }
 // *****************************************
@@ -477,14 +477,16 @@ __global__ void group_Rearrange(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d
 		int nn = Encpairs_d[id + 3 * NB].y; //number of members
 		if(Ne > 0){
 			int n = Encpairs_d[gi + 4 * NB].y; //consecutive group index
-			int Nn = atomicAdd(&Encpairs2_d[n].y, 1);
-			Encpairs2_d[n * NB + Nn].x = id;
-//printf("c %d %d %d %d %d %d\n", id, Ne, gi, nn, n, Nn);
+			int Ns = atomicAdd(&Encpairs2_d[n].y, 1);
+			Encpairs2_d[n * NB + Ns].x = id;
+			Encpairs2_d[13 * NB + id].y = Ns;
+//printf("c %d %d %d %d %d %d\n", id, Ne, gi, nn, n, Ns);
 			if(id == gi){
 				int ne2 = 2;
 				for(int ii = 0; ii < 11; ++ii){
 					if(nn <= ne2){
-						Encpairs2_d[ (ii+1) * NB + atomicAdd(&Nenc_d[ii + 1],1)].y = n;
+						int Ns = atomicAdd(&Nenc_d[ii + 1],1); 
+						Encpairs2_d[ (ii+1) * NB + Ns].y = n;
 						break;
 					} 
 					else{
@@ -693,7 +695,9 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 #if SERIAL_GROUPING == 0
 	if(idy < BN){
 		if(B_s[idy] < BN2){
-			Encpairs2_d[B_s[idy] * BN + atomicAdd(&encpairs_s[B_s[idy]].y,1)].x = idy;
+			int Ns = atomicAdd(&encpairs_s[B_s[idy]].y,1);
+			Encpairs2_d[B_s[idy] * BN + Ns].x = idy;
+			Encpairs2_d[13 * BN + idy].y = Ns;
 		}
 		// *At this point Encpairs2_d.x contains now line by line the members of the groups, encpairs_s.y contains the sizes of the groups* /
 	}
@@ -702,7 +706,9 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
 			if(B_s[i] < BN2){
-				Encpairs2_d[B_s[i] * BN + atomicAdd(&encpairs_s[B_s[i]].y,1)].x = i;
+				int Ns = atomicAdd(&encpairs_s[B_s[i]].y,1);
+				Encpairs2_d[B_s[i] * BN + Ns].x = i;
+				Encpairs2_d[13 * BN + i].y = Ns;
 			}
 		}
 	}
@@ -715,7 +721,8 @@ __global__ void group_kernel16(int *Nenc_d, double *test_d, int *Nencpairs2_d, i
 		if(nn > 0){
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1],1)].y = idy;
+					int Ns = atomicAdd(&Nenc_s[ii + 1],1);
+					Encpairs2_d[ (ii+1) * BN + Ns].y = idy;
 					break;
 				} 
 				else{
@@ -878,7 +885,9 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 #if SERIAL_GROUPING == 0
 		for(int i = 0; i < BN; i += Bl){
 			if(Encpairs_d[idy + i].x < BN2){
-				Encpairs2_d[Encpairs_d[idy + i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1)].x = idy + i;
+				int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1);
+				Encpairs2_d[Encpairs_d[idy + i].x * BN + Ns].x = idy + i;
+				Encpairs2_d[13 * BN + idy + i].y = Ns;
 			}
 			//At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups
 
@@ -889,7 +898,9 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
 			if(Encpairs_d[i].x < BN2){
-				Encpairs2_d[Encpairs_d[i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1)].x = i;
+				int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1);
+				Encpairs2_d[Encpairs_d[i].x * BN + Ns].x = i;
+				Encpairs2_d[13 * BN + i].y = Ns;
 			}
 		}
 	}
@@ -905,7 +916,8 @@ __global__ void group1024_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d,
 			if(nn > 0){
 				for(int ii = 0; ii < 11; ++ii){
 					if(nn <= ne2){
-						Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1], 1)].y = idy + i;
+						int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
+						Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
 						break;
 					}
 					else{
@@ -1055,7 +1067,9 @@ __global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(encpairs_s[idy + i] < BN2){
-			Encpairs2_d[encpairs_s[idy + i] * BN + atomicAdd(&encpairs2_s[encpairs_s[idy + i]],1)].x = idy + i; 
+			int Ns = atomicAdd(&encpairs2_s[encpairs_s[idy + i]],1);
+			Encpairs2_d[encpairs_s[idy + i] * BN + Ns].x = idy + i;
+			Encpairs2_d[13 * BN + idy + i].y = Ns;
 		}
 	}
 #endif
@@ -1063,7 +1077,9 @@ __global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
 			if(Encpairs_d[i].x < BN2){
-				Encpairs2_d[encpairs_s[i] * BN + atomicAdd(&encpairs2_s[encpairs_s[i]],1)].x = i;
+				int Ns = atomicAdd(&encpairs2_s[encpairs_s[i]],1);
+				Encpairs2_d[encpairs_s[i] * BN + Ns].x = i;
+				Encpairs2_d[13 * BN + i].y = Ns;
 			}
 		}
 	}
@@ -1080,7 +1096,8 @@ __global__ void fusionB_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 		if(nn > 0){
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1], 1)].y = idy + i;
+					int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
+					Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
 					break;
 				}
 				else{
@@ -1432,7 +1449,9 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(encpairs_s[idy + i] < BN2){
-			Encpairs2_d[encpairs_s[idy + i] * BN + atomicAdd(&encpairs2_s[encpairs_s[idy + i]],1)].x = idy + i; 
+			int Ns = atomicAdd(&encpairs2_s[encpairs_s[idy + i]],1);
+			Encpairs2_d[encpairs_s[idy + i] * BN + Ns].x = idy + i; 
+			Encpairs2_d[13 * BN + idy + i].y = Ns;
 		}
 	}
 #endif
@@ -1440,7 +1459,9 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
 			if(Encpairs_d[i].x < BN2){
-				Encpairs2_d[encpairs_s[i] * BN + atomicAdd(&encpairs2_s[encpairs_s[i]],1)].x = i;
+				int Ns = atomicAdd(&encpairs2_s[encpairs_s[i]],1);
+				Encpairs2_d[encpairs_s[i] * BN + Ns].x = i;
+				Encpairs2_d[13 * BN + i].y = Ns;
 			}
 		}
 	}
@@ -1457,7 +1478,8 @@ __global__ void fusion_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d, 
 		if(nn > 0){
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1], 1)].y = idy + i;
+					int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
+					Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
 					break;
 				}
 				else{
@@ -1685,7 +1707,9 @@ __global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < BN; i += Bl){
 		if(Encpairs_d[idy + i].x < BN2){
-			Encpairs2_d[Encpairs_d[idy + i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1)].x = idy + i; 
+			int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1);
+			Encpairs2_d[Encpairs_d[idy + i].x * BN + Ns].x = idy + i;
+			Encpairs2_d[13 * BN + idy + i].y = Ns;
 		}
 	}
 #endif
@@ -1693,7 +1717,9 @@ __global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
 			if(Encpairs_d[i].x < BN2){
-			Encpairs2_d[Encpairs_d[i].x * BN + atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1)].x = i; 
+			int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1);
+			Encpairs2_d[Encpairs_d[i].x * BN + Ns].x = i; 
+			Encpairs2_d[13 * BN + i].y = Ns;
 			}
 		}
 	}
@@ -1709,7 +1735,8 @@ __global__ void fusion2_kernel(int *Nenc_d, int2 *Encpairs_d, int2 *Encpairs2_d,
 		if(nn > 0){
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) * BN + atomicAdd(&Nenc_s[ii + 1], 1)].y = idy + i;
+					int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
+					Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
 					break;
 				}
 				else{

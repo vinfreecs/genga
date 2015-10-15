@@ -367,7 +367,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 
-	for(int j = 0; j < 40; ++j){
+	for(int j = 0; j < 50; ++j){
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);

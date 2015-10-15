@@ -55,7 +55,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	double writeEncountersRadius = writeEncountersRadius_d;
 	int idi;
 	int si = Encpairs2_d[ (st+1) * NB + idx].y; 
-	N2 = Encpairs2_d[si].y;
+	N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
 //printf("BS %d %d %d %d %d\n", idx, st, si, N2, NB);
 
 	if(idy < N2){
@@ -143,10 +143,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 #endif
 	__syncthreads();
 	for(int tt = 0; tt < 1000; ++tt){
-	__syncthreads();
+		__syncthreads();
 
 		if(idy < N2){
-
 			scalex.x = 1.0 / (x4_s[idy].x * x4_s[idy].x + 1.0e-20);
 			scalex.y = 1.0 / (x4_s[idy].y * x4_s[idy].y + 1.0e-20);
 			scalex.z = 1.0 / (x4_s[idy].z * x4_s[idy].z + 1.0e-20);
@@ -154,7 +153,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 			scalev.x = 1.0 / (v4_s[idy].x * v4_s[idy].x + 1.0e-20);
 			scalev.y = 1.0 / (v4_s[idy].y * v4_s[idy].y + 1.0e-20);
 			scalev.z = 1.0 / (v4_s[idy].z * v4_s[idy].z + 1.0e-20);
-
 		}
 
 		a0_s[idy].x = 0.0;
@@ -352,7 +350,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						vt_s[idy].z += dt22 * a_s[idy * nb].z;
 					}
 					__syncthreads();
-				}
+				}//end of m loop
 				a_s[idy].x = 0.0;
 				a_s[idy].y = 0.0;
 				a_s[idy].z = 0.0;
@@ -507,18 +505,18 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					__syncthreads();
 					break;
 				}
-			}
+			}//end of n loop
 			if(f == 0) break;
 			__syncthreads();
 			dt1 *= 0.5;
-		}
+		}//end of ff loop
 		if(sgnt * t >= sgnt * dt){
 			break;
 		}
 
 
 		__syncthreads();
-	}
+	}//end of tt loop
 #if G3 == 1
         a0_s[idy].x = 0.0;
         a0_s[idy].y = 0.0;
