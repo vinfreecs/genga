@@ -2207,8 +2207,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case NB = 16 in the Multi Simulation Mode. NB is the next bigger number of N
-//which is a power of two.
+//This kernel performs the seccond kick of the time step.
 //It calculates the acceleration between all bodies with respect to the changeover function K.
 //It also calculates all accelerations from bodies not beeing in a close encounter and store it in accK_d. This values will then be used 
 //it the next time step.
@@ -2223,7 +2222,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 ////March 2014
 //
 // ****************************************
-template <int Bl, int Bl2, int Nmax, int E, int NB>
+template <int Bl, int Bl2, int Nmax, int E>
 __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dtksq_d, double Kt, int *index_d, int NT, double *test_d){
 
 	int idy = threadIdx.x;

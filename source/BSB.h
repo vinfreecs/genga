@@ -74,6 +74,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
 #if G3 == 1
 		groupIndexOld_s[idy] = groupIndexOld_d[idi];
 #endif
@@ -570,5 +571,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		x4_d[idi] = x4_s[idy]; 
 		v4_d[idi] = v4_s[idy];
 		rcritv_d[idi] = rcritv_s[idy];
+//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z);
 	}
 }

@@ -361,7 +361,6 @@ __global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Ms
 //
 //It works for the case of less than 16bodies.
 //Each Kernel is launched with 3 blocks, one for each dimension.
-//
 //E = 1 : perform C Kick.
 //E = 2 : perform C Kick + reset Nencpairs
 //
@@ -394,7 +393,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 	if(id < NT && id >= 0){
 		st_s[idy] = index_d[id] / 100;
 		volatile double m = x4_d[id].w;
-		p_s[idy].x = m * v4_d[id].x; //st_s[idy].x;
+		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
 		dti2Msun = dti2Msun_d[st_s[idy]] * Ct;
@@ -413,7 +412,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		if(id + Bl < NT){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			volatile double m = x4_d[id + Bl].w;
-			p_s[idy + Bl].x = m * v4_d[id + Bl].x; //st_s[idy + Bl].x;
+			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
 			p_s[idy + Bl].y = m * v4_d[id + Bl].y;
 			p_s[idy + Bl].z = m * v4_d[id + Bl].z;
 		}
@@ -429,7 +428,33 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 	volatile double px;
 	volatile double py;
 	volatile double pz;
+	if(Nmax >= 64){
+		__syncthreads();
+		f = ((st_s[idy] - st_s[idy + 32]) == 0);		//one if sti == stj, zero else
+		px = (p_s[idy + 32].x) * f;	
+		py = (p_s[idy + 32].y) * f;
+		pz = (p_s[idy + 32].z) * f;
 
+		__syncthreads();
+	
+		p_s[idy].x += px;
+		p_s[idy].y += py;
+		p_s[idy].z += pz;
+	}
+
+	if(Nmax >= 32){
+		__syncthreads();
+		f = ((st_s[idy] - st_s[idy + 16]) == 0);		//one if sti == stj, zero else
+		px = (p_s[idy + 16].x) * f;	
+		py = (p_s[idy + 16].y) * f;
+		pz = (p_s[idy + 16].z) * f;
+
+		__syncthreads();
+	
+		p_s[idy].x += px;
+		p_s[idy].y += py;
+		p_s[idy].z += pz;
+	}
 
 	if(Nmax >= 16){
 		__syncthreads();
@@ -535,6 +560,31 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		__syncthreads();
 	}
 
+	if(Nmax >= 32){
+		f = ((st_s[idy] - st_s[idy + 16]) == 0);
+		px = (p_s[idy].x) * f + (1 - f) * p_s[idy + 16].x;
+		py = (p_s[idy].y) * f + (1 - f) * p_s[idy + 16].y;
+		pz = (p_s[idy].z) * f + (1 - f) * p_s[idy + 16].z;
+
+		__syncthreads();
+		p_s[idy + 16].x = px;
+		p_s[idy + 16].y = py;
+		p_s[idy + 16].z = pz;
+		__syncthreads();
+	}
+
+	if(Nmax >= 64){
+		f = ((st_s[idy] - st_s[idy + 32]) == 0);
+		px = (p_s[idy].x) * f + (1 - f) * p_s[idy + 32].x;
+		py = (p_s[idy].y) * f + (1 - f) * p_s[idy + 32].y;
+		pz = (p_s[idy].z) * f + (1 - f) * p_s[idy + 32].z;
+
+		__syncthreads();
+		p_s[idy + 32].x = px;
+		p_s[idy + 32].y = py;
+		p_s[idy + 32].z = pz;
+		__syncthreads();
+	}
 
 	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w > 0){
 		x4_d[id].x += p_s[idy].x * dti2Msun;

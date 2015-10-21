@@ -63,7 +63,7 @@ public:
 	int *Nsmall2S;
 	int *NEnergy;
 
-	int *NBS_h, *NBS_d;
+	int *NBS_h, *NBS_d;			//starting point in memory of individual simulations
 
 	//data for irregular outputs
 	int irrTimeStep;

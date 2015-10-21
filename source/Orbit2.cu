@@ -1258,6 +1258,8 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 	if( N > 1024) NB = 2048;
 	if( N > 2048) NB = 4096;
 	if( N > 4096) NB = 8192;
+	if( N > 8192) NB = 16384;
+	if( N > 16384) NB = 32768;
 
 	N4 = N;
 	if(N4 %4 == 3) N4 +=1;
@@ -1354,8 +1356,8 @@ __host__ void Data::stopSimulations(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * NmaxTestParticles;
-		Nsmall2T += Nsmall_h[st] * NmaxTestParticles;
+		NB2T += NB[st] * NmaxM;
+		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
 	}
 
@@ -1447,7 +1449,7 @@ __host__ void Data::stopSimulations(){
 
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
-	remove3M_kernel <<< Nst, 16 >>> (index_d, N_d, NBS_d);
+	remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
 
 }
 

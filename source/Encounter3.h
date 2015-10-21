@@ -26,7 +26,7 @@
 template<int E>
 __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &time, int writeEncounters, double writeEncountersRadius){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d\n", i ,j - N, E, N);
+//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j - N, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 //if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 
@@ -138,6 +138,8 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
 
+//if((E == 0 || E >= 2))printf("d %d %d %.20g %.20g\n", i, j - N, delta, rcritv);
+
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
 //if((E == 0 || E >= 2))printf("EE %d %d %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.x, x4j.x, v4i.x, v4j.x, E);
@@ -244,7 +246,7 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 
 }
 // **************************************
-// For the multi simulation mode
+//For the multi simulation mode
 //This reads all encounter pairs from the prechecker, and calls the encounter function
 //to detect close encounter pairs.
 //All close encounter pairs are stored in the array Encpairs2_d. 
@@ -254,6 +256,7 @@ __global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xol
 ////March 2014
 //
 // ****************************************
+template < int Nmax >
 __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -290,12 +293,12 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				Encpairs_d[NT].y = st;
 			}
 			if(x4_d[ii].w >= x4_d[jj].w){
-				Encpairs2_d[Ne + NBS * 16].x = ii;
-				Encpairs2_d[Ne + NBS * 16].y = jj;
+				Encpairs2_d[Ne + NBS * Nmax].x = ii;
+				Encpairs2_d[Ne + NBS * Nmax].y = jj;
 			}
 			else{
-				Encpairs2_d[Ne + NBS * 16].x = jj;
-				Encpairs2_d[Ne + NBS * 16].y = ii;
+				Encpairs2_d[Ne + NBS * Nmax].x = jj;
+				Encpairs2_d[Ne + NBS * Nmax].y = ii;
 			}
 		}
 		if(si == 0 && enccount > 0){
@@ -1147,8 +1150,8 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	__syncthreads();
 
 	if(idy < Ne){ 
-		encpairs_s[idy].x = Encpairs2_d[idy + NBS * 16].x - NBS;
-		encpairs_s[idy].y = Encpairs2_d[idy + NBS * 16].y - NBS;
+		encpairs_s[idy].x = Encpairs2_d[idy + NBS * NmaxM].x - NBS;
+		encpairs_s[idy].y = Encpairs2_d[idy + NBS * NmaxM].y - NBS;
 		A_s[idy] = encpairs_s[idy].x;
 //printf("%d %d\n", encpairs_s[idy].x, encpairs_s[idy].y);
 	}
@@ -1203,7 +1206,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	//Check now for new groups and increase the total number of groups//
 	if(idy < BN){
 		if(B_s[idy] == idy){
-			B2_s[idy] =  atomicAdd(&Nenc_s,1);
+			B2_s[idy] = atomicAdd(&Nenc_s,1);
 		}		
 	}
 	__syncthreads();
@@ -1774,7 +1777,7 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 //printf("nn %d %d %d %d %d %d\n", st, idy, nn, Encpairs_d[(idy + NBS)* 16].x, Encpairs_d[((idy  + NBS)* 16)+ 1].x, Encpairs_d[((idy + NBS) * 16) + 2].x);
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) + 16 * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
+					Encpairs2_d[ (ii+1) + NmaxM * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
 					break;
 				} 
 				else{

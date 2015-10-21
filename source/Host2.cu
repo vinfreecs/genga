@@ -1371,8 +1371,15 @@ __host__ int Host::icSize(int st){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
 	}
-	NN = min(NN, 8192);
+	NN = min(NN, 32768);
 	N_h[st] = NN;
+
+	if(Nst > 1 && NN > NmaxM){
+		fprintf(masterfile,"Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
+		printf("Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -1398,6 +1405,8 @@ __host__ int Host::size(){
 		if( N_h[st] > 1024) NB[st] = 2048;
 		if( N_h[st] > 2048) NB[st] = 4096;
 		if( N_h[st] > 4096) NB[st] = 8192;
+		if( N_h[st] > 8192) NB[st] = 16384;
+		if( N_h[st] > 16384) NB[st] = 32768;
 
 
 		N4[st] = N_h[st];
@@ -1415,10 +1424,10 @@ __host__ int Host::size(){
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 8192)){
-			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
-			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
-			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 8192));
+		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 32768)){
+			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
+			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
+			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
 			return 0;
 		}
 		fclose(GSF[st].logfile);
@@ -1496,6 +1505,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
 			fprintf(infofile, "FormatP: %d\n", P.FormatP);						// use only argument in simulation 0
 			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
+			fprintf(infofile, "NmaxM: %d\n", NmaxM);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
 			fprintf(infofile, "Energy output interval: %d\n", P.ei);				// use only argument in simulation 0
@@ -1600,8 +1610,8 @@ __host__ void Host::Tsizes(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * NmaxTestParticles;
-		Nsmall2T += Nsmall_h[st] * NmaxTestParticles;
+		NB2T += NB[st] * NmaxM;
+		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(NB[st], 8);
 
 	}

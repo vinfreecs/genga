@@ -548,13 +548,13 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 
         __shared__ volatile double U_s[Bl];
 
-	U_s[idy] = 0.0;
-        if(NB == 16) U_s[idy + 16] = 0.0;
-        if(NB == 32) U_s[idy + 32] = 0.0;
+	for(int i = 0; i < Bl; i += blockDim.x){
+		U_s[idy + i] = 0.0;
+	}
 
 	__syncthreads();
 
-	for (int i = 0; i < NB ;i += Bl){
+	for(int i = 0; i < NB ;i += Bl){
 		if(idy + i < N){
 			U_s[idy] += Energy_d[idy + i];
 		}
@@ -584,7 +584,7 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 	if(idy == 0){
 		U_d[0] += U_s[0];
 	}
-        for (int i = 0; i < NB ;i += Bl){
+        for(int i = 0; i < NB ;i += Bl){
 		if(idy + i < N){
                 	Energy_d[idy + i] = 0.0;
 		}
@@ -715,7 +715,7 @@ __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
-	gasEnergy_kernel< 16, 32> <<< 1, 16, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+	gasEnergy_kernel< NmaxM, 2 * NmaxM > <<< 1, NmaxM, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
 }
 
 

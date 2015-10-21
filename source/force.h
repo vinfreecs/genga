@@ -7,12 +7,12 @@
 //Authors: Simon Grimm
 // **********************************************************
 __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
-/*
+
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < N){
-		
+/*	
 		int st = 0;
 
 		if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
@@ -40,10 +40,9 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 		v4.z += a3.z * dt;
 
 		v4_d[id] = v4;
-	}
 */
+	}
 }
-
 
 __constant__ int setElementsNumbers_c[4];
 __constant__ int setElements_c[12];
