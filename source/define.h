@@ -134,7 +134,7 @@
 // *********************
 
 //only here for testing
-#define USE_NAF 1
+#define USE_NAF 0
 
 #ifndef STRUCT_H
 #define STRUCT_H
