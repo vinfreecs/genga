@@ -295,7 +295,7 @@ if(dt < 0) sgnt = -1;
 								int j = Colpairs_s[c].y;
 								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
                                                                 	int nc = atomicAdd(Ncoll_d, 1);
-									collide(xt_s, vt_s, i, j, Encpairs2_d[idx * NB + i].x, Encpairs2_d[idx * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, 0, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+									collide(xt_s, vt_s, i, j, Encpairs2_d[idx * NB + i].x, Encpairs2_d[idx * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 								}
 							}
 						}

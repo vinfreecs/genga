@@ -180,7 +180,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, double *rcritv, double *rcrit_d, int Nst, int NBS, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
+__device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, double *rcritv, double *rcrit_d, int Nst, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
 
         if(Nst == 1){
 		printf("Collision between body %d and %d\n", index[indexi], index[indexj]);

@@ -2298,7 +2298,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	
 	for(volatile int j = Nmax - 1; j > 0; --j){
 		__syncthreads();
-		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w > 0.0 && x4_s[idy + j].w > 0.0){
+		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w >= 0.0 && x4_s[idy + j].w >= 0.0){
 			rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
 			rcritv2 = rcritv * rcritv;
 			rx = x4_s[idy + j].x - x4_s[idy].x;

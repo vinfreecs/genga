@@ -397,7 +397,6 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
 		dti2Msun = dti2Msun_d[st_s[idy]] * Ct;
-
 	}
 	else{
 		st_s[idy] = -idy-1;
@@ -586,7 +585,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		__syncthreads();
 	}
 
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w > 0){
+	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0){
 		x4_d[id].x += p_s[idy].x * dti2Msun;
 		x4_d[id].y += p_s[idy].y * dti2Msun;
 		x4_d[id].z += p_s[idy].z * dti2Msun;

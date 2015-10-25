@@ -6,7 +6,7 @@
 ////March 2014
 // ***********************************************************
 template < int Bl, int Bl2>
-__global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
+__global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double* U_d, double Msun, double *test_d, int N, int f){
 
         int idy = threadIdx.x;
 
@@ -81,19 +81,22 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
                 if(Bl >= 2) p[idy].w += p[idy + 1].w;
         }
         __syncthreads();
-//printf("p0 %d %.20g %.20g %.20g\n", idy, p_s[idy].x, p_s[idy].y, p_s[idy].z);
 	double iMsun = 1.0 / Msun;
 	if(idy == 0){
-                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+                volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
+		if(f == 0){
+			vcom_d[0].x = p_s[0].x;
+			vcom_d[0].y = p_s[0].y;
+			vcom_d[0].z = p_s[0].z;
+		}
 	}
 	if(idy < N && f == 1){
 		//Convert to Heliocentric coordinates
 		v4_d[idy].x += p_s[0].x * iMsun;
 		v4_d[idy].y += p_s[0].y * iMsun;
 		v4_d[idy].z += p_s[0].z * iMsun;
-//printf("v %d %.20g %.20g %.20g %.20g\n", idy, v4_d[idy].x, v4_d[idy].y, v4_d[idy].z, iMsun);
 	}
 	if(idy < N && f == -1){
 		//Convert to Democratic coordinates
@@ -101,7 +104,6 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 		v4_d[idy].x -= p_s[0].x * iMsunp;
 		v4_d[idy].y -= p_s[0].y * iMsunp;
 		v4_d[idy].z -= p_s[0].z * iMsunp;
-//printf("v %d %.20g %.20g %.20g %.20g\n", idy, v4_d[idy].x, v4_d[idy].y, v4_d[idy].z, iMsunp);
 	}
 }
 // *********************************************************
@@ -112,7 +114,7 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double M
 ////March 2014
 // ***********************************************************
 template < int Bl>
-__global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double Msun, double *test_d, int N, int f){
+__global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double* U_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
 
@@ -201,6 +203,11 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
                 volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
+		if(f == 0){
+			vcom_d[0].x = p_s[0].x;
+			vcom_d[0].y = p_s[0].y;
+			vcom_d[0].z = p_s[0].z;
+		}
 	}
         for(int i = 0; i < N; i += Bl){
                 double m = x4_d[idy + i].w;
@@ -229,7 +236,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double* U_d, double 
 ////March 2014
 // ***********************************************************
 template < int Bl>
-__global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d, double4 *v4small_d, double* U_d, double Msun, double *test_d, int N, int Nsmall, int f){
+__global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d, double4 *v4small_d, double3 *vcom_d, double* U_d, double Msun, double *test_d, int N, int Nsmall, int f){
 
 	int idy = threadIdx.x;
 
@@ -316,9 +323,14 @@ __global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d
 	double iMsunp = 1.0 / (Msun + p_s[0].w);
 
         if(idy == 0){
-                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+                volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[0] += f * Tsun;
+		if(f == 0){
+			vcom_d[0].x = p_s[0].x;
+			vcom_d[0].y = p_s[0].y;
+			vcom_d[0].z = p_s[0].z;
+		}
 	}
         for(int i = 0; i < N; i += Bl){
                 double m = x4_d[idy + i].w;
@@ -354,20 +366,20 @@ __global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d
 	}
 }
 // *********************************************************
-//This kernel computes the kinetic energy of the center of mass
+// This kernel computes the kinetic energy of the center of mass
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+// Authors: Simon Grimm, Joachim Stadel
+// October  2015
 // ***********************************************************
 template <int Bl, int Bl2, int Nmax >
-__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, double *U_d, int *index_d, int NT, double *test_d, int ff){
+__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double *Msun_d, double *U_d, int *index_d, int *NBS_d, int NT, double *test_d, int ff){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
 	__shared__ volatile double4 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
 	volatile double Msun;
-	int index;
+	int NBS;
 
 	if(id < NT && id >= 0){
 		st_s[idy] = index_d[id] / 100;
@@ -377,7 +389,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		p_s[idy].z = m * v4_d[id].z;
 		p_s[idy].w = m;
 		Msun = Msun_d[st_s[idy]];
-		index = index_d[id] % 100;
+		NBS = NBS_d[st_s[idy]];
 
 	}
 	else{
@@ -387,7 +399,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		p_s[idy].z = 0.0;
 		p_s[idy].w = 0.0;
 		Msun = 0.0;
-		index = -1;
+		NBS = -1;
 	}
 	//halo
 	if(idy < Nmax / 2){
@@ -399,7 +411,6 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 			p_s[idy + Bl].y = m * v4_d[id + Bl].y;
 			p_s[idy + Bl].z = m * v4_d[id + Bl].z;
 			p_s[idy + Bl].w = m;
-			index = index_d[id + Bl] % 100;
 		}
 		else{
 			st_s[idy + Bl] = -idy-Bl-1;
@@ -407,7 +418,6 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 			p_s[idy + Bl].y = 0.0;
 			p_s[idy + Bl].z = 0.0;
 			p_s[idy + Bl].w = 0.0;
-			index = -1;
 		}
 	}
 //printf("p %d %d %.20g %.20g %.20g\n", idy, id, p_s[idy].x, p_s[idy].y, p_s[idy].z);
@@ -598,25 +608,27 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, const double *Msun_d, 
 		__syncthreads();
 	}
 
-//printf("p1 %d %.20g %.20g %.20g\n", idy, p_s[idy].x, p_s[idy].y, p_s[idy].z);
 	double iMsun = 1.0 / Msun;
 	//now the sum is complete
-	if(index == 0 && idy >= Nmax && idy < Bl - Nmax / 2){
-                volatile double Tsun = 0.5 * iMsun * ( p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
+	if(id == NBS && NBS >= 0 && idy >= Nmax && idy < Bl - Nmax / 2){
+                volatile double Tsun = 0.5 * iMsun * (p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
 		U_d[st_s[idy]] += ff * Tsun;
+		if(ff == 0){
+			vcom_d[st_s[idy]].x = p_s[idy].x;
+			vcom_d[st_s[idy]].y = p_s[idy].y;
+			vcom_d[st_s[idy]].z = p_s[idy].z;
+		}
 	}
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && ff == 1){
+	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == 1){
 		v4_d[id].x += p_s[idy].x * iMsun;
 		v4_d[id].y += p_s[idy].y * iMsun;
 		v4_d[id].z += p_s[idy].z * iMsun;
-//printf("v %d %.20g %.20g %.20g %.20g %d\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, iMsun, index_d[id]);
 	}
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && ff == -1){
+	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == -1){
 		double iMsunp = 1.0 / (Msun + p_s[idy].w);
 		v4_d[id].x -= p_s[idy].x * iMsunp;
 		v4_d[id].y -= p_s[idy].y * iMsunp;
 		v4_d[id].z -= p_s[idy].z * iMsunp;
-//printf("v %d %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, iMsunp);
 	}
 }

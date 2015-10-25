@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.25
+#define Version 3.26
 
 
 //Default parameter values
@@ -133,7 +133,8 @@
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
-
+//only here for testing
+#define USE_NAF 1
 
 #ifndef STRUCT_H
 #define STRUCT_H

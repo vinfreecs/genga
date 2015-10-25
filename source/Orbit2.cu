@@ -34,6 +34,8 @@ __host__ void Data::AllocateOrbitt(){
 	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 
+	vcom_h = (double3*)malloc(Nst * sizeof(double3));
+
 	x4small_h = (double4*)malloc(NsmallT * sizeof(double4));
 	v4small_h = (double4*)malloc(NsmallT * sizeof(double4));
 	xoldsmall_h = (double4*)malloc(NsmallT * sizeof(double4));
@@ -41,7 +43,6 @@ __host__ void Data::AllocateOrbitt(){
 	indexsmall_h = (int*)malloc(NsmallT * sizeof(int));
 	spinsmall_h = (double3*)malloc(NsmallT * sizeof(double3));
 	rcritvsmall_h = (double*)malloc(NsmallT * sizeof(double));
-	vcomsmall_h = (double3*)malloc(Nst * sizeof(double3));
 	aelimitssmall_h = (float4*)malloc(NsmallT * sizeof(float4));
 	aecountsmall_h = (int*)malloc(NsmallT * sizeof(int));
 	enccountsmall_h = (int*)malloc(NsmallT * sizeof(int));
@@ -131,6 +132,7 @@ __host__ void Data::AllocateOrbitt(){
 	v4G3_d = NULL;
 	
 #endif
+	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
 
 	cudaMalloc((void **) &x4small_d, NsmallT * sizeof(double4));
 	cudaMalloc((void **) &v4small_d, NsmallT * sizeof(double4));
@@ -145,7 +147,6 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Nencpairssmall2_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Encpairssmall_d, sizeof(int2) * Nsmall2T);
 	cudaMalloc((void **) &Encpairssmall2_d, sizeof(int2) * Nsmall2T);
-	cudaMalloc((void **) &vcomsmall_d, Nst * sizeof(double3));
 	cudaMalloc((void **) &aelimitssmall_d, NsmallT * sizeof(float4));
 	cudaMalloc((void **) &aecountsmall_d, NsmallT * sizeof(int));
 	cudaMalloc((void **) &enccountsmall_d, NsmallT * sizeof(int));
@@ -1104,10 +1105,10 @@ __host__ void Data::Ejection(){
 
 			int c = 0;
 			for(int i = 0; i < N_h[st]; ++i){
-				vcomsmall_h[st].x = 0.0;
-				vcomsmall_h[st].y = 0.0;
-				vcomsmall_h[st].z = 0.0;
-				cudaMemcpy(vcomsmall_d + st, vcomsmall_h + st, sizeof(double3), cudaMemcpyHostToDevice);
+				vcom_h[st].x = 0.0;
+				vcom_h[st].y = 0.0;
+				vcom_h[st].z = 0.0;
+				cudaMemcpy(vcom_d + st, vcom_h + st, sizeof(double3), cudaMemcpyHostToDevice);
 				c = 0;
 				double rsq = x4_h[i + NBS].x*x4_h[i + NBS].x + x4_h[i + NBS].y*x4_h[i + NBS].y + x4_h[i + NBS].z*x4_h[i + NBS].z;
 				if(rsq > Rcut_h[st] * Rcut_h[st] && x4_h[i + NBS].w >= 0){
@@ -1136,9 +1137,9 @@ __host__ void Data::Ejection(){
 					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
-					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcomsmall_d + st, N_h[st]);
+					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcom_d + st, N_h[st]);
 					
-					if(Nsmall_h[st] > 0) EjectionEnergysmallCall(v4small_d + NsmallS, Nsmall_h[st], vcomsmall_d + st);
+					if(Nsmall_h[st] > 0) EjectionEnergysmallCall(v4small_d + NsmallS, Nsmall_h[st], vcom_d + st);
 				}
 			}
 			fclose(ejectfile);
@@ -1476,6 +1477,8 @@ __host__ int Data::freeOrbit(){
 	free(timestepBuffer);
 	free(timestepBufferIrr);
 
+	free(vcom_h);
+
 	free(x4small_h);
 	free(v4small_h);
 	free(xoldsmall_h);
@@ -1486,7 +1489,6 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(Nencpairssmall_h);
 	cudaFreeHost(Nencpairssmall2_h);
 	cudaFreeHost(Nencsmall_m);
-	free(vcomsmall_h);
 	free(aelimitssmall_h);
 	free(aecountsmall_h);
 	free(enccountsmall_h);
@@ -1543,6 +1545,8 @@ __host__ int Data::freeOrbit(){
 	cudaFree(enccount_d);
 	cudaFree(aecountT_d);
 	cudaFree(enccountT_d);
+
+	cudaFree(vcom_d);
 	
 	cudaFree(x4small_d);
 	cudaFree(v4small_d);
@@ -1557,7 +1561,6 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairssmall_d);
 	cudaFree(Encpairssmall2_d);
 
-	cudaFree(vcomsmall_d);
 	cudaFree(aelimitssmall_d);
 	cudaFree(aecountsmall_d);
 	cudaFree(enccountsmall_d);

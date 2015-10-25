@@ -123,7 +123,7 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 //
 // ****************************************
 template <int Bl>
-__global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
+__global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
 	int idy = threadIdx.x;
 
 	__shared__ volatile double V_s[Bl];
@@ -287,9 +287,9 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 
 
 	if(idy == 0){
-		vcomsmall_d[0].x = vcom.x;
-		vcomsmall_d[0].y = vcom.y;
-		vcomsmall_d[0].z = vcom.z;
+		vcom_d[0].x = vcom.x;
+		vcom_d[0].y = vcom.y;
+		vcom_d[0].z = vcom.z;
 	}
 	
 	__syncthreads();
@@ -405,7 +405,7 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 //
 // ****************************************
 template<int Bl, int Bl2>
-__global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
+__global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
 	int idy = threadIdx.x;
 
 	__shared__ volatile double V_s[Bl2];
@@ -548,9 +548,9 @@ __global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	vcom.z = x4_d[idx].w * v4_d[idx].z / mtot;
 
 	if(idy == 0){
-		vcomsmall_d[0].x = vcom.x;
-		vcomsmall_d[0].y = vcom.y;
-		vcomsmall_d[0].z = vcom.z;
+		vcom_d[0].x = vcom.x;
+		vcom_d[0].y = vcom.y;
+		vcom_d[0].z = vcom.z;
 	}
 	
 	__syncthreads();
@@ -587,15 +587,15 @@ __global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	}
 }
 
-__global__ void EjectionEnergysmall1_kernel(double4 *v4small_d, int Nsmall, double3 *vcomsmall_d){
+__global__ void EjectionEnergysmall1_kernel(double4 *v4small_d, int Nsmall, double3 *vcom_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
 
 	if(id < Nsmall){
-		v4small_d[id].x += vcomsmall_d[0].x;
-		v4small_d[id].y += vcomsmall_d[0].y;
-		v4small_d[id].z += vcomsmall_d[0].z;
+		v4small_d[id].x += vcom_d[0].x;
+		v4small_d[id].y += vcom_d[0].y;
+		v4small_d[id].z += vcom_d[0].z;
 	}
 }
 
@@ -1180,46 +1180,46 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *sp
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // *************************************3
-__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcomsmall_d, int N){
+__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N){
 	switch(NB){
 		case 16:{
-			EjectionEnergy32_kernel <16, 32> <<<1, 16>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy32_kernel <16, 32> <<<1, 16>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 32:{
-			EjectionEnergy32_kernel <32, 64> <<<1, 32>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy32_kernel <32, 64> <<<1, 32>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 64:{
-			EjectionEnergy64_kernel <64> <<<1, 64>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <64> <<<1, 64>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 128:{
-			EjectionEnergy64_kernel <128> <<<1, 128>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <128> <<<1, 128>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 256:{
-			EjectionEnergy64_kernel <256> <<<1, 256>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <256> <<<1, 256>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 512:{
-			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 1024:{
-			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 		break;
 		case 2048:{
-			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+			EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 		};
 	}
 	if(NB > 2048){
-		EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcomsmall_d, N);
+		EjectionEnergy64_kernel <512> <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
 	}
 }
-__host__ void Data::EjectionEnergysmallCall(double4 *v4small_d, int Nsmall, double3 *vcomsmall_d){
-	EjectionEnergysmall1_kernel <<< (Nsmall + 127) / 128, 128 >>> (v4small_d, Nsmall, vcomsmall_d);
+__host__ void Data::EjectionEnergysmallCall(double4 *v4small_d, int Nsmall, double3 *vcom_d){
+	EjectionEnergysmall1_kernel <<< (Nsmall + 127) / 128, 128 >>> (v4small_d, Nsmall, vcom_d);
 	
 }
 __host__ void Data::EjectionEnergysmall2Call(double4 *x4small_d, int i){

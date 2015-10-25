@@ -9,11 +9,10 @@
 
 #include "Host2.h"
 #include "Orbit2.h"
-/*
-#include "BS.h"
-//#include "BSA.h"
-*/
 
+#if USE_NAF == 1
+#include "naf2.h"
+#endif
 
 int main(int argc, char*argv[]){
 
@@ -132,6 +131,11 @@ int main(int argc, char*argv[]){
 		D.stopSimulations();
 		NminFlag = 0;
 	}
+#if USE_NAF == 1
+	NAF naf;
+	er = naf.alloc1(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.index_d, D.indexsmall_d, D.P.deltaT);
+	if(er == 0) return 0;
+#endif
 
 	cudaDeviceSynchronize();
 	printf("Compute initial Energy\n");
@@ -379,6 +383,12 @@ int main(int argc, char*argv[]){
 			if(bufferCount > D.P.Buffer){
 				bufferCount = 1;
 			}
+#if USE_NAF == 1
+	//compute the x and y arrays for the naf algorithm
+//to specify vars and n
+	int vars = 1;
+	naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, vars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, D.timeStep - 1, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+#endif
 	} // end of time step loop
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
@@ -414,6 +424,19 @@ int main(int argc, char*argv[]){
 		er = D.freeGas();
 		if(er == 0) return 0;
 	}
+
+#if USE_NAF == 1
+	er = naf.alloc2(H.NT, D.N_h[0], D.Nsmall_h[0], Nst);
+	if(er == 0) return 0;
+
+	er = naf.nafCall(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF[0].X);
+	if(er == 0) return 0;
+
+	er = naf.naffree();
+	if(er == 0) return 0;
+#endif
+
+
 	er = H.freeHost();
 	if(er == 0) return 0;
 

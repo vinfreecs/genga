@@ -391,7 +391,6 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		xold_d[id] = x4_s[idy];
 		vold_d[id] = v4_s[idy];
-
 #if G3 == 1
 		groupIndexOld_d[id] = groupIndex_d[id];
 #endif

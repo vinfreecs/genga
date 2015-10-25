@@ -62,6 +62,8 @@ public:
 	double4 *x4G3_d;
 	double4 *v4G3_d;
 
+	double3 *vcom_h, *vcom_d;
+
 	double4 *x4small_h, *x4small_d;
 	double4 *v4small_h, *v4small_d;
 	double4 *xoldsmall_h, *xoldsmall_d;
@@ -77,7 +79,6 @@ public:
 	int2 *Encpairssmall_d;
 	int2 *Encpairssmall2_d;
 	int *Nencsmall_m, *Nencsmall_d;
-	double3 *vcomsmall_h, *vcomsmall_d;
 	float4 *aelimitssmall_h, *aelimitssmall_d;
 	int *aecountsmall_h, *aecountsmall_d;
 	int *enccountsmall_h, *enccountsmall_d;
