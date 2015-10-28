@@ -173,6 +173,7 @@ struct Parameter{
 	int NAFn0;
 	int NAFnfreqs;
 	int NAFformat;
+	int NAFinterval;
 };
 
 //File names of Simulstions

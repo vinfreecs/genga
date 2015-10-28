@@ -1063,6 +1063,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "NAF interval =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NAFinterval);
+	
+				if(er <= 0){
+					printf("Error: NAF interval = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
