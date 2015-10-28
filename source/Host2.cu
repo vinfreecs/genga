@@ -234,6 +234,11 @@ __host__ void Host::Halloc(){
 	P.FormatP = def_FormatP;
 	P.WriteEncounters = def_WriteEncounters;
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
+        P.NAFvars = def_NAFvars;
+        P.NAFn0 = def_NAFn0;
+        P.NAFnfreqs = def_NAFnfreqs;
+	P.NAFformat = def_NAFformat;
+
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	sprintf(P.setElementsfilename, "%s", "-");
@@ -399,7 +404,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Energy output interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.ei);
-				if(er <= 0 || P.ei <= 0){
+				if(er <= 0 || P.ei < 0){
 					printf("Error: Energy output interval is not valid!\n");
 					return 0;
 				}
@@ -414,7 +419,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.ci);
 	
-				if(er <= 0 || P.ci <= 0){
+				if(er <= 0 || P.ci < 0){
 					printf("Error: Coordinates outut interval is not valid!\n");
 					return 0;
 				}
@@ -430,7 +435,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.nci);
 	
-				if(er <= 0 || P.nci <= 0 || P.nci > P.ci){
+				if(er <= 0 || P.nci <= 0 || (P.nci > P.ci && P.ci > 0)){
 					printf("Error: Number of outputs per interval is not valid!\n");
 					return 0;
 				}
@@ -998,11 +1003,70 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "NAF variables =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NAFvars);
+	
+				if(er <= 0){
+					printf("Error: NAF variables = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "NAF size =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NAFn0);
+	
+				if(er <= 0){
+					printf("Error: NAF size = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "NAF nfreqs =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NAFnfreqs);
+	
+				if(er <= 0){
+					printf("Error: NAF nfreqs = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "NAF format =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NAFformat);
+	
+				if(er <= 0){
+					printf("Error: NAF format = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
 		}
-
 	}
 
 
@@ -1117,7 +1181,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		dt_h[st] = idt_h[st] * dayUnit;
 		dtksq_h[st] = dt_h[st] * ksq;
 	}
-	if(P.ei > P.ci){
+	if(P.ei > P.ci && P.ci > 0){
 		P.ei = P.ci;
 		printf("**** Energy output interval decreased equal to coordinate output interval ****\n");
 		fprintf(masterfile, "**** Energy output interval decreased equal to coordinate output interval ****\n");

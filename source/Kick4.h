@@ -30,7 +30,6 @@ __device__ void  accb(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
 
 		if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
-//printf("Precheck %d %d\n", i, j);
 			if( i < j){
 				Ni = atomicAdd(NencpairsI, 1);
 				Encpairs_d[icNB * i + Ni].x = i;
@@ -57,6 +56,31 @@ __device__ void  accb(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		ac.y += r3ij.y * s;
 		ac.z += r3ij.z * s;
 	}
+}
+__device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int icNB){
+	double rsq, ir, ir3, s;
+	double3 r3ij;
+	double rcritv;
+
+	r3ij.x = x4j.x - x4i.x;
+	r3ij.y = x4j.y - x4i.y;
+	r3ij.z = x4j.z - x4i.z;
+
+	rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+	rcritv = fmax(rcritvi, rcritvj);
+
+	bool cl = (rsq < pc * rcritv * rcritv) ? true : false;
+
+	Encpairsb_d[icNB * i + j] = cl;
+
+	ir = 1.0/sqrt(rsq);
+	ir3 = ir*ir*ir;
+
+	s = x4j.w * ir3 * (!cl);
+
+	ac.x += r3ij.x * s;
+	ac.y += r3ij.y * s;
+	ac.z += r3ij.z * s;
 }
 
 // **************************************
@@ -1075,6 +1099,240 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 		Encpairs2_d[icNB * (idx + 3*N4) + 1].x = NencpairsJ4_s;
 	}
 
+}
+
+template <int Bl>
+__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, double *test_d, int N, int icNB, int NB, double t){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	int Bl_2 = Bl/2;
+
+	__shared__ double3 a1_s[Bl/2];
+	__shared__ double3 a2_s[Bl/2];
+	__shared__ double3 a3_s[Bl/2];
+	__shared__ double3 a4_s[Bl/2];
+
+	double4 x4i = x4_d[idx];
+	double4 x4i2 = x4_d[idx+N4];
+	double4 x4i3 = x4_d[idx+2*N4];
+	double4 x4i4 = x4_d[idx+3*N4];
+
+	double rcritvi = rcritv_d[idx];
+	double rcritvi2 = rcritv_d[idx+N4];
+	double rcritvi3 = rcritv_d[idx+2*N4];
+	double rcritvi4 = rcritv_d[idx+3*N4];
+#if G3 == 1
+	int groupIndexi = groupIndex_d[idx];
+	int groupIndexi2 = groupIndex_d[idx + N4];
+	int groupIndexi3 = groupIndex_d[idx + 2*N4];
+	int groupIndexi4 = groupIndex_d[idx + 3*N4];
+#endif
+
+	__syncthreads();
+
+	if(idy < Bl_2) {
+		a1_s[idy].x = 0.0;
+		a1_s[idy].y = 0.0;
+		a1_s[idy].z = 0.0;
+
+		a3_s[idy].x = 0.0;
+		a3_s[idy].y = 0.0;
+		a3_s[idy].z = 0.0;
+
+		__syncthreads();
+		for(int i = 0; i < NB; i += Bl_2){
+			if(idy + i < N){
+				double4 x4j = x4_d[idy + i];
+				double rcritvj = rcritv_d[idy + i];
+				acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, icNB);
+				acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx +2*N4, icNB);
+			}	
+		}
+	}
+	else{
+		a2_s[idy-Bl_2].x = 0.0;
+		a2_s[idy-Bl_2].y = 0.0;
+		a2_s[idy-Bl_2].z = 0.0;
+
+		a4_s[idy-Bl_2].x = 0.0;
+		a4_s[idy-Bl_2].y = 0.0;
+		a4_s[idy-Bl_2].z = 0.0;
+
+		__syncthreads();
+
+		for(int i = 0; i < NB; i += Bl_2){
+			if(idy-Bl_2 + i < N){
+				double4 x4j = x4_d[idy-Bl_2 + i];
+				double rcritvj = rcritv_d[idy-Bl_2 + i];
+				acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +N4, icNB);
+				acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +3*N4, icNB);
+			}
+		}
+	}
+	__syncthreads();
+
+	volatile double3 *a1 = a1_s;
+	volatile double3 *a2 = a2_s;
+	volatile double3 *a3 = a3_s;
+	volatile double3 *a4 = a4_s;
+
+	int s = Bl/4;
+
+	for(int i = 6; i < log2f(Bl/2); ++i){
+		if( idy < s ) {
+			a1[idy].x += a1[idy + s].x;
+			a1[idy].y += a1[idy + s].y;
+			a1[idy].z += a1[idy + s].z;
+
+			a2[idy].x += a2[idy + s].x;
+			a2[idy].y += a2[idy + s].y;
+			a2[idy].z += a2[idy + s].z;
+
+			a3[idy].x += a3[idy + s].x;
+			a3[idy].y += a3[idy + s].y;
+			a3[idy].z += a3[idy + s].z;
+
+			a4[idy].x += a4[idy + s].x;
+			a4[idy].y += a4[idy + s].y;
+			a4[idy].z += a4[idy + s].z;
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+	if(idy < 32){
+		a1[idy].x += a1[idy + 32].x;
+		a1[idy].x += a1[idy + 16].x;
+		a1[idy].x += a1[idy + 8].x;
+		a1[idy].x += a1[idy + 4].x;
+		a1[idy].x += a1[idy + 2].x;
+		a1[idy].x += a1[idy + 1].x;
+
+		a1[idy].y += a1[idy + 32].y;
+		a1[idy].y += a1[idy + 16].y;
+		a1[idy].y += a1[idy + 8].y;
+		a1[idy].y += a1[idy + 4].y;
+		a1[idy].y += a1[idy + 2].y;
+		a1[idy].y += a1[idy + 1].y;
+
+		a1[idy].z += a1[idy + 32].z;
+		a1[idy].z += a1[idy + 16].z;
+		a1[idy].z += a1[idy + 8].z;
+		a1[idy].z += a1[idy + 4].z;
+		a1[idy].z += a1[idy + 2].z;
+		a1[idy].z += a1[idy + 1].z;
+	}
+	else{
+		if(idy < 64){
+			a2[idy-32].x += a2[idy + 32-32].x;
+			a2[idy-32].x += a2[idy + 16-32].x;
+			a2[idy-32].x += a2[idy + 8-32].x;
+			a2[idy-32].x += a2[idy + 4-32].x;
+			a2[idy-32].x += a2[idy + 2-32].x;
+			a2[idy-32].x += a2[idy + 1-32].x;
+
+			a2[idy-32].y += a2[idy + 32-32].y;
+			a2[idy-32].y += a2[idy + 16-32].y;
+			a2[idy-32].y += a2[idy + 8-32].y;
+			a2[idy-32].y += a2[idy + 4-32].y;
+			a2[idy-32].y += a2[idy + 2-32].y;
+			a2[idy-32].y += a2[idy + 1-32].y;
+
+			a2[idy-32].z += a2[idy + 32-32].z;
+			a2[idy-32].z += a2[idy + 16-32].z;
+			a2[idy-32].z += a2[idy + 8-32].z;
+			a2[idy-32].z += a2[idy + 4-32].z;
+			a2[idy-32].z += a2[idy + 2-32].z;
+			a2[idy-32].z += a2[idy + 1-32].z;
+		}
+		else{
+			if(idy < 96){
+				a3[idy-64].x += a3[idy + 32-64].x;
+				a3[idy-64].x += a3[idy + 16-64].x;
+				a3[idy-64].x += a3[idy + 8-64].x;
+				a3[idy-64].x += a3[idy + 4-64].x;
+				a3[idy-64].x += a3[idy + 2-64].x;
+				a3[idy-64].x += a3[idy + 1-64].x;
+
+				a3[idy-64].y += a3[idy + 32-64].y;
+				a3[idy-64].y += a3[idy + 16-64].y;
+				a3[idy-64].y += a3[idy + 8-64].y;
+				a3[idy-64].y += a3[idy + 4-64].y;
+				a3[idy-64].y += a3[idy + 2-64].y;
+				a3[idy-64].y += a3[idy + 1-64].y;
+
+				a3[idy-64].z += a3[idy + 32-64].z;
+				a3[idy-64].z += a3[idy + 16-64].z;
+				a3[idy-64].z += a3[idy + 8-64].z;
+				a3[idy-64].z += a3[idy + 4-64].z;
+				a3[idy-64].z += a3[idy + 2-64].z;
+				a3[idy-64].z += a3[idy + 1-64].z;
+			}
+			else{
+				if(idy < 128){
+					a4[idy-96].x += a4[idy + 32-96].x;
+					a4[idy-96].x += a4[idy + 16-96].x;
+					a4[idy-96].x += a4[idy + 8-96].x;
+					a4[idy-96].x += a4[idy + 4-96].x;
+					a4[idy-96].x += a4[idy + 2-96].x;
+					a4[idy-96].x += a4[idy + 1-96].x;
+
+					a4[idy-96].y += a4[idy + 32-96].y;
+					a4[idy-96].y += a4[idy + 16-96].y;
+					a4[idy-96].y += a4[idy + 8-96].y;
+					a4[idy-96].y += a4[idy + 4-96].y;
+					a4[idy-96].y += a4[idy + 2-96].y;
+					a4[idy-96].y += a4[idy + 1-96].y;
+
+					a4[idy-96].z += a4[idy + 32-96].z;
+					a4[idy-96].z += a4[idy + 16-96].z;
+					a4[idy-96].z += a4[idy + 8-96].z;
+					a4[idy-96].z += a4[idy + 4-96].z;
+					a4[idy-96].z += a4[idy + 2-96].z;
+					a4[idy-96].z += a4[idy + 1-96].z;
+				}
+			}
+		}
+	}
+
+	__syncthreads();
+
+	if(idy == 0){
+		acck_d[idx].x = a1[0].x * dtksq;
+		acck_d[idx].y = a1[0].y * dtksq;
+		acck_d[idx].z = a1[0].z * dtksq;
+	}
+	if(idy == 32){
+		acck_d[idx + N4].x = a2[0].x * dtksq;
+		acck_d[idx + N4].y = a2[0].y * dtksq;
+		acck_d[idx + N4].z = a2[0].z * dtksq;
+	}
+	if(idy == 64){
+		acck_d[idx + 2*N4].x = a3[0].x * dtksq;
+		acck_d[idx + 2*N4].y = a3[0].y * dtksq;
+		acck_d[idx + 2*N4].z = a3[0].z * dtksq;
+	}
+	if(idy == 96){
+		acck_d[idx + 3*N4].x = a4[0].x * dtksq;
+		acck_d[idx + 3*N4].y = a4[0].y * dtksq;
+		acck_d[idx + 3*N4].z = a4[0].z * dtksq;
+	}
+}
+
+
+
+__global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int *Nencpairs_d, int icNB){
+
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+	bool cl = Encpairsb_d[icNB * idy + idx];
+	if(cl){
+		int Ne = atomicAdd(Nencpairs_d, 1);
+		Encpairs_d[Ne].x = idy;
+		Encpairs_d[Ne].y = idx;
+	}
 }
 
 

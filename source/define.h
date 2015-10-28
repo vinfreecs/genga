@@ -53,6 +53,11 @@
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
 #define def_WriteEncounters 0		//Write all close encounters to a file
 #define def_WriteEncountersRadius 3
+#define def_NAFvars 1
+#define def_NAFn0 10
+#define def_NAFnfreqs 1
+#define def_NAFformat 1
+
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
@@ -164,6 +169,10 @@ struct Parameter{
 	char setElementsfilename[128];
 	int WriteEncounters;
 	double WriteEncountersRadius;
+	int NAFvars;
+	int NAFn0;
+	int NAFnfreqs;
+	int NAFformat;
 };
 
 //File names of Simulstions

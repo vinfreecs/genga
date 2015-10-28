@@ -86,6 +86,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NB2T);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NB2T);
+	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * MaxWriteEnc);
 	cudaMalloc((void **) &aelimits_d, NT * sizeof(float4));
@@ -515,7 +516,8 @@ __host__ int Data::ic(){
 
 	cudaError_t error;
 
-	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(NBS_d, NBS_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(ict_d, ict_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	error = cudaGetLastError();
 	fprintf(masterfile,"cudaMemcopy error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0) return 0;
@@ -1526,6 +1528,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(groupIterate_d);
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
+	cudaFree(Encpairsb_d);
 
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);

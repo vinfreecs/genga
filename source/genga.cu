@@ -133,7 +133,10 @@ int main(int argc, char*argv[]){
 	}
 #if USE_NAF == 1
 	NAF naf;
-	er = naf.alloc1(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.index_d, D.indexsmall_d, D.P.deltaT);
+	er = naf.alloc1(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.index_d, D.indexsmall_d, D.P.tRestart, D.idt_h, D.ict_h, D.P.NAFn0, D.P.NAFnfreqs);
+	if(er == 0) return 0;
+
+	er = naf.alloc2(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF, D.P.NAFformat, D.P.tRestart);
 	if(er == 0) return 0;
 #endif
 
@@ -151,7 +154,7 @@ int main(int argc, char*argv[]){
 	er = D.firstoutput();
 	if(er == 0) return 0;
 	printf("Energy OK\n");
-
+	
 	//read aeGrid at restart time step 
 	if(H.P.UseaeGrid == 1){
 		D.readGridae();	
@@ -180,6 +183,10 @@ int main(int argc, char*argv[]){
 	}
 
 	fflush(D.masterfile);
+#if USE_NAF == 1
+			//compute the x and y arrays for the naf algorithm
+			naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, 0, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+#endif
 
 	if(D.Nst > 1){
 		D.firstKick_M(0);
@@ -266,7 +273,7 @@ int main(int argc, char*argv[]){
 				return 0;
 			}
 			//Print Energy and log information//
-			if(D.timeStep % D.P.ei == 0){
+			if(D.P.ei > 0 && D.timeStep % D.P.ei == 0){
 				if(D.CollisionFlag == 1){
 					int rem = D.RemoveCall();
 					if( rem == 0) return 0;
@@ -286,7 +293,7 @@ int main(int argc, char*argv[]){
 
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
-			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
+			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
 				if(D.P.Buffer == 1){
 					D.CoordinateOutput(0);
 				}
@@ -314,7 +321,7 @@ int main(int argc, char*argv[]){
 #endif
 			}
 			// print time information //
-			if(D.timeStep % D.P.ci == 0){
+			if(D.P.ci > 0 && D.timeStep % D.P.ci == 0){
 				if(bufferCount >= D.P.Buffer){
 					D.printTime();
 					fflush(D.masterfile);
@@ -377,17 +384,21 @@ int main(int argc, char*argv[]){
 				}
 			}
 
-			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
+			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
 				++bufferCount;
 			}
 			if(bufferCount > D.P.Buffer){
 				bufferCount = 1;
 			}
 #if USE_NAF == 1
-	//compute the x and y arrays for the naf algorithm
-//to specify vars and n
-	int vars = 1;
-	naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, vars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, D.timeStep - 1, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+			//compute the x and y arrays for the naf algorithm
+			naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, D.timeStep % D.P.NAFn0, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+
+			if(D.timeStep % D.P.NAFn0 == 0){
+				er = naf.nafCall(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF, D.time_h, D.time_d, D.P.NAFformat);
+				if(er == 0) return 0;
+			}
+
 #endif
 	} // end of time step loop
 	//write out the remaining buffer
@@ -426,12 +437,6 @@ int main(int argc, char*argv[]){
 	}
 
 #if USE_NAF == 1
-	er = naf.alloc2(H.NT, D.N_h[0], D.Nsmall_h[0], Nst);
-	if(er == 0) return 0;
-
-	er = naf.nafCall(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF[0].X);
-	if(er == 0) return 0;
-
 	er = naf.naffree();
 	if(er == 0) return 0;
 #endif

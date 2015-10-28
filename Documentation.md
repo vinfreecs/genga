@@ -38,9 +38,9 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
 
  * The time step, in days
  * The output name
- * The Energy output interval, in time steps
- * The Coordinates output interval, in time steps
- * The number of outputs per Coordinate output interval
+ * The Energy output interval, in time steps. When it is set to zero, then no Energy outputs are written.
+ * The Coordinates output interval, in time steps. When it is set to zero, then no coordinare outputs are written.
+ * The number of outputs per Coordinate output interval.
  * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
  * The file name of irregular coordinarte output calendar. "-" means no irregular outputs. See [here](#markdown-header-irregular-coodinate-output) for more details. 
  * The total number of integration steps

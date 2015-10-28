@@ -30,6 +30,7 @@ public:
 	int *groupIterate_h, *groupIterate_d;
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
+	bool *Encpairsb_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
 	int *aecount_h, *aecount_d;

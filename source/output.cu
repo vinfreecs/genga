@@ -18,81 +18,84 @@ __host__ int Data::firstoutput(){
 		if(P.tRestart == 0){
 			int NBS = NBS_h[st];
 			int NsmallS = NsmallS_h[st];
-			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
-			cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
-			fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
-			fclose(GSF[st].Energyfile);
-
-			if(P.FormatP == 1){
-				if(Nst == 1 || P.FormatS == 0){
-					//clear Irregular output files
-					if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
-					if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
-					FILE *file;
-					file = fopen(GSF[st].outputfilename, "r");
-					if(file != NULL){
-						fclose(file);
-						file = fopen(GSF[st].outputfilename, "w");
-						fclose(file);
-					}
-		
-	
-					if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
-					if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
-					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
-				}
-				else{
-					//clear Irregular output files
-					if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
-					if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
-					FILE *file;
-					file = fopen(GSF[st].outputfilename, "r");
-					if(file != NULL){
-						fclose(file);
-						file = fopen(GSF[st].outputfilename, "w");
-						fclose(file);
-					}
+			if(P.ei > 0){
+				GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+				cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
+				fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
+				fclose(GSF[st].Energyfile);
+			}
+			if(P.ci > 0){
+				if(P.FormatP == 1){
+					if(Nst == 1 || P.FormatS == 0){
+						//clear Irregular output files
+						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
+						FILE *file;
+						file = fopen(GSF[st].outputfilename, "r");
+						if(file != NULL){
+							fclose(file);
+							file = fopen(GSF[st].outputfilename, "w");
+							fclose(file);
+						}
 			
-
-					if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
-					if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
-					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
-					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
-				}
-			}
-			else{
-				//clear Irregular output files
-				if(Nst == 1 || P.FormatS == 0){
-					for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-						char name[160];
-						sprintf(name, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+		
+						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+					}
+					else{
+						//clear Irregular output files
+						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
 						FILE *file;
-						file = fopen(name, "r");
+						file = fopen(GSF[st].outputfilename, "r");
 						if(file != NULL){
 							fclose(file);
-							file = fopen(name, "w");
+							file = fopen(GSF[st].outputfilename, "w");
 							fclose(file);
 						}
+				
+
+						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
+						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 					}
 				}
 				else{
-					for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-						char name[160];
-						sprintf(name, "%s../OutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
-						FILE *file;
-						file = fopen(name, "r");
-						if(file != NULL){
-							fclose(file);
-							file = fopen(name, "w");
-							fclose(file);
+					//clear Irregular output files
+					if(Nst == 1 || P.FormatS == 0){
+						for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
+							char name[160];
+							sprintf(name, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+							FILE *file;
+							file = fopen(name, "r");
+							if(file != NULL){
+								fclose(file);
+								file = fopen(name, "w");
+								fclose(file);
+							}
 						}
 					}
+					else{
+						for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
+							char name[160];
+							sprintf(name, "%s../OutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+							FILE *file;
+							file = fopen(name, "r");
+							if(file != NULL){
+								fclose(file);
+								file = fopen(name, "w");
+								fclose(file);
+							}
+						}
 
+					}
 				}
-			}
 
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, 0);
-			if(P.FormatP == 1) fclose(GSF[st].outputfile);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, 0);
+				if(P.FormatP == 1) fclose(GSF[st].outputfile);
+			}
 		}
 		else if(N_h[st] + Nsmall_h[st] > 0){
 			int tsign = 1;
