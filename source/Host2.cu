@@ -238,6 +238,7 @@ __host__ void Host::Halloc(){
         P.NAFn0 = def_NAFn0;
         P.NAFnfreqs = def_NAFnfreqs;
 	P.NAFformat = def_NAFformat;
+	P.NAFinterval = def_NAFinterval;
 
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
@@ -694,7 +695,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -708,7 +709,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -722,7 +723,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -736,7 +737,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -750,7 +751,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -764,7 +765,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				double t;
+				float t;
 				er = fscanf (paramfile, "%f", &t);
 			}
 			fgets(sp, 3, paramfile);
@@ -1067,7 +1068,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFinterval);
 	
-				if(er <= 0){
+				if(er <= 0 || P.NAFinterval <= 0){
 					printf("Error: NAF interval = is not valid!\n");
 					return 0;
 				}
@@ -1848,7 +1849,7 @@ printf("%d\n", nbodies);
 	Efile = fopen(P.setElementsfilename, "r");
 	//skip header
 	double t;
-	fscanf(Efile, "%g", &t);
+	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
 		er = fscanf(Efile, "%s", &c);
@@ -1875,7 +1876,7 @@ printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelement
 	Efile = fopen(P.setElementsfilename, "r");
 
 	//skip header
-	fscanf(Efile, "%g", &t);
+	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
 		er = fscanf(Efile, "%s", &c);

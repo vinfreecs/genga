@@ -412,6 +412,7 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 //****************************************
 __device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
 
+//printf("Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], index[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;
 	Coll[nc * 25 + 1] = (double)(index[indexj]);
 	Coll[nc * 25 + 2] = x4[j].w;
@@ -447,8 +448,7 @@ __device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int inde
 //****************************************
 __device__ void storeEncounterssmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
 
-
-printf("S Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], indexsmall[indexi]);
+//printf("S Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], indexsmall[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;
 	Coll[nc * 25 + 1] = (double)(index[indexj]);
 	Coll[nc * 25 + 2] = x4[j].w;

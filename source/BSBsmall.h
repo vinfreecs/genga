@@ -76,7 +76,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
-//printf("BS %d %d %d %d\n", idx, st, idi, index_d[idi]);
+//printf("BSs %d %d %d %d\n", idx, st, idi, index_d[idi]);
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
@@ -400,7 +400,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 						double enct = 0.0;
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
 						//write Encounters to file
-						if(enct > 0.0){
+						if(enct > 0.0 && ii == 0){
 //printf("idx %d\n", idx);
 							int ne = atomicAdd(NWriteEnc_d, 1);
 							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;

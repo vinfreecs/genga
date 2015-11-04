@@ -10,10 +10,6 @@
 #include "Host2.h"
 #include "Orbit2.h"
 
-#if USE_NAF == 1
-#include "naf2.h"
-#endif
-
 int main(int argc, char*argv[]){
 
 	cudaError_t error;
@@ -100,7 +96,7 @@ int main(int argc, char*argv[]){
 
         //Allocate aeGride
 	D.constantCopy2();
-	if(H.P.UseaeGrid == 1){
+	if(D.P.UseaeGrid == 1){
         	er = D.GridaeAlloc();
         	if(er == 0) return 0;
 	}
@@ -123,6 +119,14 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 	printf("Initial Conditions OK\n");
 
+#if USE_NAF == 1
+	er = D.naf.alloc1(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.P.tRestart, D.idt_h, D.ict_h, D.P.NAFn0, D.P.NAFnfreqs);
+	if(er == 0) return 0;
+
+	er = D.naf.alloc2(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.GSF, D.P.NAFformat, D.P.tRestart, D.index_h, D.indexsmall_h);
+	if(er == 0) return 0;
+#endif
+
 	//remove ghost particles and reorder arrays//
 	int NminFlag = D.remove();
 
@@ -131,14 +135,6 @@ int main(int argc, char*argv[]){
 		D.stopSimulations();
 		NminFlag = 0;
 	}
-#if USE_NAF == 1
-	NAF naf;
-	er = naf.alloc1(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.index_d, D.indexsmall_d, D.P.tRestart, D.idt_h, D.ict_h, D.P.NAFn0, D.P.NAFnfreqs);
-	if(er == 0) return 0;
-
-	er = naf.alloc2(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF, D.P.NAFformat, D.P.tRestart);
-	if(er == 0) return 0;
-#endif
 
 	cudaDeviceSynchronize();
 	printf("Compute initial Energy\n");
@@ -156,7 +152,7 @@ int main(int argc, char*argv[]){
 	printf("Energy OK\n");
 	
 	//read aeGrid at restart time step 
-	if(H.P.UseaeGrid == 1){
+	if(D.P.UseaeGrid == 1){
 		D.readGridae();	
 	}
 
@@ -173,8 +169,8 @@ int main(int argc, char*argv[]){
 
 	cudaDeviceSynchronize();
 	cudaMemset(D.Energy_d, 0, D.NEnergyT*sizeof(double));
-	if(Nst == 1) printf("Start integration with %d simulation\n", Nst);
-	else printf("Start integration with %d simulations\n", Nst);
+	if(D.Nst == 1) printf("Start integration with %d simulation\n", D.Nst);
+	else printf("Start integration with %d simulations\n", D.Nst);
         error = cudaGetLastError();
 	if(error != 0){
 		fprintf(D.masterfile, "Start error = %d = %s\n",error, cudaGetErrorString(error));
@@ -186,7 +182,7 @@ int main(int argc, char*argv[]){
 #if USE_NAF == 1
 			//compute the x and y arrays for the naf algorithm
 			int NAFstep = 0;
-			naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+			D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.indexsmall_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 			++NAFstep;
 #endif
 
@@ -281,7 +277,7 @@ int main(int argc, char*argv[]){
 					if( rem == 0) return 0;
 				}
 				if(bufferCount >= D.P.Buffer){
-					D.EnergyOutput(bufferCount - 1);
+					D.EnergyOutput();
 				}
 			}
 
@@ -302,15 +298,23 @@ int main(int argc, char*argv[]){
 				else if(bufferCount >= D.P.Buffer){
 					//write out buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+					}
 					D.CoordinateToBuffer(bufferCount - 1, 0);
 					D.CoordinateOutputBuffer(0);
 				}
 				else{
 					//store in buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
-					D.CoordinateToBuffer(bufferCount - 1, 0);
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+					}
+				D.CoordinateToBuffer(bufferCount - 1, 0);
 				}
-				if(H.P.UseaeGrid == 1){
+				if(D.P.UseaeGrid == 1){
 					D.GridaeOutput();
 				}
 #if poincareFlag == 1
@@ -338,11 +342,11 @@ int main(int argc, char*argv[]){
 					double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
 
 					D.IrregularStep(dTau);
-					for(int st = 0; st < Nst; ++st){
+					for(int st = 0; st < D.Nst; ++st){
 						D.time_h[st] += dTau * D.idt_h[st];
 					}
-					if(Nst > 1){
-						cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+					if(D.Nst > 1){
+						cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
 					}
 
 					D.step();
@@ -353,21 +357,29 @@ int main(int argc, char*argv[]){
 					else if(bufferCountIrr >= D.P.Buffer){
 						//write out buffer
 						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						for(int st = 0; st < D.Nst; ++st){
+							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
+							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+						}
 						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
 						D.CoordinateOutputBuffer(1);
 					}
 					else{
 						//store in buffer
 						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						for(int st = 0; st < D.Nst; ++st){
+							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
+							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+						}
 						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
 					}
 
 					D.IrregularStep(-dTau);
-					for(int st = 0; st < Nst; ++st){
+					for(int st = 0; st < D.Nst; ++st){
 						D.time_h[st] -= dTau * D.idt_h[st];
 					}
-					if(Nst > 1){
-						cudaMemcpy(D.time_d, D.time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+					if(D.Nst > 1){
+						cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
 					}
 
 					D.step();
@@ -395,11 +407,10 @@ int main(int argc, char*argv[]){
 #if USE_NAF == 1
 			//compute the x and y arrays for the naf algorithm
 			if(D.timeStep % D.P.NAFinterval == 0){
-				naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, naf.x_d, naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, Nst, naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+				D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.indexsmall_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 				++NAFstep;
-
 				if(NAFstep % D.P.NAFn0 == 0){
-					er = naf.nafCall(H.NT, D.N_h[0], D.Nsmall_h[0], Nst, D.GSF, D.time_h, D.time_d, D.idt_h, D.P.NAFformat, D.P.NAFinterval);
+					er = D.naf.nafCall(D.NT, D.N_h, D.N_d, D.Nsmall_h, D.Nsmall_d, D.Nst, D.GSF, D.time_h, D.time_d, D.idt_h, D.P.NAFformat, D.P.NAFinterval, D.index_h, D.indexsmall_h, D.index_d, D.indexsmall_d, D.NBS_h);
 					if(er == 0) return 0;
 					NAFstep = 0;
 				}
@@ -432,7 +443,7 @@ int main(int argc, char*argv[]){
 	er = D.freeOrbit();
 	if(er == 0) return 0;
 
-	if(H.P.UseaeGrid == 1){
+	if(D.P.UseaeGrid == 1){
 		free(D.Gridaecount_h);
 		cudaFree(D.Gridaecount_d);
 	}
@@ -443,12 +454,12 @@ int main(int argc, char*argv[]){
 	}
 
 #if USE_NAF == 1
-	er = naf.naffree();
+	er = D.naf.naffree();
 	if(er == 0) return 0;
 #endif
 
 
-	er = H.freeHost();
+	er = D.freeHost();
 	if(er == 0) return 0;
 
         printf("GENGA terminated successfully\n");

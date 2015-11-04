@@ -4,6 +4,10 @@
 #include "define.h"
 #include "Host2.h"
 
+#if USE_NAF == 1
+#include "naf2.h"
+#endif
+
 // *************************************
 // Authors: Simon Grimm, Joachim Stadel
 // March 2014
@@ -103,7 +107,12 @@ public:
 	double *coordinateBufferIrr_d;
 	int *timestepBuffer;
 	int *timestepBufferIrr;
+	int2 *NBuffer;
+	int2 *NBufferIrr;
 
+#if USE_NAF == 1
+	NAF naf;
+#endif
 
 	cudaError_t error;
 
@@ -145,7 +154,7 @@ public:
 	__host__ void printCollisions();
 	__host__ void printEncounters();
 	__host__ int firstEnergy();
-	__host__ void EnergyOutput(int);
+	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int);
 
 	//Energy

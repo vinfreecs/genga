@@ -1,3 +1,5 @@
+#ifndef COMENERGY_H
+#define COMENERGY_H
 // *********************************************************
 // This kernel computes the kinetic energy of the center of mass
 // it converts the velocities between heliocentric and democratic coordinates
@@ -632,3 +634,4 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		v4_d[id].z -= p_s[idy].z * iMsunp;
 	}
 }
+#endif

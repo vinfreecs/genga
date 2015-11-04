@@ -254,7 +254,7 @@ __host__ int Data::firstEnergy(){
 }
 
 //This function calls the Energy function and prints information
-__host__ void Data::EnergyOutput(int bufferCount){
+__host__ void Data::EnergyOutput(){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
@@ -581,12 +581,16 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 	
 			double time;
 			if(irregular == 0){
-				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;		
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
+				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
+				int N = NBuffer[Nst * bf + st].x;		
+				int Nsmall = NBuffer[Nst * bf + st].y;
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall, Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
 			}
 			else{
+				int N = NBufferIrr[Nst * bf + st].x;		
+				int Nsmall = NBufferIrr[Nst * bf + st].y;		
 				time = timestepBufferIrr[bf] * idt_h[st] + ict_h[st] * 365.25;		
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N_h[st], GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall_h[st], Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st], spin_h + NBS, x4small_h + NsmallS, v4small_h + NsmallS, spinsmall_h + NsmallS, indexsmall_h + NsmallS, Nsmall, Nst, aelimits_h + NBS, aelimitssmall_h + NsmallS, aecount_h + NBS, aecountsmall_h + NsmallS, enccount_h + NBS, enccountsmall_h + NsmallS, aecountT_h + NBS, aecountsmallT_h + NsmallS, enccountT_h + NBS, enccountsmallT_h + NsmallS, P.ci, irregular);
 			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);

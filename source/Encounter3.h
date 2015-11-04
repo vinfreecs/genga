@@ -142,7 +142,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
-//if((E == 0 || E >= 2))printf("EE %d %d %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.x, x4j.x, v4i.x, v4j.x, E);
+//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, E);
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);

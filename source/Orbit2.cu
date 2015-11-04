@@ -33,6 +33,8 @@ __host__ void Data::AllocateOrbitt(){
 	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
 	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
+	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
+	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
 
@@ -389,6 +391,12 @@ __host__ int Data::init(){
 	for(int i = 0; i < P.Buffer; ++i){
 		timestepBuffer[i] = 0;
 		timestepBufferIrr[i] = 0;
+		for(int st = 0; st < Nst; ++st){
+			NBuffer[i * Nst + st].x = N_h[st];
+			NBuffer[i * Nst + st].y = Nsmall_h[st];
+			NBufferIrr[i * Nst + st].x = N_h[st];
+			NBufferIrr[i * Nst + st].y = Nsmall_h[st];
+		}
 	}
 	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d);
 	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d);
@@ -595,7 +603,7 @@ __host__ int Data::readic(int st){
 					else fscanf (infile, "%lf",&skip);
 					}
 			}
-
+			if(index < 0) index *= -1;
 			if(v.w == 0){
 				v.w = cbrt((x.w * 0.75 ) / (M_PI * rho[st] * AU * AU * AU / Solarmass));
 			}
@@ -902,7 +910,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int *BddSign_d, double4 *StopTime_d, int NB){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int *BddSign_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
 
 	int NOld;
 	int N = N_d[st];
@@ -967,6 +975,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 				test_d[j + NBS] = test_d[N-1 + NBS];
 				test_d[N-1 + NBS] = -1.0;
+
+				for(int i = 0; i < nafn; ++i){
+					nafx_d[(j + NBS) * nafn + i] = nafx_d[(N-1 + NBS) * nafn + i];
+					nafy_d[(j + NBS) * nafn + i] = nafy_d[(N-1 + NBS) * nafn + i];
+					nafx_d[(N-1 + NBS) * nafn + i] = 0.0;
+					nafy_d[(N-1 + NBS) * nafn + i] = 0.0;
+				}
 #if G3 == 1
 				for(int i = 0; i < N; ++i){
 					K_d[(j + NBS) * NB + i] = K_d[(N-1 + NBS) * NB + i];
@@ -1010,7 +1025,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 // Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ****************************************3
-__global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, double3 *asmall_d, int *Nsmall_d, int *indexsmall_d, double3 *spinsmall_d, int NsmallS, int st, float4 *aelimitssmall_d, int *aecountsmall_d, int *enccountsmall_d, long long *aecountsmallT_d, long long *enccountsmallT_d){
+__global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, double3 *asmall_d, int *Nsmall_d, int *indexsmall_d, double3 *spinsmall_d, int NsmallS, int st, float4 *aelimitssmall_d, int *aecountsmall_d, int *enccountsmall_d, long long *aecountsmallT_d, long long *enccountsmallT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
 
 	int NOldsmall;
 	volatile int Nsmall= Nsmall_d[st];
@@ -1065,6 +1080,13 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 				aecountsmallT_d[Nsmall-1 + NsmallS] = 0;
 				enccountsmallT_d[j + NsmallS] = enccountsmallT_d[Nsmall-1 + NsmallS];
 				enccountsmallT_d[Nsmall-1 + NsmallS] = 0;
+	
+				for(int i = 0; i < nafn; ++i){
+					nafx_d[(j + NsmallS + naficN) * nafn + i] = nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
+					nafy_d[(j + NsmallS + naficN) * nafn + i] = nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
+					nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
+					nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
+				}
 
 				Nsmall -= 1;
 			}
@@ -1214,9 +1236,13 @@ __host__ int Data::remove(){
 
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
-
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, BddSign_d, StopTime_d, NB[st]);
-		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d);
+#if USE_NAF == 1
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, BddSign_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
+		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
+#else
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, BddSign_d, StopTime_d, NB[st], NULL, NULL, 0);
+		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, NULL, NULL, 0, 0);
+#endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		resize(N_h[st], NB[st], N4[st], N2[st]);
@@ -1362,6 +1388,7 @@ __host__ void Data::stopSimulations(){
 		NB2T += NB[st] * NmaxM;
 		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
+printf("STOP %d %d %d\n", st, N_h[st], NT);
 	}
 
 	cudaMemcpy(U_h, U_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
@@ -1478,6 +1505,8 @@ __host__ int Data::freeOrbit(){
 	free(coordinateBuffer_h);
 	free(timestepBuffer);
 	free(timestepBufferIrr);
+	free(NBuffer);
+	free(NBufferIrr);
 
 	free(vcom_h);
 

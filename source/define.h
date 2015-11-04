@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.26
+#define Version 3.27
 
 
 //Default parameter values
@@ -57,6 +57,7 @@
 #define def_NAFn0 10
 #define def_NAFnfreqs 1
 #define def_NAFformat 1
+#define def_NAFinterval 1
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
