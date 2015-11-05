@@ -1306,7 +1306,7 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
 double *rcritv_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *spinsmall_d, double3 *asmall_d, int *indexsmall_d, 
-double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *enccount_d, int *enccountsmall_d, long long *aecountT_d, long long *aecountsmallT_d, long long *enccountT_d, long long *enccountsmallT_d){
+double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *enccount_d, int *enccountsmall_d, long long *aecountT_d, long long *aecountsmallT_d, long long *enccountT_d, long long *enccountsmallT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
 
 	for(int j = 0; j < N_d[st]; ++j){
 		x4_d[j + NT] = x4_d[j + NBS];
@@ -1324,6 +1324,10 @@ double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, in
 		aecount_d[j + NT] = aecount_d[j + NBS];
 		aecountT_d[j + NT] = aecountT_d[j + NBS];
 		enccountT_d[j + NT] = enccountT_d[j + NBS];
+		for(int i = 0; i < nafn; ++i){
+			nafx_d[(j + NT) * nafn + i] = nafx_d[(j + NBS) * nafn + i];
+			nafy_d[(j + NT) * nafn + i] = nafy_d[(j + NBS) * nafn + i];
+		}
 	}
 //G3
 	for(int j = 0; j < Nsmall_d[st]; ++j){
@@ -1340,6 +1344,11 @@ double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, in
 		enccountsmall_d[j + NsmallT] = enccountsmall_d[j + NsmallS];
 		aecountsmallT_d[j + NsmallT] = aecountsmallT_d[j + NsmallS];
 		enccountsmallT_d[j + NsmallT] = enccountsmallT_d[j + NsmallS];
+		for(int i = 0; i < nafn; ++i){
+			nafx_d[(j + NsmallT + naficN) * nafn + i] = nafx_d[(j + NsmallS + naficN) * nafn + i];
+			nafy_d[(j + NsmallT + naficN) * nafn + i] = nafy_d[(j + NsmallS + naficN) * nafn + i];
+		}
+
 	}
 }
 
@@ -1374,9 +1383,15 @@ __host__ void Data::stopSimulations(){
 
 	for(int st = 0; st < Nst; ++st){
 		//rearange arrays//
+#if USE_NAF == 1
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, a_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d,
 					    spinsmall_d, asmall_d, indexsmall_d, rcritvsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d);
+					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
+#else
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, a_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d,
+					    spinsmall_d, asmall_d, indexsmall_d, rcritvsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
+					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d, NULL, NULL, 0, 0);
+#endif
 
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
@@ -1388,7 +1403,7 @@ __host__ void Data::stopSimulations(){
 		NB2T += NB[st] * NmaxM;
 		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
-printf("STOP %d %d %d\n", st, N_h[st], NT);
+//printf("STOP %d %d %d\n", st, N_h[st], NT);
 	}
 
 	cudaMemcpy(U_h, U_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
