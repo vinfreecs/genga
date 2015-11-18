@@ -11,6 +11,7 @@
 #include "BSB64M.h"
 #include "ComEnergy.h"
 #include "force.h"
+#include "Kick4.h"
 
 
 //#include "BSA.h"
@@ -20,7 +21,7 @@
 	#include "BSBG3.h"
 #endif
 
-#include "Kick4.h"
+//#include "group.h"
 
 int SIn;		//Number of direction steps
 int SIM;		//half of steps
@@ -515,7 +516,10 @@ cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			group_Index_kernel <<< (Nencpairs2_h[0] + nt - 1) / nt, nt >>> (Encpairs_d, Encpairs2_d, groupIterate_d, Nencpairs2_d, N_h[0], NB[0]);
 			group_diff_kernel <<< (N_h[0] + nt - 1) / nt, nt >>> (Encpairs_d, groupIterate_d, N_h[0], NB[0]);
 			cudaMemcpy(groupIterate_h, groupIterate_d, sizeof(int), cudaMemcpyDeviceToHost);
-			if(groupIterate_h[0] == 0) break;
+			if(groupIterate_h[0] == 0){
+//printf("%d\n", gi);
+				break;
+			}
 		}
 //group_print <<< (N_h[0] + 511) / 512, 512 >>> (Encpairs_d, N_h[0], NB[0]);
 		group_MemberCount <<< (N_h[0] + nt - 1) / nt, nt >>> (Encpairs_d, Encpairs2_d, Nenc_d, N_h[0], NB[0]);
@@ -743,7 +747,10 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 		fg_kernel < 16 > <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			group_kernel16<16, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 16, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 16, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(16, si, time_h[0]);
 		}
@@ -820,7 +827,10 @@ if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElement
 		fg_kernel <32> <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			group_kernel16<32, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 32, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 32, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 
 			BSCall(32, si, time_h[0]);
@@ -894,7 +904,10 @@ if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElement
 		fg_kernel <32> <<< 2, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			group_kernel16<64, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 64, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 64, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(64, si, time_h[0]);
 		}
@@ -967,7 +980,10 @@ if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElemen
 		fg_kernel <32> <<< 4, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			group_kernel16<128, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 128, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 128, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 			cudaDeviceSynchronize();
 			BSCall(128, si, time_h[0]);
 		}
@@ -1039,7 +1055,10 @@ if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElemen
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
 			//groupCall();
-			group_kernel16<256, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 256, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 256, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
 
 			cudaDeviceSynchronize();
 			BSCall(256, si, time_h[0]);		
@@ -1112,11 +1131,14 @@ if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElemen
 		fg_kernel <32> <<< 16, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			//groupCall();
-			group_kernel16 < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
-		//cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-		//Init_group_kernel <<< (N_h[0] + 128 - 1) / 128, 128 >>> (Encpairs_d, N_h[0], NB[0]);
-		//if(Nencpairs2_h[0] > 0) group_kernel <<< (Nencpairs2_h[0] + 128 - 1) / 128, 128 >>> (Nencpairs2_d, Encpairs_d, Encpairs2_d, NB[0]);
+	//		groupCall();
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel16b < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			if(NF > 1) group_kernel16c < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+
+	//if(Nencpairs2_h[0] > 0) group_call(Encpairs_d, Encpairs2_d, Nencpairs2_d, Nencpairs2_h, NB[0], groupIterate_d, groupIterate_h, Nenc_d);
+
 			cudaDeviceSynchronize();
 			BSCall(512, si, time_h[0]);
 		}
@@ -1191,7 +1213,10 @@ if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElemen
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
 			//groupCall();
-			group1024_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, 1024);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group1024b_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+			if(NF > 1) group1024c_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
 			cudaDeviceSynchronize();
 			BSCall(1024, si, time_h[0]);
 		}
@@ -1265,11 +1290,11 @@ if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElemen
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
 			//groupCall();
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-			cudaDeviceSynchronize();
-
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF > 0) group1024_kernel <512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, 2048);
-			if(NF > 1) fusionB_kernel <2048, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, groupIndex_d);
+			if(NF == 1) group1024b_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+			if(NF > 1) group1024c_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+
+//	if(Nencpairs2_h[0] > 0) group_call(Encpairs_d, Encpairs2_d, Nencpairs2_d, Nencpairs2_h, NB[0], groupIterate_d, groupIterate_h, Nenc_d);
 			cudaDeviceSynchronize();
 			BSCall(2048, si, time_h[0]);
 		}
@@ -1342,23 +1367,13 @@ if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 255, 256 >>> (x4_d, v4_d,
 		fg_kernel <32> <<< (N_h[0] + 31) / 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, groupIndexOld_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], groupIndexOld_d, P.WriteEncounters, P.WriteEncountersRadius);
-			//groupCall();
+	//		groupCall();
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-			cudaDeviceSynchronize();
-
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF > 0) group1024_kernel <512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+			if(NF == 1) group1024b_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+			if(NF > 1) group1024c_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
 
-			if(NF > 1){
-				int NF2 = (NF + 1)/2;
-				cudaThreadSynchronize();
-				fusionA2_kernel < 512 > <<< NF/2, 512>>>(Encpairs_d, NB[0], NF2, test_d);
-				for(int f = 0; f < log2f(NF2); ++f){
-					fusionA2_kernel < 512 > <<< NF2/2 , 512>>>(Encpairs_d, NB[0], (NF2 + 1)/2, test_d);
-					NF2 = (NF2 + 1)/2;
-				}
-				fusion2_kernel < 512 > <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NB[0], NF, test_d, groupIndex_d);
-			}
+//	if(Nencpairs2_h[0] > 0) group_call(Encpairs_d, Encpairs2_d, Nencpairs2_d, Nencpairs2_h, NB[0], groupIterate_d, groupIterate_h, Nenc_d);
 
 			cudaDeviceSynchronize();
 			BSCall(NB[0], si, time_h[0]);
@@ -1444,15 +1459,19 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 
 			if(Nsmall_h[0] > 0) groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
 			if(Nencpairssmall2_h[0] > 0) groupsmall2_kernel <<< (Nencpairssmall2_h[0] + 127)/128, 128 >>> (Nencpairssmall2_d, Encpairssmall2_d, Nencsmall_d, Encpairssmall_d, Nconst[0]);
-			if(NmaxTestParticles <= 512)	group_kernel16 <NmaxTestParticles, 512> <<<1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
-			else if(NmaxTestParticles <= 1024) group1024_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NmaxTestParticles);
+			if(NmaxTestParticles <= 512){
+				cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+				int NF = (Nencpairs2_h[0] + 511)/(512);
+				if(NF == 1) group_kernel16b < NmaxTestParticles, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+				if(NF > 1) group_kernel16c < NmaxTestParticles, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, groupIndex_d);
+			}
 			else if(NmaxTestParticles <= 2048){
 				cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-				cudaDeviceSynchronize();
 				int NF = (Nencpairs2_h[0] + 511)/(512);
-				if(NF > 0) group1024_kernel <512> <<< NF, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NmaxTestParticles);
-				if(NF > 1) fusionB_kernel <NmaxTestParticles, 512> <<<1, 512>>>(Nenc_d, Encpairs_d, Encpairs2_d, NF, test_d, groupIndex_d);
-			} 
+				if(NF == 1) group1024b_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+				if(NF > 1) group1024c_kernel <512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, groupIndex_d, NB[0]);
+			}
+
 			cudaDeviceSynchronize();
 			if(Nencsmall_m[0] > 0) groupsmall3_kernel<<< (Nencsmall_m[0] + 127)/128, 128 >>> (Nencsmall_d, Encpairssmall_d, Encpairssmall2_d, Nconst[0]);
 			cudaDeviceSynchronize();
