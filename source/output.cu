@@ -699,7 +699,7 @@ __host__ void Data::printMaxColl(){
 //This function prints information if a too big close encounter group occurs and stops the integrations
 __host__ int Data::MaxGroups(){
 	//for(int nm = 10; nm < 12; ++nm){
-	for(int nm = 7; nm < 12; ++nm){
+	for(int nm = 9; nm < 12; ++nm){
 		if(Nenc_m[nm] > 0){
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);

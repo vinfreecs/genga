@@ -199,7 +199,6 @@ public:
 	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
-	__host__ void groupCall();
 	__host__ void BSCall(int, int, double);
 	__host__ void BSsmallCall(int, double);
 	__host__ void BSBMCall(int);
