@@ -77,6 +77,7 @@ __host__ Host::Host(long long Restart){
         NT = 0;
         NsmallT = 0;
         NB2T = 0;
+	NBNencT = 0;
         Nsmall2T = 0;
         NEnergyT = 0;
 
@@ -179,7 +180,6 @@ __host__ int Host::DeviceInfo(){
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
-	icNB = (int*)malloc(Nst*sizeof(int));
 	N4 = (int*)malloc(Nst*sizeof(int));
 	N2 = (int*)malloc(Nst*sizeof(int));
 	Nconst = (int*)malloc(Nst*sizeof(int));
@@ -213,6 +213,7 @@ __host__ void Host::Halloc(){
 	P.UseTestParticles = def_UseTestParticles;
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
+	P.NencMax = def_NencMax;
 	P.UseaeGrid = def_UseaeGrid;
 	Gridae.amin = def_aeGridamin;
 	Gridae.amax = def_aeGridamax;		
@@ -334,7 +335,6 @@ __host__ void Host::Halloc(){
 		dtksq_h[st] = 0.0;
 
 		NB[st] = N_h[st];
-		icNB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
 		Nconst[st] = N_h[st] + 1;
@@ -1079,6 +1079,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Maximum encounter pairs =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.NencMax);
+	
+				if(er <= 0 || P.NAFinterval <= 0){
+					printf("Error: Maximum encounter pairs = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Unefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -1451,8 +1466,12 @@ __host__ int Host::icSize(int st){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
 	}
-	NN = min(NN, 32768);
+	NN = min(NN, 262144);
 	N_h[st] = NN;
+
+	if(Nst == 0){
+		P.NencMax = min(P.NencMax, N_h[0] + Nsmall_h[0]);
+	}
 
 	if(Nst > 1 && NN > NmaxM){
 		fprintf(masterfile,"Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
@@ -1487,6 +1506,9 @@ __host__ int Host::size(){
 		if( N_h[st] > 4096) NB[st] = 8192;
 		if( N_h[st] > 8192) NB[st] = 16384;
 		if( N_h[st] > 16384) NB[st] = 32768;
+		if( N_h[st] > 32768) NB[st] = 65536;
+		if( N_h[st] > 65536) NB[st] = 131072;
+		if( N_h[st] > 131072) NB[st] = 262144;
 
 
 		N4[st] = N_h[st];
@@ -1499,15 +1521,14 @@ __host__ int Host::size(){
 		if(N2[st] % 2 == 1) N2[st] +=1;
 		N2[st] /= 2;
 		
-		icNB[st] = NB[st];
 		Nconst[st] = N_h[st] + 1;
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 32768)){
-			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
-			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
-			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 32768));
+		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 262144)){
+			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
+			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
+			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
 			return 0;
 		}
 		fclose(GSF[st].logfile);
@@ -1640,6 +1661,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
+			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax);                  // use only argument in simulation 0
 			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
@@ -1693,13 +1715,16 @@ __host__ void Host::Tsizes(){
 		NB2T += NB[st] * NmaxM;
 		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(NB[st], 8);
-
 	}
+	NBNencT = NB2T;
+	icNB = NmaxM;
 
 	if(Nst == 1){
 		NT = NB[0];
-		NB2T = NB[0] * NB[0];
+		NB2T = (long long int)(NB[0]) * (long long int)(NB[0]);
+		NBNencT = NB[0] * P.NencMax;
 		Nsmall2T = Nsmall_h[0] * 2 * NmaxTestParticles;
+		icNB = NB[0];
 	}
 	NconstT = NT + NsmallT;
 }
@@ -1897,7 +1922,6 @@ printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelement
 __host__ int Host::freeHost(){
 	cudaError_t error;
 	free(NB);
-	free(icNB);
 	free(N4);
 	free(N2);
 	free(Nconst);

@@ -54,12 +54,13 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
 	int idi;
-	int si = Encpairs2_d[ (st+1) * NB + idx].y; 
-	N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
-//printf("BS %d %d %d %d %d\n", idx, st, si, N2, NB);
+	int si = Encpairs2_d[ (st+2) * NB + idx].y; 
+	N2 = Encpairs2_d[si].y; //Number of bodies in current BS simulation
+	int start = Encpairs2_d[NB + si].y;
+//printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NB, start);
 
 	if(idy < N2){
-		idi = Encpairs2_d[si * NB + idy].x;
+		idi = Encpairs2_d[start + idy].x;
 //printf("BS2 %d %d %d %d %d\n", idx, st, idi, index_d[idi], N2);
 	}
 	else idi = 0;
@@ -465,7 +466,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
 							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
-							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[si * NB + ii].x, Encpairs2_d[si * NB + jj + l].x, index_d, ne, writeEnc_d, time + t/0.01720209895, spin_d);
+							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + t/0.01720209895, spin_d);
 						}
 					}
                                         __syncthreads();
@@ -476,7 +477,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-								collide(xt_s, vt_s, i, j, Encpairs2_d[si * NB + i].x, Encpairs2_d[si * NB + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 #if G3 == 1
 									int iK = Encpairs2_d[si * NB + i].x;
 									int jK = Encpairs2_d[si * NB + j].x;

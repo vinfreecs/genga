@@ -379,7 +379,7 @@ __global__ void Init_group_kernel(int2 *Encpairs_d, int N, int NB){
 // Authos: Simon Grimm
 // September 2015
 // *********************************************
-__global__ void group_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NB){
+__global__ void groupb_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -389,9 +389,9 @@ __global__ void group_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs
 	if(id < Ne){
 		int2 encpairs = Encpairs2_d[id];
 		int Ni = atomicAdd(&Encpairs_d[encpairs.x].y, 1);
-		Encpairs_d[encpairs.x * NB + Ni].x = encpairs.y;
+		Encpairs_d[encpairs.x * NencMax + Ni].x = encpairs.y;
 		int Nj = atomicAdd(&Encpairs_d[encpairs.y].y, 1);
-		Encpairs_d[encpairs.y * NB + Nj].x = encpairs.x;
+		Encpairs_d[encpairs.y * NencMax + Nj].x = encpairs.x;
 	}
 }
 
@@ -585,165 +585,6 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 // **************************************
 //This Kernel sorts all close encounter pairs into independent groups, using a 
 //parallel sorting algorithm. 
-//This kernel works only in the case of less than 512 close encounter pairs, and 
-//less than 512 Bodies.
-//It classifies the groups into sets of equal sizes.
-//The size of group i is stored in Encpairs2_d[i].y, the elements j of the 
-//group i are stored in Encpairs2_d[i * BN + j].x
-//In Nenc_d[0] is stored the total number of groups.
-//in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
-//
-//This Kernel must be launched only with one block!.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//November 2015
-//
-// ****************************************
-template <int BN, int Bl>
-__global__ void group_kernel16b(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *groupIndex_d){
-
-	int idy = threadIdx.x;
-
-	__shared__ int2 encpairs_s[Bl];
-	__shared__ int2 A_s[Bl];
-	__shared__ int B_s[BN];
-	__shared__ int B2_s[BN];
-	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
-
-	int Ne = *Nencpairs2_d;
-	int BN2 = BN * BN -1;
-
-	if(idy == 0){
-		T_s = 1;
-	}
-	if(idy < 12) Nenc_s[idy] = 0;
-	__syncthreads();
-
-	if(idy < Ne){ 
-		encpairs_s[idy] = Encpairs2_d[idy];
-		A_s[idy] = encpairs_s[idy];
-	}
-	/*encpairs_s[idy] contains the two close encounter pairs*/
-	else{
-		encpairs_s[idy].x = -1;
-		encpairs_s[idy].y = -1;
-		A_s[idy] = encpairs_s[idy];
-	}
-	if(idy < BN){
-		B_s[idy] = BN2;
-		B2_s[idy] = BN2;
-	}
-	__syncthreads();
-
-	for(int tt = 0; tt < 100; ++tt){ 
-		T_s = 0;
-		if(idy < Ne){
-			int Am = min(A_s[idy].x, A_s[idy].y);
-			atomicMin(&B_s[A_s[idy].y], Am);
-			atomicMin(&B_s[A_s[idy].x], Am);
-		}
-		__syncthreads();
-
-		if(idy < BN){
-			if(B_s[idy] < BN2) B2_s[idy] = B_s[B_s[idy]];
-		}
-		__syncthreads();
-
-		if(idy < Ne){
-			A_s[idy].x = B2_s[encpairs_s[idy].x];
-			A_s[idy].y = B2_s[encpairs_s[idy].y];
-			if(A_s[idy].x != A_s[idy].y) T_s = 1;
-
-		}
-		if(idy < BN){
-			B_s[idy] = B2_s[idy];
-		}
-		__syncthreads();
-		if(T_s == 0){
-//if(idy == 0) printf("%d\n", tt);
-			 break;
-		}
-		__syncthreads();
-
-	}
-	// *At this point B_s[idy] contains the smallest index of the group* /
-	__syncthreads();
-
-	if(idy < BN) B2_s[idy] = -1;
-	__syncthreads();
-	// *Check now for new groups and increase the total number of groups* /
-	if(idy < BN){
-		if(B_s[idy] == idy){
-			B2_s[idy] = atomicAdd(&Nenc_s[0],1);
-		}		
-	}
-	__syncthreads();
-	// *Transform now the smallest index of the group into a consecutive group index* /
-	if(idy < BN){
-		if(B_s[idy] < BN2) B_s[idy] = B2_s[B_s[idy]];
-		encpairs_s[idy].y = 0;
-	}
-	// *At this point B_s[idy] contains a consecutive group index* /
-	__syncthreads();
-#if G3 == 1
-	if(idy < BN){
-		groupIndex_d[idy] = B_s[idy];
-//printf("G %d %d %d\n", idy, B_s[idy],  groupIndex_d[idy]);
-	}
-#endif
-#if SERIAL_GROUPING == 0
-	if(idy < BN){
-		if(B_s[idy] < BN2){
-			int Ns = atomicAdd(&encpairs_s[B_s[idy]].y,1);
-			Encpairs2_d[B_s[idy] * BN + Ns].x = idy;
-			Encpairs2_d[13 * BN + idy].y = Ns;
-		}
-		// *At this point Encpairs2_d.x contains now line by line the members of the groups, encpairs_s.y contains the sizes of the groups* /
-	}
-#endif
-#if SERIAL_GROUPING == 1
-	if(idy == 0){
-		for(int i = BN - 1; i >=0; --i){
-			if(B_s[i] < BN2){
-				int Ns = atomicAdd(&encpairs_s[B_s[i]].y,1);
-				Encpairs2_d[B_s[i] * BN + Ns].x = i;
-				Encpairs2_d[13 * BN + i].y = Ns;
-			}
-		}
-	}
-#endif
-	__syncthreads();
-
-	if(idy < BN){
-		int nn = encpairs_s[idy].y;
-		int ne2 = 2;
-		if(nn > 0){
-			for(int ii = 0; ii < 11; ++ii){
-				if(nn <= ne2){
-					int Ns = atomicAdd(&Nenc_s[ii + 1],1);
-					Encpairs2_d[ (ii+1) * BN + Ns].y = idy;
-					break;
-				} 
-				else{
-					ne2 *= 2;
-				}
-			}
-		}
-	}
-	__syncthreads();
-
-	if(idy < BN){
-		Encpairs2_d[idy].y = encpairs_s[idy].y;
-	}
-
-	if(idy < 12){
-		Nenc_d[idy] = Nenc_s[idy];
-	}
-}
-// **************************************
-//This Kernel sorts all close encounter pairs into independent groups, using a 
-//parallel sorting algorithm. 
 //This kernel works only in the case of more than 512 close encounter pairs, and 
 //less than 512 Bodies.
 //It classifies the groups into sets of equal sizes.
@@ -758,33 +599,96 @@ __global__ void group_kernel16b(int *Nenc_d, double *test_d, int *Nencpairs2_d, 
 //November 2015
 //
 // ****************************************
-template <int BN, int Bl>
-__global__ void group_kernel16c(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *groupIndex_d){
+template <int bn, int Bl, int E>
+__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int NencMax, int *groupIndex_d, int BN){
 
 	int idy = threadIdx.x;
 
-	__shared__ int B_s[BN];
-	__shared__ int B2_s[BN];
 	__shared__ volatile int T_s;
 	__shared__ int Nenc_s[12];
+	__shared__ int start_s[1];
 
 	int Ne = *Nencpairs2_d;
 	int BN2 = BN * BN -1;
+
+	int2 *A;
+	int2 *encpairs;
+
+	int2 *B;
+	int2 *B2;
+
+	if(E == 1 || E == 3){//16 b or 1024 b
+		__shared__ int2 A_s[Bl];
+		__shared__ int2 encpairs_s[Bl];
+
+		if(idy < Ne){
+			encpairs_s[idy] = Encpairs2_d[idy];
+			A_s[idy] = encpairs_s[idy];
+//printf("%d %d %d\n", idy, encpairs_s[idy].x, encpairs_s[idy].y);
+		}
+		/*encpairs_s[idy] contains the two close encounter pairs*/
+		else{
+			encpairs_s[idy].x = -1;
+			encpairs_s[idy].y = -1;
+			A_s[idy] = encpairs_s[idy];
+		}
+
+		A = A_s;
+		encpairs = encpairs_s;
+	}
+	if(E == 2 || E == 4){ // 16 c or 1024 c
+		A = &Encpairs2_d[Ne];
+		encpairs = Encpairs2_d;
+		for(int i = 0; i < Ne; i += Bl){
+			if(idy + i < Ne){
+				A[idy + i] = encpairs[idy + i];
+			}
+		}
+	}
+
+	if(E == 1 || E == 2){ //16
+		__shared__ int2 B_s[bn];
+		__shared__ int2 B2_s[bn];
+		if(idy < bn){
+			B_s[idy].x = 0;
+			B2_s[idy].x = 0;
+			B_s[idy].y = BN2;
+			B2_s[idy].y = BN2;
+			Encpairs_d[idy].y = 0;
+		
+		}
+		B = B_s;
+		B2 = B2_s;
+	}
+	if(E == 3 || E == 4){ //1024
+		B = &Encpairs_d[2 * BN];
+		B2 = &Encpairs_d[3 * BN];
+		for(int i = 0; i < BN; i += Bl){
+			if(idy + i < BN){
+				B[idy + i].y = BN2;
+				B2[idy + i].y = BN2;
+				Encpairs_d[idy + i].y = 0;
+			}
+		}
+	}
 
 	if(idy == 0){
 		T_s = 1;
 	}
 	if(idy < 12) Nenc_s[idy] = 0;
+	if(idy == 0) start_s[0] = 0;
 
+	__syncthreads();
 	for(int i = 0; i < Ne; i += Bl){
 		if(idy + i < Ne){
-			Encpairs2_d[idy + i + Ne] = Encpairs2_d[idy + i]; //A
+			//create list of direct close encounter pairs
+			int Ni = atomicAdd(&Encpairs_d[encpairs[idy + i].x].y, 1);
+			Encpairs_d[encpairs[idy + i].x * NencMax + Ni].x = encpairs[idy + i].y;
+			int Nj = atomicAdd(&Encpairs_d[encpairs[idy + i].y].y, 1);
+			Encpairs_d[encpairs[idy + i].y * NencMax + Nj].x = encpairs[idy + i].x;
+			//Encpairs_d[i].y contains the number of direct encounter paris of body i
+			//Encpairs_d[i * NencMax + j].x contains the indeces j of the direct encounter pairs
 		}
-	}
-
-	if(idy < BN){
-		B_s[idy] = BN2;
-		B2_s[idy] = BN2;
 	}
 	__syncthreads();
 
@@ -792,26 +696,30 @@ __global__ void group_kernel16c(int *Nenc_d, double *test_d, int *Nencpairs2_d, 
 		T_s = 0;
 		for(int i = 0; i < Ne; i += Bl){
 			if(idy + i < Ne){
-				int Am = min(Encpairs2_d[idy + i + Ne].x, Encpairs2_d[idy + i + Ne].y);
-				atomicMin(&B_s[Encpairs2_d[idy + i + Ne].y], Am);
-				atomicMin(&B_s[Encpairs2_d[idy + i + Ne].x], Am);
+				int Am = min(A[idy + i].x, A[idy + i].y);
+				atomicMin(&B[A[idy + i].y].y, Am);
+				atomicMin(&B[A[idy + i].x].y, Am);
 			}
 		}
 		__syncthreads();
 
-		if(idy < BN){
-			if(B_s[idy] < BN2) B2_s[idy] = B_s[B_s[idy]];
+		for(int i = 0; i < BN; i += Bl){
+			if(idy + i< BN){
+				if(B[idy + i].y < BN2) B2[idy + i].y = B[B[idy + i].y].y;
+			}
 		}
 		__syncthreads();
 		for(int i = 0; i < Ne; i += Bl){
 			if(idy + i < Ne){
-				Encpairs2_d[idy + i + Ne].x = B2_s[Encpairs2_d[idy + i].x];
-				Encpairs2_d[idy + i + Ne].y = B2_s[Encpairs2_d[idy + i].y];
-				if(Encpairs2_d[idy + i + Ne].x != Encpairs2_d[idy + i + Ne].y) T_s = 1;
+				A[idy + i].x = B2[encpairs[idy + i].x].y;
+				A[idy + i].y = B2[encpairs[idy + i].y].y;
+				if(A[idy + i].x != A[idy + i].y) T_s = 1;
 			}
 		}
-		if(idy < BN){
-			B_s[idy] = B2_s[idy];
+		for(int i = 0; i < BN; i += Bl){
+			if(idy + i < BN){
+				B[idy + i].y = B2[idy + i].y;
+			}
 		}
 		__syncthreads();
 		if(T_s == 0){
@@ -821,52 +729,92 @@ __global__ void group_kernel16c(int *Nenc_d, double *test_d, int *Nencpairs2_d, 
 		__syncthreads();
 
 	}
-	// *At this point B_s[idy] contains the smallest index of the group* /
+	// *At this point B[idy] contains the smallest index of the group* /
 	__syncthreads();
 
-	if(idy < BN) B2_s[idy] = -1;
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN) B2[idy + i].y = -1;
+	}
 	__syncthreads();
 	// *Check now for new groups and increase the total number of groups* /
-	if(idy < BN){
-		if(B_s[idy] == idy){
-			B2_s[idy] = atomicAdd(&Nenc_s[0],1);
-		}		
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN){
+			if(B[idy + i].y == idy + i){
+				B2[idy + i].y = atomicAdd(&Nenc_s[0],1);
+			}		
+		}
 	}
 	__syncthreads();
 	// *Transform now the smallest index of the group into a consecutive group index* /
-	if(idy < BN){
-		if(B_s[idy] < BN2) B_s[idy] = B2_s[B_s[idy]];
-		Encpairs2_d[idy].y = 0;
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN){
+			if(B[idy + i].y < BN2) B[idy + i].y = B2[B[idy + i].y].y;
+			Encpairs2_d[idy + i].y = 0;
+		}
 	}
-	// *At this point B_s[idy] contains a consecutive group index* /
+	// *At this point B[idy] contains a consecutive group index* /
 	__syncthreads();
+
+//for(int i = 0; i < BN; i += Bl){
+//	if(idy + i < BN){
+//		if(B[idy + i].y < BN2){
+//printf("%d %d %d\n", idy + i, B[idy + i].y, B2[idy + i].y);
+//		}		
+//	}
+//}
+
 #if G3 == 1
-	if(idy < BN){
-		groupIndex_d[idy] = B_s[idy];
-//printf("G %d %d %d\n", idy, B_s[idy],  groupIndex_d[idy]);
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN){
+			groupIndex_d[idy + i] = B[idy + i].y;
+//printf("G %d %d %d\n", idy, B[idy].y,  groupIndex_d[idy]);
+		}
 	}
 #endif
 #if SERIAL_GROUPING == 0
-	if(idy < BN){
-		if(B_s[idy] < BN2){
-			int Ns = atomicAdd(&Encpairs2_d[B_s[idy]].y,1);
-			Encpairs2_d[B_s[idy] * BN + Ns].x = idy;
-			Encpairs2_d[13 * BN + idy].y = Ns;
-		}
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN){
+			if(B[idy + i].y < BN2){
+				int Ns = atomicAdd(&Encpairs2_d[B[idy + i].y].y,1);
+				B2[idy + i].y = Ns; //index in the group
+				Encpairs_d[BN + idy + i].y = B2[idy + i].y;
+			}
 		// *At this point Encpairs2_d.x contains now line by line the members of the groups, Encpairs2_s.y contains the sizes of the groups* /
+		}
 	}
 #endif
 #if SERIAL_GROUPING == 1
 	if(idy == 0){
 		for(int i = BN - 1; i >=0; --i){
-			if(B_s[i] < BN2){
-				int Ns = atomicAdd(&Encpairs2_d[B_s[i]].y,1);
-				Encpairs2_d[B_s[i] * BN + Ns].x = i;
-				Encpairs2_d[13 * BN + i].y = Ns;
+			if(B[i].y < BN2){
+				int Ns = atomicAdd(&Encpairs2_d[B[i].y].y,1);
+				B2[i].y = Ns;   //index in the group
+				Encpairs_d[BN + i].y = B2[i].y;
 			}
 		}
 	}
 #endif
+	__syncthreads();
+	for(int i = 0; i < Nenc_s[0]; i += Bl){
+		if(idy + i < Nenc_s[0]){
+			if(Encpairs2_d[idy + i].y > 0){
+				int start = atomicAdd(&start_s[0], Encpairs2_d[idy + i].y);
+				Encpairs2_d[BN + idy + i].y = start; //starting points of te groups
+//printf("start %d %d %d %d\n", idy, Encpairs2_d[idy].y, start_s[0], start);
+			}
+		}
+	}
+	__syncthreads();
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i < BN){
+			if(B[idy + i].y < BN2){
+				int n = B2[idy + i].y;
+				int start = Encpairs2_d[BN + B[idy + i].y].y;
+				Encpairs2_d[start + n].x = idy + i;
+			}
+		// *At this point Encpairs2_d.x contains now members of the groups, Encpairs2_d.y contains the sizes of the groups* /
+		}
+	}
 	__syncthreads();
 
 	if(idy < BN){
@@ -876,7 +824,7 @@ __global__ void group_kernel16c(int *Nenc_d, double *test_d, int *Nencpairs2_d, 
 			for(int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
 					int Ns = atomicAdd(&Nenc_s[ii + 1],1);
-					Encpairs2_d[ (ii+1) * BN + Ns].y = idy;
+					Encpairs2_d[ (ii+2) * BN + Ns].y = idy;
 					break;
 				} 
 				else{
@@ -890,341 +838,7 @@ __global__ void group_kernel16c(int *Nenc_d, double *test_d, int *Nencpairs2_d, 
 	if(idy < 12){
 		Nenc_d[idy] = Nenc_s[idy];
 	}
-}
 
-// **************************************
-//This Kernel sorts all close encounter pairs into independent groups, using a 
-//parallel sorting algorithm. 
-//This kernel works only in the case of less than 512 close encounter pairs, and 
-//more than 512 Bodies.
-//It classifies the groups into sets of equal sizes.
-//The size of group i is stored in Encpairs2_d[i].y, the elements j of the 
-//group i are stored in Encpairs2_d[i * BN + j].x
-//In Nenc_d[0] is stored the total number of groups.
-//in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
-//
-//This Kernel must be launched only with one block!.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//November 2015
-//
-// ****************************************
-template <int Bl>
-__global__ void group1024b_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int *groupIndex_d, int BN){
-
-	int idy = threadIdx.x;
-
-	int Ne = *Nencpairs2_d;
-	int BN2 = BN * BN -1;
-
-	__shared__ int2 encpairs_s[Bl];
-	__shared__ int2 A_s[Bl];
-	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
-	
-
-	if(idy == 0){
-		T_s = 1;
-	}
-	if(idy < 12) Nenc_s[idy] = 0;
-	__syncthreads();
-	
-
-	if(idy < Ne){ 
-		encpairs_s[idy] = Encpairs2_d[idy];
-		A_s[idy] = encpairs_s[idy];
-	}
-	else{
-		encpairs_s[idy].x = -1;
-		encpairs_s[idy].y = -1;
-		A_s[idy] = encpairs_s[idy];
-	}
-	/*encpairs_s[idy] contains the two close encounter pairs*/
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[idy + i].x = BN2; //B
-		Encpairs_d[idy + i].y = BN2; //B2
-	}
-	__syncthreads();
-
-	for(int tt = 0; tt < 100; ++ tt){ 
-		T_s = 0;	
-		if(idy < Ne){
-			int Am = min(A_s[idy].x, A_s[idy].y);
-			atomicMin(&Encpairs_d[A_s[idy].y].x, Am);
-			atomicMin(&Encpairs_d[A_s[idy].x].x, Am);
-		}
-
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			int B = Encpairs_d[idy + i].x;
-			if(B < BN2){
-				Encpairs_d[idy + i].y = Encpairs_d[B].x;
-			}
-		}
-
-		__syncthreads();
-		if(idy < Ne){
-			A_s[idy].x = Encpairs_d[encpairs_s[idy].x].y;
-			A_s[idy].y = Encpairs_d[encpairs_s[idy].y].y;
-			if(A_s[idy].x != A_s[idy].y) T_s = 1;
-		}
-
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			Encpairs_d[idy + i].x = Encpairs_d[idy + i].y;
-		}
-		__syncthreads();
-		if(T_s == 0){
-//if(idy == 0) printf("tt %d\n", tt);
-			break;
-		}
-		__syncthreads();
-	
-	}
-//for(int i = 0; i < BN; i += Bl){
-//printf("A %d %d %d\n", idy + i, Encpairs_d[idy + i].y, idy + i);
-//}
-
-	// At this point Encpairs_d[idy + i].x contains the smallest index of the group
-	__syncthreads();
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[idy + i].y = -1;
-		Encpairs2_d[idy + i].y = 0;
-	}
-	__syncthreads();
-	// Check now for new groups and increase the total number of groups
-	for(int i = 0; i < BN; i += Bl){
-		if(Encpairs_d[idy + i].x == (idy + i)){
-			Encpairs_d[idy + i].y = atomicAdd(&Nenc_s[0],1);
-		}		
-	}
-	__syncthreads();
-	// Transform now the smallest index of the group into a consecutive group index
-	for(int i = 0; i < BN; i += Bl){
-	if(Encpairs_d[idy + i].x < BN2){
-			Encpairs_d[idy + i].x = Encpairs_d[Encpairs_d[idy + i].x].y;
-		}
-	}
-	// At this point Encpairs_d[idy + i].x contains a consecutive group index
-	__syncthreads();
-#if G3 == 1
-	for(int i = 0; i < BN; i += Bl){
-		groupIndex_d[idy + i] = Encpairs_d[idy + i].x;
-	}
-#endif
-
-#if SERIAL_GROUPING == 0
-	for(int i = 0; i < BN; i += Bl){
-		if(Encpairs_d[idy + i].x < BN2){
-			int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1);
-			Encpairs2_d[Encpairs_d[idy + i].x * BN + Ns].x = idy + i;
-			Encpairs2_d[13 * BN + idy + i].y = Ns;
-		}
-		//At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups
-
-		__syncthreads();
-	}
-#endif
-#if SERIAL_GROUPING == 1
-	if(idy == 0){
-		for(int i = BN - 1; i >=0; --i){
-			if(Encpairs_d[i].x < BN2){
-				int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1);
-				Encpairs2_d[Encpairs_d[i].x * BN + Ns].x = i;
-				Encpairs2_d[13 * BN + i].y = Ns;
-			}
-		}
-	}
-#endif
-
-	__syncthreads();
-
-	for(int i = 0; i < BN; i += Bl){
-		int nn = Encpairs2_d[idy + i].y;
-		int ne2 = 2;
-		if(nn > 0){
-			for(int ii = 0; ii < 11; ++ii){
-				if(nn <= ne2){
-					int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
-					Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
-					break;
-				}
-				else{
-					ne2 *= 2;
-				}
-			}
-		} 
-	}
-	__syncthreads();
-	if(idy < 12){
-		Nenc_d[idy] = Nenc_s[idy];
-	}
-}
-// **************************************
-//This Kernel sorts all close encounter pairs into independent groups, using a 
-//parallel sorting algorithm. 
-//This kernel works only in the case of more than 512 close encounter pairs, and 
-//more than 512 Bodies.
-//It classifies the groups into sets of equal sizes.
-//The size of group i is stored in Encpairs2_d[i].y, the elements j of the 
-//group i are stored in Encpairs2_d[i * BN + j].x
-//In Nenc_d[0] is stored the total number of groups.
-//in Nenc_d[i] is stored the number of groups with: 2^(2-1) < size of group < 2^(2+1)
-//
-//This Kernel must be launched only with one block!.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//November 2015
-//
-// ****************************************
-template <int Bl>
-__global__ void group1024c_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int *groupIndex_d, int BN){
-
-	int idy = threadIdx.x;
-
-	int Ne = *Nencpairs2_d;
-	int BN2 = BN * BN -1;
-
-	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
-	
-
-	if(idy == 0){
-		T_s = 1;
-	}
-	if(idy < 12) Nenc_s[idy] = 0;
-	__syncthreads();
-	
-	for(int i = 0; i < Ne; i += Bl){
-		if(idy + i < Ne){
-			Encpairs2_d[idy + i + Ne] = Encpairs2_d[idy + i]; //A
-		}
-	}
-
-	/*encpairs_s[idy] contains the two close encounter pairs*/
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[idy + i].x = BN2; //B
-		Encpairs_d[idy + i].y = BN2; //B2
-	}
-	__syncthreads();
-
-	for(int tt = 0; tt < 100; ++ tt){ 
-		T_s = 0;	
-		for(int i = 0; i < Ne; i += Bl){
-			if(idy + i < Ne){
-				int Am = min(Encpairs2_d[idy + i + Ne].x, Encpairs2_d[idy + i + Ne].y);
-				atomicMin(&Encpairs_d[Encpairs2_d[idy + i + Ne].y].x, Am);
-				atomicMin(&Encpairs_d[Encpairs2_d[idy + i + Ne].x].x, Am);
-			}
-		}
-
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			int B = Encpairs_d[idy + i].x;
-			if(B < BN2){
-				Encpairs_d[idy + i].y = Encpairs_d[B].x;
-			}
-		}
-
-		__syncthreads();
-		for(int i = 0; i < Ne; i += Bl){
-			if(idy + i < Ne){
-				Encpairs2_d[idy + i + Ne].x = Encpairs_d[Encpairs2_d[idy + i].x].y;
-				Encpairs2_d[idy + i + Ne].y = Encpairs_d[Encpairs2_d[idy + i].y].y;
-				if(Encpairs2_d[idy + i + Ne].x != Encpairs2_d[idy + i + Ne].y) T_s = 1;
-			}
-		}
-
-		__syncthreads();
-		for(int i = 0; i < BN; i += Bl){
-			Encpairs_d[idy + i].x = Encpairs_d[idy + i].y;
-		}
-		__syncthreads();
-		if(T_s == 0){
-//if(idy == 0) printf("tt %d\n", tt);
-			break;
-		}
-		__syncthreads();
-	
-	}
-//for(int i = 0; i < BN; i += Bl){
-//printf("A %d %d %d\n", idy + i, Encpairs_d[idy + i].y, idy + i);
-//}
-
-	// At this point Encpairs_d[idy + i].x contains the smallest index of the group
-	__syncthreads();
-	for(int i = 0; i < BN; i += Bl){
-		Encpairs_d[idy + i].y = -1;
-		Encpairs2_d[idy + i].y = 0;
-	}
-	__syncthreads();
-	// Check now for new groups and increase the total number of groups
-	for(int i = 0; i < BN; i += Bl){
-		if(Encpairs_d[idy + i].x == (idy + i)){
-			Encpairs_d[idy + i].y = atomicAdd(&Nenc_s[0],1);
-		}		
-	}
-	__syncthreads();
-	// Transform now the smallest index of the group into a consecutive group index
-	for(int i = 0; i < BN; i += Bl){
-	if(Encpairs_d[idy + i].x < BN2){
-			Encpairs_d[idy + i].x = Encpairs_d[Encpairs_d[idy + i].x].y;
-		}
-	}
-	// At this point Encpairs_d[idy + i].x contains a consecutive group index
-	__syncthreads();
-#if G3 == 1
-	for(int i = 0; i < BN; i += Bl){
-		groupIndex_d[idy + i] = Encpairs_d[idy + i].x;
-	}
-#endif
-
-#if SERIAL_GROUPING == 0
-	for(int i = 0; i < BN; i += Bl){
-		if(Encpairs_d[idy + i].x < BN2){
-			int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[idy + i].x].y,1);
-			Encpairs2_d[Encpairs_d[idy + i].x * BN + Ns].x = idy + i;
-			Encpairs2_d[13 * BN + idy + i].y = Ns;
-		}
-		//At this point Encpairs2_d.x contains now line by line the members of the groups, Encpsirs2_d.y contains the sizes of the groups
-
-		__syncthreads();
-	}
-#endif
-#if SERIAL_GROUPING == 1
-	if(idy == 0){
-		for(int i = BN - 1; i >=0; --i){
-			if(Encpairs_d[i].x < BN2){
-				int Ns = atomicAdd(&Encpairs2_d[Encpairs_d[i].x].y,1);
-				Encpairs2_d[Encpairs_d[i].x * BN + Ns].x = i;
-				Encpairs2_d[13 * BN + i].y = Ns;
-			}
-		}
-	}
-#endif
-
-	__syncthreads();
-
-	for(int i = 0; i < BN; i += Bl){
-		int nn = Encpairs2_d[idy + i].y;
-		int ne2 = 2;
-		if(nn > 0){
-			for(int ii = 0; ii < 11; ++ii){
-				if(nn <= ne2){
-					int Ns = atomicAdd(&Nenc_s[ii + 1], 1);
-					Encpairs2_d[ (ii+1) * BN + Ns].y = idy + i;
-					break;
-				}
-				else{
-					ne2 *= 2;
-				}
-			}
-		} 
-	}
-	__syncthreads();
-	if(idy < 12){
-		Nenc_d[idy] = Nenc_s[idy];
-	}
 }
 
 

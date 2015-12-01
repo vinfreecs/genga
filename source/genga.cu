@@ -171,7 +171,7 @@ int main(int argc, char*argv[]){
 	cudaMemset(D.Energy_d, 0, D.NEnergyT*sizeof(double));
 	if(D.Nst == 1) printf("Start integration with %d simulation\n", D.Nst);
 	else printf("Start integration with %d simulations\n", D.Nst);
-        error = cudaGetLastError();
+	error = cudaGetLastError();
 	if(error != 0){
 		fprintf(D.masterfile, "Start error = %d = %s\n",error, cudaGetErrorString(error));
         	printf("Start error = %d = %s\n",error, cudaGetErrorString(error));
@@ -214,7 +214,15 @@ int main(int argc, char*argv[]){
 		}
 	}
 	cudaDeviceSynchronize();
-	printf("first kick OK\n");
+	error = cudaGetLastError();
+	if(error != 0){
+		fprintf(D.masterfile, "first kick error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("first kick error = %d = %s\n", error, cudaGetErrorString(error));
+		return 0;
+	}
+	else{
+		printf("first kick OK\n");
+	}
 	//Print first informations about close encounter pairs
 	D.firstInfo();
 	D.setStartTime();
@@ -251,11 +259,12 @@ int main(int argc, char*argv[]){
 		if(er == 0){
 			 return 0;
 		}
+
 			cudaDeviceSynchronize();
-			error = cudaGetLastError();
-			if(error != 0){
-				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
-				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+			//Check for too many encounters
+			if(D.EncFlag_m[0] > 0){
+				printf("Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
+				fprintf(D.masterfile, "Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
 				return 0;
 			}
 
@@ -270,12 +279,15 @@ int main(int argc, char*argv[]){
 				D.printMaxColl();
 				return 0;
 			}
+	
+			error = cudaGetLastError();
+			if(error != 0){
+				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
+				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+				return 0;
+			}
 			//Print Energy and log information//
 			if(D.P.ei > 0 && D.timeStep % D.P.ei == 0){
-				if(D.CollisionFlag == 1){
-					int rem = D.RemoveCall();
-					if( rem == 0) return 0;
-				}
 				if(bufferCount >= D.P.Buffer){
 					D.EnergyOutput();
 				}
@@ -312,7 +324,7 @@ int main(int argc, char*argv[]){
 						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
 						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
 					}
-				D.CoordinateToBuffer(bufferCount - 1, 0);
+					D.CoordinateToBuffer(bufferCount - 1, 0);
 				}
 				if(D.P.UseaeGrid == 1){
 					D.GridaeOutput();

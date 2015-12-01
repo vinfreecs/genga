@@ -2,65 +2,23 @@
 #define KICK4_H
 #include "define.h"
 
-
 //**************************************
-//This function computes the terms a = mi/rij^3 * Kij and b = mi/rij.
+//This function computes the terms a = mi/rij^3 * Kij.
 //This function also finds the pairs of bodies which are separated less than pc * rcritv^2. The index of those 
-//pairs are stored in the array Encpairs_d in two different ways. This indexes are then used
-//in the KickA32 kernel and in the Encounter kernel.
+//pairs are stored in the boolean matrix Encpairsb_d. This indexes are then used
+//in the EncMatrix_kernel.
 
-//Authors: Simon Grimm, Joachim Stadel
-//March 2015
+//Authors: Simon Grimm
+//November 2015
 
 //****************************************
-__device__ void  accb(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB){
-	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
-		double rsq, ir, ir3, s;
-		double3 r3ij;
-		double rcritv;
-		int Ni, Nj;
-
-		r3ij.x = x4j.x - x4i.x;
-		r3ij.y = x4j.y - x4i.y;
-		r3ij.z = x4j.z - x4i.z;
-
-		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-		rcritv = fmax(rcritvi, rcritvj);
-
-		int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
-
-		if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
-			if( i < j){
-				Ni = atomicAdd(NencpairsI, 1);
-				Encpairs_d[icNB * i + Ni].x = i;
-				Encpairs_d[icNB * i + Ni].y = j;
-			}
-			else{
-				Nj = atomicAdd(NencpairsJ, 1);
-				Encpairs_d[icNB * i + icNB - 1 - Nj].y = j;
-			}
-
-		}
-
-		ir = 1.0/sqrt(rsq);
-		ir3 = ir*ir*ir;
-
-		if(cl){
-			s = 0.0;
-		}
-		else{
-			s = x4j.w * ir3;
-		}
-
-		ac.x += r3ij.x * s;
-		ac.y += r3ij.y * s;
-		ac.z += r3ij.z * s;
-	}
-}
 __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int icNB){
 	double rsq, ir, ir3, s;
 	double3 r3ij;
 	double rcritv;
+
+	//ignore ghost particles
+	bool bm = (x4i.w >= 0.0 && x4j.w >= 0.0) ? true : false;
 
 	r3ij.x = x4j.x - x4i.x;
 	r3ij.y = x4j.y - x4i.y;
@@ -68,15 +26,15 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 
 	rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 	rcritv = fmax(rcritvi, rcritvj);
-
-	bool cl = (rsq < pc * rcritv * rcritv) ? true : false;
-
+	bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+//if (cl) printf("cl %d %d %d\n", i , j, icNB);
 	Encpairsb_d[icNB * i + j] = cl;
+
 
 	ir = 1.0/sqrt(rsq);
 	ir3 = ir*ir*ir;
 
-	s = x4j.w * ir3 * (!cl);
+	s = x4j.w * ir3 * (!cl) * bm * (i != j);
 
 	ac.x += r3ij.x * s;
 	ac.y += r3ij.y * s;
@@ -84,242 +42,25 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case NB = 16. NB is the next bigger number of N
+//This kernel performs the second kick of the time step, in the case NB = 128. NB is the next bigger number of N
 //which is a power of two.
-//It calculates the acceleration between all bodies with respect to the changeover function K.
-//It also calculates all accelerations from bodies not beeing in a close encounter and store it in accK_d. This values will then be used 
-//it the next time step.
-//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
-//The number of close encounter candidates is stored in Nencpairs_d.
+//It performs a precheck for close encouter candidates and mark them in a boolean matrix. 
+//It calculates the acceleration between all bodies with are not in a close encounter.
 //
-//The Kernel is launched with N blocks a NB theads.
+//The Kernel is launched with N/4 blocks a 128 theads.
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-//****************************************
-template <const int Bl, int Bl2>
-__global__ void acc16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int icNB, double t){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-
-	__shared__ double3 ab1_s[Bl2]; 		//the b1_s array is here stored in ab1_s[idy + 16]
-	__shared__ int NencpairsI_s;
-	__shared__ int NencpairsJ_s;
-
-	double4 x4i = x4_d[idx];
-	double rcritvi = rcritv_d[idx];
-
-	double4 x4j;
-	double rcritvj;
-
-	if(idy < Bl){
-		x4j = x4_d[idy];
-		rcritvj = rcritv_d[idy];
-	}
-	else{
-		x4j.x = 0.0;
-		x4j.y = 0.0;
-		x4j.z = 0.0;
-		x4j.w = 0.0;
-		rcritvj = 0.0;
-	}
-
-	if(idy == 0){
-		NencpairsI_s = 0;
-		NencpairsJ_s = 0;
-	}
-
-	__syncthreads();
-
-	ab1_s[idy].x = 0.0;
-	ab1_s[idy].y = 0.0;
-	ab1_s[idy].z = 0.0;
-
-	ab1_s[idy + 8].x = 0.0;
-	ab1_s[idy + 8].y = 0.0;
-	ab1_s[idy + 8].z = 0.0;
-
-	__syncthreads();
-
-	if(idy < Bl){
-		accb(ab1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB); 
-	}
-
-	__syncthreads();
-	volatile double3 *ab1 = ab1_s;
-
-	ab1[idy].x += ab1[idy + 8].x;
-	ab1[idy].x += ab1[idy + 4].x;
-	ab1[idy].x += ab1[idy + 2].x;
-	ab1[idy].x += ab1[idy + 1].x;
-
-	ab1[idy].y += ab1[idy + 8].y;
-	ab1[idy].y += ab1[idy + 4].y;
-	ab1[idy].y += ab1[idy + 2].y;
-	ab1[idy].y += ab1[idy + 1].y;
-
-	ab1[idy].z += ab1[idy + 8].z;
-	ab1[idy].z += ab1[idy + 4].z;
-	ab1[idy].z += ab1[idy + 2].z;
-	ab1[idy].z += ab1[idy + 1].z;
-
-
-	__shared__ int Ne;
-	__syncthreads();
-
-	if(idy == 0){
-		acck_d[idx].x = ab1[0].x * dtksq;
-		acck_d[idx].y = ab1[0].y * dtksq;
-		acck_d[idx].z = ab1[0].z * dtksq;
-		Ne = atomicAdd(Nencpairs_d, NencpairsI_s);
-	}
-	__syncthreads();
-	if(idy < Bl){
-		for(int i = 0; i < NencpairsI_s; i += Bl){
-			if(idy + i < NencpairsI_s){
-				Encpairs_d[idy + i + Ne] = Encpairs2_d[icNB * idx + idy + i];
-			}
-		}
-	}
-	__syncthreads();
-	if(idy == 0){
-		Encpairs2_d[icNB * idx].x = NencpairsI_s;
-		Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
-
-	}
-}
-
-// **************************************
-//This kernel performs the seccond kick of the time step, in the case 32 <= NB < 128. NB is the next bigger number of N
-//which is a power of two.
-//It calculates the acceleration between all bodies with respect to the changeover function K.
-//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
-//it the next time step.
-//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
-//The number of close encounter candidates is stored in Nencpairs_d.
-//
-//The Kernel is launched with N blocks a NB theads.
-
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-//****************************************
-template <const int Bl, int Bl2>
-__global__ void acc32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int icNB, double t){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-
-	__shared__ double3 a1_s[Bl2];
-	__shared__ int NencpairsI_s;
-	__shared__ int NencpairsJ_s;
-
-	double4 x4i = x4_d[idx];
-	double rcritvi = rcritv_d[idx];
-#if G3 == 1
-	int groupIndexi = groupIndex_d[idx];
-#endif
-
-	double4 x4j = x4_d[idy];
-	double rcritvj = rcritv_d[idy];
-#if G3 == 1
-	int groupIndexj = groupIndex_d[idy];
-#endif
-
-	if(idy == 0){
-		NencpairsI_s = 0;
-		NencpairsJ_s = 0;
-	}
-	__syncthreads();
-	a1_s[idy].x = 0.0;
-	a1_s[idy].y = 0.0;
-	a1_s[idy].z = 0.0;
-
-	__syncthreads();
-	if(idy < Bl){
-		accb(a1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB); 
-	}
-
-	__syncthreads();
-	volatile double3 *a1 = a1_s;
-
-	if(idy < 32){
-		if(Bl >= 64) a1[idy].x += a1[idy + 32].x;
-		if(Bl >= 32) a1[idy].x += a1[idy + 16].x;
-		a1[idy].x += a1[idy + 8].x;
-		a1[idy].x += a1[idy + 4].x;
-		a1[idy].x += a1[idy + 2].x;
-		a1[idy].x += a1[idy + 1].x;
-
-		if(Bl >= 64) a1[idy].y += a1[idy + 32].y;
-		if(Bl >= 32) a1[idy].y += a1[idy + 16].y;
-		a1[idy].y += a1[idy + 8].y;
-		a1[idy].y += a1[idy + 4].y;
-		a1[idy].y += a1[idy + 2].y;
-		a1[idy].y += a1[idy + 1].y;
-
-		if(Bl >= 64) a1[idy].z += a1[idy + 32].z;
-		if(Bl >= 32) a1[idy].z += a1[idy + 16].z;
-		a1[idy].z += a1[idy + 8].z;
-		a1[idy].z += a1[idy + 4].z;
-		a1[idy].z += a1[idy + 2].z;
-		a1[idy].z += a1[idy + 1].z;
-	}
-
-	__shared__ int Ne;
-	__syncthreads();
-
-	if(idy == 0){
-		acck_d[idx].x = a1[0].x * dtksq;
-		acck_d[idx].y = a1[0].y * dtksq;
-		acck_d[idx].z = a1[0].z * dtksq;
-		Ne = atomicAdd(Nencpairs_d, NencpairsI_s);
-	}
-	__syncthreads();
-	if(idy < Bl){
-		for(int i = 0; i < NencpairsI_s; i += Bl){
-			if(idy + i < NencpairsI_s){
-				Encpairs_d[idy + i + Ne] = Encpairs2_d[icNB * idx + idy + i];
-			}
-		}
-	}
-	__syncthreads();
-	if(idy == 0){
-		Encpairs2_d[icNB * idx].x = NencpairsI_s;
-		Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
-
-	}
-}
-
-// **************************************
-//This kernel performs the seccond kick of the time step, in the case NB = 128. NB is the next bigger number of N
-//which is a power of two.
-//It calculates the acceleration between all bodies with respect to the changeover function K.
-//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
-//it the next time step.
-//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
-//The number of close encounter candidates is stored in Nencpairs_d.
-//
-//The Kernel is launched with N/2 blocks a 128 theads.
-//
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+//November 2015
 //
 // ****************************************
 template <int Bl>
-__global__ void acc128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N2, int icNB, double t){
+__global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, bool *Encpairsd_d, int2 *Encpairs2_d, double *test_d, int N, int N2, int icNB, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	__shared__ double3 a1_s[Bl];
 	__shared__ double3 a2_s[Bl];
-
-	__shared__ int NencpairsI_s;
-	__shared__ int NencpairsI2_s;
-	__shared__ int NencpairsJ_s;
-	__shared__ int NencpairsJ2_s;
-
 
 	double4 x4i = x4_d[idx];
 	double4 x4i2 = x4_d[idx + N2];
@@ -345,19 +86,11 @@ __global__ void acc128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	a2_s[idy].y = 0.0;
 	a2_s[idy].z = 0.0;
 
-	if(idy == 0){
-		NencpairsI_s = 0;
-		NencpairsJ_s = 0;
-	}
-	if(idy == 32){
-		NencpairsI2_s = 0;
-		NencpairsJ2_s = 0;
-	}
-
 	__syncthreads();
-	accb(a1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB);
-	accb(a2_s[idy], x4i2, x4j, rcritvi2, rcritvj, &NencpairsI2_s, &NencpairsJ2_s, Encpairs2_d, idy, idx + N2, icNB);
-
+	if(idy < N){
+		if(idx < N)      acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsd_d, idy, idx, icNB);
+		if(idx + N2 < N) acc_c(a2_s[idy], x4i2, x4j, rcritvi2, rcritvj, Encpairsd_d, idy, idx + N2, icNB);
+	}
 	__syncthreads();
 	volatile double3 *a1 = a1_s;
 	volatile double3 *a2 = a2_s;
@@ -421,8 +154,6 @@ __global__ void acc128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			a2[idy-32].z += a2[idy + 1-32].z;	
 		}
 	}
-	__shared__ int Ne1;
-	__shared__ int Ne2;
 
 	__syncthreads();
 
@@ -430,59 +161,34 @@ __global__ void acc128_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		acck_d[idx].x = a1[0].x * dtksq;
 		acck_d[idx].y = a1[0].y * dtksq;
 		acck_d[idx].z = a1[0].z * dtksq;
-		Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
+		Encpairs2_d[idx * NencMax].x = 0; //NI
+		Encpairs2_d[idx * NencMax + 1].x = 0; //NJ
 	}
 
 	if(idy == 32){
 		acck_d[idx + N2].x = a2[0].x * dtksq;
 		acck_d[idx + N2].y = a2[0].y * dtksq;
 		acck_d[idx + N2].z = a2[0].z * dtksq;
-		Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
-	}
-
-	__syncthreads();
-
-
-	if(idy < NencpairsI_s){
-		Encpairs_d[idy + Ne1] = Encpairs2_d[icNB * idx + idy];
-	}
-	__syncthreads();
-	if(idy < NencpairsI2_s){
-		Encpairs_d[idy + Ne2] = Encpairs2_d[icNB * (idx + N2) + idy];
-
-	}
-	__syncthreads();
-
-
-	if(idy == 0){
-		Encpairs2_d[icNB * idx].x = NencpairsI_s;
-		Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
-
-	}
-	if(idy == 32){
-		Encpairs2_d[icNB * (idx + N2)].x = NencpairsI2_s;
-		Encpairs2_d[icNB * (idx + N2) + 1].x = NencpairsJ2_s;
-
+		Encpairs2_d[(idx + N2) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + N2) * NencMax + 1].x = 0; //NJ
 	}
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case NB = 256. NB is the next bigger number of N
+//This kernel performs the second kick of the time step, in the case NB = 256. NB is the next bigger number of N
 //which is a power of two.
-//It calculates the acceleration between all bodies with respect to the changeover function K.
-//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
-//it the next time step.
-//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
-//The number of close encounter candidates is stored in Nencpairs_d.
+//It performs a precheck for close encouter candidates and mark them in a boolean matrix. 
+//It calculates the acceleration between all bodies with are not in a close encounter.
 //
 //The Kernel is launched with N/4 blocks a 128 theads.
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+//November 2015
 //
 // ****************************************
+
 template <int Bl, int NB>
-__global__ void acc256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, double t){
+__global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -490,17 +196,6 @@ __global__ void acc256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	__shared__ double3 a2_s[Bl];
 	__shared__ double3 a3_s[Bl];
 	__shared__ double3 a4_s[Bl];
-
-	__shared__ int NencpairsI_s;
-	__shared__ int NencpairsI2_s;
-	__shared__ int NencpairsI3_s;
-	__shared__ int NencpairsI4_s;
-
-	__shared__ int NencpairsJ_s;
-	__shared__ int NencpairsJ2_s;
-	__shared__ int NencpairsJ3_s;
-	__shared__ int NencpairsJ4_s;
-
 
 	double4 x4i = x4_d[idx];
 	double4 x4i2 = x4_d[idx + N4];
@@ -517,26 +212,6 @@ __global__ void acc256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	int groupIndexi3 = groupIndex_d[idx + 2*N4];
 	int groupIndexi4 = groupIndex_d[idx + 3*N4];
 #endif
-
-
-	if(idy == 0){
-		NencpairsI_s = 0;
-		NencpairsJ_s = 0;
-	}
-	if(idy == 32){
-		NencpairsI2_s = 0;
-		NencpairsJ2_s = 0;
-	}
-	if(idy == 64){
-		NencpairsI3_s = 0;
-		NencpairsJ3_s = 0;
-	}
-	if(idy == 96){
-		NencpairsI4_s = 0;
-		NencpairsJ4_s = 0;
-	}
-	
-	__syncthreads();
 
 	a1_s[idy].x = 0.0;
 	a1_s[idy].y = 0.0;
@@ -556,15 +231,14 @@ __global__ void acc256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 
 	__syncthreads();
 
-
 	for(int i = 0; i < NB; i += Bl){ 
 		if(idy + i < N){
 			double4 x4j = x4_d[idy + i];
 			double rcritvj = rcritv_d[idy + i];
-			accb(a1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy + i, idx, icNB);
-			accb(a2_s[idy], x4i2, x4j, rcritvi2, rcritvj, &NencpairsI2_s, &NencpairsJ2_s, Encpairs2_d, idy + i, idx + N4, icNB);
-			accb(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, &NencpairsI3_s, &NencpairsJ3_s, Encpairs2_d, idy + i, idx + 2*N4, icNB);
-			accb(a4_s[idy], x4i4, x4j, rcritvi4, rcritvj, &NencpairsI4_s, &NencpairsJ4_s, Encpairs2_d, idy + i, idx + 3*N4, icNB);
+			if(idx < N)        acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, icNB);
+			if(idx + N4 < N)   acc_c(a2_s[idy], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy + i, idx + N4, icNB);
+			if(idx + 2*N4 < N) acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx + 2*N4, icNB);
+			if(idx + 3*N4 < N) acc_c(a4_s[idy], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy + i, idx + 3*N4, icNB);
 		}
 	}
 	__syncthreads();
@@ -709,102 +383,55 @@ __global__ void acc256_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			}
 		}
 	}
-	__shared__ int Ne1;
-	__shared__ int Ne2;
-	__shared__ int Ne3;
-	__shared__ int Ne4;
 	__syncthreads();
 
 	if(idy == 0){
 		acck_d[idx].x = a1[0].x * dtksq;
 		acck_d[idx].y = a1[0].y * dtksq;
 		acck_d[idx].z = a1[0].z * dtksq;
-		Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
+		Encpairs2_d[idx * NencMax].x = 0; //NI
+		Encpairs2_d[idx * NencMax + 1].x = 0; //NJ
 	}
 
 	if(idy == 32){
 		acck_d[idx + N4].x = a2[0].x * dtksq;
 		acck_d[idx + N4].y = a2[0].y * dtksq;
 		acck_d[idx + N4].z = a2[0].z * dtksq;
-		Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
+		Encpairs2_d[(idx + N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + N4) * NencMax + 1].x = 0; //NJ
 	}
 
 	if(idy == 64){
 		acck_d[idx + 2*N4].x = a3[0].x * dtksq;
 		acck_d[idx + 2*N4].y = a3[0].y * dtksq;
 		acck_d[idx + 2*N4].z = a3[0].z * dtksq;
-		Ne3 = atomicAdd(Nencpairs_d, NencpairsI3_s);
+		Encpairs2_d[(idx + 2*N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + 2*N4) * NencMax + 1].x = 0; //NJ
 	}
 	
 	if(idy == 96){
 		acck_d[idx + 3*N4].x = a4[0].x * dtksq;
 		acck_d[idx + 3*N4].y = a4[0].y * dtksq;
 		acck_d[idx + 3*N4].z = a4[0].z * dtksq;
-		Ne4 = atomicAdd(Nencpairs_d, NencpairsI4_s);
-	}
-
-	__syncthreads();
-
-	for(int i = 0; i < NencpairsI_s; i += Bl){
-		if(idy + i < NencpairsI_s){
-			Encpairs_d[idy + i + Ne1] = Encpairs2_d[icNB * idx + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI2_s; i += Bl){
-		if(idy + i < NencpairsI2_s){
-			Encpairs_d[idy + i + Ne2] = Encpairs2_d[icNB * (idx + N4) + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI3_s; i += Bl){
-		if(idy + i < NencpairsI3_s){
-			Encpairs_d[idy + i + Ne3] = Encpairs2_d[icNB * (idx + 2*N4) + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI4_s; i += Bl){
-		if(idy + i < NencpairsI4_s){
-		Encpairs_d[idy + i + Ne4] = Encpairs2_d[icNB * (idx + 3*N4) + idy + i];
-		}
-	}
-	__syncthreads();
-
-	if(idy == 0){
-		Encpairs2_d[icNB * idx].x = NencpairsI_s;
-		Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
-	}
-	if(idy == 32){
-		Encpairs2_d[icNB * (idx + N4)].x = NencpairsI2_s;
-		Encpairs2_d[icNB * (idx + N4) + 1].x = NencpairsJ2_s;
-	}
-	if(idy == 64){
-		Encpairs2_d[icNB * (idx + 2*N4)].x = NencpairsI3_s;
-		Encpairs2_d[icNB * (idx + 2*N4) + 1].x = NencpairsJ3_s;
-	}
-	if(idy == 96){
-		Encpairs2_d[icNB * (idx + 3*N4)].x = NencpairsI4_s;
-		Encpairs2_d[icNB * (idx + 3*N4) + 1].x = NencpairsJ4_s;
+		Encpairs2_d[(idx + 3 *N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + 3 *N4) * NencMax + 1].x = 0; //NJ
 	}
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case NB > 256. NB is the next bigger number of N
+//This kernel performs the second kick of the time step, in the case NB > 256. NB is the next bigger number of N
 //which is a power of two.
-//It calculates the acceleration between all bodies with respect to the changeover function K.
-//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
-//it the next time step.
-//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
-//The number of close encounter candidates is stored in Nencpairs_d.
+//It performs a precheck for close encouter candidates and mark them in a boolean matrix. 
+//It calculates the acceleration between all bodies with are not in a close encounter.
 //
 //The Kernel is launched with N/4 blocks a 128 theads.
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+//November 2015
 //
 // ****************************************
 template <int Bl>
-__global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NB, double t){
+__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, int NB, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -814,16 +441,6 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 	__shared__ double3 a2_s[Bl/2];
 	__shared__ double3 a3_s[Bl/2];
 	__shared__ double3 a4_s[Bl/2];
-
-	__shared__ int NencpairsI_s;
-	__shared__ int NencpairsI2_s;
-	__shared__ int NencpairsI3_s;
-	__shared__ int NencpairsI4_s;
-
-	__shared__ int NencpairsJ_s;
-	__shared__ int NencpairsJ2_s;
-	__shared__ int NencpairsJ3_s;
-	__shared__ int NencpairsJ4_s;
 
 	double4 x4i = x4_d[idx];
 	double4 x4i2 = x4_d[idx+N4];
@@ -841,26 +458,6 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 	int groupIndexi4 = groupIndex_d[idx + 3*N4];
 #endif
 
-	if(idy == 0){
-		NencpairsI_s = 0;
-		NencpairsJ_s = 0;
-	}
-	if(idy == 32){
-		NencpairsI2_s = 0;
-		NencpairsJ2_s = 0;
-	}
-	if(idy == 64){
-		NencpairsI3_s = 0;
-		NencpairsJ3_s = 0;
-	}
-	if(idy == 96){
-		NencpairsI4_s = 0;
-		NencpairsJ4_s = 0;
-	}
-	
-
-	__syncthreads();
-
 	if(idy < Bl_2) {
 		a1_s[idy].x = 0.0;
 		a1_s[idy].y = 0.0;
@@ -875,8 +472,8 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 			if(idy + i < N){
 				double4 x4j = x4_d[idy + i];
 				double rcritvj = rcritv_d[idy + i];
-				accb(a1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy + i, idx, icNB);
-				accb(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, &NencpairsI3_s, &NencpairsJ3_s, Encpairs2_d, idy + i, idx +2*N4, icNB);
+				if(idx < N)        acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, icNB);
+				if(idx + 2*N4 < N) acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx +2*N4, icNB);
 			}	
 		}
 	}
@@ -895,8 +492,8 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 			if(idy-Bl_2 + i < N){
 				double4 x4j = x4_d[idy-Bl_2 + i];
 				double rcritvj = rcritv_d[idy-Bl_2 + i];
-				accb(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, &NencpairsI2_s, &NencpairsJ2_s, Encpairs2_d, idy-Bl_2 + i, idx +N4, icNB);
-				accb(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, &NencpairsI4_s, &NencpairsJ4_s, Encpairs2_d, idy-Bl_2 + i, idx +3*N4, icNB);
+				if(idx + N4 < N)   acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +N4, icNB);
+				if(idx + 3*N4 < N) acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +3*N4, icNB);
 			}
 		}
 	}
@@ -1026,312 +623,70 @@ __global__ void acc4_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doubl
 		}
 	}
 
-	__shared__ int Ne1;
-	__shared__ int Ne2;
-	__shared__ int Ne3;
-	__shared__ int Ne4;
-
 	__syncthreads();
 
 	if(idy == 0){
 		acck_d[idx].x = a1[0].x * dtksq;
 		acck_d[idx].y = a1[0].y * dtksq;
 		acck_d[idx].z = a1[0].z * dtksq;
-		Ne1 = atomicAdd(Nencpairs_d, NencpairsI_s);
+		Encpairs2_d[idx * NencMax].x = 0; //NI
+		Encpairs2_d[idx * NencMax + 1].x = 0; //NJ
 	}
 	if(idy == 32){
 		acck_d[idx + N4].x = a2[0].x * dtksq;
 		acck_d[idx + N4].y = a2[0].y * dtksq;
 		acck_d[idx + N4].z = a2[0].z * dtksq;
-		Ne2 = atomicAdd(Nencpairs_d, NencpairsI2_s);
+		Encpairs2_d[(idx + N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + N4) * NencMax + 1].x = 0; //NJ
 	}
 	if(idy == 64){
 		acck_d[idx + 2*N4].x = a3[0].x * dtksq;
 		acck_d[idx + 2*N4].y = a3[0].y * dtksq;
 		acck_d[idx + 2*N4].z = a3[0].z * dtksq;
-		Ne3 = atomicAdd(Nencpairs_d, NencpairsI3_s);
+		Encpairs2_d[(idx + 2*N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + 2*N4) * NencMax + 1].x = 0; //NJ
 	}
 	if(idy == 96){
 		acck_d[idx + 3*N4].x = a4[0].x * dtksq;
 		acck_d[idx + 3*N4].y = a4[0].y * dtksq;
 		acck_d[idx + 3*N4].z = a4[0].z * dtksq;
-		Ne4 = atomicAdd(Nencpairs_d, NencpairsI4_s);
+		Encpairs2_d[(idx + 3*N4) * NencMax].x = 0; //NI
+		Encpairs2_d[(idx + 3*N4) * NencMax + 1].x = 0; //NJ
 	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI_s; i += Bl){
-		if(idy + i < NencpairsI_s){
-			Encpairs_d[idy + i + Ne1] = Encpairs2_d[icNB * idx + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI2_s; i += Bl){
-		if(idy + i < NencpairsI2_s){
-			Encpairs_d[idy + i + Ne2] = Encpairs2_d[icNB * (idx + N4) + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI3_s; i += Bl){
-		if(idy + i < NencpairsI3_s){
-			Encpairs_d[idy + i + Ne3] = Encpairs2_d[icNB * (idx + 2*N4) + idy + i];
-		}
-	}
-	__syncthreads();
-	for(int i = 0; i < NencpairsI4_s; i += Bl){
-		if(idy + i < NencpairsI4_s){
-			Encpairs_d[idy + i + Ne4] = Encpairs2_d[icNB * (idx + 3*N4) + idy + i];
-		}
-	}
-	__syncthreads();
-	if(idy == 0){
-		Encpairs2_d[icNB * idx].x = NencpairsI_s;
-		Encpairs2_d[icNB * idx + 1].x = NencpairsJ_s;
-	}
-	if(idy == 32){
-		Encpairs2_d[icNB * (idx + N4)].x = NencpairsI2_s;
-		Encpairs2_d[icNB * (idx + N4) + 1].x = NencpairsJ2_s;
-	}
-	if(idy == 64){
-		Encpairs2_d[icNB * (idx + 2*N4)].x = NencpairsI3_s;
-		Encpairs2_d[icNB * (idx + 2*N4) + 1].x = NencpairsJ3_s;
-	}
-	if(idy == 96){
-		Encpairs2_d[icNB * (idx + 3*N4)].x = NencpairsI4_s;
-		Encpairs2_d[icNB * (idx + 3*N4) + 1].x = NencpairsJ4_s;
-	}
-
 }
 
+
+//******************************************************
+// This kernel reads the boolean encounter matrix and creates lists
+// of encounter pairs for the Kick32Ab kernel and the encounter kernel
+//Author: Simon Grimm
+//November 2015
+//********************************************************
 template <int Bl>
-__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, double *test_d, int N, int icNB, int NB, double t){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
+__global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int icNB, int NencMax, int N, int *EncFlag_d){
 
-	int Bl_2 = Bl/2;
+	int j = threadIdx.x;
+	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	__shared__ double3 a1_s[Bl/2];
-	__shared__ double3 a2_s[Bl/2];
-	__shared__ double3 a3_s[Bl/2];
-	__shared__ double3 a4_s[Bl/2];
+	for(int jj = 0; jj < N; jj += Bl){ 
+		if(i < N && j + jj < N){
 
-	double4 x4i = x4_d[idx];
-	double4 x4i2 = x4_d[idx+N4];
-	double4 x4i3 = x4_d[idx+2*N4];
-	double4 x4i4 = x4_d[idx+3*N4];
+			bool cl = Encpairsb_d[icNB * i + jj + j];
+			if(cl){
+				if(i != jj + j){
+					int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+//printf("enc %d %d\n", i, jj + j, Ni);
+					if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
 
-	double rcritvi = rcritv_d[idx];
-	double rcritvi2 = rcritv_d[idx+N4];
-	double rcritvi3 = rcritv_d[idx+2*N4];
-	double rcritvi4 = rcritv_d[idx+3*N4];
-#if G3 == 1
-	int groupIndexi = groupIndex_d[idx];
-	int groupIndexi2 = groupIndex_d[idx + N4];
-	int groupIndexi3 = groupIndex_d[idx + 2*N4];
-	int groupIndexi4 = groupIndex_d[idx + 3*N4];
-#endif
-
-	__syncthreads();
-
-	if(idy < Bl_2) {
-		a1_s[idy].x = 0.0;
-		a1_s[idy].y = 0.0;
-		a1_s[idy].z = 0.0;
-
-		a3_s[idy].x = 0.0;
-		a3_s[idy].y = 0.0;
-		a3_s[idy].z = 0.0;
-
-		__syncthreads();
-		for(int i = 0; i < NB; i += Bl_2){
-			if(idy + i < N){
-				double4 x4j = x4_d[idy + i];
-				double rcritvj = rcritv_d[idy + i];
-				acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, icNB);
-				acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx +2*N4, icNB);
-			}	
-		}
-	}
-	else{
-		a2_s[idy-Bl_2].x = 0.0;
-		a2_s[idy-Bl_2].y = 0.0;
-		a2_s[idy-Bl_2].z = 0.0;
-
-		a4_s[idy-Bl_2].x = 0.0;
-		a4_s[idy-Bl_2].y = 0.0;
-		a4_s[idy-Bl_2].z = 0.0;
-
-		__syncthreads();
-
-		for(int i = 0; i < NB; i += Bl_2){
-			if(idy-Bl_2 + i < N){
-				double4 x4j = x4_d[idy-Bl_2 + i];
-				double rcritvj = rcritv_d[idy-Bl_2 + i];
-				acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +N4, icNB);
-				acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +3*N4, icNB);
-			}
-		}
-	}
-	__syncthreads();
-
-	volatile double3 *a1 = a1_s;
-	volatile double3 *a2 = a2_s;
-	volatile double3 *a3 = a3_s;
-	volatile double3 *a4 = a4_s;
-
-	int s = Bl/4;
-
-	for(int i = 6; i < log2f(Bl/2); ++i){
-		if( idy < s ) {
-			a1[idy].x += a1[idy + s].x;
-			a1[idy].y += a1[idy + s].y;
-			a1[idy].z += a1[idy + s].z;
-
-			a2[idy].x += a2[idy + s].x;
-			a2[idy].y += a2[idy + s].y;
-			a2[idy].z += a2[idy + s].z;
-
-			a3[idy].x += a3[idy + s].x;
-			a3[idy].y += a3[idy + s].y;
-			a3[idy].z += a3[idy + s].z;
-
-			a4[idy].x += a4[idy + s].x;
-			a4[idy].y += a4[idy + s].y;
-			a4[idy].z += a4[idy + s].z;
-		}
-		__syncthreads();
-		s /= 2;
-	}
-
-	if(idy < 32){
-		a1[idy].x += a1[idy + 32].x;
-		a1[idy].x += a1[idy + 16].x;
-		a1[idy].x += a1[idy + 8].x;
-		a1[idy].x += a1[idy + 4].x;
-		a1[idy].x += a1[idy + 2].x;
-		a1[idy].x += a1[idy + 1].x;
-
-		a1[idy].y += a1[idy + 32].y;
-		a1[idy].y += a1[idy + 16].y;
-		a1[idy].y += a1[idy + 8].y;
-		a1[idy].y += a1[idy + 4].y;
-		a1[idy].y += a1[idy + 2].y;
-		a1[idy].y += a1[idy + 1].y;
-
-		a1[idy].z += a1[idy + 32].z;
-		a1[idy].z += a1[idy + 16].z;
-		a1[idy].z += a1[idy + 8].z;
-		a1[idy].z += a1[idy + 4].z;
-		a1[idy].z += a1[idy + 2].z;
-		a1[idy].z += a1[idy + 1].z;
-	}
-	else{
-		if(idy < 64){
-			a2[idy-32].x += a2[idy + 32-32].x;
-			a2[idy-32].x += a2[idy + 16-32].x;
-			a2[idy-32].x += a2[idy + 8-32].x;
-			a2[idy-32].x += a2[idy + 4-32].x;
-			a2[idy-32].x += a2[idy + 2-32].x;
-			a2[idy-32].x += a2[idy + 1-32].x;
-
-			a2[idy-32].y += a2[idy + 32-32].y;
-			a2[idy-32].y += a2[idy + 16-32].y;
-			a2[idy-32].y += a2[idy + 8-32].y;
-			a2[idy-32].y += a2[idy + 4-32].y;
-			a2[idy-32].y += a2[idy + 2-32].y;
-			a2[idy-32].y += a2[idy + 1-32].y;
-
-			a2[idy-32].z += a2[idy + 32-32].z;
-			a2[idy-32].z += a2[idy + 16-32].z;
-			a2[idy-32].z += a2[idy + 8-32].z;
-			a2[idy-32].z += a2[idy + 4-32].z;
-			a2[idy-32].z += a2[idy + 2-32].z;
-			a2[idy-32].z += a2[idy + 1-32].z;
-		}
-		else{
-			if(idy < 96){
-				a3[idy-64].x += a3[idy + 32-64].x;
-				a3[idy-64].x += a3[idy + 16-64].x;
-				a3[idy-64].x += a3[idy + 8-64].x;
-				a3[idy-64].x += a3[idy + 4-64].x;
-				a3[idy-64].x += a3[idy + 2-64].x;
-				a3[idy-64].x += a3[idy + 1-64].x;
-
-				a3[idy-64].y += a3[idy + 32-64].y;
-				a3[idy-64].y += a3[idy + 16-64].y;
-				a3[idy-64].y += a3[idy + 8-64].y;
-				a3[idy-64].y += a3[idy + 4-64].y;
-				a3[idy-64].y += a3[idy + 2-64].y;
-				a3[idy-64].y += a3[idy + 1-64].y;
-
-				a3[idy-64].z += a3[idy + 32-64].z;
-				a3[idy-64].z += a3[idy + 16-64].z;
-				a3[idy-64].z += a3[idy + 8-64].z;
-				a3[idy-64].z += a3[idy + 4-64].z;
-				a3[idy-64].z += a3[idy + 2-64].z;
-				a3[idy-64].z += a3[idy + 1-64].z;
-			}
-			else{
-				if(idy < 128){
-					a4[idy-96].x += a4[idy + 32-96].x;
-					a4[idy-96].x += a4[idy + 16-96].x;
-					a4[idy-96].x += a4[idy + 8-96].x;
-					a4[idy-96].x += a4[idy + 4-96].x;
-					a4[idy-96].x += a4[idy + 2-96].x;
-					a4[idy-96].x += a4[idy + 1-96].x;
-
-					a4[idy-96].y += a4[idy + 32-96].y;
-					a4[idy-96].y += a4[idy + 16-96].y;
-					a4[idy-96].y += a4[idy + 8-96].y;
-					a4[idy-96].y += a4[idy + 4-96].y;
-					a4[idy-96].y += a4[idy + 2-96].y;
-					a4[idy-96].y += a4[idy + 1-96].y;
-
-					a4[idy-96].z += a4[idy + 32-96].z;
-					a4[idy-96].z += a4[idy + 16-96].z;
-					a4[idy-96].z += a4[idy + 8-96].z;
-					a4[idy-96].z += a4[idy + 4-96].z;
-					a4[idy-96].z += a4[idy + 2-96].z;
-					a4[idy-96].z += a4[idy + 1-96].z;
+					Encpairs2_d[NencMax * i + Ni].y = jj + j;
+				}
+				if(i < jj + j){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].y = jj + j;
 				}
 			}
 		}
-	}
-
-	__syncthreads();
-
-	if(idy == 0){
-		acck_d[idx].x = a1[0].x * dtksq;
-		acck_d[idx].y = a1[0].y * dtksq;
-		acck_d[idx].z = a1[0].z * dtksq;
-	}
-	if(idy == 32){
-		acck_d[idx + N4].x = a2[0].x * dtksq;
-		acck_d[idx + N4].y = a2[0].y * dtksq;
-		acck_d[idx + N4].z = a2[0].z * dtksq;
-	}
-	if(idy == 64){
-		acck_d[idx + 2*N4].x = a3[0].x * dtksq;
-		acck_d[idx + 2*N4].y = a3[0].y * dtksq;
-		acck_d[idx + 2*N4].z = a3[0].z * dtksq;
-	}
-	if(idy == 96){
-		acck_d[idx + 3*N4].x = a4[0].x * dtksq;
-		acck_d[idx + 3*N4].y = a4[0].y * dtksq;
-		acck_d[idx + 3*N4].z = a4[0].z * dtksq;
-	}
-}
-
-
-
-__global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int *Nencpairs_d, int icNB){
-
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int idy = blockIdx.y * blockDim.y + threadIdx.y;
-
-	bool cl = Encpairsb_d[icNB * idy + idx];
-	if(cl){
-		int Ne = atomicAdd(Nencpairs_d, 1);
-		Encpairs_d[Ne].x = idy;
-		Encpairs_d[Ne].y = idx;
 	}
 }
 
@@ -1343,7 +698,7 @@ __global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int *Nencp
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int icNB){
+__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int NencMax){
 
 	double3 r3ij;
 	int Ni, Nj;
@@ -1360,8 +715,8 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 	if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
 		Ni = atomicAdd(NencpairsI, 1);
 		Nj = atomicAdd(NencpairsJ, 1);
-		Encpairs2_d[icNB * i + Ni].y = j;
-		Encpairs2_d[icNB * j + icNB - 1 - Nj].y = i;
+		Encpairs2_d[NencMax * i + Ni].y = j;
+		Encpairs2_d[NencMax * j + NencMax - 1 - Nj].y = i;
 	}
 	
 	double ir = 1.0 / sqrt(rsq);
@@ -1387,7 +742,7 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 	fj.y -= r3ij.y;
 	fj.z -= r3ij.z;
 }
-__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int icNB){
+__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int NencMax){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -1408,8 +763,8 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //printf("Precheck %d %d\n", i, j);
 				Ni = atomicAdd(NencpairsI, 1);
 				Nj = atomicAdd(NencpairsJ, 1);
-				Encpairs2_d[icNB * i + Ni].y = j;
-				Encpairs2_d[icNB * j + icNB - 1 - Nj].y = i;
+				Encpairs2_d[NencMax * i + Ni].y = j;
+				Encpairs2_d[NencMax * j + NencMax - 1 - Nj].y = i;
 			}
 		}
 
@@ -1443,7 +798,7 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int I, int II, int nb){
+__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, int I, int II, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -1472,7 +827,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, i
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + JJ * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
 		}
 		__syncthreads();
 //printf("%d %d %d %d\n", TT, JJ, TT * p + i, JJ * p + j);
@@ -1498,7 +853,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, i
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB){
+__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -1521,7 +876,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 	for(int i = 1; i < p; ++i){
 		int j = idy ^ i;
 		int jjj = j + J * p;
-		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
 		__syncthreads();
 	}
 
@@ -1547,7 +902,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int I, int nb){
+__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, int I, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -1573,7 +928,7 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, in
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + J * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[icNB * iii].x, &Encpairs2_d[icNB * jjj + 1].x, Encpairs2_d, jjj, iii, icNB);
+			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
 		}
 		__syncthreads();
 	}
@@ -1585,13 +940,13 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, in
 	f_d[idy + J * p].z += fj_s[idy].z;
 }
 
-__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int icNB){
+__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
 
-	Encpairs2_d[icNB * id].x = 0;
-	Encpairs2_d[icNB * id + 1].x = 0;
+	Encpairs2_d[NencMax * id].x = 0;
+	Encpairs2_d[NencMax * id + 1].x = 0;
 
 	a_d[id].x = 0.0;
 	a_d[id].y = 0.0;
@@ -1600,7 +955,7 @@ __global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int icNB){
 }
 
 
-__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int icNB, int N){
+__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int NencMax, int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1612,12 +967,12 @@ __global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, 
 		f_d[id].y *= im * dtksq;
 		f_d[id].z *= im * dtksq;
 
-		int NI = Encpairs2_d[id * icNB].x;
+		int NI = Encpairs2_d[id * NencMax].x;
 		int Ne = atomicAdd(Nencpairs_d, NI);
 
 		for(int i = 0; i < NI; ++i){
 			Encpairs_d[Ne + i].x = id;
-			Encpairs_d[Ne + i].y = Encpairs2_d[icNB * id + i].y;
+			Encpairs_d[Ne + i].y = Encpairs2_d[NencMax * id + i].y;
 		}
 
 	}
@@ -1636,30 +991,30 @@ __global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, 
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int icNB, int NB, int N){
+__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int NencMax, int NB, int N){
 
 	const int p = 256;
 	const int nb = NB / (2 * p);
 
 	//set NencpairsI and NencpairsJ to zero
-	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, icNB);
+	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax);
 	//Blocks on the Diagonal
-	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB);
+	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax);
 
 	//Combine upper left quarter triangle with lower right quarter triangle
 	for(int ii = 1; ii < nb; ii *= 2){
                 for(int k = 0; k < ii; ++k){
 			int i = ii + k;
-			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB, i, ii, nb);
+			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax, i, ii, nb);
 		}
 	}
 
 	//Lower left quarter
 	for(int i = 0; i < nb; ++i){
-		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, icNB, i, nb);
+		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax, i, nb);
 	}
 
-	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dtksq, icNB, N);
+	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dtksq, NencMax, N);
 
 }
 

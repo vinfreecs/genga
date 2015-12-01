@@ -97,6 +97,7 @@ public:
 	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
+	int *EncFlag_d, *EncFlag_m;
 	int CollisionFlag;
 	double *Coll_h, *Coll_d;
 	double *writeEnc_h, *writeEnc_d;

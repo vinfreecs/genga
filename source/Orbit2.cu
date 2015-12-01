@@ -86,8 +86,8 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
-	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NB2T);
-	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NB2T);
+	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
+	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * MaxWriteEnc);
@@ -190,6 +190,10 @@ __host__ int Data::CMallocateOrbit(){
 
 	cudaHostAlloc((void **)&EjectionFlag_m, (Nst + 1)*sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&EjectionFlag_d, (void *)EjectionFlag_m, 0);
+
+	cudaHostAlloc((void **)&EncFlag_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&EncFlag_d, (void *)EncFlag_m, 0);
+	EncFlag_m[0] = 0;
 
 	cudaHostAlloc((void **)&Nencsmall_m, 12*sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&Nencsmall_d, (void *)Nencsmall_m, 0);
@@ -1289,6 +1293,9 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 	if( N > 4096) NB = 8192;
 	if( N > 8192) NB = 16384;
 	if( N > 16384) NB = 32768;
+	if( N > 32768) NB = 65536;
+	if( N > 65536) NB = 131072;
+	if( N > 131072) NB = 262144;
 
 	N4 = N;
 	if(N4 %4 == 3) N4 +=1;
@@ -1435,7 +1442,6 @@ __host__ void Data::stopSimulations(){
 				GSF[sst] = GSF[sst + 1];
 
 				NB[sst] = NB[sst + 1];
-				icNB[sst] = icNB[sst + 1];
 				N4[sst] = N4[sst + 1];
 				N2[sst] = N2[sst + 1];
 				Nconst[sst] = Nconst[sst + 1];
@@ -1550,6 +1556,7 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(Ncoll_m);
 	cudaFreeHost(NWriteEnc_m);
 	cudaFreeHost(EjectionFlag_m);
+	cudaFreeHost(EncFlag_m);
 	free(Coll_h);
 	free(writeEnc_h);
 	cudaFreeHost(test_h);

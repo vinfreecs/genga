@@ -420,10 +420,10 @@ __host__ void Data::CoordinateOutput(int irregular){
 			if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
 					if(irregular == 0){
-						sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timeStep);
+						sprintf(GSF[st].outputfilename,"%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else{
-						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, irrTimeStep);
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
@@ -440,7 +440,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			else{
 				if(P.FormatT == 0){
 					if(irregular == 0){
-						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timeStep);
+						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else{
 						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
@@ -539,10 +539,10 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
 						if(irregular == 0){
-							sprintf(GSF[st].outputfilename,"%sOut%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+							sprintf(GSF[st].outputfilename,"%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
 						}
 						else{
-							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12ld.dat", GSF[st].path, GSF[st].X, timestepBufferIrr[bf]);
+							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBufferIrr[bf]);
 						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					}
@@ -619,7 +619,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 __host__ void Data::GridaeOutput(){
 	int GridNae = Gridae.Na * Gridae.Ne;
 	int GridNai = Gridae.Na * Gridae.Ni;
-	sprintf(Gridae.filename, "aeCount%s_%.12ld.dat", Gridae.X, timeStep);
+	sprintf(Gridae.filename, "aeCount%s_%.12lld.dat", Gridae.X, timeStep);
 	Gridae.file = fopen(Gridae.filename, "w");
 	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int)*GridNae, cudaMemcpyDeviceToHost);
 	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int)*GridNai, cudaMemcpyDeviceToHost);

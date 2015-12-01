@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.28
+#define Version 3.29
 
 
 //Default parameter values
@@ -58,6 +58,7 @@
 #define def_NAFnfreqs 1
 #define def_NAFformat 1
 #define def_NAFinterval 1
+#define def_NencMax 512
 
 
 #define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
@@ -175,6 +176,7 @@ struct Parameter{
 	int NAFnfreqs;
 	int NAFformat;
 	int NAFinterval;
+	int NencMax;
 };
 
 //File names of Simulstions

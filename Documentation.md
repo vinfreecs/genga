@@ -80,6 +80,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
  * The outer truncation radius in AU, bodies with a separation to the Sun larger than this are taken out of the simulation. (Rcut in older versions)
  * The Order of the symplectic integrator. The options are 2, 4 or 6
+ * The maximum number of close encounter pairs for each body
  * Use aeGrid, 0 or 1. See [here](#markdown-header-aegrid) for more details
  * Miminal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details

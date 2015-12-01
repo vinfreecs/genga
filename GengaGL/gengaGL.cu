@@ -59,13 +59,12 @@ int loop(Data D, double &time){
 		cudaError_t error;
 		D.step();
 			cudaDeviceSynchronize();
-			error = cudaGetLastError();
-			if(error != 0){
-				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
-				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+			//Check for too many encounters
+			if(D.EncFlag_m[0] > 0){
+				printf("Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
+				fprintf(D.masterfile, "Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
 				return 0;
 			}
-
 			//Check for too big groups//
 			if(D.Nst == 1){
 				er = D.MaxGroups();
@@ -77,6 +76,13 @@ int loop(Data D, double &time){
 				D.printMaxColl();
 				return 0;
 			}
+	
+			error = cudaGetLastError();
+			if(error != 0){
+				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
+				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+				return 0;
+			}
 			//Print Energy and log information//
 			if(D.timeStep % D.P.ei == 0){
 				if(D.CollisionFlag == 1){
@@ -84,7 +90,7 @@ int loop(Data D, double &time){
 					if( rem == 0) return 0;
 				}
 				if(bufferCount >= D.P.Buffer){
-					D.EnergyOutput(bufferCount - 1);
+					D.EnergyOutput();
 				}
 			}
 
@@ -95,22 +101,29 @@ int loop(Data D, double &time){
 			}
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
-			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
+			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
 				if(D.P.Buffer == 1){
 					D.CoordinateOutput(0);
 				}
 				else if(bufferCount >= D.P.Buffer){
 					//write out buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+					}
 					D.CoordinateToBuffer(bufferCount - 1, 0);
 					D.CoordinateOutputBuffer(0);
 				}
 				else{
-					//store in buffer
+				//store in buffer
 					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+					}
 					D.CoordinateToBuffer(bufferCount - 1, 0);
 				}
-
 				if(D.P.UseaeGrid == 1){
 					D.GridaeOutput();
 				}
@@ -153,12 +166,20 @@ int loop(Data D, double &time){
 				else if(bufferCountIrr >= D.P.Buffer){
 					//write out buffer
 					D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
+						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+					}
 					D.CoordinateToBuffer(bufferCountIrr - 1, 1);
 					D.CoordinateOutputBuffer(1);
 				}
 				else{
-					//store in buffer
+				//store in buffer
 					D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+					for(int st = 0; st < D.Nst; ++st){
+						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
+						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+					}
 					D.CoordinateToBuffer(bufferCountIrr - 1, 1);
 				}
 	

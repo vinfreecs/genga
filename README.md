@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximu number of close encounters for each body.  
  * Version 3.21: Close Encounters can be reported to a separate file
  * Version 3.17: A calendar file can be used to generate irregular coordinate outputs.
  * Verions 3.15: The multi simulation mode can now have individual time step sizes and an individual number of integration steps for each sub-simulation.

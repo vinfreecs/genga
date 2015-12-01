@@ -18,6 +18,7 @@ Minimum number of bodies = 1
 Inner truncation radius = 0.5
 Outer truncation radius = 50.0
 Order of integrator = 2
+Maximum encounter pairs = 512
 Use aeGrid = 0
 aeGrid amin = 0
 aeGrid amax = 5

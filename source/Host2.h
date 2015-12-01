@@ -26,7 +26,6 @@ public:
 	int MultiSim;
 
 	int *NB;				//number of bodies increased to integer block size
-	int *icNB;				//initial number of NB
 	int *N4;				//number of bodies divided by 4
 	int *N2;				//number of bodies divided by 2
 	int *Nconst;				//number of massive bodies in test particle run
@@ -54,9 +53,11 @@ public:
 	//Total sizes
 	int NT;
 	int NsmallT;
-	int NB2T;
+	long long int NB2T;
+	int NBNencT;
 	int Nsmall2T;
 	int NEnergyT;
+	int icNB;
 
 	int *NsmallS_h;
 	int *NB2S;
