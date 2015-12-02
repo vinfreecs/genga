@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.31: The maximum close encounter group size is increased from 64 to 1024.
  * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximu number of close encounters for each body.  
  * Version 3.21: Close Encounters can be reported to a separate file
  * Version 3.17: A calendar file can be used to generate irregular coordinate outputs.

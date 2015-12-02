@@ -698,10 +698,9 @@ __global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 *Encp
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int NencMax){
+__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, bool *Encpairsb_d, int j, int i, int icNB){
 
 	double3 r3ij;
-	int Ni, Nj;
 
 	r3ij.x = x4j.x - x4i.x;
 	r3ij.y = x4j.y - x4i.y;
@@ -710,26 +709,15 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 	double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 
 	double rcritv = fmax(fi.w, fj.w);
-	int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
-  
-	if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
-		Ni = atomicAdd(NencpairsI, 1);
-		Nj = atomicAdd(NencpairsJ, 1);
-		Encpairs2_d[NencMax * i + Ni].y = j;
-		Encpairs2_d[NencMax * j + NencMax - 1 - Nj].y = i;
-	}
+	bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+	Encpairsb_d[icNB * i + j] = cl; 
 	
 	double ir = 1.0 / sqrt(rsq);
 
 	double ir3 = ir * ir * ir;
 	double s;
 
-	if(cl){
-		s = 0.0;
-	}
-	else{
-		s = x4j.w * x4i.w * ir3;
-	}
+	s = x4j.w * ir3 * (!cl);
 
 	r3ij.x *= s;
 	r3ij.y *= s;
@@ -742,12 +730,13 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 	fj.y -= r3ij.y;
 	fj.z -= r3ij.z;
 }
-__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs2_d, int j, int i, int NencMax){
+
+
+__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int icNB){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
 		double rcritv;
-		int Ni, Nj;
 
 		r3ij.x = x4j.x - x4i.x;
 		r3ij.y = x4j.y - x4i.y;
@@ -756,27 +745,14 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 		rcritv = fmax(rcritvi, rcritvj);
 
-		int cl = (rsq < pc * rcritv * rcritv) ? 1 : 0;
+		bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+		Encpairsb_d[icNB * i + j] = cl;
 
-		if(cl && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
-			if( i < j){
-//printf("Precheck %d %d\n", i, j);
-				Ni = atomicAdd(NencpairsI, 1);
-				Nj = atomicAdd(NencpairsJ, 1);
-				Encpairs2_d[NencMax * i + Ni].y = j;
-				Encpairs2_d[NencMax * j + NencMax - 1 - Nj].y = i;
-			}
-		}
 
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir*ir*ir;
 
-		if(cl){
-			s = 0.0;
-		}
-		else{
-			s = x4j.w * ir3;
-		}
+		s = x4j.w * ir3 * (!cl);
 
 		ac.x += r3ij.x * s;
 		ac.y += r3ij.y * s;
@@ -798,7 +774,7 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, int I, int II, int nb){
+__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int icNB, int I, int II, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -827,7 +803,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, i
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + JJ * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
+			forceij(x4i, x4_s[j], fi, fj_s[j], Encpairsb_d, jjj, iii, icNB);
 		}
 		__syncthreads();
 //printf("%d %d %d %d\n", TT, JJ, TT * p + i, JJ * p + j);
@@ -853,7 +829,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, i
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax){
+__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int icNB){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -876,7 +852,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 	for(int i = 1; i < p; ++i){
 		int j = idy ^ i;
 		int jjj = j + J * p;
-		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
+		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], Encpairsb_d, jjj, iii, icNB);
 		__syncthreads();
 	}
 
@@ -902,7 +878,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, int I, int nb){
+__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int icNB, int I, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -928,7 +904,7 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, in
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + J * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], &Encpairs2_d[NencMax * iii].x, &Encpairs2_d[NencMax * jjj + 1].x, Encpairs2_d, jjj, iii, NencMax);
+			forceij(x4i, x4_s[j], fi, fj_s[j], Encpairsb_d, jjj, iii, icNB);
 		}
 		__syncthreads();
 	}
@@ -955,7 +931,7 @@ __global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax){
 }
 
 
-__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int NencMax, int N){
+__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, double dtksq, int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -966,15 +942,6 @@ __global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, 
 		f_d[id].x *= im * dtksq;
 		f_d[id].y *= im * dtksq;
 		f_d[id].z *= im * dtksq;
-
-		int NI = Encpairs2_d[id * NencMax].x;
-		int Ne = atomicAdd(Nencpairs_d, NI);
-
-		for(int i = 0; i < NI; ++i){
-			Encpairs_d[Ne + i].x = id;
-			Encpairs_d[Ne + i].y = Encpairs2_d[NencMax * id + i].y;
-		}
-
 	}
 }
 
@@ -991,7 +958,7 @@ __global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, int *Nencpairs_d, 
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dtksq, int NencMax, int NB, int N){
+__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, bool *Encpairsb_d, int2 *Encpairs2_d, double dtksq, int icNB, int NencMax, int NB, int N){
 
 	const int p = 256;
 	const int nb = NB / (2 * p);
@@ -999,22 +966,22 @@ __host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int *Ne
 	//set NencpairsI and NencpairsJ to zero
 	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax);
 	//Blocks on the Diagonal
-	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax);
+	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairsb_d, icNB);
 
 	//Combine upper left quarter triangle with lower right quarter triangle
 	for(int ii = 1; ii < nb; ii *= 2){
                 for(int k = 0; k < ii; ++k){
 			int i = ii + k;
-			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax, i, ii, nb);
+			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairsb_d, icNB, i, ii, nb);
 		}
 	}
 
 	//Lower left quarter
 	for(int i = 0; i < nb; ++i){
-		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairs_d, Encpairs2_d, NencMax, i, nb);
+		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairsb_d, icNB, i, nb);
 	}
 
-	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dtksq, NencMax, N);
+	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, dtksq, N);
 
 }
 
