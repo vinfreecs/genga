@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 
 
-#define Version 3.32
+#define Version 3.33
 
 
 //Default parameter values
@@ -67,7 +67,7 @@
 #define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
-#define SERIAL_GROUPING 1
+#define SERIAL_GROUPING 0
 
 //print Poincare Section of surface, in this mode the code can be very slow
 #define poincareFlag 0			//1: print, 0: no print
