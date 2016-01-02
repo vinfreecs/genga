@@ -109,7 +109,7 @@ __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 //March 2014
 //
 // **************************************************
-__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int groupIndexOldi, int groupIndexOldj, double K, double Kold, double &test, int i, int j, double time, int NB){
+__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int NB){
         if(x4i.w >= 0 && x4j.w > 0 && i != j){
 
                 double3 r3;
@@ -128,12 +128,12 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, int gr
 		s = 0.0;
 
 		//correct
+#if G3 == 2
 		if(Kold < 1.0) Kold = 0.0;
-
+#endif
 		s = (K - Kold) * x4j.w * ir3 * ksq;
 
-
-//if(s != 0.0) printf("%.20g %d %d %.20g %.20g %.20g correct\n", time, i, j, s, Kold, K);
+/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g correct\n", time, i, j, s, Kold, K);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -162,7 +162,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir3 = ir * ir * ir;
 
 		s = K * x4j.w * ir3 * ksq; 
-//if(s != 0.0) printf("%.20g %d %d %.20g correct2 %d\n", time, i, j, K, E);
+/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g correct2 %d\n", time, i, j, s, K, E);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -303,7 +303,6 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
 
         v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
         v4[j].w = 0.0;
-
 }
 // **************************************
 // For test particles

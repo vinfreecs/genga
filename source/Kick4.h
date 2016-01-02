@@ -67,13 +67,13 @@ __global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	double4 x4j = x4_d[idy];
 
 	double rcritvj = rcritv_d[idy];
-#if G3 == 1
+#if G3 > 0
 	int groupIndexj = groupIndex_d[idy];
 #endif
 
 	double rcritvi = rcritv_d[idx];
 	double rcritvi2 = rcritv_d[idx + N2];
-#if G3 == 1
+#if G3 > 0
 	int groupIndexi = groupIndex_d[idx];
 	int groupIndexi2 = groupIndex_d[idx + N2];
 #endif
@@ -206,7 +206,7 @@ __global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	double rcritvi2 = rcritv_d[idx + N4];
 	double rcritvi3 = rcritv_d[idx + 2*N4];
 	double rcritvi4 = rcritv_d[idx + 3*N4];
-#if G3 == 1
+#if G3 > 0
 	int groupIndexi = groupIndex_d[idx];
 	int groupIndexi2 = groupIndex_d[idx + N4];
 	int groupIndexi3 = groupIndex_d[idx + 2*N4];
@@ -451,7 +451,7 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 	double rcritvi2 = rcritv_d[idx+N4];
 	double rcritvi3 = rcritv_d[idx+2*N4];
 	double rcritvi4 = rcritv_d[idx+3*N4];
-#if G3 == 1
+#if G3 > 0
 	int groupIndexi = groupIndex_d[idx];
 	int groupIndexi2 = groupIndex_d[idx + N4];
 	int groupIndexi3 = groupIndex_d[idx + 2*N4];

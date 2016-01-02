@@ -1619,7 +1619,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
-#if G3 == 1
+#if G3 > 0
 			fprintf(infofile, "G3Limit: %g\n", G3Limit);
 			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
 #endif

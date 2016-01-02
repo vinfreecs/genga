@@ -103,7 +103,7 @@ int main(int argc, char*argv[]){
 
 	long long int kmin = 0;
 	long long int kmax = 100;
-	int step = 1;
+	long long int step = 1;
 	char X[160];
 	char inputfilename[160];
 	char outputfilename[160];
@@ -140,15 +140,15 @@ int main(int argc, char*argv[]){
 	int index;
 
 	for(long long int k = kmin; k <= kmax; k += step){	    
-		sprintf(outputfilename, "aei%s_%.12d.dat", X, k);
+		sprintf(outputfilename, "aei%s_%.12lld.dat", X, k);
 
 		index = -1;
 		t = 1.0e8;
 
-		sprintf(inputfilename, "Out%s_%.12d.dat", X, k);	
+		sprintf(inputfilename, "Out%s_%.12lld.dat", X, k);	
 		inputfile = fopen(inputfilename, "r");
 		if(inputfile == NULL){
-printf("%s skipped\n", inputfilename);
+printf("%s skipped %lld\n", inputfilename, k);
 			continue;
 		}
 printf("%s\n", inputfilename);

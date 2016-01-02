@@ -28,7 +28,6 @@ public:
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
 	int *groupIndex_d;
-	int *groupIndexOld_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
 	int *groupIterate_h, *groupIterate_d;
@@ -62,7 +61,6 @@ public:
 	// G3 Data
 	double *K_d;
 	double *Kold_d;
-	int *BddSign_d;
 	double4 *StopTime_d;
 	double4 *x4G3_d;
 	double4 *v4G3_d;

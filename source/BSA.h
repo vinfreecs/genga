@@ -3,9 +3,9 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	double dt1 = dt;
-	double dt2, dt22;
-	double t = 0.0;
+	volatile double dt1 = dt;
+	volatile double dt2, dt22;
+	volatile double t = 0.0;
 
 	const double tol = 1.0e-12;
 
@@ -15,7 +15,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	__shared__ double4 v4_s[NN];
 	__shared__ double4 vt_s[NN];
 	__shared__ double rcritv_s[NN];
-	__shared__ int stop_s[1];
+	__shared__ volatile int stop_s[1];
 	__shared__ int Ncol[1];
 	__shared__ int2 Colpairs_s[MaxColl];
 	
@@ -33,7 +33,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	double3 dx6, dv6;
 	double3 dx7, dv7;
 
-	int sgnt = 1;
+	volatile int sgnt = 1;
 
 	double3 scalex;
 	double3 scalev;
@@ -43,15 +43,15 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
 
-	int idi;
+	volatile int idi;
 	int si = Encpairs2_d[ (st+2) * NB + idx].y;
 	int N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
 	int start = Encpairs2_d[NB + si].y;
 //printf("BS %d %d %d %d %d\n", idx, st, si, N2, NB);
 
 
-	int Ne; //number of pairs
-	int j0, j1;
+	volatile int Ne; //number of pairs
+	volatile int j0, j1;
 
 	if(idy < N2){
 		idi = Encpairs2_d[start + idy].x;
@@ -65,7 +65,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		
 		j0 = Encpairs_d[NB + j0g].y;
 		j1 = Encpairs_d[NB + j1g].y;
-//printf("BS2 %d %d %d %d %d %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne);
+//if(time > 920) printf("BS2 %d %d %d %d %d %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne);
 	}	
 	else{
 		idi = 0;
@@ -119,6 +119,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		volatile int f = 1;
 		__syncthreads();
 		for(int ff = 0; ff < 1e6; ++ff){
+			__syncthreads();
 			for(int n = 1; n <= 8; ++n){
 				if(idy == 0) stop_s[0] = 1;
 				__syncthreads();
@@ -126,16 +127,16 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				dt22 = dt2 * 2.0;
 
 				if(Ne > 0){
-					xp_s[idy].x = x4_s[idy].x + dt2 * v4_s[idy].x;
-					xp_s[idy].y = x4_s[idy].y + dt2 * v4_s[idy].y;
-					xp_s[idy].z = x4_s[idy].z + dt2 * v4_s[idy].z;
+					xp_s[idy].x = x4_s[idy].x + (dt2 * v4_s[idy].x);
+					xp_s[idy].y = x4_s[idy].y + (dt2 * v4_s[idy].y);
+					xp_s[idy].z = x4_s[idy].z + (dt2 * v4_s[idy].z);
 					xp_s[idy].w = x4_s[idy].w;
 
-					vp.x = v4_s[idy].x + dt2 * a0.x;
-					vp.y = v4_s[idy].y + dt2 * a0.y;
-					vp.z = v4_s[idy].z + dt2 * a0.z;
+					vp.x = v4_s[idy].x + (dt2 * a0.x);
+					vp.y = v4_s[idy].y + (dt2 * a0.y);
+					vp.z = v4_s[idy].z + (dt2 * a0.z);
 					vp.w = v4_s[idy].w;
-//printf("a0p %d %d %d %.20g %.20g %.20g %.20g %d\n", idy, idx, idi, xp_s[idy].x, vp.x, x4_s[idy].x, v4_s[idy].x, n);
+//if(time > 920 && idy == 94) printf("a0p %d %d %d %.20g %.20g %.20g %.20g %d\n", idy, idx, idi, xp_s[idy].x, vp.x, x4_s[idy].x, v4_s[idy].x, n);
 				}
 				__syncthreads();
 
@@ -154,17 +155,17 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				if(Ne > 0){
 					accEncSun(xp_s[idy], a, ksq * Msun);
 
-					xt_s[idy].x = x4_s[idy].x + dt22 * vp.x;
-					xt_s[idy].y = x4_s[idy].y + dt22 * vp.y;
-					xt_s[idy].z = x4_s[idy].z + dt22 * vp.z;
+					xt_s[idy].x = x4_s[idy].x + (dt22 * vp.x);
+					xt_s[idy].y = x4_s[idy].y + (dt22 * vp.y);
+					xt_s[idy].z = x4_s[idy].z + (dt22 * vp.z);
 					xt_s[idy].w = x4_s[idy].w;
 
-					vt.x = v4_s[idy].x + dt22 * a.x;
-					vt.y = v4_s[idy].y + dt22 * a.y;
-					vt.z = v4_s[idy].z + dt22 * a.z;
+					vt.x = v4_s[idy].x + (dt22 * a.x);
+					vt.y = v4_s[idy].y + (dt22 * a.y);
+					vt.z = v4_s[idy].z + (dt22 * a.z);
 					vt.w = v4_s[idy].w;
 
-//printf("a0t %d %d %d %.20g %.20g %.20g %.20g %d\n", idy, idx, idi, xt_s[idy].x, vt.x, x4_s[idy].x, vp.x, n);
+//if(time > 920 && idy == 94) printf("a0t %d %d %d %.20g %.20g %.20g %.20g %.20g %d\n", idy, idx, idi, xt_s[idy].x, vt.x, x4_s[idy].x, vp.x, a.x, n);
 				}
 				__syncthreads();
 
@@ -185,14 +186,14 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					if(Ne > 0){
 						accEncSun(xt_s[idy], a, ksq * Msun);
 
-						xp_s[idy].x += dt22 * vt.x;
-						xp_s[idy].y += dt22 * vt.y;
-						xp_s[idy].z += dt22 * vt.z;
+						xp_s[idy].x += (dt22 * vt.x);
+						xp_s[idy].y += (dt22 * vt.y);
+						xp_s[idy].z += (dt22 * vt.z);
 
-						vp.x += dt22 * a.x;
-						vp.y += dt22 * a.y;
-						vp.z += dt22 * a.z;
-//printf("amp %d %d %d %.20g %.20g %.20g %d\n", idy, idx, idi, xp_s[idy].x, vp.x, vt.x, n);
+						vp.x += (dt22 * a.x);
+						vp.y += (dt22 * a.y);
+						vp.z += (dt22 * a.z);
+//if(time > 920 && idy == 94) printf("amp %d %d %d %.20g %.20g %.20g %d\n", idy, idx, idi, xp_s[idy].x, vp.x, vt.x, n);
 					}
 					__syncthreads();
 
@@ -211,14 +212,14 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					if(Ne > 0){
 						accEncSun(xp_s[idy], a, ksq * Msun);
 
-						xt_s[idy].x += dt22 * vp.x;
-						xt_s[idy].y += dt22 * vp.y;
-						xt_s[idy].z += dt22 * vp.z;
+						xt_s[idy].x += (dt22 * vp.x);
+						xt_s[idy].y += (dt22 * vp.y);
+						xt_s[idy].z += (dt22 * vp.z);
 
-						vt.x += dt22 * a.x;
-						vt.y += dt22 * a.y;
-						vt.z += dt22 * a.z;
-//printf("amt %d %d %d %.20g %.20g %.20g %d\n", idy, idx, idi, xt_s[idy].x, vt.x, vp.x, n);
+						vt.x += (dt22 * a.x);
+						vt.y += (dt22 * a.y);
+						vt.z += (dt22 * a.z);
+//if(time > 920 && idy == 94) printf("amt %d %d %d %.20g %.20g %.20g %d\n", idy, idx, idi, xt_s[idy].x, vt.x, vp.x, n);
 					}
 					__syncthreads();
 				}//end of m loop
@@ -237,15 +238,15 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				if(Ne > 0){
 					accEncSun(xt_s[idy], a, ksq * Msun);
 
-					xp_s[idy].x += dt2 * vt.x;
-					xp_s[idy].y += dt2 * vt.y;
-					xp_s[idy].z += dt2 * vt.z;
+					xp_s[idy].x += (dt2 * vt.x);
+					xp_s[idy].y += (dt2 * vt.y);
+					xp_s[idy].z += (dt2 * vt.z);
 
-					vp.x += dt2 * a.x;
-					vp.y += dt2 * a.y;
-					vp.z += dt2 * a.z;
-//printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z, n);
-//printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xp_s[idy].x, xp_s[idy].y, xp_s[idy].z, vp.x, vp.y, vp.z, n);
+					vp.x += (dt2 * a.x);
+					vp.y += (dt2 * a.y);
+					vp.z += (dt2 * a.z);
+//if(time > 920 && idy == 94) printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z, n);
+//if(time > 920 && idy == 94) printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xp_s[idy].x, xp_s[idy].y, xp_s[idy].z, vp.x, vp.y, vp.z, n);
 					if(n == 8){				
 						dx7.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
 						dx7.y = 0.5 * (xt_s[idy].y + xp_s[idy].y);
@@ -254,7 +255,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv7.x = 0.5 * (vt.x + vp.x);
 						dv7.y = 0.5 * (vt.y + vp.y);
 						dv7.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx7.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx7.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 7){				
 						dx6.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -264,7 +265,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv6.x = 0.5 * (vt.x + vp.x);
 						dv6.y = 0.5 * (vt.y + vp.y);
 						dv6.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx6.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx6.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 6){				
 						dx5.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -274,7 +275,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv5.x = 0.5 * (vt.x + vp.x);
 						dv5.y = 0.5 * (vt.y + vp.y);
 						dv5.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx5.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx5.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 5){				
 						dx4.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -284,7 +285,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv4.x = 0.5 * (vt.x + vp.x);
 						dv4.y = 0.5 * (vt.y + vp.y);
 						dv4.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx4.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx4.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 4){				
 						dx3.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -294,7 +295,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv3.x = 0.5 * (vt.x + vp.x);
 						dv3.y = 0.5 * (vt.y + vp.y);
 						dv3.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx3.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx3.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 3){				
 						dx2.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -304,7 +305,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv2.x = 0.5 * (vt.x + vp.x);
 						dv2.y = 0.5 * (vt.y + vp.y);
 						dv2.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx2.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx2.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 2){				
 						dx1.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -314,7 +315,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv1.x = 0.5 * (vt.x + vp.x);
 						dv1.y = 0.5 * (vt.y + vp.y);
 						dv1.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx1.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx1.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 					if(n == 1){				
 						dx0.x = 0.5 * (xt_s[idy].x + xp_s[idy].x);
@@ -324,7 +325,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						dv0.x = 0.5 * (vt.x + vp.x);
 						dv0.y = 0.5 * (vt.y + vp.y);
 						dv0.z = 0.5 * (vt.z + vp.z);
-//printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx0.x, xt_s[idy].x, xp_s[idy].x); 
+//if(time > 920 && idy == 94)printf("A %d %d %d %.20g %.20g %.20g\n", idy, idi, n - 1, dx0.x, xt_s[idy].x, xp_s[idy].x); 
 					}
 
 					double ddt0 = 0.25 / (n*n);
@@ -335,74 +336,74 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						double t2 = t0 * ddt0;
 				
 						if(j == 7){
-							dx6.x = t1 * dx7.x - t2 * dx6.x;
-							dx6.y = t1 * dx7.y - t2 * dx6.y;
-							dx6.z = t1 * dx7.z - t2 * dx6.z;
+							dx6.x = (t1 * dx7.x) - (t2 * dx6.x);
+							dx6.y = (t1 * dx7.y) - (t2 * dx6.y);
+							dx6.z = (t1 * dx7.z) - (t2 * dx6.z);
 
-							dv6.x = t1 * dv7.x - t2 * dv6.x;
-							dv6.y = t1 * dv7.y - t2 * dv6.y;
-							dv6.z = t1 * dv7.z - t2 * dv6.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx6.x, dv6.x); 
+							dv6.x = (t1 * dv7.x) - (t2 * dv6.x);
+							dv6.y = (t1 * dv7.y) - (t2 * dv6.y);
+							dv6.z = (t1 * dv7.z) - (t2 * dv6.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx6.x, dv6.x); 
 						}
 						if(j == 6){
-							dx5.x = t1 * dx6.x - t2 * dx5.x;
-							dx5.y = t1 * dx6.y - t2 * dx5.y;
-							dx5.z = t1 * dx6.z - t2 * dx5.z;
+							dx5.x = (t1 * dx6.x) - (t2 * dx5.x);
+							dx5.y = (t1 * dx6.y) - (t2 * dx5.y);
+							dx5.z = (t1 * dx6.z) - (t2 * dx5.z);
 
-							dv5.x = t1 * dv6.x - t2 * dv5.x;
-							dv5.y = t1 * dv6.y - t2 * dv5.y;
-							dv5.z = t1 * dv6.z - t2 * dv5.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx5.x, dv5.x); 
+							dv5.x = (t1 * dv6.x) - (t2 * dv5.x);
+							dv5.y = (t1 * dv6.y) - (t2 * dv5.y);
+							dv5.z = (t1 * dv6.z) - (t2 * dv5.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx5.x, dv5.x); 
 						}
 						if(j == 5){
-							dx4.x = t1 * dx5.x - t2 * dx4.x;
-							dx4.y = t1 * dx5.y - t2 * dx4.y;
-							dx4.z = t1 * dx5.z - t2 * dx4.z;
+							dx4.x = (t1 * dx5.x) - (t2 * dx4.x);
+							dx4.y = (t1 * dx5.y) - (t2 * dx4.y);
+							dx4.z = (t1 * dx5.z) - (t2 * dx4.z);
 
-							dv4.x = t1 * dv5.x - t2 * dv4.x;
-							dv4.y = t1 * dv5.y - t2 * dv4.y;
-							dv4.z = t1 * dv5.z - t2 * dv4.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx4.x, dv4.x); 
+							dv4.x = (t1 * dv5.x) - (t2 * dv4.x);
+							dv4.y = (t1 * dv5.y) - (t2 * dv4.y);
+							dv4.z = (t1 * dv5.z) - (t2 * dv4.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx4.x, dv4.x); 
 						}
 						if(j == 4){
-							dx3.x = t1 * dx4.x - t2 * dx3.x;
-							dx3.y = t1 * dx4.y - t2 * dx3.y;
-							dx3.z = t1 * dx4.z - t2 * dx3.z;
+							dx3.x = (t1 * dx4.x) - (t2 * dx3.x);
+							dx3.y = (t1 * dx4.y) - (t2 * dx3.y);
+							dx3.z = (t1 * dx4.z) - (t2 * dx3.z);
 
-							dv3.x = t1 * dv4.x - t2 * dv3.x;
-							dv3.y = t1 * dv4.y - t2 * dv3.y;
-							dv3.z = t1 * dv4.z - t2 * dv3.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx3.x, dv3.x); 
+							dv3.x = (t1 * dv4.x) - (t2 * dv3.x);
+							dv3.y = (t1 * dv4.y) - (t2 * dv3.y);
+							dv3.z = (t1 * dv4.z) - (t2 * dv3.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx3.x, dv3.x); 
 						}
 						if(j == 3){
-							dx2.x = t1 * dx3.x - t2 * dx2.x;
-							dx2.y = t1 * dx3.y - t2 * dx2.y;
-							dx2.z = t1 * dx3.z - t2 * dx2.z;
+							dx2.x = (t1 * dx3.x) - (t2 * dx2.x);
+							dx2.y = (t1 * dx3.y) - (t2 * dx2.y);
+							dx2.z = (t1 * dx3.z) - (t2 * dx2.z);
 
-							dv2.x = t1 * dv3.x - t2 * dv2.x;
-							dv2.y = t1 * dv3.y - t2 * dv2.y;
-							dv2.z = t1 * dv3.z - t2 * dv2.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx2.x, dv2.x); 
+							dv2.x = (t1 * dv3.x) - (t2 * dv2.x);
+							dv2.y = (t1 * dv3.y) - (t2 * dv2.y);
+							dv2.z = (t1 * dv3.z) - (t2 * dv2.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx2.x, dv2.x); 
 						}
 						if(j == 2){
-							dx1.x = t1 * dx2.x - t2 * dx1.x;
-							dx1.y = t1 * dx2.y - t2 * dx1.y;
-							dx1.z = t1 * dx2.z - t2 * dx1.z;
+							dx1.x = (t1 * dx2.x) - (t2 * dx1.x);
+							dx1.y = (t1 * dx2.y) - (t2 * dx1.y);
+							dx1.z = (t1 * dx2.z) - (t2 * dx1.z);
 
-							dv1.x = t1 * dv2.x - t2 * dv1.x;
-							dv1.y = t1 * dv2.y - t2 * dv1.y;
-							dv1.z = t1 * dv2.z - t2 * dv1.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx1.x, dv1.x); 
+							dv1.x = (t1 * dv2.x) - (t2 * dv1.x);
+							dv1.y = (t1 * dv2.y) - (t2 * dv1.y);
+							dv1.z = (t1 * dv2.z) - (t2 * dv1.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx1.x, dv1.x); 
 						}
 						if(j == 1){
-							dx0.x = t1 * dx1.x - t2 * dx0.x;
-							dx0.y = t1 * dx1.y - t2 * dx0.y;
-							dx0.z = t1 * dx1.z - t2 * dx0.z;
+							dx0.x = (t1 * dx1.x) - (t2 * dx0.x);
+							dx0.y = (t1 * dx1.y) - (t2 * dx0.y);
+							dx0.z = (t1 * dx1.z) - (t2 * dx0.z);
 
-							dv0.x = t1 * dv1.x - t2 * dv0.x;
-							dv0.y = t1 * dv1.y - t2 * dv0.y;
-							dv0.z = t1 * dv1.z - t2 * dv0.z;
-//printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx0.x, dv0.x); 
+							dv0.x = (t1 * dv1.x) - (t2 * dv0.x);
+							dv0.y = (t1 * dv1.y) - (t2 * dv0.y);
+							dv0.z = (t1 * dv1.z) - (t2 * dv0.z);
+//if(time > 920 && idy == 94) printf("A %d %d %d %.20g %.20g\n", idy, idi, j - 1, dx0.x, dv0.x); 
 						}
 					}
 					errorx = dx0.x * dx0.x * scalex.x;
@@ -412,10 +413,10 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					errorx = fmax(errorx, dx0.z * dx0.z * scalex.z);
 					errorv = fmax(errorv, dv0.z * dv0.z * scalev.z);
 
-//printf("dx %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, idi, dx0.x, dx0.y, dx0.z, dv0.x, dv0.y, dv0.z);
-//printf("scale %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z);
+//if(time > 920 && tt < 3) printf("dx %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, dx0.x, dx0.y, dx0.z, dv0.x, dv0.y, dv0.z);
+//if(time > 920 && tt < 3) printf("scale %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z);
 					errorx = fmax(errorx, errorv);
-//printf("error %d %d %.20g %d\n", idy, idi, errorx, n);
+//if(time > 920 && /*tt == 0 && ff <= 2 && n >= 3 && n < 5 && */idy == 94) printf("error %d %d %d %d %d %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, errorx, dx0.x, dx0.y, dx0.z);
 					if(errorx >= tol * tol){
 						stop_s[0] = 0;
 					}
@@ -516,6 +517,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						}
 					}
 					__syncthreads();
+					vt = vt_s[idy];
 
 					t += dt1;
 					if(n >= 8) dt1 *= 0.55;
@@ -527,7 +529,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					if(Ne > 0){
 						x4_s[idy] = xt_s[idy];
 						v4_s[idy] = vt;
-//printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d %d\n", idy, idx, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1, tt, ff, n);
+//if(time > 920 && idy == 0) printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d %d\n", idy, idx, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1, tt, ff, n);
 					}
 					f = 0;
 
@@ -548,6 +550,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	if(idy < N2){
 		x4_d[idi] = xt_s[idy];
 		v4_d[idi] = vt;
+//printf("final%g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, index_d[idi], NN, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, x4_d[idi].w, v4_d[idi].w);
 	}
 }
 
@@ -557,13 +560,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	double dt1 = dt;
-	double dt2, dt22;
-	double t = 0.0;
+	volatile double dt1 = dt;
+	volatile double dt2, dt22;
+	volatile double t = 0.0;
 
 	const double tol = 1.0e-12;
 
-	__shared__ int stop_s[1];
+	__shared__ volatile int stop_s[1];
 	__shared__ int Ncol[1];
 	__shared__ int2 Colpairs_s[MaxColl];
 
@@ -572,19 +575,19 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 	double3 dxj;
 	double3 dvj;
 
-	int sgnt = 1;
+	volatile int sgnt = 1;
 
-	int Ne; //number of pairs
+	volatile int Ne; //number of pairs
 
 	double3 scalex;
-	double3  scalev;
+	double3 scalev;
 
 	double errorx, errorv;
 	double test;
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
 
-	int idi;
+	volatile int idi;
 	int si = Encpairs2_d[ (st+2) * NB + idx].y;
 	int N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
 	int start = Encpairs2_d[NB + si].y;
@@ -621,14 +624,14 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					if(Ne > 0){
 						accEncSun(xold_d[idi], a, ksq * Msun);
 
-						xp_d[idi].x = xold_d[idi].x + dt2 * vold_d[idi].x;
-						xp_d[idi].y = xold_d[idi].y + dt2 * vold_d[idi].y;
-						xp_d[idi].z = xold_d[idi].z + dt2 * vold_d[idi].z;
+						xp_d[idi].x = xold_d[idi].x + (dt2 * vold_d[idi].x);
+						xp_d[idi].y = xold_d[idi].y + (dt2 * vold_d[idi].y);
+						xp_d[idi].z = xold_d[idi].z + (dt2 * vold_d[idi].z);
 						xp_d[idi].w = xold_d[idi].w;
 
-						vp_d[idi].x = vold_d[idi].x + dt2 * a.x;
-						vp_d[idi].y = vold_d[idi].y + dt2 * a.y;
-						vp_d[idi].z = vold_d[idi].z + dt2 * a.z;
+						vp_d[idi].x = vold_d[idi].x + (dt2 * a.x);
+						vp_d[idi].y = vold_d[idi].y + (dt2 * a.y);
+						vp_d[idi].z = vold_d[idi].z + (dt2 * a.z);
 						vp_d[idi].w = vold_d[idi].w;
 					}
 				}
@@ -652,14 +655,14 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					if(Ne > 0){
 						accEncSun(xp_d[idi], a, ksq * Msun);
 
-						xt_d[idi].x = xold_d[idi].x + dt22 * vp_d[idi].x;
-						xt_d[idi].y = xold_d[idi].y + dt22 * vp_d[idi].y;
-						xt_d[idi].z = xold_d[idi].z + dt22 * vp_d[idi].z;
+						xt_d[idi].x = xold_d[idi].x + (dt22 * vp_d[idi].x);
+						xt_d[idi].y = xold_d[idi].y + (dt22 * vp_d[idi].y);
+						xt_d[idi].z = xold_d[idi].z + (dt22 * vp_d[idi].z);
 						xt_d[idi].w = xold_d[idi].w;
 
-						vt_d[idi].x = vold_d[idi].x + dt22 * a.x;
-						vt_d[idi].y = vold_d[idi].y + dt22 * a.y;
-						vt_d[idi].z = vold_d[idi].z + dt22 * a.z;
+						vt_d[idi].x = vold_d[idi].x + (dt22 * a.x);
+						vt_d[idi].y = vold_d[idi].y + (dt22 * a.y);
+						vt_d[idi].z = vold_d[idi].z + (dt22 * a.z);
 						vt_d[idi].w = vold_d[idi].w;
 		//printf("a0 %d %.20g %.20g %.20g %.20g %d\n", idi, xt_d[idi].x, vt_d[idi].x, xold_d[idi].x, vp_d[idi].x, n);
 					}
@@ -686,13 +689,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						if(Ne > 0){
 							accEncSun(xt_d[idi], a, ksq * Msun);
 
-							xp_d[idi].x += dt22 * vt_d[idi].x;
-							xp_d[idi].y += dt22 * vt_d[idi].y;
-							xp_d[idi].z += dt22 * vt_d[idi].z;
+							xp_d[idi].x += (dt22 * vt_d[idi].x);
+							xp_d[idi].y += (dt22 * vt_d[idi].y);
+							xp_d[idi].z += (dt22 * vt_d[idi].z);
 
-							vp_d[idi].x += dt22 * a.x;
-							vp_d[idi].y += dt22 * a.y;
-							vp_d[idi].z += dt22 * a.z;
+							vp_d[idi].x += (dt22 * a.x);
+							vp_d[idi].y += (dt22 * a.y);
+							vp_d[idi].z += (dt22 * a.z);
 						}
 					}
 					__syncthreads();
@@ -715,13 +718,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						if(Ne > 0){
 							accEncSun(xp_d[idi], a, ksq * Msun);
 
-							xt_d[idi].x += dt22 * vp_d[idi].x;
-							xt_d[idi].y += dt22 * vp_d[idi].y;
-							xt_d[idi].z += dt22 * vp_d[idi].z;
+							xt_d[idi].x += (dt22 * vp_d[idi].x);
+							xt_d[idi].y += (dt22 * vp_d[idi].y);
+							xt_d[idi].z += (dt22 * vp_d[idi].z);
 
-							vt_d[idi].x += dt22 * a.x;
-							vt_d[idi].y += dt22 * a.y;
-							vt_d[idi].z += dt22 * a.z;
+							vt_d[idi].x += (dt22 * a.x);
+							vt_d[idi].y += (dt22 * a.y);
+							vt_d[idi].z += (dt22 * a.z);
 		//printf("am %d %.20g %.20g %.20g %d\n", idi, xt_d[idi].x, vt_d[idi].x, vp_d[idi].x, n);
 						}
 					}
@@ -746,13 +749,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					if(Ne > 0){
 						accEncSun(xt_d[idi], a, ksq * Msun);
 
-						xp_d[idi].x += dt2 * vt_d[idi].x;
-						xp_d[idi].y += dt2 * vt_d[idi].y;
-						xp_d[idi].z += dt2 * vt_d[idi].z;
+						xp_d[idi].x += (dt2 * vt_d[idi].x);
+						xp_d[idi].y += (dt2 * vt_d[idi].y);
+						xp_d[idi].z += (dt2 * vt_d[idi].z);
 
-						vp_d[idi].x += dt2 * a.x;
-						vp_d[idi].y += dt2 * a.y;
-						vp_d[idi].z += dt2 * a.z;
+						vp_d[idi].x += (dt2 * a.x);
+						vp_d[idi].y += (dt2 * a.y);
+						vp_d[idi].z += (dt2 * a.z);
 
 						dxj.x = 0.5 * (xt_d[idi].x + xp_d[idi].x);
 						dxj.y = 0.5 * (xt_d[idi].y + xp_d[idi].y);
@@ -774,13 +777,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							double t1 = t0 * 0.25 / ((j+1)*(j+1));
 							double t2 = t0 * ddt0;
 
-							dxj.x = t1 * dxj.x - t2 * dx_d[(j - 1) * NB + idi].x;
-							dxj.y = t1 * dxj.y - t2 * dx_d[(j - 1) * NB + idi].y;
-							dxj.z = t1 * dxj.z - t2 * dx_d[(j - 1) * NB + idi].z;
+							dxj.x = (t1 * dxj.x) - (t2 * dx_d[(j - 1) * NB + idi].x);
+							dxj.y = (t1 * dxj.y) - (t2 * dx_d[(j - 1) * NB + idi].y);
+							dxj.z = (t1 * dxj.z) - (t2 * dx_d[(j - 1) * NB + idi].z);
 
-							dvj.x = t1 * dvj.x - t2 * dv_d[(j - 1) * NB + idi].x;
-							dvj.y = t1 * dvj.y - t2 * dv_d[(j - 1) * NB + idi].y;
-							dvj.z = t1 * dvj.z - t2 * dv_d[(j - 1) * NB + idi].z;
+							dvj.x = (t1 * dvj.x) - (t2 * dv_d[(j - 1) * NB + idi].x);
+							dvj.y = (t1 * dvj.y) - (t2 * dv_d[(j - 1) * NB + idi].y);
+							dvj.z = (t1 * dvj.z) - (t2 * dv_d[(j - 1) * NB + idi].z);
 
 
 							dx_d[(j - 1) * NB + idi] = dxj;
@@ -909,7 +912,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						if(Ne > 0){
 							xold_d[idi] = xt_d[idi];
 							vold_d[idi] = vt_d[idi];
-//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, t, dt1);
+//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w, t, dt1, tt, ff);
 						}
 					}
 
@@ -940,6 +943,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 		if(Ne > 0){
 			x4_d[idi] = xold_d[idi];
 			v4_d[idi] = vold_d[idi];
+//if(time > 920) printf("final%g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, index_d[idi], NN, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w);
 		}
 	}
 }

@@ -377,7 +377,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //
 // *****************************************
 template <int Bl>
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, int *groupIndexOld_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -391,17 +391,11 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		xold_d[id] = x4_s[idy];
 		vold_d[id] = v4_s[idy];
-#if G3 == 1
-		groupIndexOld_d[id] = groupIndex_d[id];
-#endif
 
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
 
-#if G3 == 1
-		groupIndexOld_d[id] = groupIndex_d[id];
-#endif
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
@@ -411,7 +405,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		x4_d[id] = x4_s[idy];
 		v4_d[id] = v4_s[idy];
-#if G3 == 1
+#if G3 > 0
 		groupIndex_d[id] = -1;
 #endif
 		if(si == 0){

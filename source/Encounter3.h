@@ -194,6 +194,196 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 	}
 	else return 0;
 }
+template<int E>
+__device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, int writeEncounters, double writeEncountersRadius){
+
+//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j - N, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
+//if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
+//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
+
+	int Enc = 0;
+	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
+		double d0, d1, dd0, dd1;
+		double4 r1, r0;
+		double4 rd0, rd1;
+		double a,b,c,cc;
+		double w,q;
+		double t1,t2,t12,t22,tt1,tt2,tt12,tt22;
+		double delta1, delta2;
+		double delta;
+		double sgnb;
+		double rcrit;
+		double rcritv;
+		int Ni;
+		double f;
+	
+		if(E == 0 || E == 3){
+			rcrit = fmax(rcriti, rcritj);
+			rcritv = fmax(rcritvi, rcritvj);
+			f = cef;
+		}
+		if(E == 1){
+			rcrit = 0.0;
+			rcritv = rcriti + rcritj;
+			f = 1.0;
+		}
+		if(E == 2){
+			rcrit = rcritj;
+			rcritv = rcritvj;
+			f = cef;
+		}
+
+		r1.x = x4j.x - x4i.x;
+		r1.y = x4j.y - x4i.y;
+		r1.z = x4j.z - x4i.z;
+		d1 = r1.x*r1.x + r1.y*r1.y+ r1.z*r1.z;
+
+		r0.x = x4oldj.x - x4oldi.x;
+		r0.y = x4oldj.y - x4oldi.y;
+		r0.z = x4oldj.z - x4oldi.z;
+		d0 = r0.x*r0.x + r0.y*r0.y+ r0.z*r0.z;
+			
+		rd0.x = v4oldj.x - v4oldi.x;
+		rd0.y = v4oldj.y - v4oldi.y;
+		rd0.z = v4oldj.z - v4oldi.z;
+
+		rd1.x = v4j.x - v4i.x;
+		rd1.y = v4j.y - v4i.y;
+		rd1.z = v4j.z - v4i.z;
+
+		dd0 = (r0.x*rd0.x + r0.y*rd0.y+ r0.z*rd0.z) * 2.0;
+		dd1 = (r1.x*rd1.x + r1.y*rd1.y+ r1.z*rd1.z) * 2.0;
+		t1 = 6.0 *(d0-d1); 
+		a = t1 + 3.0*dt*(dd0+dd1);
+		b = -t1 - 2.0*dt*(2.0*dd0+ dd1);
+		c = dt*dd0;
+		cc = dt*dd1;
+
+		if(b < 0){
+			sgnb = -1.0;
+		}
+		else sgnb = 1.0;
+		t1 = 0.0;
+		t2 = 0.0;
+
+		w = b*b - 4.0*a*c;
+		if(w < 0.0) w = 0.0;
+		if( b != 0){
+			q = -0.5 * (b + sgnb * sqrt(w));
+			if(q != 0){
+				if( a != 0){
+					t1 = q/a;
+					t2 = c/q;
+				}
+				else{
+					t1 = -c/b;
+					t2 = t1;
+				}
+			}	
+		}
+		else{
+			if( a != 0){
+				t1 = sqrt(-c/a);
+				t2 = -t1;
+			}
+		}
+
+		if(0 <= t1 && t1 <= 1){
+			t12 = t1*t1;
+			tt1 = 1.0-t1;
+			tt12 = tt1*tt1;
+			delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*c - t12*tt1*cc;
+		}
+		else delta1 = 100.0;
+		if(0 <= t2 && t2 <= 1){
+			t22 = t2*t2;
+			tt2 = 1.0-t2;
+			tt22 = tt2*tt2;
+			delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*c - t22*tt2*cc;
+		}
+		else delta2 = 100.0;
+
+		delta = min(delta1,delta2);
+		if(delta < 0) delta = 0.0;
+		
+		delta = fmin(delta, d1);
+		delta = fmin(delta, d0);
+
+//if((E == 0 || E >= 2))printf("d %d %d %.20g %.20g\n", i, j - N, delta, rcritv);
+	
+		Kiold = Ki;
+		Kjold = Kj;
+		Ki = 1.0;
+		Kj = 1.0;
+
+
+		if(delta < f * rcritv*rcritv || Kiold < 1.0){
+			Enc = 2;
+//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, E);
+//if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
+			if(E < 2){ 
+				Ni = atomicAdd(&Nenc, 1);
+				if(x4i.w >= x4j.w){
+					encpairs[Ni].x = i;
+					encpairs[Ni].y = j;
+				}
+				else{
+					encpairs[Ni].x = j;
+					encpairs[Ni].y = i;
+				}
+			}
+			if(E == 2){ //used for collision detetion
+				
+				Ni = atomicAdd(&Nenc, 1);	
+				encpairs[Ni].x = i;
+				encpairs[Ni].y = j - N;	
+			}
+
+			if(delta <= 0.01 * rcritv*rcritv){
+		 		Ki = 0.0;
+		 		Kj = 0.0;
+			
+			}
+			else{
+				double y = (sqrt(delta) - 0.1 * rcritv)/(0.9*rcritv);
+				double yy = y * y;
+				Ki = yy / (2.0*yy - 2.0*y + 1.0);
+				Kj = yy / (2.0*yy - 2.0*y + 1.0);
+			}
+
+		}
+		else Enc = 0;
+		if(delta < rcrit*rcrit){
+			Enc = 1;
+		}
+
+printf("Enc %d %d %g %g\n", i, j, Ki, Kiold);
+		if(writeEncounters > 0 && E == 1){
+			double writeRadius = 0.0;
+			if(writeEncounters == 1){
+				//in scales of planetary Radius
+				writeRadius = writeEncountersRadius * fmax(v4i.w, v4j.w);
+
+			}
+			if(delta < writeRadius * writeRadius){
+
+				double t = 0.0;
+				if(0 <= t1 && t1 <= 1) t = t1;
+				if(0 <= t2 && t2 <= 1 && delta2 < delta1) t = t2;
+
+				if(t > 0.0 && t < 1.0){
+					time = t;
+//printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
+/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
+*/				}
+			}
+		}
+
+
+		return Enc;
+	}
+	else return 0;
+}
 
 
 // **************************************
@@ -318,7 +508,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int *groupIndexOld_d, int writeEncounters, double writeEncountersRadius){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int writeEncounters, double writeEncountersRadius){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -336,9 +526,11 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	if(id < *Nencpairs_d){
 #if G3 == 0
 		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius);
+#elif G3 == 1
+		enccount = encounterb<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, writeEncounters, writeEncountersRadius);
 #else
 //change here ii and jj to index[ii], index[jj]
-		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, groupIndexOld_d[ii], groupIndexOld_d[jj]);
+		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time);
 #endif
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
@@ -513,6 +705,30 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 		}
 	}
 	__syncthreads();
+#if SERIAL_GROUPING == 1
+	for(int i = 0; i < BN; i += Bl){
+		if(idy + i< BN){
+			int Ni = Encpairs_d[idy + i].y;
+			int stop = 0;
+			while(stop == 0){
+				stop = 1;
+				for(int j = 0; j < Ni - 1; ++j){
+					int jj = Encpairs_d[(idy + i) * NencMax + j].x;
+					int jjnext = Encpairs_d[(idy + i) * NencMax + j + 1].x;
+				
+					if(jjnext < jj){
+						//swap
+						Encpairs_d[(idy + i) * NencMax + j].x = jjnext;
+						Encpairs_d[(idy + i) * NencMax + j + 1].x = jj;
+						stop = 0;
+					}
+				}
+			}
+			stop = 0;
+		}
+	}
+#endif
+	__syncthreads();
 
 	for(int tt = 0; tt < 100; ++tt){ 
 		T_s = 0;
@@ -585,7 +801,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 //	}
 //}
 
-#if G3 == 1
+#if G3 > 0
 	for(int i = 0; i < BN; i += Bl){
 		if(idy + i < BN){
 			groupIndex_d[idy + i] = B[idy + i].y;

@@ -57,7 +57,6 @@ int main(int argc, char*argv[]){
 
 	//Allocate memory for parameters on the host:
 	H.Halloc();
-	cudaDeviceSynchronize();
 
 	// Read parameters from param file //
 	printf("Read parameters\n");
@@ -70,13 +69,12 @@ int main(int argc, char*argv[]){
 	printf("Read Size\n");
 	er = H.size();
 	if(er == 0){
-		cudaDeviceSynchronize();
 		return 0;
 	}
 	printf("Size OK\n");
-	cudaDeviceSynchronize();
 
 	cudaSetDevice(H.P.dev);
+	cudaDeviceSynchronize();
 
 	//Allocate memory for parameters on the device:
         H.Calloc();

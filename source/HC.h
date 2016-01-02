@@ -37,7 +37,7 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
 
 	__syncthreads(); 
 	for (int i = 0; i < NB ; i+= Bl){
-		if(x4_d[idy + i].w > 0 && idy < N){
+		if(x4_d[idy + i].w > 0 && idy + i < N){
 			if(idx == 0){
 				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
 			}
@@ -85,7 +85,7 @@ __global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun
         }
 	__syncthreads();
 	for(int i = 0; i <NB; i +=  Bl){
-		if(idy < N){
+		if(idy + i < N){
 			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
@@ -115,7 +115,8 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 
 	__syncthreads(); 
 	for (int i = 0; i < N; i+= Bl){
-		if(x4_d[idy + i].w > 0 && idy < N){
+		if(x4_d[idy + i].w > 0 && idy + i < N){
+//if(t > 920 && E == 2 && idx == 0) printf("%g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", t, E, idy + i, x4_d[idy + i].x, x4_d[idy + i].y, x4_d[idy + i].z, x4_d[idy + i].w, v4_d[idy + i].x, v4_d[idy + i].y, v4_d[idy + i].z, v4_d[idy + i].w);
 			if(idx == 0){
 				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
 			}
@@ -162,8 +163,8 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
                 a[idy] += a[idy + 1];
         }
 	__syncthreads();
-	for(int i = 0; i < N; i +=  Bl){
-		if(idy < N){
+	for(int i = 0; i < N; i += Bl){
+		if(idy + i < N){
 			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);

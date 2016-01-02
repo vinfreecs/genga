@@ -111,12 +111,10 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &t1_d, NT * sizeof(double));
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
 	BSAstop_h = (int*)malloc(sizeof(int));
-#if G3 == 1
+#if G3 > 0
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
-	cudaMalloc((void **) &BddSign_d, NT * NT * sizeof(int));
 	cudaMalloc((void **) &groupIndex_d,NT*sizeof(int));
-	cudaMalloc((void **) &groupIndexOld_d,NT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
 	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double4));
@@ -125,9 +123,7 @@ __host__ void Data::AllocateOrbitt(){
 #else
 	K_d = NULL;
 	Kold_d = NULL;
-	BddSign_d = NULL;
 	groupIndex_d = NULL;
-	groupIndexOld_d = NULL;
 	groupIndexsmall_d = NULL;
 	groupIndexsmallOld_d = NULL;
 	StopTime_d = NULL;
@@ -914,7 +910,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, int *BddSign_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
 
 	int NOld;
 	int N = N_d[st];
@@ -986,7 +982,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					nafx_d[(N-1 + NBS) * nafn + i] = 0.0;
 					nafy_d[(N-1 + NBS) * nafn + i] = 0.0;
 				}
-#if G3 == 1
+#if G3 > 0
 				for(int i = 0; i < N; ++i){
 					K_d[(j + NBS) * NB + i] = K_d[(N-1 + NBS) * NB + i];
 					K_d[i * NB + j + NBS] = K_d[i * NB + (N-1 + NBS)];
@@ -996,10 +992,6 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					Kold_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
 					Kold_d[(N-1 + NBS) * NB + i] = 1.0;
 					Kold_d[i * NB + (N-1 + NBS)] = 1.0;
-					BddSign_d[(j + NBS) * NB + i] = BddSign_d[(N-1 + NBS) * NB + i];
-					BddSign_d[i * NB + j + NBS] = BddSign_d[i * NB + (N-1 + NBS)];
-					BddSign_d[(N-1 + NBS) * NB + i] = 1.0;
-					BddSign_d[i * NB + (N-1 + NBS)] = 1.0;
 					StopTime_d[(j + NBS) * NB + i] = StopTime_d[(N-1 + NBS) * NB + i];
 					StopTime_d[i * NB + j + NBS] = StopTime_d[i * NB + (N-1 + NBS)];
 					StopTime_d[(N-1 + NBS) * NB + i].x = -1.0;
@@ -1241,10 +1233,10 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, BddSign_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, BddSign_d, StopTime_d, NB[st], NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NULL, NULL, 0);
 		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, NULL, NULL, 0, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1630,12 +1622,10 @@ __host__ int Data::freeOrbit(){
 #if poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
-#if G3 == 1
+#if G3 > 0
 	cudaFree(K_d);
 	cudaFree(Kold_d);
-	cudaFree(BddSign_d);
 	cudaFree(groupIndex_d);
-	cudaFree(groupIndexOld_d);
 	cudaFree(groupIndexsmall_d);
 	cudaFree(groupIndexsmallOld_d);
 	cudaFree(StopTime_d);
