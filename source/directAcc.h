@@ -133,10 +133,10 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 #endif
 		s = (K - Kold) * x4j.w * ir3 * ksq;
 
-/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g correct\n", time, i, j, s, Kold, K);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
+/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g %.20g correct %g %g %g\n", time, i, j, s, Kold, K, ac.x, Kold * x4j.w * ir3 * ksq, Kold * x4j.w * ir3 * ksq * r3.x, K * x4j.w * ir3 * ksq * r3.x);
 	}
 }
 // ***********************************************
@@ -162,10 +162,10 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir3 = ir * ir * ir;
 
 		s = K * x4j.w * ir3 * ksq; 
-/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g correct2 %d\n", time, i, j, s, K, E);
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
+/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g correct2 %d\n", time, i, j, s, K, ac.x, E);
 	}
 }
 

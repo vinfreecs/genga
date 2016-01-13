@@ -5,11 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 
 
-#define Version 3.33
+#define Version 3.34
 
 
 //Default parameter values

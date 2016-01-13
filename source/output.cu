@@ -1,11 +1,11 @@
 #include "Orbit2.h"
+cudaEvent_t tt1;			//start time
+cudaEvent_t tt2;			//start time of a output time intervall
+cudaEvent_t tt3;			//end time of a output time intervall
+cudaEvent_t tt4;			//end time//
 
-timeval tt1;				//start time
-timeval tt2;				//start time of a output time intervall
-timeval tt3;				//end time of a output time intervall
-timeval tt4;				//end time//
+float times;				//elapsed time in milliseconds
 
-long long times, timems;			//elapsed time in seconds and microseconds
 // ********************************************3
 //This function prints the initial Energy and Coordinate output
 //If Restart is set, then it reads the corespondent initial conditions from the files and writes no output
@@ -744,22 +744,29 @@ __host__ int Data::MaxGroups(){
 
 //This functions set the starting rutime of the integrations
 __host__ void Data::setStartTime(){
-	gettimeofday(&tt1, NULL);
-	gettimeofday(&tt2, NULL);
-	times = 0.0;
-	timems = 0.0;
+	cudaEventCreate(&tt1);
+	cudaEventCreate(&tt2);
+	cudaEventCreate(&tt3);
+	cudaEventCreate(&tt4);
+
+	cudaEventRecord(tt1, 0);
+	cudaEventRecord(tt2, 0);
+
+	times = 0.0f;
 }
 
 
 //This function prints information how long the integration takes
 __host__ void Data::printTime(){
-	gettimeofday( &tt3, NULL );
+	
+	cudaEventRecord(tt3, 0);
+	cudaEventSynchronize(tt3);
 	for(int st = 0; st < Nst; ++st){
-		times = (tt3.tv_sec - tt2.tv_sec);
-		timems = (tt3.tv_usec - tt2.tv_usec);
+		cudaEventElapsedTime(&times, tt2, tt3);
 
 		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
-		fprintf(GSF[st].timefile, "%g\n", times + timems/1000000.0);
+		//fprintf(GSF[st].timefile, "%g\n", times + timems/1000000.0);
+		fprintf(GSF[st].timefile, "%g\n", times * 0.001);
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
 		fclose(GSF[st].timefile);
@@ -774,20 +781,20 @@ __host__ void Data::printTime(){
 			fprintf(masterfile, "Reached timestep %lld with %d simulations\n", timeStep, Nst);
 		}
 	}
-	gettimeofday( &tt2, NULL );
+	cudaEventRecord(tt2, 0);
 }
 
 //This function prints the total integration runtime
 __host__ void Data::printLastTime(){
-        gettimeofday(&tt4, NULL );
-        times = (tt4.tv_sec - tt1.tv_sec);
-        timems = (tt4.tv_usec - tt1.tv_usec);
-        for(int st = 0; st < Nst; ++st){
-                GSF[st].timefile = fopen(GSF[st].timefilename, "a");
-                fprintf(GSF[st].timefile, "\n\n%g\n", times + timems/1000000.0);
-		if(st == 0) printf("Execution time: \n\n%g\n", times + timems/1000000.0);
-                fclose(GSF[st].timefile);
-        }
+	cudaEventRecord(tt4, 0);
+	cudaEventSynchronize(tt4);
+	cudaEventElapsedTime(&times, tt1, tt4);
+	for(int st = 0; st < Nst; ++st){
+		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
+		fprintf(GSF[st].timefile, "\n\n%g\n", times * 0.001);
+		if(st == 0) printf("Execution time: \n\n%g\n", times * 0.001);
+		fclose(GSF[st].timefile);
+	}
 }
 
 

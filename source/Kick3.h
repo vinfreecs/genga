@@ -125,19 +125,19 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
 			if( rsq >= pc * rcritv2) sb = s;
-//printf("%d %d %g %g %g %g %g\n", i, j, 1.0, 1.0 / ir, rcritvi, rcritvj, rcritv);
+//printf("%d %d %g %g %g Kick\n", i, j, 1.0, 1.0 / ir, s);
 		}
 		else{
 			if(rsq <= 0.01 * rcritv2){
 				s = 0.0;
-//printf("%d %d %g %g %g %g %g\n", i, j, 0, 1.0 / ir, rcritvi, rcritvj, rcritv);
+//printf("%d %d %g %g %g Kick\n", i, j, 0, 1.0 / ir, s);
 
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
 				s = ir3 * yy / (2.0*yy - 2.0*y + 1.0) * x4j.w;
-//printf("%d %d %g %g %g %g %g\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, rcritvi, rcritvj, rcritv);
+//printf("%d %d %g %g %g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
 
 			}
 		}
@@ -150,6 +150,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 			b.y += __dmul_rn(r3ij.y, sb);
 			b.z += __dmul_rn(r3ij.z, sb);
 		}
+//printf("%d %d %g %g Kick\n", i, j, s, ac.x);
 	}
 }
 
@@ -226,7 +227,6 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		s = x4j.w * ir3;
 
 		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) s = 0.0;
-//if(s != 0.0) printf("%.20g %d %d %.20g %d %d Kick\n", t, i, j, s, groupIndexi, groupIndexj);
 
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
@@ -236,6 +236,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 			b.y += __dmul_rn(r3ij.y, s);
 			b.z += __dmul_rn(r3ij.z, s);
 		}
+// /*if(s != 0.0)*/ printf("%.20g %d %d %.20g %d %d %.20g Kick\n", t, i, j, s, groupIndexi, groupIndexj, ac.x);
 
 	}
 }
@@ -654,7 +655,7 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[idx].x += ab1[0].x * dtksq;
 			v4_d[idx].y += ab1[0].y * dtksq;
 			v4_d[idx].z += ab1[0].z * dtksq;
-//printf("Kick %d %g %g %g\n", idx, ab1[0].x, ab1[0].y, ab1[0].z);
+//printf("Kick %d %g %g\n", idx, ab1[0].x, ab1[0].x * dtksq);
 		}
 		if(E <= 1){
 			acck_d[idx].x += ab1[16].x * dtksq;
