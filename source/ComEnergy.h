@@ -85,9 +85,9 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doub
         __syncthreads();
 	double iMsun = 1.0 / Msun;
 	if(idy == 0){
-                volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+                //volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
-		U_d[0] += f * Tsun;
+		//U_d[0] += f * Tsun;
 		if(f == 0){
 			vcom_d[0].x = p_s[0].x;
 			vcom_d[0].y = p_s[0].y;
@@ -202,9 +202,9 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, dou
 	double iMsun = 1.0 / Msun;
 
         if(idy == 0){
-                volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+  //              volatile double Tsun = 0.5 * iMsun * ( p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
-		U_d[0] += f * Tsun;
+//		U_d[0] += f * Tsun;
 		if(f == 0){
 			vcom_d[0].x = p_s[0].x;
 			vcom_d[0].y = p_s[0].y;
@@ -325,9 +325,9 @@ __global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d
 	double iMsunp = 1.0 / (Msun + p_s[0].w);
 
         if(idy == 0){
-                volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
+//		volatile double Tsun = 0.5 * iMsun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
-		U_d[0] += f * Tsun;
+//		U_d[0] += f * Tsun;
 		if(f == 0){
 			vcom_d[0].x = p_s[0].x;
 			vcom_d[0].y = p_s[0].y;
@@ -613,9 +613,9 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	double iMsun = 1.0 / Msun;
 	//now the sum is complete
 	if(id == NBS && NBS >= 0 && idy >= Nmax && idy < Bl - Nmax / 2){
-                volatile double Tsun = 0.5 * iMsun * (p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
+//                volatile double Tsun = 0.5 * iMsun * (p_s[idy].x*p_s[idy].x + p_s[idy].y*p_s[idy].y + p_s[idy].z*p_s[idy].z);
 //printf("Tsun %.40g %d\n", Tsun, f);
-		U_d[st_s[idy]] += ff * Tsun;
+//		U_d[st_s[idy]] += ff * Tsun;
 		if(ff == 0){
 			vcom_d[st_s[idy]].x = p_s[idy].x;
 			vcom_d[st_s[idy]].y = p_s[idy].y;

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.34
+#define Version 3.35
 
 
 //Default parameter values
@@ -83,8 +83,10 @@
 #define Sigma_10 2000*1.49598*1.49598/1.98892*1.0e-7 //surface density at 1AU
 #define Mgiant  1.0E-4
 #define M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
-#define Mass_pl  0.502E-14; /* corresponding to 10^19g */
+#define Mass_pl  0.502E-14 /* corresponding to 10^19g */
 #define fMass_min 7.55E-9
+
+#define MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
 //Units
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units

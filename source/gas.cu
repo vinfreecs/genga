@@ -440,12 +440,12 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 		}
 		double m = x4.w;
-//if(m == 0.0) m = 1.5e-10;
+		if(m == 0.0) m = MgasSmall;
 		if(m < Mgiant && Sigma > 0){
 			
 			//Enhanced Drag
 			double Soft;
-			if(m < M_Enhance && m > 0.0){
+			if(m < M_Enhance && m > MgasSmall){
 				double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
 				double jc = M_Enhance/Mass_pl;
 				m = pow(jc, pid);
