@@ -488,7 +488,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 // ****************************************
 template <int Bl>
-__global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, double4 *x4small_d, double4 *v4small_d, int2 *Encpairssmall2_d, int Nsmall, double3 *accksmall_d, int NB, const int Nconst){
+__global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, double4 *x4small_d, double4 *v4small_d, int2 *Encpairssmall2_d, int Nsmall, double3 *accksmall_d, int NencMax, const int Nconst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -501,20 +501,20 @@ __global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 	__syncthreads();
 	
 	if(id < N){
-		int NI = Encpairs2_d[id * NB].x;
-		int NJ = Encpairs2_d[id * NB + 1].x;
+		int NI = Encpairs2_d[id * NencMax].x;
+		int NJ = Encpairs2_d[id * NencMax + 1].x;
 		double4 x4i = x4_d[id];
 		double rcritvi = rcritv_d[id];
 
 		for(int i = 0; i < NI; ++i){
-			int jj = Encpairs2_d[id * NB + i].y;
+			int jj = Encpairs2_d[id * NencMax + i].y;
 			double4 x4j = x4_d[jj];
 //printf("AI %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
 			double rcritvj = rcritv_d[jj];
 			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
 		}
 		for(int i = 0; i < NJ; ++i){
-			int jj = Encpairs2_d[id * NB + NB - 1 - i].y;
+			int jj = Encpairs2_d[id * NencMax + NencMax - 1 - i].y;
 			double4 x4j = x4_d[jj];
 //printf("AJ %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
 			double rcritvj = rcritv_d[jj];
@@ -903,10 +903,10 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			acck_d[id].z += b_s[idy].z * dtksq;
 			int Ne = atomicAdd(Nencpairs_d, NencpairsI);
 			for(int ii = 0; ii < NencpairsI; ++ii){
-				Encpairs_d[ii + Ne] = Encpairs2_d[NB * id + ii];
+				Encpairs_d[ii + Ne] = Encpairs2_d[NencMax * id + ii];
 			}
-			Encpairs2_d[NB * id].x = NencpairsI;
-			Encpairs2_d[NB * id + 1].x = NencpairsJ;
+			Encpairs2_d[NencMax * id].x = NencpairsI;
+			Encpairs2_d[NencMax * id + 1].x = NencpairsJ;
 		}
 	}
 	else if(id < N + Nsmall){

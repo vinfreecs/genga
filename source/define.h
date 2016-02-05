@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.35
+#define Version 3.36
 
 
 //Default parameter values
