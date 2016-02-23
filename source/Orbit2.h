@@ -151,7 +151,7 @@ public:
 	__host__ void printMaxColl();
 	__host__ void GridaeOutput();
 	__host__ void printCollisions();
-	__host__ void printEncounters();
+	__host__ int printEncounters();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int);

@@ -180,7 +180,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, double *rcritv, double *rcrit_d, int Nst, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, int Nst, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
 
         if(Nst == 1){
 		printf("Collision between body %d and %d\n", index[indexi], index[indexj]);
@@ -316,7 +316,7 @@ __device__ void collide(double4 *x4, double4 *v4, int i, int j, int indexi, int 
 //March 2014
 //
 //****************************************
-__device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall, double *rcritv){
+__device__ void collidesmall(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall, volatile double *rcritv){
 
 	if(x4[i].w > 0.0 && x4[j].w > 0.0){
 
@@ -409,7 +409,7 @@ __device__ void collidesmall(double4 *x4, double4 *v4, int i, int j, int indexi,
 // July 2015
 //
 //****************************************
-__device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
+__device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
 
 //printf("Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], index[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;
@@ -445,7 +445,7 @@ __device__ void storeEncounters(double4 *x4, double4 *v4, int i, int j, int inde
 // July 2015
 //
 //****************************************
-__device__ void storeEncounterssmall(double4 *x4, double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
+__device__ void storeEncounterssmall(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
 
 //printf("S Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], indexsmall[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;

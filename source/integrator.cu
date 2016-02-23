@@ -610,7 +610,10 @@ __host__ void Data::CollisionMCall(){
 }
 
 __host__ int Data::writeEncCall(){
-	printEncounters();
+	int er = printEncounters();
+	if(er == 0){
+		return 0;
+	}
 	NWriteEnc_m[0] = 0;
 	return 1;
 }

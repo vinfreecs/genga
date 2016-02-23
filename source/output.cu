@@ -196,7 +196,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
 
-		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
+		if(x4_h[j].w >= 0.0) fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
 		if(P.FormatP == 0) fclose(outputfile);
 	}
 	for(int j = 0; j < Nsmall; j+=1){
@@ -218,7 +218,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		aecountsmallT_h[j] += aecountsmall_h[j];
 		enccountsmallT_h[j] += enccountsmall_h[j];
-		fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/timeStep, enccountsmallT_h[j], -1.0);
+		if(x4small_h[j].w >= 0.0) fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", t, index, x4small_h[j].w, v4small_h[j].w, x4small_h[j].x, x4small_h[j].y, x4small_h[j].z, v4small_h[j].x, v4small_h[j].y, v4small_h[j].z, spinsmall_h[j].x, spinsmall_h[j].y, spinsmall_h[j].z, aelimitssmall_h[j].x, aelimitssmall_h[j].y, aelimitssmall_h[j].z, aelimitssmall_h[j].w, (double)(aecountsmall_h[j])/ci, (double)(aecountsmallT_h[j])/timeStep, enccountsmallT_h[j], -1.0);
 		if(P.FormatP == 0) fclose(outputfile);
 	}
 }
@@ -291,7 +291,7 @@ __host__ void Data::EnergyOutput(){
 		cudaMemcpy(Nencpairssmall_h + st + 1, Nencpairssmall_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 
 		if(Nst == 1){
-			fprintf(GSF[st].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+			fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
 			fprintf(GSF[0].logfile, "groups: %d; 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9], Nenc_m[10], Nenc_m[11]);
 			fprintf(GSF[st].logfile, "    CE TP: %d; ", Nencpairssmall2_h[0]);
 			fprintf(GSF[0].logfile, "groups: %d; 2: %d, 4: %d, 8: %d, 16: %d, 32: %d, 64: %d, 128: %d, 256: %d, 512: %d, 1024: %d, 2048: %d\n", Nencsmall_m[0], Nencsmall_m[1], Nencsmall_m[2], Nencsmall_m[3], Nencsmall_m[4], Nencsmall_m[5], Nencsmall_m[6], Nencsmall_m[7], Nencsmall_m[8], Nencsmall_m[9], Nencsmall_m[10], Nencsmall_m[11]);
@@ -843,8 +843,18 @@ __host__ void Data::printCollisions(){
 }
 
 //This function prints details of the Encounters
-__host__ void Data::printEncounters(){
-  
+__host__ int Data::printEncounters(){
+ 
+	if(NWriteEnc_m[0] >= MaxWriteEnc){
+		for(int st = 0; st < Nst; ++st){ 
+			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+			fprintf(GSF[st].logfile, "Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], MaxWriteEnc);
+			printf("Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], MaxWriteEnc);
+			fclose(GSF[st].logfile);
+		}
+		return 0;
+	}
+ 
 	cudaMemcpy(writeEnc_h, writeEnc_d, sizeof(double) * 25 * NWriteEnc_m[0], cudaMemcpyDeviceToHost);
 
 	FILE *encounterfile;
@@ -864,5 +874,6 @@ __host__ void Data::printEncounters(){
 		fprintf(encounterfile, "\n");
 		fclose(encounterfile);
 	}
+	return 1;
 }
 

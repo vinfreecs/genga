@@ -50,10 +50,10 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	double test;
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
-	int idi;
-	int si = Encpairs2_d[ (st+2) * NB + idx].y; 
+	volatile int idi;
+	volatile int si = Encpairs2_d[ (st+2) * NB + idx].y; 
 	N2 = Encpairs2_d[si].y; //Number of bodies in current BS simulation
-	int start = Encpairs2_d[NB + si].y;
+	volatile int start = Encpairs2_d[NB + si].y;
 //printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NB, start);
 
 	if(idy < N2){
@@ -454,15 +454,16 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						double enct = 0.0;
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
 						//write Encounters to file
+//if(xt_s[ii].w >= 0.0 && xt_s[jj + l].w >= 0.0 && (index_d[Encpairs2_d[start + ii].x] < 0 || index_d[Encpairs2_d[start + jj + l].x] < 0)) printf("Negative %5d %5d %5d %5d %5d %5d %5d %5d %g %g %g %g\n", index_d[Encpairs2_d[start + ii].x], index_d[Encpairs2_d[start + jj + l].x], Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, ii, jj + l, start, NN, x4_s[ii].w, x4_s[jj + l].w, xold_d[Encpairs2_d[start + ii].x].w, xold_d[Encpairs2_d[start + jj + l].x].w);
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
 							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
 							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + t/0.01720209895, spin_d);
 						}
 					}
-                                        __syncthreads();
-                                        if(idy == 0) {
-                                               for(int c = 0; c < Ncol[0]; ++c){
+					__syncthreads();
+					if(idy == 0) {
+						for(int c = 0; c < Ncol[0]; ++c){
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
@@ -478,9 +479,9 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 									groupIndex_d[jK] =  -1;
 #endif
 							}
-                                                }
-                                        }
-                                        __syncthreads();
+						}
+					}
+					__syncthreads();
 					t += dt1;				
 					if(n >= 8) dt1 *= 0.55;
 					if(n < 7) dt1 *= 1.3;

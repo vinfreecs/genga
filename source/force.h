@@ -371,3 +371,53 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 		}	
 	}
 }
+
+
+
+// Yarkovski
+/*
+__device__ void alpha(double e){
+	
+	double e2 = e * e;
+	double e3 = e * e2;
+	double e4 = e2 * e2;
+	double e5 = e2 * e3;
+	double e6 = e3 * e3;
+
+	double alpha1 = 1.0 - 0.375 * e2 + 5.0 / 6.0 * 0.25 * e4 - 7.0 / 72.0 / 128.0;
+	double alpha2 = 4.0 * (0.5 * e - 3.0 *  e3 + 0.0625 * e5);
+	double alpha3 = 9.0 * (0.375 * e2 - 11.25 / 32.0 * e4 + 567 / 5120.0 * e6);
+	double alpha4 = 16.0 * (1.0 / 3.0 * e3 - 0.4 * e5);
+	double alpha5 = 25.0 * (125.0 / 384.0 * e4 - 4375.0 / 9216.0 * e6);
+	double alpha6 = 36.0 * (108.0 / 320.0 * e5);
+	double alpha7 = 49.0 * (16807.0 / 46080.0 * e6);
+
+	double beta1 = 1.0 - e2 / 8.0 + e4 / 192.0 - e6 / 9216.0;
+	double beta2 = 2.0 * e * (1.0 - e2 / 3.0 + e4 / 24.0);
+	double beta3 = 27.0 / 8.0 * e2 * (1.0 - 9.0 / 16.0 * e2 + 81.0 / 640.0 * e4);
+	double beta4 = 16.0 / 3.0 * e3 * (1.0 - 0.8 * e2);
+	double beta5 = 25.0 * 125.0 / 384.0 * e4 * (1.0 - 25.0 / 24.0 * e2);
+	double beta6 = 972.0 / 80.0 * e5;
+	double beta7 = 823543.0 / 46080.0 * e6;  
+
+}
+
+__device__ void seasonal(double lamda, int k, double R){
+
+	double X = sqrt(2.0 * k) * R;
+	double L = lamda / (1.0 + lamda);
+	
+	double X2cX = (X - 2.0) * cX;
+	double X2sX = (X - 2.0) * sX;
+
+	double A = -eX * (X + 2.0) - (X2cX - X * sX);
+	double B = -eX * X - (X * cosX + X2sX);
+	double C = A + L * (eX * 3.0 * ( X + 2.0) + (3.0 * X2cX + X * ( X - 3.0) * sX));
+	double D = B + L * (eX * X * (X + 3.0) - (X * (X - 3.0) * cX - 3.0 * X2cX));
+
+	double iC2D2 = 1.0 / (C * C + D * D);
+
+	double cd = (A * C + B * D) * iC2D2;
+	double sd = (B * C - A * D) * iC2D2;
+} 
+*/

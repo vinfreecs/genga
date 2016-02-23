@@ -756,8 +756,15 @@ int main(int argc, char*argv[]){
 	glGenBuffers(1, &positionsVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
 	unsigned int size = (D.N_h[0] + D.Nsmall_h[0]) *  sizeof(double4);
+
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
 	error = cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);
+
+	if(error != 0){
+		fprintf(D.masterfile, "GL position error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("GL position error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
 	glGenBuffers(1, &colorsVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, colorsVBO);
@@ -765,8 +772,8 @@ int main(int argc, char*argv[]){
 	error = cudaGraphicsGLRegisterBuffer(&colorsVBO_CUDA, colorsVBO, cudaGraphicsMapFlagsWriteDiscard);
 
 	if(error != 0){
-		fprintf(D.masterfile, "GL error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("GL error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(D.masterfile, "GL color error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("GL color error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 	cudaMalloc((void **) &MLimits_d, 2 * sizeof(double));
