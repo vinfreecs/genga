@@ -857,26 +857,26 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 		L_s[0].y += s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z;
 		L_s[0].z += s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x;
 		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
-		V_s[0] *= Kg;
-		T_s[0] *= Kg;
-		E_s[0] *= Kg;
-		Tsun *= Kg;
+		V_s[0] *= def_Kg;
+		T_s[0] *= def_Kg;
+		E_s[0] *= def_Kg;
+		Tsun *= def_Kg;
 		Energy_d[0] = V_s[0];
 		Energy_d[1] = T_s[0] + Tsun;
-		Energy_d[2] = LI_d[st] * Kg;
-		Energy_d[3] = U_d[st] * Kg;
-		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
-		Energy_d[5] = (Ltot + LI_d[st]) * Kg;
+		Energy_d[2] = LI_d[st] * def_Kg;
+		Energy_d[3] = U_d[st] * def_Kg;
+		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
+		Energy_d[5] = (Ltot + LI_d[st]) * def_Kg;
 
 		if(E == 0){ 
-			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
-			LI0_d[st] = (Ltot + LI_d[st]) * Kg;
+			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
+			LI0_d[st] = (Ltot + LI_d[st]) * def_Kg;
 			Energy_d[7] = 0.0;
 			Energy_d[6] = 0.0;
 		}
 		if(E == 1){
-			Energy_d[6] = ((Ltot + LI_d[st]) * Kg - LI0_d[st]) / LI0_d[st]; 
-			Energy_d[7] = ((T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
+			Energy_d[6] = ((Ltot + LI_d[st]) * def_Kg - LI0_d[st]) / LI0_d[st]; 
+			Energy_d[7] = ((T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
 		}
 	}
 }
@@ -1096,25 +1096,25 @@ test_d[idy] = E_s[idy];
 		L_s[0].y += s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z;
 		L_s[0].z += s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x;
 		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
-		V_s[0] *= Kg;
-		T_s[0] *= Kg;
-		E_s[0] *= Kg;
-		Tsun *= Kg;
+		V_s[0] *= def_Kg;
+		T_s[0] *= def_Kg;
+		E_s[0] *= def_Kg;
+		Tsun *= def_Kg;
 		Energy_d[0] = V_s[0];
 		Energy_d[1] = T_s[0] + Tsun;
-		Energy_d[2] = LI_d[st] * Kg;
-		Energy_d[3] = U_d[st] * Kg;
-		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
-		Energy_d[5] = (Ltot + LI_d[st]) * Kg;
+		Energy_d[2] = LI_d[st] * def_Kg;
+		Energy_d[3] = U_d[st] * def_Kg;
+		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
+		Energy_d[5] = (Ltot + LI_d[st]) * def_Kg;
 		if(E == 0){
-			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun;
+			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
 			Energy_d[7] = 0.0;
-			LI0_d[st] = (Ltot + LI_d[st]) * Kg;
+			LI0_d[st] = (Ltot + LI_d[st]) * def_Kg;
 			Energy_d[6] = 0.0;
 		}
 		if(E == 1){
-			Energy_d[7] = ((T_s[0] + V_s[0] + __dmul_rn(U_d[st], Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
-			Energy_d[6] = ((Ltot + LI_d[st]) * Kg - LI0_d[st]) / LI0_d[st];
+			Energy_d[7] = ((T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
+			Energy_d[6] = ((Ltot + LI_d[st]) * def_Kg - LI0_d[st]) / LI0_d[st];
 		}
 	}
 }

@@ -357,7 +357,6 @@ __global__ void comsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d
 			v4small_d[idy + i].x += p_s[0].x * iMsun;
 			v4small_d[idy + i].y += p_s[0].y * iMsun;
 			v4small_d[idy + i].z += p_s[0].z * iMsun;
-
 		}
                 if(m >= 0 && idy + i < Nsmall && f == -1){
 			//Convert to Democratic coordinates

@@ -13,7 +13,6 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	double ia = 2.0 * ir - vsq / mu;
 
 	a = 1.0 / ia;
-
 	//inclination
 	double3 h3;
 	double h2, h, t;
@@ -70,7 +69,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 		if(e3.y < 0.0) w = 2.0 * M_PI - w;
 	}
 
-	//circular, inclindes orbit
+	//circular, inclinded orbit
 		if(e < 1.0e-10 && inc > 1.0e-11){
 		w = 0.0;
 	}

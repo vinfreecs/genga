@@ -141,7 +141,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
-//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, E);
+//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %g %g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, v4i.w, v4j.w, E);
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
@@ -356,7 +356,7 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 			Enc = 1;
 		}
 
-printf("Enc %d %d %g %g\n", i, j, Ki, Kiold);
+//printf("Enc %d %d %g %g\n", i, j, Ki, Kiold);
 		if(writeEncounters > 0 && E == 1){
 			double writeRadius = 0.0;
 			if(writeEncounters == 1){
@@ -554,7 +554,6 @@ __global__ void groupsmall1_kernel(int *Nencpairssmall_d, int2 *Encpairssmall_d,
 __global__ void groupsmall2_kernel(int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int *Nencsmall_d, int2 *Encpairssmall_d, const int Nconst){
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + threadIdx.x;
-
 	if(id < *Nencpairssmall2_d){
 		int i = Encpairssmall2_d[id].x;
 		int j = Encpairssmall2_d[id].y;
@@ -574,9 +573,9 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 	if(id < Nencsmall_d[0]){
 		int i = Encpairssmall_d[id * Nconst + 1].y;
 		int nn = Encpairssmall_d[i * Nconst].y;
-		int ne2 = 2;
+		volatile int ne2 = 2;
 		if(nn > 0){
-			for(int ii = 0; ii < 11; ++ii){
+			for(volatile int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
 					int Ne = atomicAdd(&Nencsmall_d[ii + 1], 1);
 					Encpairssmall2_d[Ne * Nconst + ii].y = i;
@@ -857,9 +856,9 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	for(int i = 0; i < BN; i += Bl){
 		if(idy + i < BN){
 			int nn = Encpairs2_d[idy + i].y;
-			int ne2 = 2;
+			volatile int ne2 = 2;
 			if(nn > 0){
-				for(int ii = 0; ii < 11; ++ii){
+				for(volatile int ii = 0; ii < 11; ++ii){
 					if(nn <= ne2){
 						int Ns = atomicAdd(&Nenc_s[ii + 1],1);
 						Encpairs2_d[ (ii+2) * BN + Ns].y = idy + i;
@@ -1011,10 +1010,10 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 		int nn = Encpairs_d[idy + NBS + Nst].y;
 //printf("n %d %d %d %d\n", st, idy, nn, NBS);
 
-		int ne2 = 2;
+		volatile int ne2 = 2;
 		if(nn > 0){
 //printf("nn %d %d %d %d %d %d\n", st, idy, nn, Encpairs_d[(idy + NBS)* 16].x, Encpairs_d[((idy  + NBS)* 16)+ 1].x, Encpairs_d[((idy + NBS) * 16) + 2].x);
-			for(int ii = 0; ii < 11; ++ii){
+			for(volatile int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
 					Encpairs2_d[ (ii+1) + NmaxM * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
 					break;

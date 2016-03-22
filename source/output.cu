@@ -139,7 +139,7 @@ __host__ int Data::firstoutput(){
 				return 0;
 			}
 
-			U_h[st] /= Kg;
+			U_h[st] /= def_Kg;
 
 			fclose(GSF[st].Energyfile);
 

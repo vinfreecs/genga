@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.37
+#define Version 3.38
 
 
 //Default parameter values
@@ -90,9 +90,10 @@
 
 //Units
 #define ksq 1.0				//Squared Gaussion gravitation constant in current units
-#define Kg 2.959122082855911e-4         //Squared Gaussion gravitation constant, used for conversion
+#define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
-
+#define def_AU 149597870700.0		//AU in m
+#define def_Solarmass 1.98855e30       //solar mass in Kg
 //Maximum number of massive bodies in the test particle mode
 #define NmaxTestParticles 16
 
@@ -142,6 +143,14 @@
 
 //only here for testing
 #define USE_NAF 0
+
+
+#define USE_RANDOM 0
+
+#if USE_RANDOM
+#include <curand_kernel.h>
+#endif
+
 
 #ifndef STRUCT_H
 #define STRUCT_H

@@ -132,15 +132,13 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 				//inclination
 				double3 h3;
-				double h2, h, t;
 				h3.x = ( x4i.y * v4i.z) - (x4i.z * v4i.y);
 				h3.y = (-x4i.x * v4i.z) + (x4i.z * v4i.x);
 				h3.z = ( x4i.x * v4i.y) - (x4i.y * v4i.x);
 
-				h2 = h3.x * h3.x + h3.y * h3.y + h3.z * h3.z;
-				h = sqrt(h2);
+				double h = sqrt(h3.x * h3.x + h3.y * h3.y + h3.z * h3.z);
 
-				t = h3.z / h;
+				double t = h3.z / h;
 				if(t < -1.0) t = -1.0;
 				if(t > 1.0) t = 1.0;
 			
@@ -161,7 +159,6 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				e3.y = (-v4i.x * h3.z + v4i.z * h3.x) / mu - x4i.y * ir;
 				e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
 			
-
 				e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
 
 				t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
@@ -186,7 +183,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					if(e3.y < 0.0) w = 2.0 * M_PI - w;
 				}
 				
-				//circular, inclindes orbit
+				//circular, inclinded orbit
 				if(e < 1.0e-10 && inc > 1.0e-11){
 					w = 0.0;
 				}
@@ -373,6 +370,371 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 }
 
 
+__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double *dt_d, int N, int Nst, double time){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int st = 0;
+
+	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+
+	if(id < N){
+
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		double3 spin = spin_d[id];
+		curandState random = random_d[id];
+
+		if(x4i.w >= 0.0){
+
+			double rd = curand_uniform(&random);
+//			random_d[id] = random;
+//printf("%d %g\n", id, x);
+
+			double RR = v4i.w * def_AU;	//covert radius in m 
+			double V = 5000.0;		//collisional velocity in m / s
+			double rho = 3500.0; 		//density of body in kg/m^3, /this is needed because test particles have zero mass
+
+			//int index = index_d[id];
+			double dt = dt_d[st];
+			double m = x4i.w;
+			if(x4i.w == 0.0){
+				m = rho * 4.0 / 3.0 * M_PI * v4i.w * v4i.w * v4i.w * def_AU * def_AU * def_AU; 	//mass in Kg;
+				m /= def_Solarmass;						//mass im Solar masses
+			}
+
+			//compute rotation vector from spin vector
+			double iI = 5.0 / (2.0 * m * v4i.w * v4i.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double3 omega3;
+			omega3.x = spin.x * iI;
+			omega3.y = spin.y * iI;
+			omega3.z = spin.z * iI;
+
+			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);   //angular velocity in 1 / day * 0.017
+			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0); 					//in 1 / s
+
+
+			//compute probability of rotation reset
+			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * V);
+			double p = 1.0e-18 / sqrt(sqrt(RR * RR * RR)) * pow(t1, -5.0/6.0); //probability per year
+			p = p / 365.25 * dt / dayUnit;	//probability per time step
+
+			if(rd < p){
+				//reset the rotation rate an spin vector
+				rd = curand_uniform(&random);
+				double omin = 1.0 / (36.0 * 2.0 * RR);
+				double omax = 1.0 / (2.0 * RR);
+				omega = rd * (omax - omin) + omin;        //rotations per s
+printf("%g %d %g\n", time, id, omega);
+				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
+
+				double S = 2.0 / 5.0 * m * v4i.w * v4i.w * omega;
+				//printf("%g %g %g %g\n", m, r, omega, Sz);
+				double u = curand_uniform(&random);
+				double theta = curand_uniform(&random) * 2.0 * M_PI;
+				//sign
+				double s = curand_uniform(&random);;
+
+				double t2 = S * sqrt(1.0 - u * u);
+				spin.x = t2 * cos(theta);
+				spin.y = t2 * sin(theta);
+				spin.z = S * u;
+
+				if( s > 0.5){
+					spin.z *= -1.0;
+				}
+//				spin_d[id] = spin;
+			}
+		}
+	}
+}
+
+
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double *Msun_d, double *dt_d, double Ct, int N, int Nst){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int st = 0;
+
+	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+
+	if(id < N){
+
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		double3 spin = spin_d[id];
+
+		if(x4i.w >= 0.0){
+
+			//material constants
+			double K = 2.65; 		//Thermal conductivity in W/mK
+			double rho = 3500.0; 		//density of body in kg/m^3, /this is needed because test particles have zero mass
+			double C = 680.0;		//Specific Heat Capacity in J/kgK
+			double eps = 0.95;		//Emissivity
+			double sigma = 5.670373e-8;	//Stefan Boltzmann constant J m^-2 s^-1 K^-4
+			double A = 0.2;			//Bond albedo
+			double S = 1367.0;		//Solar Constant at 1 AU in W /m^2
+//A = 0.0;
+//eps = 1.0;
+
+			double c = 299792458.0;		//speed of light im m/s
+			double Gamma = sqrt(K * rho * C);	//surface thermal intertia 
+			double RR = v4i.w * def_AU;		//covert radius in m 
+
+			//int index = index_d[id];
+			double Msun = Msun_d[st];
+			double dt = dt_d[st] * Ct;
+			double mu = ksq * (Msun + x4i.w);
+			double m = x4i.w;
+			if(x4i.w == 0.0){
+				m = rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m /= def_Solarmass;						//mass im Solar masses
+				mu = ksq * (Msun + m);
+			}
+	
+			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
+			double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+			double u =  x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z;
+			double ir = 1.0 / sqrt(rsq);
+			double ia = 2.0 * ir - vsq / mu;
+
+			double a = fabs(1.0 / ia);
+
+			double3 h3;
+			h3.x = ( x4i.y * v4i.z) - (x4i.z * v4i.y);
+			h3.y = (-x4i.x * v4i.z) + (x4i.z * v4i.x);
+			h3.z = ( x4i.x * v4i.y) - (x4i.y * v4i.x);
+
+			double h = sqrt(h3.x * h3.x + h3.y * h3.y + h3.z * h3.z);
+		
+			double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+			n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
+	
+			//longitude of ascending node
+			double nn = sqrt(h3.x * h3.x + h3.y * h3.y);
+
+			//argument of periapsis
+			double3 e3;
+			e3.x = ( v4i.y * h3.z - v4i.z * h3.y) / mu - x4i.x * ir;
+			e3.y = (-v4i.x * h3.z + v4i.z * h3.x) / mu - x4i.y * ir;
+			e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
+		
+			double e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
+
+			//compute rotation vetor from spin vector
+			double iI = 5.0 / (2.0 * m * v4i.w * v4i.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double3 omega3;
+			omega3.x = spin.x * iI;
+			omega3.y = spin.y * iI;
+			omega3.z = spin.z * iI;
+
+			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z); 	//angular velocity in 1 / day * 0.017
+	
+		//Normalize spin vector
+			omega3.x /= omega;
+			omega3.y /= omega;
+			omega3.z /= omega;
+
+			double sp, sq;
+			//True Anomaly
+			double Theta;
+			double t;
+			if(e > 1.0e-10){
+				t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
+				if(t < -1.0) t = -1.0;
+				if(t > 1.0) t = 1.0;
+				Theta = acos(t);
+				if(u < 0.0) Theta = 2.0 * M_PI - Theta;
+	
+				sp = (omega3.x * e3.x + omega3.y * e3.y + omega3.z * e3.z) / e;
+				double3 q3;
+				q3.x = ( h3.y * e3.z) - (h3.z * e3.y);
+				q3.y = (-h3.x * e3.z) + (h3.z * e3.x);
+				q3.z = ( h3.x * e3.y) - (h3.y * e3.x);
+				sq = (omega3.x * q3.x + omega3.y * q3.y + omega3.z * q3.z) / (e * h);
+			}
+			else{
+			//circular inclined orbit
+				if(h3.z < h * (1.0 - 1.0e-11)){
+					t = (-h3.y * x4i.x + h3.x * x4i.y) / nn * ir;
+					if(t < -1.0) t = -1.0;
+					if(t > 1.0) t = 1.0;
+					Theta = acos(t);
+					if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+		
+					sp = (omega3.x * -h3.y + omega3.y * h3.x) / nn;
+					double3 q3;
+					q3.x = 0.0;
+					q3.y = 0.0;
+					q3.z = ( h3.x * h3.x) - (h3.y * -h3.y);
+					sq = (omega3.x * q3.x + omega3.y * q3.y + omega3.z * q3.z) / (e * nn);
+				}
+			//circular equatorial orbit
+				else{
+					t = x4i.x * ir;
+					Theta = acos(t);
+					if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
+		
+					sp = (omega3.x);
+					double3 q3;
+					q3.x = 0.0;
+					q3.y = h3.z;
+					q3.z = h3.y;
+					sq = (omega3.x * q3.x + omega3.y * q3.y + omega3.z * q3.z) / h;
+				}
+			}
+
+			if(omega == 0){
+				sp = 0.0;
+				sq = 0.0;
+			}
+			//Eccentric Anomaly
+			double E = acos((e + t) / (1.0 + e * t));
+			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+
+			//Mean Anomaly
+			double M = E - e * sin(E);
+
+			if(e >= 1){
+				E = acosh((e + t) / (1.0 + e * t));
+				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+				M = E - e * sinh(E);
+				
+
+			}
+	
+//printf("a %d %g %g %g %g %g %g %g %g %g %g %g\n", id, a, e, m, RR, omega, v4i.x, v4i.y, v4i.z,  Theta, E, M);
+
+			double3 rs3;
+			rs3.x = (( x4i.y * omega3.z) - (x4i.z * omega3.y)) * ir;
+			rs3.y = ((-x4i.x * omega3.z) + (x4i.z * omega3.x)) * ir;
+			rs3.z = (( x4i.x * omega3.y) - (x4i.y * omega3.x)) * ir;
+
+			double3 srs3;
+			srs3.x = (( omega3.y * rs3.z) - (omega3.z * rs3.y));
+			srs3.y = ((-omega3.x * rs3.z) + (omega3.z * rs3.x));
+			srs3.z = (( omega3.x * rs3.y) - (omega3.y * rs3.x));
+
+
+			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0); 						//in 1 / s
+
+			double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
+			double F = S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+
+			double Ts4 = (1.0 - A) * F / (eps * sigma);
+			double Ts = sqrt(sqrt(Ts4));
+
+			double t1 = Gamma / (eps * sigma * Ts * Ts * Ts);
+			double t2 = (1.0 - A) * 3.0 * F / (9.0 * rho * RR * c);
+
+			double s2 = sqrt(2.0);
+
+			double3 a3;
+			a3.x = 0.0;
+			a3.y = 0.0;
+			a3.z = 0.0;
+
+			//Diurnal 
+			{
+			double ilD = sqrt(rho * C * omega / K);
+			double ThetaD = t1 * sqrt(omega);
+			double X = s2 * RR * ilD;
+			double lamda = ThetaD / X;
+			double L = lamda / (1.0 + lamda);
+
+			double cX = cos(X);
+			double sX = sin(X);
+
+			double X2cX = (X - 2.0) * cX;
+			double X2sX = (X - 2.0) * sX;
+			double eX = exp(-X);
+
+			double Ax = -eX * (X + 2.0) - (X2cX - X * sX);
+			double Bx = -eX * X - (X * cX + X2sX);
+			double Cx = Ax + L * (eX * 3.0 * (X + 2.0) + (3.0 * X2cX + X * (X - 3.0) * sX));
+			double Dx = Bx + L * (eX * X * (X + 3.0) - (X * (X - 3.0) * cX - 3.0 * X2sX));
+
+			double iC2D2 = 1.0 / (Cx * Cx + Dx * Dx);
+
+			double Gcd = (Ax * Cx + Bx * Dx) * iC2D2;
+			double Gsd = (Bx * Cx - Ax * Dx) * iC2D2;
+
+			double WD = t2 / (1.0 + lamda);
+			a3.x += WD * (Gsd * rs3.x + Gcd * srs3.x);
+			a3.y += WD * (Gsd * rs3.y + Gcd * srs3.y);
+			a3.z += WD * (Gsd * rs3.z + Gcd * srs3.z);
+//		printf("D %d %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g\n", id, a3.x, a3.y, a3.z, srs3.x, srs3.y, srs3.z, Gcd, Gsd, WD, lamda);
+			}
+			
+			//seasonal
+			{
+			double ilS = sqrt(rho * C * n / K);
+			double ThetaS = t1 * sqrt(n);
+			double eta = sqrt(1.0 - e * e);
+			if(e >= 1.0) eta = 1.0;
+		int k = 1;
+	
+			double e2 = e * e;
+			double e3 = e * e2;
+			double e4 = e2 * e2;
+			//double e5 = e2 * e3;
+			double e6 = e3 * e3;
+
+			double alpha = 1.0 - 0.375 * e2 + 5.0 / 6.0 * 0.25 * e4 - 7.0 / 72.0 / 128.0;
+			double beta = 1.0 - e2 / 8.0 + e4 / 192.0 - e6 / 9216.0;
+	
+			double X = s2 * RR * ilS;
+			double lamda = ThetaS / X * sqrt(sqrt(eta * eta * eta));
+			double L = lamda / (1.0 + lamda);
+
+			double cX = cos(X);
+			double sX = sin(X);
+
+			double X2cX = (X - 2.0) * cX;
+			double X2sX = (X - 2.0) * sX;
+
+			double eX = exp(-X);
+			double Ax = -eX * (X + 2.0) - (X2cX - X * sX);
+			double Bx = -eX * X - (X * cX + X2sX);
+			double Cx = Ax + L * (eX * 3.0 * (X + 2.0) + (3.0 * X2cX + X * (X - 3.0) * sX));
+			double Dx = Bx + L * (eX * X * (X + 3.0) - (X * (X - 3.0) * cX - 3.0 * X2sX));
+
+			double iC2D2 = 1.0 / (Cx * Cx + Dx * Dx);
+
+			double Gcd = (Ax * Cx + Bx * Dx) * iC2D2;
+			double Gsd = (Bx * Cx - Ax * Dx) * iC2D2;
+			double cM = cos(k * M); 
+			double sM = sin(k * M); 
+
+			double WS = (sp * alpha * (cM * Gcd - sM * Gsd) + sq * beta * (sM * Gcd + cM * Gsd)) / (1.0 + lamda);
+			double aS = t2 * WS;
+			a3.x += aS * omega3.x;
+			a3.y += aS * omega3.y;
+			a3.z += aS * omega3.z;
+//		printf("S %d %g %g %g %.10g %.10g %.10g %.10g %.10g %g %g %g %g %g\n", id, a3.x, a3.y, a3.z, sp, sq, sp * sp + sq * sq, RR, Gcd, Gsd, n, lamda, sM, cM);
+			}
+
+			a3.x *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit); //in AU /day^2 * 0.017^2
+			a3.y *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
+			a3.z *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
+
+		//printf("%g %g %g %g %g %g %g\n", RR, a, omega, n, a3.x, a3.y, a3.z);
+
+			v4i.x += a3.x * dt;
+			v4i.y += a3.y * dt;
+			v4i.z += a3.z * dt;
+
+			v4_d[id] = v4i;
+
+	//printf("%g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+		}	
+
+	}
+}
+
+
 
 // Yarkovski
 /*
@@ -402,22 +764,4 @@ __device__ void alpha(double e){
 
 }
 
-__device__ void seasonal(double lamda, int k, double R){
-
-	double X = sqrt(2.0 * k) * R;
-	double L = lamda / (1.0 + lamda);
-	
-	double X2cX = (X - 2.0) * cX;
-	double X2sX = (X - 2.0) * sX;
-
-	double A = -eX * (X + 2.0) - (X2cX - X * sX);
-	double B = -eX * X - (X * cosX + X2sX);
-	double C = A + L * (eX * 3.0 * ( X + 2.0) + (3.0 * X2cX + X * ( X - 3.0) * sX));
-	double D = B + L * (eX * X * (X + 3.0) - (X * (X - 3.0) * cX - 3.0 * X2cX));
-
-	double iC2D2 = 1.0 / (C * C + D * D);
-
-	double cd = (A * C + B * D) * iC2D2;
-	double sd = (B * C - A * D) * iC2D2;
-} 
 */

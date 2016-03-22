@@ -156,6 +156,12 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
+
+#if USE_RANDOM
+	cudaMalloc((void **) &random_d, NT * sizeof(curandState));
+	cudaMalloc((void **) &randomsmall_d, NsmallT * sizeof(curandState));
+#endif
+
 	CollisionFlag = 0;
 };
 
@@ -335,6 +341,19 @@ __global__ void BufferInit_kernel(double *coordinateBuffer_d){
 	coordinateBuffer_d[id] = 0.0;
 }
 
+#if USE_RANDOM
+__global__ void randomInit_kernel(curandState *random_d, int N){
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id < N){
+		curand_init(0, id, 0, &random_d[id]);
+	}
+}
+
+#endif
+
+
+
 //This function initializes the data
 __host__ int Data::init(){
 
@@ -455,6 +474,10 @@ __host__ int Data::init(){
 		LI0_h[st] = 1.0;
 	}
 
+#if USE_RANDOM
+	randomInit_kernel <<< (NT + 255) / 256, 256>>> (random_d, NT);
+	if(NsmallT > 0) randomInit_kernel <<< (NsmallT + 255) / 256, 256>>> (randomsmall_d, NsmallT);
+#endif
 
 	return 1;
 }
@@ -548,8 +571,8 @@ __host__ int Data::readic(int st){
 	FILE *infile;	
 	double ttest;
 
-	double AU = 1.49597870700e13; //in cm
-	double Solarmass = 1.98892e33; //in g
+	double AU = def_AU * 100.0; // in cm
+	double Solarmass = def_Solarmass * 1000.0; //in g
 
 	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 

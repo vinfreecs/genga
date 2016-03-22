@@ -70,13 +70,13 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
                 x4_s[idy] = xoldsmall_d[idi];  
                 v4_s[idy] = voldsmall_d[idi];  
                 rcritv_s[idy] = 0.0;
-//printf("BSssmall %d %d %d %d\n", idx, st, idi, indexsmall_d[idi]);
+//printf("BSssmall %d %d %d %d %d %g %d %d\n", idx, st, idi, indexsmall_d[idi], idy, v4_s[idy].w, NN, N2);
 	}
 	else if(idy< N2){
                 x4_s[idy] = xold_d[idi];  
                 v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
-//printf("BSs %d %d %d %d\n", idx, st, idi, index_d[idi]);
+//printf("BSs %d %d %d %d %d %g\n", idx, st, idi, index_d[idi], idy, v4_s[idy].w);
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
@@ -104,7 +104,6 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	}
 	if(idy < 2 * NN) error_s[idy] = 0.0;
 	__syncthreads();
-
 	for(int tt = 0; tt < 1000; ++tt){
 	__syncthreads();
 

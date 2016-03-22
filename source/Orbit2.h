@@ -8,6 +8,7 @@
 #include "naf2.h"
 #endif
 
+
 // *************************************
 // Authors: Simon Grimm, Joachim Stadel
 // March 2014
@@ -66,6 +67,10 @@ public:
 	double4 *v4G3_d;
 
 	double3 *vcom_h, *vcom_d;
+
+#if USE_RANDOM
+	curandState *random_d, *randomsmall_d;
+#endif
 
 	double4 *x4small_h, *x4small_d;
 	double4 *v4small_h, *v4small_d;
