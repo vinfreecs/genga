@@ -385,7 +385,6 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;

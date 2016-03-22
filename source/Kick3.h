@@ -258,7 +258,7 @@ __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d){
 		v4_d[id].x += acck_d[id].x;
 		v4_d[id].y += acck_d[id].y;
 		v4_d[id].z += acck_d[id].z;
-//printf("KickB %d %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z);
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 	}
 }
 // **************************************
@@ -655,7 +655,7 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[idx].x += ab1[0].x * dtksq;
 			v4_d[idx].y += ab1[0].y * dtksq;
 			v4_d[idx].z += ab1[0].z * dtksq;
-//printf("Kick %d %g %g\n", idx, ab1[0].x, ab1[0].x * dtksq);
+//printf("Kick %d %g %g %g\n", idx, ab1[0].x, ab1[0].x * dtksq, v4_d[idx].x);
 		}
 		if(E <= 1){
 			acck_d[idx].x += ab1[16].x * dtksq;
