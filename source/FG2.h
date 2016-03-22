@@ -369,28 +369,22 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 // **************************************
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //There are 2 different FG, and one Burlish Stoer function, fastest one is fastfg.
-//This Kernel is launched wich NB/Bl blocks with Bl threads. NB is the next bigger number of N
-//which is a power of two.
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2016
 //
 // *****************************************
-template <int Bl>
 __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	__shared__ double4 x4_s[Bl];
-	__shared__ double4 v4_s[Bl];
 	if(id < N){
 		int aecount = 0;
-		x4_s[idy] = x4_d[id];
-		v4_s[idy] = v4_d[id];
-		__syncthreads();
-		xold_d[id] = x4_s[idy];
-		vold_d[id] = v4_s[idy];
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
 
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
@@ -399,12 +393,12 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
-//		BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt, test, test);
+		//fastfg(x4i, v4i, dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
+		fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
+//		BSSinglestep(x4i, v4i, Msun, dt, test, test);
 		__syncthreads();
-		x4_d[id] = x4_s[idy];
-		v4_d[id] = v4_s[idy];
+		x4_d[id] = x4i;
+		v4_d[id] = v4i;
 #if G3 > 0
 		groupIndex_d[id] = -1;
 #endif
@@ -419,53 +413,52 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+////March 2016
 //
 // *****************************************
-template <int Bl>
 __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, double dt, const double Msun, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *asmall_d, int *indexsmall_d, int Nsmall, int N, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *Gridaecount_d, int *Gridaicount_d, int si){
 
         int idy = threadIdx.x;
         int id = blockIdx.x * blockDim.x + idy;
 
-        __shared__ double4 x4_s[Bl];
-        __shared__ double4 v4_s[Bl];
+        double4 x4i;
+        double4 v4i;
 
 	float4 aelimits;
 	int aecount = 0;
 	int index;
 
 	if(id < N){
-        	x4_s[idy] = x4_d[id];
-        	v4_s[idy] = v4_d[id];
+        	x4i = x4_d[id];
+        	v4i = v4_d[id];
 		aelimits = aelimits_d[id];
-	        xold_d[id] = x4_s[idy];
-        	vold_d[id] = v4_s[idy];
+	        xold_d[id] = x4i;
+        	vold_d[id] = v4i;
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
 		index = index_d[id];
 	}
 	else if(id < N + Nsmall){
-		x4_s[idy] = x4small_d[id - N];
-		v4_s[idy] = v4small_d[id - N];
+		x4i = x4small_d[id - N];
+		v4i = v4small_d[id - N];
 		aelimits = aelimitssmall_d[id - N];
-	        xoldsmall_d[id - N] = x4_s[idy];
-        	voldsmall_d[id - N] = v4_s[idy];
+	        xoldsmall_d[id - N] = x4i;
+        	voldsmall_d[id - N] = v4i;
 		asmall_d[id - N].x = 0.0;
 		asmall_d[id - N].y = 0.0;
 		asmall_d[id - N].z = 0.0;
 		index = indexsmall_d[id - N];
 	}
 	else{
-                x4_s[idy].x = 0.0;
-                x4_s[idy].y = 0.0;
-                x4_s[idy].z = 0.0;
-                x4_s[idy].w = 0.0;
-                v4_s[idy].x = 0.0;
-                v4_s[idy].y = 0.0;
-                v4_s[idy].z = 0.0;
-                v4_s[idy].w = 0.0;
+                x4i.x = 0.0;
+                x4i.y = 0.0;
+                x4i.z = 0.0;
+                x4i.w = 0.0;
+                v4i.x = 0.0;
+                v4i.y = 0.0;
+                v4i.z = 0.0;
+                v4i.w = 0.0;
 		aelimits.x = 0.0f;
 		aelimits.y = 0.0f;
 		aelimits.z = 0.0f;
@@ -478,22 +471,22 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	double test;
 
 	if(id < N + Nsmall){
-        	//fastfg(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-        	fgfull(x4_s[idy], v4_s[idy], dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
-        	//BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt, test, id);
+        	//fastfg(x4i, v4i, dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
+        	fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
+        	//BSSinglestep(x4i, v4i, Msun, dt, test, id);
         }
         __syncthreads();
 
 	if(id < N){
-        	x4_d[id] = x4_s[idy];
-        	v4_d[id] = v4_s[idy];
+        	x4_d[id] = x4i;
+        	v4_d[id] = v4i;
 		if(si == 0){
 			aecount_d[id] += aecount;
 		}
 	}
 	else if (id < N + Nsmall){
-                x4small_d[id - N] = x4_s[idy];
-                v4small_d[id - N] = v4_s[idy];
+                x4small_d[id - N] = x4i;
+                v4small_d[id - N] = v4i;
 		if(si == 0){
 			aecountsmall_d[id - N] += aecount;
 		}
@@ -505,38 +498,37 @@ __global__ void fgsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2016
 //
 // *****************************************
-template <int Bl>
 __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	int st = index_d[id] / 100;
 
-	__shared__ double4 x4_s[Bl];
-	__shared__ double4 v4_s[Bl]; 
+	double4 x4i;
+	double4 v4i; 
 
 	if(id < NT){
 		int aecount = 0;
-		x4_s[idy] = x4_d[id];
-		v4_s[idy] = v4_d[id];
+		x4i = x4_d[id];
+		v4i = v4_d[id];
 		__syncthreads();
 
-		xold_d[id] = x4_s[idy];
-		vold_d[id] = v4_s[idy];
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
 		double test;
 		double Msun = Msun_d[st];
 		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4_s[idy], v4_s[idy], dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
-		//BSSinglestep(x4_s[idy], v4_s[idy], Msun, dt * FGt, test, test);
+		//fastfg(x4i, v4i, dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
+		fgfull(x4i, v4i, dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
+		//BSSinglestep(x4i, v4i, Msun, dt * FGt, test, test);
 		__syncthreads();
-		x4_d[id] = x4_s[idy];
-		v4_d[id] = v4_s[idy];
+		x4_d[id] = x4i;
+		v4_d[id] = v4i;
 
 		if(si == 0){
 			aecount_d[id] += aecount;

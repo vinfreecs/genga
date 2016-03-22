@@ -369,7 +369,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 	}
 }
 
-
+#if USE_RANDOM == 1
 __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double *dt_d, int N, int Nst, double time){
 
 	int idy = threadIdx.x;
@@ -449,7 +449,7 @@ printf("%g %d %g\n", time, id, omega);
 		}
 	}
 }
-
+#endif
 
 __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double *Msun_d, double *dt_d, double Ct, int N, int Nst){
 
