@@ -7,91 +7,12 @@
 //It works for the case of more than 65 bodies.
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
-//c = 1 : perform C Kick.
-//c = 2 : perform C Kick + reset Nencpairs + update time.
-//c = 3 : perform C Kick + reset Nencpairs
+//E = 1 : perform C Kick.
+//E = 2 : perform C Kick + reset Nencpairs + update time.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2015
+//Authors: Simon Grimm
+//April 2016
 //*****************************************
-template <int Bl, int NB, int E>
-__global__ void HC128_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
-
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-
-        if(E == 1){
-                if(idy == 0 && idx == 0){
-                        Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
-                }
-                if(idy < 12 && idx == 0) Nenc_d[idy] = 0;
-        }
-        if(E == 2){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
-                }
-        }
-	__shared__  double a1_s[Bl];
-
-	a1_s[idy] = 0.0;
-
-	__syncthreads(); 
-	for (int i = 0; i < NB ; i+= Bl){
-		if(x4_d[idy + i].w > 0 && idy + i < N){
-			if(idx == 0){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
-			}
-			if(idx == 1){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].y;
-			}
-			if(idx == 2){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].z;
-			}
-		}
-	}
-	__syncthreads();
-
-        if(Bl >= 512){
-                if(idy < 256){
-                        a1_s[idy] += a1_s[idy + 256];
-
-                }
-        }
-        __syncthreads();
-
-	if(Bl >= 256){
-		if(idy < 128){
-			a1_s[idy] += a1_s[idy + 128];
-
-		}
-	}
-	__syncthreads();
-
-	if(Bl >= 128){
-		if(idy < 64){
-			a1_s[idy] += a1_s[idy + 64];
-		}
-	}
-	__syncthreads();
-
-        if(idy < 32){
-                volatile double *a = a1_s;
-                a[idy] += a[idy + 32];
-                a[idy] += a[idy + 16];
-                a[idy] += a[idy + 8];
-                a[idy] += a[idy + 4];
-                a[idy] += a[idy + 2];
-                a[idy] += a[idy + 1];
-        }
-	__syncthreads();
-	for(int i = 0; i <NB; i +=  Bl){
-		if(idy + i < N){
-			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
-			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
-			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
-		}
-	}
-}
 template <int Bl, int E>
 __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
 
@@ -102,7 +23,7 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
                 if(idy == 0 && idx == 0){
                         Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
                 }
-                if(idy < 12 && idx == 0) Nenc_d[idy] = 0;
+                if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
         }
         if(E == 2){
                 if(idy == 0 && idx == 0){
@@ -116,7 +37,6 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 	__syncthreads(); 
 	for (int i = 0; i < N; i+= Bl){
 		if(x4_d[idy + i].w > 0 && idy + i < N){
-//if(t > 920 && E == 2 && idx == 0) printf("%g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", t, E, idy + i, x4_d[idy + i].x, x4_d[idy + i].y, x4_d[idy + i].z, x4_d[idy + i].w, v4_d[idy + i].x, v4_d[idy + i].y, v4_d[idy + i].z, v4_d[idy + i].w);
 			if(idx == 0){
 				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
 			}
@@ -179,9 +99,8 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 //It works for the case of less than 65 bodies.
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
-//c = 1 : perform C Kick.
-//c = 2 : perform C Kick + reset Nencpairs + update time.
-//c = 3 : perform C Kick + reset Nencpairs
+//E = 1 : perform C Kick.
+//E = 2 : perform C Kick + reset Nencpairs + update time.
 //
 //Authors: Simon Grimm, Joachim Stadel
 ////March 2015
@@ -196,7 +115,7 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
                 if(idy == 0 && idx == 0){
                         Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
                 }
-                if(idy < 12 && idx == 0) Nenc_d[idy] = 0;
+                if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
         }
 	if(E == 2){
 		if(idy == 0 && idx == 0){
@@ -244,118 +163,6 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 }
 
 // **************************************
-//This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
-//It uses a parallel reduction fomula to calculate the sum in log(N) steps.
-//Each Kernel is launched with 3 blocks, one for each dimension.
-//
-//c = 1 : perform C Kick.
-//c = 2 : perform C Kick + reset Nencpairs + update time.
-//c = 3 : perform C Kick + reset Nencpairs
-//i
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-// *****************************************/
-template <int Bl, int E>
-__global__ void HCsmall_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairssmall_d, int *Nencpairs2_d, int *Nencpairssmall2_d, int *Nenc_d, int *Nencsmall_d, double4 *x4small_d, double4 *v4small_d, int Nsmall, int N){
-
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-
-        if(E == 1){
-                if(idy == 0 && idx == 0){
-                        Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
-			Nencpairssmall2_d[0] = 0;
-                }
-                if(idy < 12 && idx == 0){
-			Nenc_d[idy] = 0;
-			Nencsmall_d[idy] = 0;
-		}
-        }
-        if(E == 2){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
-			Nencpairssmall_d[0] = 0;
-                }
-        }
-        if(E == 3){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;     //This variable is needed in the Kick_kernel
-                }
-        }
-
-	__shared__  double a1_s[Bl];
-
-	a1_s[idy] = 0.0;
-	__syncthreads();
-
-	for(int i = 0; i < N + Nsmall; i+= Bl){
-		if(idy + i < N){
-			if(x4_d[idy + i].w > 0){
-				if(idx == 0) a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
-				if(idx == 1) a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].y;
-				if(idx == 2) a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].z;
-			}
-		}
-		else if(idy + i < Nsmall + N){
-                        if(x4small_d[idy + i - N].w > 0){
-                                if(idx == 0) a1_s[idy] += x4small_d[idy + i - N].w * v4small_d[idy + i - N].x;
-                                if(idx == 1) a1_s[idy] += x4small_d[idy + i - N].w * v4small_d[idy + i - N].y;
-                                if(idx == 2) a1_s[idy] += x4small_d[idy + i - N].w * v4small_d[idy + i - N].z;
-                        }
-		}
-	}
-	__syncthreads();
-
-        if(Bl >= 512){
-                if(idy < 256){
-                        a1_s[idy] += a1_s[idy + 256];
-
-                }
-        }
-        __syncthreads();
-
-	if(Bl >= 256){
-		if(idy < 128){
-			a1_s[idy] += a1_s[idy + 128];
-
-		}
-	}
-	__syncthreads();
-
-	if(Bl >= 128){
-		if(idy < 64){
-			a1_s[idy] += a1_s[idy + 64];
-		}
-	}
-	__syncthreads();
-
-        if(idy < 32){
-                volatile double *a = a1_s;
-                a[idy] += a[idy + 32];
-                a[idy] += a[idy + 16];
-                a[idy] += a[idy + 8];
-                a[idy] += a[idy + 4];
-                a[idy] += a[idy + 2];
-                a[idy] += a[idy + 1];
-        }
-	__syncthreads();
-  
-	for(int i = 0; i < N + Nsmall; i +=  Bl){
-		if(idy + i < N){
-			if(idx == 0) x4_d[idy + i].x += a1_s[0] * dti2Msun;
-			if(idx == 1) x4_d[idy + i].y += a1_s[0] * dti2Msun;
-			if(idx == 2) x4_d[idy + i].z += a1_s[0] * dti2Msun;
-		}
-		else if(idy + i < N + Nsmall){
-                        if(idx == 0) x4small_d[idy + i - N].x += a1_s[0] * dti2Msun;
-                        if(idx == 1) x4small_d[idy + i - N].y += a1_s[0] * dti2Msun;
-                        if(idx == 2) x4small_d[idy + i - N].z += a1_s[0] * dti2Msun;
-		}
-	}
-}
-
-// **************************************
 //Used for Multi Simulation Mode
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
@@ -381,7 +188,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		if(id >= 0 && id < Nst + 1){
 			Nencpairs2_d[id] = 0;           //This variable is needed in the Encounter_kernel
 		}
-		if(id >= 0 && id < 12){
+		if(id >= 0 && id < def_GMax){
 			Nenc_d[id] = 0;
 		}
 	}

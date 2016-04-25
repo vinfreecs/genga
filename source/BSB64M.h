@@ -24,8 +24,6 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	double dt2, dt22;
 	double t = 0.0;
 
-	const double tol = 1.0e-12;
-
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
 	__shared__ double rcritv_s[NN];
@@ -383,7 +381,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 
-				if(error_s[0] < tol * tol || sgnt * dt1 < 1.0e-6){
+				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < 1.0e-6){
 					if(idy < N2){
 						xt_s[idy].x = dx_s[idy][0].x;
 						xt_s[idy].y = dx_s[idy][0].y;
@@ -423,7 +421,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 							int nc = atomicAdd(Ncoll_d, 1);
 							if(nc >= MaxColl -1) nc = MaxColl -1;
-								collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 							}
 						}
 					}

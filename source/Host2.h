@@ -28,7 +28,6 @@ public:
 	int *NB;				//number of bodies increased to integer block size
 	int *N4;				//number of bodies divided by 4
 	int *N2;				//number of bodies divided by 2
-	int *Nconst;				//number of massive bodies in test particle run
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta;			//number of timesteps
@@ -41,7 +40,8 @@ public:
 	double *n2_h, *n2_d;			//factor for velocity
 	int *N_h, *N_d;				//number of bodies
 	int *Nsmall_h, *Nsmall_d;		//number of test particles
-	double *Msun_h, *Msun_d;		//Mass of the star
+	double4 *Msun_h, *Msun_d;		//Mass of the star, Radius, Love Number, fluid Love Number
+	double4 *Spinsun_h, *Spinsun_d;		//Spin of the star x, y, z and time lag
 	double *idt_h, *idt_d;			//initial time step 
 	double *ict_h, *ict_d;			//initial time
 	double *dtiMsun_h, *dtiMsun_d;		//dt/Msun
@@ -55,13 +55,11 @@ public:
 	int NsmallT;
 	long long int NB2T;
 	int NBNencT;
-	int Nsmall2T;
 	int NEnergyT;
 	int icNB;
 
 	int *NsmallS_h;
 	int *NB2S;
-	int *Nsmall2S;
 	int *NEnergy;
 
 	int *NBS_h, *NBS_d;			//starting point in memory of individual simulations

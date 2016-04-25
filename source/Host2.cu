@@ -78,7 +78,6 @@ __host__ Host::Host(long long Restart){
         NsmallT = 0;
         NB2T = 0;
 	NBNencT = 0;
-        Nsmall2T = 0;
         NEnergyT = 0;
 
 	
@@ -182,7 +181,6 @@ __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
 	N4 = (int*)malloc(Nst*sizeof(int));
 	N2 = (int*)malloc(Nst*sizeof(int));
-	Nconst = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int*)malloc(Nst*sizeof(int));
 	rho = (double*)malloc(Nst*sizeof(double));	
 	delta = (long long*)malloc(Nst*sizeof(long long));
@@ -194,7 +192,8 @@ __host__ void Host::Halloc(){
 	n2_h = (double*)malloc(Nst*sizeof(double));
 	N_h = (int*)malloc(Nst*sizeof(int));
 	Nsmall_h = (int*)malloc(Nst*sizeof(int));
-	Msun_h = (double*)malloc(Nst*sizeof(double));
+	Msun_h = (double4*)malloc(Nst*sizeof(double4));
+	Spinsun_h = (double4*)malloc(Nst*sizeof(double4));
 	idt_h = (double*)malloc(Nst*sizeof(double));
 	ict_h = (double*)malloc(Nst*sizeof(double));
 	dtiMsun_h = (double*)malloc(Nst*sizeof(double));
@@ -250,13 +249,13 @@ __host__ void Host::Halloc(){
 	sprintf(format, def_InputFileFormat);
 
 	char ff[5 * 30];
-	int er = sscanf(format, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+	int er = sscanf(format, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
 	 &ff[0 * 5], &ff[1 * 5], &ff[2 * 5], &ff[3 * 5],&ff[4 * 5], &ff[5 * 5], &ff[6 * 5], &ff[7 * 5], &ff[8 * 5],
 	 &ff[9 * 5], &ff[10 * 5], &ff[11 * 5], &ff[12 * 5], &ff[13 * 5], &ff[14 * 5], &ff[15 * 5], &ff[16 * 5], 
-	 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5]);
+	 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
 
 	for(int st = 0; st < Nst; ++st){
-		for(int i = 0; i < 22; ++i){
+		for(int i = 0; i < 25; ++i){
 			GSF[st].informat[i] = 0;
 		}
 
@@ -319,12 +318,25 @@ __host__ void Host::Halloc(){
 			else if(strcmp(ff + f * 5, "t") == 0){
 				GSF[st].informat[f] = 19;
 			}
+			else if(strcmp(ff + f * 5, "k2") == 0){
+				GSF[st].informat[f] = 20;
+			}
+			else if(strcmp(ff + f * 5, "k2f") == 0){
+				GSF[st].informat[f] = 21;
+			}
 		}	
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
 		N_h[st] = 32;
 		Nsmall_h[st] = 0;
-		Msun_h[st] = def_CentralMass;
+		Msun_h[st].x = def_CentralMass;
+		Msun_h[st].y = def_CentralRadius;
+		Msun_h[st].z = def_CentralK2;
+		Msun_h[st].w = def_CentralK2f;
+		Spinsun_h[st].x = 0.0;
+		Spinsun_h[st].y = 0.0;
+		Spinsun_h[st].z = 0.0;
+		Spinsun_h[st].w = 0.0;
 		idt_h[st] = def_TimeStep;
 		ict_h[st] = 0.0;
 		dtiMsun_h[st] = 0.0;		
@@ -337,7 +349,6 @@ __host__ void Host::Halloc(){
 		NB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
-		Nconst[st] = N_h[st] + 1;
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
 		delta[st] = def_IntegrationSteps;
@@ -475,10 +486,70 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Central Mass =") == 0){
 
-			er = fscanf (paramfile, "%lf", &Msun_h[st]);
+			er = fscanf (paramfile, "%lf", &Msun_h[st].x);
 
 			if(er <= 0){
 				printf("Error: Central mass is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star Radius =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Msun_h[st].y);
+
+			if(er <= 0){
+				printf("Error: Star Raius is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star Love Number =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Msun_h[st].z);
+
+			if(er <= 0){
+				printf("Error: Star Love Number is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star fluid Love Number =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Msun_h[st].w);
+
+			if(er <= 0){
+				printf("Error: Star fluid Love Number is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star spin_x =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Spinsun_h[st].x);
+
+			if(er <= 0){
+				printf("Error: Star spin_x is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star spin_y =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Spinsun_h[st].y);
+
+			if(er <= 0){
+				printf("Error: Star spin_y is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star spin_z =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Spinsun_h[st].z);
+
+			if(er <= 0){
+				printf("Error: Star spin_z is not valid!\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
@@ -512,12 +583,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
-			for(int i = 0; i < 22; ++i){
+			for(int i = 0; i < 25; ++i){
 				GSF[st].informat[i] = 0;
 			}
 			//Read input file Format
 			int f;
-			for(f = -1; f < 22; ++f){
+			for(f = -1; f < 25; ++f){
 				er = fscanf (paramfile, "%s", sp);
 				if(strcmp(sp, "x") == 0){
 					GSF[st].informat[f] = 1;
@@ -575,6 +646,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 				else if(strcmp(sp, "t") == 0){
 					GSF[st].informat[f] = 19;
+				}
+				else if(strcmp(sp, "k2") == 0){
+					GSF[st].informat[f] = 20;
+				}
+				else if(strcmp(sp, "k2f") == 0){
+					GSF[st].informat[f] = 21;
 				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
@@ -1082,7 +1159,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Maximum encounter pairs =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NencMax);
-	
+				if(P.NencMax < 512) P.NencMax = 512;	
 				if(er <= 0 || P.NAFinterval <= 0){
 					printf("Error: Maximum encounter pairs = is not valid!\n");
 					return 0;
@@ -1219,7 +1296,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 	}
 
 	for(int st = 0; st < Nst; ++st){
-		dtiMsun_h[st] = dt_h[st] / Msun_h[st];
+		dtiMsun_h[st] = dt_h[st] / Msun_h[st].x;
 		//restart -> inputfilename
 		if(P.tRestart > 0 && P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
@@ -1305,7 +1382,7 @@ __host__ int Host::icSize(int st){
 
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
-	for(int f = 0; f < 22; ++f){
+	for(int f = 0; f < 25; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
 
@@ -1520,17 +1597,8 @@ __host__ int Host::size(){
 		N2[st] = N_h[st];
 		if(N2[st] % 2 == 1) N2[st] +=1;
 		N2[st] /= 2;
-		
-		Nconst[st] = N_h[st] + 1;
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-
-		if(P.UseTestParticles == 1 && N_h[st] > min(NmaxTestParticles, 262144)){
-			printf("Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
-			fprintf(GSF[st].logfile, "Error: Number of massive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
-			fprintf(masterfile, "Error: Number of masive bodies in Test particle mode is too big: %d, Maximum number is %d\n", N_h[st], min(NmaxTestParticles, 262144));
-			return 0;
-		}
 		fclose(GSF[st].logfile);
 	}
 	return 1;
@@ -1547,7 +1615,8 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &n2_d,Nst*sizeof(double));
 	cudaMalloc((void **) &N_d,Nst*sizeof(int));
 	cudaMalloc((void **) &Nsmall_d,Nst*sizeof(int));
-	cudaMalloc((void **) &Msun_d,Nst*sizeof(double));
+	cudaMalloc((void **) &Msun_d,Nst*sizeof(double4));
+	cudaMalloc((void **) &Spinsun_d,Nst*sizeof(double4));
 	cudaMalloc((void **) &idt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &ict_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dtiMsun_d,Nst*sizeof(double));
@@ -1560,7 +1629,8 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
+	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1605,7 +1675,6 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
 			fprintf(infofile, "FormatP: %d\n", P.FormatP);						// use only argument in simulation 0
-			fprintf(infofile, "NmaxTestParticles: %d\n", NmaxTestParticles);
 			fprintf(infofile, "NmaxM: %d\n", NmaxM);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
@@ -1616,7 +1685,13 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Irregular outputs: %d\n", P.IrregularOutputs);			// use only argument in simulation 0
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta[st]);
-			fprintf(infofile, "Central Mass: %g\n", Msun_h[st]);
+			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
+			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
+			fprintf(infofile, "Star Love Number: %g\n", Msun_h[st].z);
+			fprintf(infofile, "Star fluid Love Number: %g\n", Msun_h[st].w);
+			fprintf(infofile, "Star spin_x: %g\n", Spinsun_h[st].x);
+			fprintf(infofile, "Star spin_y: %g\n", Spinsun_h[st].y);
+			fprintf(infofile, "Star spin_z: %g\n", Spinsun_h[st].z);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
 #if G3 > 0
@@ -1645,6 +1720,8 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 17) fprintf(infofile, "emin ");
 				else if(GSF[st].informat[f] == 18) fprintf(infofile, "emax ");
 				else if(GSF[st].informat[f] == 19) fprintf(infofile, "t ");
+				else if(GSF[st].informat[f] == 20) fprintf(infofile, "k2 ");
+				else if(GSF[st].informat[f] == 21) fprintf(infofile, "k2f ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -1653,8 +1730,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
 			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
 			fprintf(infofile, "MaxColl: %d\n", MaxColl);
-			fprintf(infofile, "pc: %g\n", pc);
-			fprintf(infofile, "cef: %g\n", cef);
+			fprintf(infofile, "pc: %g\n", def_pc);
+			fprintf(infofile, "cef: %g\n", def_cef);
 			fprintf(infofile, "Number of bodies: %d\n", N_h[st]);
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
@@ -1699,7 +1776,6 @@ __host__ void Host::Tsizes(){
 	NBS_h = (int*)malloc(Nst*sizeof(int));
 	NsmallS_h = (int*)malloc(Nst*sizeof(int));
 	NB2S = (int*)malloc(Nst*sizeof(int));
-	Nsmall2S = (int*)malloc(Nst*sizeof(int));
 	NEnergy = (int*)malloc(Nst*sizeof(int));
 
 	cudaMalloc((void **) &NBS_d, Nst*sizeof(int));
@@ -1708,12 +1784,10 @@ __host__ void Host::Tsizes(){
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
 		NB2S[st] = NB2T;
-		Nsmall2S[st] = Nsmall2T;
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
 		NB2T += NB[st] * NmaxM;
-		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(NB[st], 8);
 	}
 	NBNencT = NB2T;
@@ -1722,9 +1796,8 @@ __host__ void Host::Tsizes(){
 	if(Nst == 1){
 		NT = NB[0];
 		NB2T = (long long int)(NB[0]) * (long long int)(NB[0]);
-		NBNencT = NB[0] * P.NencMax;
-		Nsmall2T = Nsmall_h[0] * 2 * NmaxTestParticles;
 		icNB = NB[0];
+		NBNencT = (icNB + Nsmall_h[0]) * P.NencMax;
 	}
 	NconstT = NT + NsmallT;
 }
@@ -1924,7 +1997,6 @@ __host__ int Host::freeHost(){
 	free(NB);
 	free(N4);
 	free(N2);
-	free(Nconst);
 	free(Nmin);
 	free(rho);
 	free(delta);
@@ -1934,6 +2006,7 @@ __host__ int Host::freeHost(){
 	free(N_h);
 	free(Nsmall_h);
 	free(Msun_h);
+	free(Spinsun_h);
 	free(idt_h);
 	free(ict_h);
 	free(dtiMsun_h);
@@ -1948,6 +2021,7 @@ __host__ int Host::freeHost(){
 	cudaFree(N_d);
 	cudaFree(Nsmall_d);
 	cudaFree(Msun_d);
+	cudaFree(Spinsun_d);
 	cudaFree(idt_d);
 	cudaFree(ict_d);
 	cudaFree(dtiMsun_d);

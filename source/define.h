@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.39
+#define Version 3.40
 
 
 //Default parameter values
@@ -19,6 +19,9 @@
 #define def_Buffer 1
 #define def_IntegrationSteps 1000
 #define def_CentralMass 1.0
+#define def_CentralRadius 0.00465475877
+#define def_CentralK2 1.0
+#define def_CentralK2f 1.0
 #define def_n1 3.0
 #define def_n2 0.4
 #define def_InputFile "inital.dat"
@@ -59,11 +62,11 @@
 #define def_NencMax 512
 
 
-#define pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
+#define def_pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define MaxWriteEnc 128			//Maximum number of Encounter per time step which can be written to file
-#define cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
-
+#define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
+#define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
@@ -94,8 +97,6 @@
 #define dayUnit 0.01720209895
 #define def_AU 149597870700.0		//AU in m
 #define def_Solarmass 1.98855e30       //solar mass in Kg
-//Maximum number of massive bodies in the test particle mode
-#define NmaxTestParticles 16
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
@@ -104,6 +105,10 @@
 
 #define KM_Bl 128
 #define KM_Bl2 (KM_Bl - NmaxM)
+
+
+//Maximum close encounter group size  = 2^(def_GMax)
+#define def_GMax 20
 
 //Parameters for fastfg
 #define FGN 127				//Number of elements in table for fastfg
@@ -145,7 +150,7 @@
 #define USE_NAF 0
 
 
-#define USE_RANDOM 0
+#define USE_RANDOM 1
 
 #if USE_RANDOM
 #include <curand_kernel.h>
@@ -201,7 +206,7 @@ struct GSFiles{
 	char ejectfilename[128];
 	char encounterfilename[128];
 	char X[128];
-	int informat[22];
+	int informat[25];
 	char path[128];
 };
 

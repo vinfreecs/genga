@@ -220,25 +220,19 @@ int loop(Data D, double &time){
 }
 
 
-__global__ void GLPositions(double4 *x4_d, double4 *x4small_d, double4 *positions, double4 *colors, int N, int Nsmall, double *MLimits_d){
+__global__ void GLPositions(double4 *x4_d, double4 *positions, double4 *colors, int N, int Nsmall, double *MLimits_d){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	double4 x;
-	if(id < N){
+	if(id < N + Nsmall){
 		x = x4_d[id];
 	}
 	else{
-		if(id - N < Nsmall){
-			x = x4small_d[id - N];	
-
-		}
-		else{
-			x.x = 0.0;
-			x.y = 0.0;
-			x.z = 0.0;
-			x.w = 1.0;
-		}
+		x.x = 0.0;
+		x.y = 0.0;
+		x.z = 0.0;
+		x.w = 1.0;
 	}
 
 	double mscale = MLimits_d[0] / x.w;
@@ -371,7 +365,7 @@ void display(){
 	int nb = (D.N_h[0] + D.Nsmall_h[0] + 255) / 256; 
 
 	//Fill the position array from the CUDA arrays
-	GLPositions <<< nb, 256 >>> (D.x4_d, D.x4small_d, positions, colors, D.N_h[0], D.Nsmall_h[0], MLimits_d);
+	GLPositions <<< nb, 256 >>> (D.x4_d, positions, colors, D.N_h[0], D.Nsmall_h[0], MLimits_d);
 	cudaDeviceSynchronize();
 	// Unmap buffer object
 	cudaGraphicsUnmapResources(1, &positionsVBO_CUDA, 0);

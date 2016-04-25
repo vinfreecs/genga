@@ -10,13 +10,14 @@ __host__ Data::Data(long long Restart): Host(Restart){
 __host__ void Data::AllocateOrbitt(){
 
 	//allocate memory on host//
-	rcrit_h = (double*)malloc(NT * sizeof(double));
-	x4_h = (double4*)malloc(NT * sizeof(double4));
-	v4_h = (double4*)malloc(NT * sizeof(double4));
-	xold_h = (double4*)malloc(NT * sizeof(double4));
-	vold_h = (double4*)malloc(NT * sizeof(double4));
-	index_h = (int*)malloc(NT * sizeof(int));
-	spin_h = (double3*)malloc(NT * sizeof(double3));
+	rcrit_h = (double*)malloc(NconstT * sizeof(double));
+	x4_h = (double4*)malloc(NconstT * sizeof(double4));
+	v4_h = (double4*)malloc(NconstT * sizeof(double4));
+	xold_h = (double4*)malloc(NconstT * sizeof(double4));
+	vold_h = (double4*)malloc(NconstT * sizeof(double4));
+	index_h = (int*)malloc(NconstT * sizeof(int));
+	spin_h = (double3*)malloc(NconstT * sizeof(double3));
+	love_h = (double3*)malloc(NconstT * sizeof(double3));
 	U_h = (double*)malloc(Nst * sizeof(double));
 	LI_h = (double*)malloc(Nst * sizeof(double));
 	Energy_h = (double*)malloc(NEnergyT * sizeof(double));
@@ -24,11 +25,11 @@ __host__ void Data::AllocateOrbitt(){
 	LI0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(25 * MaxColl * Nst * sizeof(double));
 	writeEnc_h = (double*)malloc(25 * MaxWriteEnc * Nst * sizeof(double));
-	aelimits_h = (float4*)malloc(NT * sizeof(float4));
-	aecount_h = (int*)malloc(NT * sizeof(int));
-	enccount_h = (int*)malloc(NT * sizeof(int));
-	aecountT_h = (long long*)malloc(NT * sizeof(long long));
-	enccountT_h = (long long*)malloc(NT * sizeof(long long));
+	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
+	aecount_h = (int*)malloc(NconstT * sizeof(int));
+	enccount_h = (int*)malloc(NconstT * sizeof(int));
+	aecountT_h = (long long*)malloc(NconstT * sizeof(long long));
+	enccountT_h = (long long*)malloc(NconstT * sizeof(long long));
 
 	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
 	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
@@ -38,22 +39,9 @@ __host__ void Data::AllocateOrbitt(){
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
 
-	x4small_h = (double4*)malloc(NsmallT * sizeof(double4));
-	v4small_h = (double4*)malloc(NsmallT * sizeof(double4));
-	xoldsmall_h = (double4*)malloc(NsmallT * sizeof(double4));
-	voldsmall_h = (double4*)malloc(NsmallT * sizeof(double4));
-	indexsmall_h = (int*)malloc(NsmallT * sizeof(int));
-	spinsmall_h = (double3*)malloc(NsmallT * sizeof(double3));
-	rcritvsmall_h = (double*)malloc(NsmallT * sizeof(double));
-	aelimitssmall_h = (float4*)malloc(NsmallT * sizeof(float4));
-	aecountsmall_h = (int*)malloc(NsmallT * sizeof(int));
-	enccountsmall_h = (int*)malloc(NsmallT * sizeof(int));
-	aecountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
-	enccountsmallT_h = (long long*)malloc(NsmallT * sizeof(long long));
-
 	groupIterate_h = (int*)malloc(sizeof(int));
 
-	cudaHostAlloc((void **)&test_h, NT * sizeof(double), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
@@ -61,26 +49,25 @@ __host__ void Data::AllocateOrbitt(){
 	//allocate pinned memory on host//
 	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairssmall_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairssmall2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 
 	//allocate memory on device//
-	cudaMalloc((void **) &x4_d, NT * sizeof(double4));
-	cudaMalloc((void **) &v4_d, NT * sizeof(double4));
-	cudaMalloc((void **) &xold_d, NT * sizeof(double4));
-	cudaMalloc((void **) &vold_d, NT * sizeof(double4));
-	cudaMalloc((void **) &rcrit_d, NT * sizeof(double));
-	cudaMalloc((void **) &rcritv_d, NT * sizeof(double));
-	cudaMalloc((void **) &test_d, NT * sizeof(double));
-	cudaMalloc((void **) &index_d, NT * sizeof(int));
-	cudaMalloc((void **) &spin_d, NT * sizeof(double3));
+	cudaMalloc((void **) &x4_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &v4_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &xold_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &vold_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &rcrit_d, NconstT * sizeof(double));
+	cudaMalloc((void **) &rcritv_d, NconstT * sizeof(double));
+	cudaMalloc((void **) &test_d, NconstT * sizeof(double));
+	cudaMalloc((void **) &index_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &spin_d, NconstT * sizeof(double3));
+	cudaMalloc((void **) &love_d, NconstT * sizeof(double3));
 	cudaMalloc((void **) &U_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI_d, Nst *sizeof(double));
-	cudaMalloc((void **) &a_d, NT * sizeof(double3));
+	cudaMalloc((void **) &a_d, NconstT * sizeof(double3));
 	cudaMalloc((void **) &Energy_d, NEnergyT * sizeof(double));
 	cudaMalloc((void **) &Energy0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
-	cudaMalloc((void **) &Nenc_d, 12 * sizeof(int));
+	cudaMalloc((void **) &Nenc_d, def_GMax * sizeof(int));
 	cudaMalloc((void **) &Ncoll_d, sizeof(int));
 	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
@@ -91,41 +78,37 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * MaxWriteEnc);
-	cudaMalloc((void **) &aelimits_d, NT * sizeof(float4));
-	cudaMalloc((void **) &aecount_d, NT * sizeof(int));
-	cudaMalloc((void **) &enccount_d, NT * sizeof(int));
-	cudaMalloc((void **) &aecountT_d, NT * sizeof(long long));
-	cudaMalloc((void **) &enccountT_d, NT * sizeof(long long));
+	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
+	cudaMalloc((void **) &aecount_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &enccount_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &aecountT_d, NconstT * sizeof(long long));
+	cudaMalloc((void **) &enccountT_d, NconstT * sizeof(long long));
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
 
 	//arrays for BSA
-	cudaMalloc((void **) &xt_d, NT * sizeof(double4));
-	cudaMalloc((void **) &vt_d, NT * sizeof(double4));
-	cudaMalloc((void **) &xp_d, NT * sizeof(double4));
-	cudaMalloc((void **) &vp_d, NT * sizeof(double4));
-	cudaMalloc((void **) &dx_d, NT * 8 * sizeof(double3));
-	cudaMalloc((void **) &dv_d, NT * 8 * sizeof(double3));
-	cudaMalloc((void **) &dt1_d, NT * sizeof(double));
-	cudaMalloc((void **) &t1_d, NT * sizeof(double));
+	cudaMalloc((void **) &xt_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &vt_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &xp_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &vp_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &dx_d, NconstT * 8 * sizeof(double3));
+	cudaMalloc((void **) &dv_d, NconstT * 8 * sizeof(double3));
+	cudaMalloc((void **) &dt1_d, NconstT * sizeof(double));
+	cudaMalloc((void **) &t1_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
 	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 > 0
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
-	cudaMalloc((void **) &groupIndex_d,NT*sizeof(int));
-	cudaMalloc((void **) &groupIndexsmall_d,NsmallT*sizeof(int));
-	cudaMalloc((void **) &groupIndexsmallOld_d,NsmallT*sizeof(int));
+	cudaMalloc((void **) &groupIndex_d, NconstT*sizeof(int));
 	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double4));
-	cudaMalloc((void **) &x4G3_d, NT * sizeof(double4));
-	cudaMalloc((void **) &v4G3_d, NT * sizeof(double4));
+	cudaMalloc((void **) &x4G3_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &v4G3_d, NconstT * sizeof(double4));
 #else
 	K_d = NULL;
 	Kold_d = NULL;
 	groupIndex_d = NULL;
-	groupIndexsmall_d = NULL;
-	groupIndexsmallOld_d = NULL;
 	StopTime_d = NULL;
 	x4G3_d = NULL;
 	v4G3_d = NULL;
@@ -133,33 +116,13 @@ __host__ void Data::AllocateOrbitt(){
 #endif
 	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
 
-	cudaMalloc((void **) &x4small_d, NsmallT * sizeof(double4));
-	cudaMalloc((void **) &v4small_d, NsmallT * sizeof(double4));
-	cudaMalloc((void **) &xoldsmall_d, NsmallT * sizeof(double4));
-	cudaMalloc((void **) &voldsmall_d, NsmallT * sizeof(double4));
-	cudaMalloc((void **) &indexsmall_d, NsmallT * sizeof(int));
-	cudaMalloc((void **) &spinsmall_d, NsmallT * sizeof(double3));
-	cudaMalloc((void **) &rcritvsmall_d, NsmallT * sizeof(double));
-	cudaMalloc((void **) &asmall_d, NsmallT * sizeof(double3));
-	cudaMalloc((void **) &Nencsmall_d, 12 * sizeof(int));
-	cudaMalloc((void **) &Nencpairssmall_d, (Nst + 1) * sizeof(int));
-	cudaMalloc((void **) &Nencpairssmall2_d, (Nst + 1) * sizeof(int));
-	cudaMalloc((void **) &Encpairssmall_d, sizeof(int2) * Nsmall2T);
-	cudaMalloc((void **) &Encpairssmall2_d, sizeof(int2) * Nsmall2T);
-	cudaMalloc((void **) &aelimitssmall_d, NsmallT * sizeof(float4));
-	cudaMalloc((void **) &aecountsmall_d, NsmallT * sizeof(int));
-	cudaMalloc((void **) &enccountsmall_d, NsmallT * sizeof(int));
-	cudaMalloc((void **) &aecountsmallT_d, NsmallT * sizeof(long long));
-	cudaMalloc((void **) &enccountsmallT_d, NsmallT * sizeof(long long));
-
 #if poincareFlag == 1
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
 
 #if USE_RANDOM
-	cudaMalloc((void **) &random_d, NT * sizeof(curandState));
-	cudaMalloc((void **) &randomsmall_d, NsmallT * sizeof(curandState));
+	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
 #endif
 
 	CollisionFlag = 0;
@@ -174,7 +137,7 @@ __host__ int Data::CMallocateOrbit(){
 	fprintf(masterfile,"CudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0) return 0;
 
-	cudaHostAlloc((void **)&Nenc_m, 12*sizeof(int), cudaHostAllocMapped);
+	cudaHostAlloc((void **)&Nenc_m, def_GMax * sizeof(int), cudaHostAllocMapped);
 	error = cudaGetLastError();
 	fprintf(masterfile,"CudaHostAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0) return 0;
@@ -197,8 +160,6 @@ __host__ int Data::CMallocateOrbit(){
 	cudaHostGetDevicePointer((void **)&EncFlag_d, (void *)EncFlag_m, 0);
 	EncFlag_m[0] = 0;
 
-	cudaHostAlloc((void **)&Nencsmall_m, 12*sizeof(int), cudaHostAllocMapped);
-	cudaHostGetDevicePointer((void **)&Nencsmall_d, (void *)Nencsmall_m, 0);
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"mapping error = %d = %s\n",error, cudaGetErrorString(error));
@@ -209,7 +170,7 @@ __host__ int Data::CMallocateOrbit(){
 }
 
 
-//This function allocates the Grida and set values to zero
+//This function allocates the Gridae and set values to zero
 __host__ int Data::GridaeAlloc(){
 	cudaError_t error;
 	GridNae = Gridae.Na * Gridae.Ne;
@@ -359,21 +320,17 @@ __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
 	NWriteEnc_m[0] = 0;
-	for(int i = 0; i < 12; ++i){
+	for(int i = 0; i < def_GMax; ++i){
 		Nenc_m[i] = 0;
-		Nencsmall_m[i] = 0;
 	}
 	EjectionFlag_m[0] = 0;
 	for(int st = 0; st < Nst; ++st){
 		EjectionFlag_m[st + 1] = 0;
-		for(int i = 0; i < N_h[st]; ++i){
+		for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
 			index_h[NBS_h[st] + i] = i+st*100;
 		}
-		for(int i = 0; i < Nsmall_h[st]; ++i){
-			indexsmall_h[NsmallS_h[st] + i] = i + N_h[st] + st*100;
-		}
 	}
-	for(int i = 0; i < NT; ++i){
+	for(int i = 0; i < NT + NsmallT; ++i){
 		rcrit_h[i] = 0.0;
 		x4_h[i].x = 1.0;
 		x4_h[i].y = 0.0;
@@ -395,6 +352,9 @@ __host__ int Data::init(){
 		spin_h[i].x = 0.0;
 		spin_h[i].y = 0.0;
 		spin_h[i].z = 0.0;
+		love_h[i].x = 0.0;
+		love_h[i].y = 0.0;
+		love_h[i].z = 0.0;
 		aelimits_h[i].x = 0.0f;
 		aelimits_h[i].y = 1.0f;
 		aelimits_h[i].z = 0.0f;
@@ -423,40 +383,10 @@ __host__ int Data::init(){
 		Energy_h[i] = 0.0;
 	}
 
-	for(int i = 0; i < NsmallT; ++i){
-		rcritvsmall_h[i] = 0.0;
-		x4small_h[i].x = 1.0;
-		x4small_h[i].y = 0.0;
-		x4small_h[i].z = 0.0;
-		v4small_h[i].x = 0.0;
-		v4small_h[i].y = 0.0;
-		v4small_h[i].z = 0.0;
-		x4small_h[i].w = -1.0e-12;
-		v4small_h[i].w = 0.0;
-		xoldsmall_h[i].x = x4small_h[i].x;
-		xoldsmall_h[i].y = x4small_h[i].y;
-		xoldsmall_h[i].z = x4small_h[i].z;
-		xoldsmall_h[i].w = -1.0e-12;
-		voldsmall_h[i].x = v4small_h[i].x;
-		voldsmall_h[i].y = v4small_h[i].y;
-		voldsmall_h[i].z = v4small_h[i].z;
-		voldsmall_h[i].w = 0.0;
-		spinsmall_h[i].x = 0.0;
-		spinsmall_h[i].y = 0.0;
-		spinsmall_h[i].z = 0.0;
-		aelimitssmall_h[i].x = 0.0f;
-		aelimitssmall_h[i].y = 1.0f;
-		aelimitssmall_h[i].z = 0.0f;
-		aelimitssmall_h[i].w = 1.0f;
-		aecountsmall_h[i] = 0;
-		enccountsmall_h[i] = 0;
-		aecountsmallT_h[i] = 0;
-		enccountsmallT_h[i] = 0;
-	}
-
 	for(int i = 0; i < Nst * 25 * MaxColl; ++i){
 		Coll_h[i] = 0.0;
 	}
+
 	for(int i = 0; i < Nst * 25 * MaxWriteEnc; ++i){
 		writeEnc_h[i] = 0.0;
 	}
@@ -464,8 +394,6 @@ __host__ int Data::init(){
 	for(int st = 0; st < Nst + 1; ++st){    
 		Nencpairs_h[st] = 0;
 		Nencpairs2_h[st] = 0;
-		Nencpairssmall_h[st] = 0;
-		Nencpairssmall2_h[st] = 0;
 	}
 	for(int st = 0; st < Nst; ++st){
 		U_h[st] = 0.0;
@@ -475,8 +403,7 @@ __host__ int Data::init(){
 	}
 
 #if USE_RANDOM
-	randomInit_kernel <<< (NT + 255) / 256, 256>>> (random_d, NT);
-	if(NsmallT > 0) randomInit_kernel <<< (NsmallT + 255) / 256, 256>>> (randomsmall_d, NsmallT);
+	randomInit_kernel <<< (NconstT + 255) / 256, 256>>> (random_d, NconstT);
 #endif
 
 	return 1;
@@ -489,7 +416,6 @@ __host__ int Data::ic(){
 		if(N_h[st] + Nsmall_h[st] > 0){
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			int NBS = NBS_h[st];
-			int NsmallS = NsmallS_h[st];
 			fprintf(GSF[st].logfile, "\n************* Read initial conditions ****************\n \n");
 			int icerr = 0;
 			icerr = readic(st);
@@ -499,51 +425,38 @@ __host__ int Data::ic(){
 				return 0;
 			}
 			fclose(GSF[st].logfile);
-			HelioToDemo(x4_h + NBS, v4_h + NBS, Msun_h[st], N_h[st], x4small_h + NsmallS, v4small_h + NsmallS, Nsmall_h[st]);
+			HelioToDemo(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
 		}
 	}
 	//Copy memory to device//
 
-	cudaMemcpy(x4_d, x4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(xold_d, x4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(vold_d, v4_h, sizeof(double4) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NT, cudaMemcpyHostToDevice);
+	cudaMemcpy(x4_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(xold_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(vold_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(U_d, U_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy0_d, Energy0_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI0_d, LI0_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy_d, Energy_h, sizeof(double) * NEnergyT, cudaMemcpyHostToDevice);
-	cudaMemcpy(test_d, test_h, sizeof(double) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(index_d, index_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(spin_d, spin_h, sizeof(double3) * NT, cudaMemcpyHostToDevice);
+	cudaMemcpy(test_d, test_h, sizeof(double) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(index_d, index_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(spin_d, spin_h, sizeof(double3) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(love_d, love_h, sizeof(double3) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * 25 * MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * MaxWriteEnc, cudaMemcpyHostToDevice);
-	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecount_d, aecount_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccount_d, enccount_h, sizeof(int) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long) * NT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecount_d, aecount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccount_d, enccount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
 
-	cudaMemcpy(x4small_d, x4small_h, sizeof(double4) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(v4small_d, v4small_h, sizeof(double4) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(xoldsmall_d, xoldsmall_h, sizeof(double4) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(voldsmall_d, voldsmall_h, sizeof(double4) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(spinsmall_d, spinsmall_h, sizeof(double3) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(indexsmall_d, indexsmall_h, sizeof(int) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcritvsmall_d, rcritvsmall_h, sizeof(double) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(Nsmall_d, Nsmall_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Nencpairssmall_d, Nencpairssmall_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Nencpairssmall2_d, Nencpairssmall2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(aelimitssmall_d, aelimitssmall_h, sizeof(float4) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecountsmall_d, aecountsmall_h, sizeof(int) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccountsmall_d, enccountsmall_h, sizeof(int) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecountsmallT_d, aecountsmallT_h, sizeof(long long) * NsmallT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccountsmallT_d, enccountsmallT_h, sizeof(long long) * NsmallT, cudaMemcpyHostToDevice);
+	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 
 	cudaError_t error;
 
@@ -565,7 +478,6 @@ __host__ int Data::readic(int st){
 
 	int N = N_h[st];
 	int Nsmall = Nsmall_h[st];
-	int NsmallS = NsmallS_h[st];
 	int NBS = NBS_h[st];
 
 	FILE *infile;	
@@ -577,32 +489,24 @@ __host__ int Data::readic(int st){
 	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 
 	int ii = 0;
-	int iismall = 0;
 	
 	double skip;
 	double4 x, v;
 	double3 spin;
+	double3 love;
 	int index;
 	float4 aelimits;
 
 	if(P.tRestart == 0){
 		for(int i = 0; i < N + Nsmall; ++i){
-			if(i < N){
-				x = x4_h[i + NBS];
-				v = v4_h[i + NBS];
-				spin = spin_h[i + NBS];
-				index = index_h[i + NBS];
-				aelimits = aelimits_h[i + NBS];
-			}
-			else{
-				x = x4small_h[i-N + NsmallS];
-				v = v4small_h[i-N + NsmallS];
-				spin = spinsmall_h[i-N + NsmallS];
-				index = indexsmall_h[i-N + NsmallS];
-				aelimits = aelimitssmall_h[i-N + NsmallS];
-			}
+			x = x4_h[i + NBS];
+			v = v4_h[i + NBS];
+			spin = spin_h[i + NBS];
+			love = love_h[i + NBS];
+			index = index_h[i + NBS];
+			aelimits = aelimits_h[i + NBS];
 
-			for(int f = 0; f < 22; ++f){
+			for(int f = 0; f < 25; ++f){
 				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);
 				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);
 				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);
@@ -624,30 +528,22 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 19){
 					if(ict_h[st] == 0) fscanf (infile, "%lf",&ict_h[st]);
 					else fscanf (infile, "%lf",&skip);
-					}
+				}
+				else if (GSF[st].informat[f] == 20) fscanf (infile, "%f",&love.x);
+				else if (GSF[st].informat[f] == 21) fscanf (infile, "%f",&love.y);
 			}
 			if(index < 0) index *= -1;
 			if(v.w == 0){
 				v.w = cbrt((x.w * 0.75 ) / (M_PI * rho[st] * AU * AU * AU / Solarmass));
 			}
-			if(x.w > 0.0 || P.UseTestParticles == 0){
-				x4_h[ii + NBS] = x;
-				v4_h[ii + NBS] = v;
-				spin_h[ii + NBS] = spin;
-				if(Nst == 1) index_h[ii + NBS] = index;
-				else index_h[ii + NBS] = index % 100 + 100*st;
-				aelimits_h[ii + NBS] = aelimits;
-				++ii;
-			}
-			else{
-				x4small_h[iismall + NsmallS] = x;
-				v4small_h[iismall + NsmallS] = v;
-				spinsmall_h[iismall + NsmallS] = spin;
-				if(Nst == 1) indexsmall_h[iismall + NsmallS] = index;
-				else indexsmall_h[iismall + NsmallS] = index % 100 + 100*st;
-				aelimitssmall_h[iismall + NsmallS] = aelimits;
-				++iismall;
-			}
+			x4_h[ii + NBS] = x;
+			v4_h[ii + NBS] = v;
+			spin_h[ii + NBS] = spin;
+			love_h[ii + NBS] = love;
+			if(Nst == 1) index_h[ii + NBS] = index;
+			else index_h[ii + NBS] = index % 100 + 100*st;
+			aelimits_h[ii + NBS] = aelimits;
+			++ii;
 		}
 	}
 	else{
@@ -679,7 +575,7 @@ __host__ int Data::readic(int st){
 				}
 			}
 
-			for(int i = 0; i < N; ++i){
+			for(int i = 0; i < N + Nsmall; ++i){
 				if(i > 0) fscanf (infile, "%lf",&time);
 				fscanf (infile, "%d",&index_h[i + NBS]);
 				fscanf (infile, "%lf",&x4_h[i + NBS].w);
@@ -707,38 +603,9 @@ __host__ int Data::readic(int st){
 
 				++ii;
 			}
-			for(int i = 0; i < Nsmall; ++i){
-				fscanf (infile, "%lf",&skip);
-				fscanf (infile, "%d",&indexsmall_h[i + NsmallS]);
-				fscanf (infile, "%lf",&x4small_h[i + NsmallS].w);
-				fscanf (infile, "%lf",&v4small_h[i + NsmallS].w);
-				fscanf (infile, "%lf",&x4small_h[i + NsmallS].x);
-				fscanf (infile, "%lf",&x4small_h[i + NsmallS].y);
-				fscanf (infile, "%lf",&x4small_h[i + NsmallS].z);
-				fscanf (infile, "%lf",&v4small_h[i + NsmallS].x);
-				fscanf (infile, "%lf",&v4small_h[i + NsmallS].y);
-				fscanf (infile, "%lf",&v4small_h[i + NsmallS].z);
-				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].x);
-				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].y);
-				fscanf (infile, "%lf",&spinsmall_h[i + NsmallS].z);
-				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].x);
-				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].y);
-				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].z);
-				fscanf (infile, "%f",&aelimitssmall_h[i + NsmallS].w);
-				fscanf (infile, "%lf",&skip);
-				fscanf (infile, "%lf",&aecount);
-				fscanf (infile, "%lld",&enccountsmallT_h[i + NsmallS]);
-				fscanf (infile, "%lf",&ttest);
-
-				indexsmall_h[i + NsmallS] += 100*st;
-				aecountsmallT_h[i + NsmallS] = (long long)(aecount * P.tRestart);
-
-				++ii;
-			}
 		}
 		if(P.FormatP == 0){
 			ii = 0;
-			int iismall = 0;
 			FILE *OrigInfile;	
 			OrigInfile = fopen(GSF[st].Originputfilename, "r");
 			for(int k = 0; k < 1000000000; ++k){
@@ -777,74 +644,47 @@ __host__ int Data::readic(int st){
 				double m;
 				fscanf (infile, "%d",&index);
 				fscanf (infile, "%lf",&m);
-				if(m > 0 || P.UseTestParticles == 0){
-					index_h[ii + NBS] = index;	
-					x4_h[ii + NBS].w = m;
-					fscanf (infile, "%lf",&v4_h[ii + NBS].w);
-					fscanf (infile, "%lf",&x4_h[ii + NBS].x);
-					fscanf (infile, "%lf",&x4_h[ii + NBS].y);
-					fscanf (infile, "%lf",&x4_h[ii + NBS].z);
-					fscanf (infile, "%lf",&v4_h[ii + NBS].x);
-					fscanf (infile, "%lf",&v4_h[ii + NBS].y);
-					fscanf (infile, "%lf",&v4_h[ii + NBS].z);
-					fscanf (infile, "%lf",&spin_h[ii + NBS].x);
-					fscanf (infile, "%lf",&spin_h[ii + NBS].y);
-					fscanf (infile, "%lf",&spin_h[ii + NBS].z);
-					fscanf (infile, "%f",&aelimits_h[ii + NBS].x);
-					fscanf (infile, "%f",&aelimits_h[ii + NBS].y);
-					fscanf (infile, "%f",&aelimits_h[ii + NBS].z);
-					fscanf (infile, "%f",&aelimits_h[ii + NBS].w);
-					fscanf (infile, "%lf",&skip);
-					fscanf (infile, "%lf",&aecount);
-					fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
-					fscanf (infile, "%lf",&ttest);
 
-					if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
-					aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
+				index_h[ii + NBS] = index;	
+				x4_h[ii + NBS].w = m;
+				fscanf (infile, "%lf",&v4_h[ii + NBS].w);
+				fscanf (infile, "%lf",&x4_h[ii + NBS].x);
+				fscanf (infile, "%lf",&x4_h[ii + NBS].y);
+				fscanf (infile, "%lf",&x4_h[ii + NBS].z);
+				fscanf (infile, "%lf",&v4_h[ii + NBS].x);
+				fscanf (infile, "%lf",&v4_h[ii + NBS].y);
+				fscanf (infile, "%lf",&v4_h[ii + NBS].z);
+				fscanf (infile, "%lf",&spin_h[ii + NBS].x);
+				fscanf (infile, "%lf",&spin_h[ii + NBS].y);
+				fscanf (infile, "%lf",&spin_h[ii + NBS].z);
+				fscanf (infile, "%f",&aelimits_h[ii + NBS].x);
+				fscanf (infile, "%f",&aelimits_h[ii + NBS].y);
+				fscanf (infile, "%f",&aelimits_h[ii + NBS].z);
+				fscanf (infile, "%f",&aelimits_h[ii + NBS].w);
+				fscanf (infile, "%lf",&skip);
+				fscanf (infile, "%lf",&aecount);
+				fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
+				fscanf (infile, "%lf",&ttest);
 
-					++ii;
-				}
-				else{
-					indexsmall_h[iismall + NsmallS] = index;
-					x4small_h[iismall + NsmallS].w = m;
-					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].w);
-					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].x);
-					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].y);
-					fscanf (infile, "%lf",&x4small_h[iismall + NsmallS].z);
-					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].x);
-					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].y);
-					fscanf (infile, "%lf",&v4small_h[iismall + NsmallS].z);
-					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].x);
-					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].y);
-					fscanf (infile, "%lf",&spinsmall_h[iismall + NsmallS].z);
-					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].x);
-					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].y);
-					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].z);
-					fscanf (infile, "%f",&aelimitssmall_h[iismall + NsmallS].w);
-					fscanf (infile, "%lf",&skip);
-					fscanf (infile, "%lf",&aecount);
-					fscanf (infile, "%lld",&enccountsmallT_h[iismall + NsmallS]);
-					fscanf (infile, "%lf",&ttest);
+				if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
+				aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
 
-					indexsmall_h[iismall + NsmallS] += 100*st;
-					aecountsmallT_h[iismall + NsmallS] = (long long)(aecount * P.tRestart);
+				++ii;
 
-					++iismall;
-				}
 				fclose(infile);
-				if(ii + iismall == N + Nsmall) break;
+				if(ii == N + Nsmall) break;
 			}
 			fclose(OrigInfile);
 		}
 	}
 	if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
-	return ii + iismall;
+	return ii;
 } 
 
 
 // **************************************
 //This function converts heliocentric coordinares to democratic coordinates.
-__host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
+__host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
 	double mtot = 0.0;
 	double3 vcom;
@@ -860,14 +700,6 @@ __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N
 			vcom.z += x4_h[i].w * v4_h[i].z;
 		}
 	}
-	for(int i = 0; i < Nsmall; ++i){
-		if(x4small_h[i].w > 0.0){
-			mtot += x4small_h[i].w;
-			vcom.x += x4small_h[i].w * v4small_h[i].x;
-			vcom.y += x4small_h[i].w * v4small_h[i].y;
-			vcom.z += x4small_h[i].w * v4small_h[i].z;
-		}
-	}
 	mtot += Msun;
 	vcom.x /= mtot;
 	vcom.y /= mtot;
@@ -878,16 +710,10 @@ __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].y -= vcom.y;
 		v4_h[i].z -= vcom.z;
 	}
-	for(int i = 0; i < Nsmall; ++i){
-		v4small_h[i].x -= vcom.x;
-		v4small_h[i].y -= vcom.y;
-		v4small_h[i].z -= vcom.z;
-	}
-
 }
 // **************************************
 //This function converts democratic coordinares to heliocentric coordinates.
-__host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N, double4 *x4small_h, double4 *v4small_h, int Nsmall){
+__host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
 	double3 vcom;
 	vcom.x = 0.0;
@@ -901,13 +727,6 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 			vcom.z += x4_h[i].w * v4_h[i].z;
 		}
 	}
-	for(int i = 0; i < Nsmall; ++i){
-		if(x4small_h[i].w > 0.0){
-			vcom.x += x4small_h[i].w * v4small_h[i].x;
-			vcom.y += x4small_h[i].w * v4small_h[i].y;
-			vcom.z += x4small_h[i].w * v4small_h[i].z;
-		}
-	}
 	vcom.x /= Msun;
 	vcom.y /= Msun;
 	vcom.z /= Msun;
@@ -916,11 +735,6 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].x += vcom.x;
 		v4_h[i].y += vcom.y;
 		v4_h[i].z += vcom.z;
-	}
-	for(int i = 0; i < Nsmall; ++i){
-		v4small_h[i].x += vcom.x;
-		v4small_h[i].y += vcom.y;
-		v4small_h[i].z += vcom.z;
 	}
 
 }
@@ -933,107 +747,257 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *index_d, double3 *spin_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
 
 	int NOld;
+	int NsmallOld;
 	int N = N_d[st];
+	int Nsmall = Nsmall_d[st];
 	int f = 1;
 	int fc = 0;
 
 	while(f == 1 || fc < 100){
 		NOld = N;
+		NsmallOld = Nsmall;
 		f = 0;
 		++fc;
 		for(int j = 0; j < N; ++j){
 			//remove ghost bodies and rearrange arrays
 			if(x4_d[j + NBS].w < 0){
-				x4_d[j + NBS] = x4_d[N-1 + NBS];
-				v4_d[j + NBS] = v4_d[N-1 + NBS];
 
-				x4_d[N-1 + NBS].x = 0.0;
-				x4_d[N-1 + NBS].y = 1.0;
-				x4_d[N-1 + NBS].z = 0.0;
-				x4_d[N-1 + NBS].w = -1.0e-12;
+				int Na = j + NBS;
+				int Nb = N-1 + NBS;
+				
+				x4_d[Na] = x4_d[Nb];
+				v4_d[Na] = v4_d[Nb];
+
+				x4_d[Nb].x = 0.0;
+				x4_d[Nb].y = 1.0;
+				x4_d[Nb].z = 0.0;
+				x4_d[Nb].w = -1.0e-12;
 	
-				v4_d[N-1 + NBS].x = 0.0;
-				v4_d[N-1 + NBS].y = 0.0;
-				v4_d[N-1 + NBS].z = 0.0;
-				v4_d[N-1 + NBS].w = 0.0;
+				v4_d[Nb].x = 0.0;
+				v4_d[Nb].y = 0.0;
+				v4_d[Nb].z = 0.0;
+				v4_d[Nb].w = 0.0;
 
-				a_d[j + NBS] = a_d[N-1 + NBS];
-				a_d[N-1 + NBS].x = 0.0;
-				a_d[N-1 + NBS].y = 0.0;
-				a_d[N-1 + NBS].z = 0.0;
+				a_d[Na] = a_d[Nb];
+				a_d[Nb].x = 0.0;
+				a_d[Nb].y = 0.0;
+				a_d[Nb].z = 0.0;
 
-				index_d[j + NBS] = index_d[N-1 + NBS];
-				index_d[N-1 + NBS] = -1;
+				index_d[Na] = index_d[Nb];
+				index_d[Nb] = -1;
 
-				spin_d[j + NBS] = spin_d[N-1 + NBS];
-				spin_d[N-1 + NBS].x = 0.0;
-				spin_d[N-1 + NBS].y = 0.0;
-				spin_d[N-1 + NBS].z = 0.0;
+				spin_d[Na] = spin_d[Nb];
+				spin_d[Nb].x = 0.0;
+				spin_d[Nb].y = 0.0;
+				spin_d[Nb].z = 0.0;
+	
+				love_d[Na] = love_d[Nb];
+				love_d[Nb].x = 0.0;
+				love_d[Nb].y = 0.0;
+				love_d[Nb].z = 0.0;
 
-				rcrit_d[j + NBS] = rcrit_d[N-1 + NBS];
-				rcritv_d[j + NBS] = rcritv_d[N-1 + NBS];
-				rcrit_d[N-1 + NBS] = 0.0;
-				rcritv_d[N-1 + NBS] = 0.0;
+				rcrit_d[Na] = rcrit_d[Nb];
+				rcritv_d[Na] = rcritv_d[Nb];
+				rcrit_d[Nb] = 0.0;
+				rcritv_d[Nb] = 0.0;
 
-				aelimits_d[j + NBS] = aelimits_d[N-1 + NBS];
-				aelimits_d[N-1 + NBS].x = 0.0f;
-				aelimits_d[N-1 + NBS].y = 0.0f;
-				aelimits_d[N-1 + NBS].z = 0.0f;	
-				aelimits_d[N-1 + NBS].w = 0.0f;
+				aelimits_d[Na] = aelimits_d[Nb];
+				aelimits_d[Nb].x = 0.0f;
+				aelimits_d[Nb].y = 0.0f;
+				aelimits_d[Nb].z = 0.0f;	
+				aelimits_d[Nb].w = 0.0f;
 
-				aecount_d[j + NBS] = aecount_d[N-1 + NBS];
-				aecount_d[N-1 + NBS] = 0;
-				enccount_d[j + NBS] = enccount_d[N-1 + NBS];
-				enccount_d[N-1 + NBS] = 0;
-				aecountT_d[j + NBS] = aecountT_d[N-1 + NBS];
-				aecountT_d[N-1 + NBS] = 0;
-				enccountT_d[j + NBS] = enccountT_d[N-1 + NBS];
-				enccountT_d[N-1 + NBS] = 0;
+				aecount_d[Na] = aecount_d[Nb];
+				aecount_d[Nb] = 0;
+				enccount_d[Na] = enccount_d[Nb];
+				enccount_d[Nb] = 0;
+				aecountT_d[Na] = aecountT_d[Nb];
+				aecountT_d[Nb] = 0;
+				enccountT_d[Na] = enccountT_d[Nb];
+				enccountT_d[Nb] = 0;
 
-				Energy_d[j + NBS] += Energy_d[N-1 + NBS];
-				Energy_d[N-1 + NBS] = 0.0;
+				Energy_d[Na] += Energy_d[Nb];
+				Energy_d[Nb] = 0.0;
 
-				test_d[j + NBS] = test_d[N-1 + NBS];
-				test_d[N-1 + NBS] = -1.0;
+				test_d[Na] = test_d[Nb];
+				test_d[Nb] = -1.0;
 
 				for(int i = 0; i < nafn; ++i){
-					nafx_d[(j + NBS) * nafn + i] = nafx_d[(N-1 + NBS) * nafn + i];
-					nafy_d[(j + NBS) * nafn + i] = nafy_d[(N-1 + NBS) * nafn + i];
-					nafx_d[(N-1 + NBS) * nafn + i] = 0.0;
-					nafy_d[(N-1 + NBS) * nafn + i] = 0.0;
+					nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
+					nafy_d[(Na) * nafn + i] = nafy_d[(Nb) * nafn + i];
+					nafx_d[(Nb) * nafn + i] = 0.0;
+					nafy_d[(Nb) * nafn + i] = 0.0;
 				}
 #if G3 > 0
 				for(int i = 0; i < N; ++i){
-					K_d[(j + NBS) * NB + i] = K_d[(N-1 + NBS) * NB + i];
-					K_d[i * NB + j + NBS] = K_d[i * NB + (N-1 + NBS)];
-					K_d[(N-1 + NBS) * NB + i] = 1.0;
-					K_d[i * NB + (N-1 + NBS)] = 1.0;
-					Kold_d[(j + NBS) * NB + i] = Kold_d[(N-1 + NBS) * NB + i];
-					Kold_d[i * NB + j + NBS] = Kold_d[i * NB + (N-1 + NBS)];
-					Kold_d[(N-1 + NBS) * NB + i] = 1.0;
-					Kold_d[i * NB + (N-1 + NBS)] = 1.0;
-					StopTime_d[(j + NBS) * NB + i] = StopTime_d[(N-1 + NBS) * NB + i];
-					StopTime_d[i * NB + j + NBS] = StopTime_d[i * NB + (N-1 + NBS)];
-					StopTime_d[(N-1 + NBS) * NB + i].x = -1.0;
-					StopTime_d[i * NB + (N-1 + NBS)].x = -1.0;
-					StopTime_d[(N-1 + NBS) * NB + i].y = -1.0;
-					StopTime_d[i * NB + (N-1 + NBS)].y = -1.0;
-					StopTime_d[(N-1 + NBS) * NB + i].z = -1.0;
-					StopTime_d[i * NB + (N-1 + NBS)].z = -1.0;
-					StopTime_d[(N-1 + NBS) * NB + i].w = -1.0;
-					StopTime_d[i * NB + (N-1 + NBS)].w = -1.0;
+					K_d[(Na) * NB + i] = K_d[(Nb) * NB + i];
+					K_d[i * NB + Na] = K_d[i * NB + (Nb)];
+					K_d[(Nb) * NB + i] = 1.0;
+					K_d[i * NB + (Nb)] = 1.0;
+					Kold_d[(Na) * NB + i] = Kold_d[(Nb) * NB + i];
+					Kold_d[i * NB + Na] = Kold_d[i * NB + (Nb)];
+					Kold_d[(Nb) * NB + i] = 1.0;
+					Kold_d[i * NB + (Nb)] = 1.0;
+					StopTime_d[(Na) * NB + i] = StopTime_d[(Nb) * NB + i];
+					StopTime_d[i * NB + Na] = StopTime_d[i * NB + (Nb)];
+					StopTime_d[(Nb) * NB + i].x = -1.0;
+					StopTime_d[i * NB + (Nb)].x = -1.0;
+					StopTime_d[(Nb) * NB + i].y = -1.0;
+					StopTime_d[i * NB + (Nb)].y = -1.0;
+					StopTime_d[(Nb) * NB + i].z = -1.0;
+					StopTime_d[i * NB + (Nb)].z = -1.0;
+					StopTime_d[(Nb) * NB + i].w = -1.0;
+					StopTime_d[i * NB + (Nb)].w = -1.0;
 				}
 #endif
+				//move Test Particles
+				if(Nsmall > 0){
+					int Na = N-1 + NBS;
+					int Nb = N-1 + NBS + Nsmall;
+					
+					x4_d[Na] = x4_d[Nb];
+					v4_d[Na] = v4_d[Nb];
+
+					x4_d[Nb].x = 0.0;
+					x4_d[Nb].y = 1.0;
+					x4_d[Nb].z = 0.0;
+					x4_d[Nb].w = -1.0e-12;
+		
+					v4_d[Nb].x = 0.0;
+					v4_d[Nb].y = 0.0;
+					v4_d[Nb].z = 0.0;
+					v4_d[Nb].w = 0.0;
+
+					a_d[Na] = a_d[Nb];
+					a_d[Nb].x = 0.0;
+					a_d[Nb].y = 0.0;
+					a_d[Nb].z = 0.0;
+
+					index_d[Na] = index_d[Nb];
+					index_d[Nb] = -1;
+
+					spin_d[Na] = spin_d[Nb];
+					spin_d[Nb].x = 0.0;
+					spin_d[Nb].y = 0.0;
+					spin_d[Nb].z = 0.0;
+
+					love_d[Na] = love_d[Nb];
+					love_d[Nb].x = 0.0;
+					love_d[Nb].y = 0.0;
+					love_d[Nb].z = 0.0;
+
+					rcrit_d[Na] = rcrit_d[Nb];
+					rcritv_d[Na] = rcritv_d[Nb];
+					rcrit_d[Nb] = 0.0;
+					rcritv_d[Nb] = 0.0;
+
+					aelimits_d[Na] = aelimits_d[Nb];
+					aelimits_d[Nb].x = 0.0f;
+					aelimits_d[Nb].y = 0.0f;
+					aelimits_d[Nb].z = 0.0f;	
+					aelimits_d[Nb].w = 0.0f;
+
+					aecount_d[Na] = aecount_d[Nb];
+					aecount_d[Nb] = 0;
+					enccount_d[Na] = enccount_d[Nb];
+					enccount_d[Nb] = 0;
+					aecountT_d[Na] = aecountT_d[Nb];
+					aecountT_d[Nb] = 0;
+					enccountT_d[Na] = enccountT_d[Nb];
+					enccountT_d[Nb] = 0;
+
+					test_d[Na] = test_d[Nb];
+					test_d[Nb] = -1.0;
+
+					for(int i = 0; i < nafn; ++i){
+						nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
+						nafy_d[(Na) * nafn + i] = nafy_d[(Nb) * nafn + i];
+						nafx_d[(Nb) * nafn + i] = 0.0;
+						nafy_d[(Nb) * nafn + i] = 0.0;
+					}
+				}
 
 				N -= 1;
 			}
 		}
+		for(int j = N; j < N + Nsmall; ++j){
+			//remove ghost test particles and rearrange arrays
+			if(x4_d[j + NBS].w < 0){
+
+				int Na = j + NBS;
+				int Nb = N-1 + NBS + Nsmall;
+				
+				x4_d[Na] = x4_d[Nb];
+				v4_d[Na] = v4_d[Nb];
+
+				x4_d[Nb].x = 0.0;
+				x4_d[Nb].y = 1.0;
+				x4_d[Nb].z = 0.0;
+				x4_d[Nb].w = -1.0e-12;
+	
+				v4_d[Nb].x = 0.0;
+				v4_d[Nb].y = 0.0;
+				v4_d[Nb].z = 0.0;
+				v4_d[Nb].w = 0.0;
+
+				a_d[Na] = a_d[Nb];
+				a_d[Nb].x = 0.0;
+				a_d[Nb].y = 0.0;
+				a_d[Nb].z = 0.0;
+
+				index_d[Na] = index_d[Nb];
+				index_d[Nb] = -1;
+
+				spin_d[Na] = spin_d[Nb];
+				spin_d[Nb].x = 0.0;
+				spin_d[Nb].y = 0.0;
+				spin_d[Nb].z = 0.0;
+
+				love_d[Na] = love_d[Nb];
+				love_d[Nb].x = 0.0;
+				love_d[Nb].y = 0.0;
+				love_d[Nb].z = 0.0;
+
+				rcrit_d[Na] = rcrit_d[Nb];
+				rcritv_d[Na] = rcritv_d[Nb];
+				rcrit_d[Nb] = 0.0;
+				rcritv_d[Nb] = 0.0;
+
+				aelimits_d[Na] = aelimits_d[Nb];
+				aelimits_d[Nb].x = 0.0f;
+				aelimits_d[Nb].y = 0.0f;
+				aelimits_d[Nb].z = 0.0f;	
+				aelimits_d[Nb].w = 0.0f;
+
+				aecount_d[Na] = aecount_d[Nb];
+				aecount_d[Nb] = 0;
+				enccount_d[Na] = enccount_d[Nb];
+				enccount_d[Nb] = 0;
+				aecountT_d[Na] = aecountT_d[Nb];
+				aecountT_d[Nb] = 0;
+				enccountT_d[Na] = enccountT_d[Nb];
+				enccountT_d[Nb] = 0;
+
+				test_d[Na] = test_d[Nb];
+				test_d[Nb] = -1.0;
+
+				for(int i = 0; i < nafn; ++i){
+					nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
+					nafy_d[(Na) * nafn + i] = nafy_d[(Nb) * nafn + i];
+					nafx_d[(Nb) * nafn + i] = 0.0;
+					nafy_d[(Nb) * nafn + i] = 0.0;
+				}
+				Nsmall -= 1;
+			}
+		}
 		if(NOld != N) f = 1;
+		if(NsmallOld != Nsmall) f = 1;
 	}
 	N_d[st] = N;
+	Nsmall_d[st] = Nsmall;
 }
 
 
@@ -1044,7 +1008,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 // Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ****************************************3
-__global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, double3 *asmall_d, int *Nsmall_d, int *indexsmall_d, double3 *spinsmall_d, int NsmallS, int st, float4 *aelimitssmall_d, int *aecountsmall_d, int *enccountsmall_d, long long *aecountsmallT_d, long long *enccountsmallT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
+__global__ void removesmall_kernel(int *Nsmall_d, int NsmallS, int st, double *nafx_d, double *nafy_d, int nafn, int naficN){
 
 	int NOldsmall;
 	volatile int Nsmall= Nsmall_d[st];
@@ -1057,58 +1021,15 @@ __global__ void removesmall_kernel(double4 *x4small_d, double4 *v4small_d, doubl
 		++fc;
 		for(int j = 0; j < Nsmall; ++j){
 			//remove ghost bodies and rearrange arrays
-			if(x4small_d[j + NsmallS].w < 0){
-				x4small_d[j + NsmallS] = x4small_d[Nsmall-1 + NsmallS];
-				v4small_d[j + NsmallS] = v4small_d[Nsmall-1 + NsmallS];
-
-				x4small_d[Nsmall-1 + NsmallS].x = 0.0;
-				x4small_d[Nsmall-1 + NsmallS].y = 1.0;
-				x4small_d[Nsmall-1 + NsmallS].z = 0.0;
-				x4small_d[Nsmall-1 + NsmallS].w = -1.0e-12;
-	
-				v4small_d[Nsmall-1 + NsmallS].x = 0.0;
-				v4small_d[Nsmall-1 + NsmallS].y = 0.0;
-				v4small_d[Nsmall-1 + NsmallS].z = 0.0;
-				v4small_d[Nsmall-1 + NsmallS].w = 0.0;
-
-				asmall_d[j + NsmallS] = asmall_d[Nsmall-1 + NsmallS];
-	
-				asmall_d[Nsmall-1 + NsmallS].x = 0.0;
-				asmall_d[Nsmall-1 + NsmallS].y = 0.0;
-				asmall_d[Nsmall-1 + NsmallS].z = 0.0;
 				
-				indexsmall_d[j + NsmallS] = indexsmall_d[Nsmall-1 + NsmallS];
-				indexsmall_d[Nsmall-1 + NsmallS] = -1;
-
-				spinsmall_d[j + NsmallS] = spinsmall_d[Nsmall-1 + NsmallS];
-				spinsmall_d[Nsmall-1 + NsmallS].x = 0.0;
-				spinsmall_d[Nsmall-1 + NsmallS].y = 0.0;
-				spinsmall_d[Nsmall-1 + NsmallS].z = 0.0;
-
-				aelimitssmall_d[j + NsmallS] = aelimitssmall_d[Nsmall-1 + NsmallS];
-				aelimitssmall_d[Nsmall-1 + NsmallS].x = 0.0f;
-				aelimitssmall_d[Nsmall-1 + NsmallS].y = 0.0f;
-				aelimitssmall_d[Nsmall-1 + NsmallS].z = 0.0f;
-				aelimitssmall_d[Nsmall-1 + NsmallS].w = 0.0f;
-
-				aecountsmall_d[j + NsmallS] = aecountsmall_d[Nsmall-1 + NsmallS];
-				aecountsmall_d[Nsmall-1 + NsmallS] = 0;
-				enccountsmall_d[j + NsmallS] = enccountsmall_d[Nsmall-1 + NsmallS];
-				enccountsmall_d[Nsmall-1 + NsmallS] = 0;
-				aecountsmallT_d[j + NsmallS] = aecountsmallT_d[Nsmall-1 + NsmallS];
-				aecountsmallT_d[Nsmall-1 + NsmallS] = 0;
-				enccountsmallT_d[j + NsmallS] = enccountsmallT_d[Nsmall-1 + NsmallS];
-				enccountsmallT_d[Nsmall-1 + NsmallS] = 0;
-	
-				for(int i = 0; i < nafn; ++i){
-					nafx_d[(j + NsmallS + naficN) * nafn + i] = nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
-					nafy_d[(j + NsmallS + naficN) * nafn + i] = nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
-					nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
-					nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
-				}
-
-				Nsmall -= 1;
+			for(int i = 0; i < nafn; ++i){
+				nafx_d[(j + NsmallS + naficN) * nafn + i] = nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
+				nafy_d[(j + NsmallS + naficN) * nafn + i] = nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
+				nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
+				nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
 			}
+
+			Nsmall -= 1;
 		}
 		if(NOldsmall != Nsmall) f = 1;
 	}
@@ -1136,18 +1057,18 @@ __host__ void Data::Ejection(){
 	for(int st = 0; st < Nst; ++st){
 		if(EjectionFlag_m[st + 1] > 0){
 			int NBS = NBS_h[st];
-			int NsmallS = NsmallS_h[st];
 
 			ejectfile = fopen(GSF[st].ejectfilename, "a");
 			logfile = fopen(GSF[st].logfilename, "a");
 
-			cudaMemcpy(x4_h + NBS, x4_d + NBS, sizeof(double4)*N_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(v4_h + NBS, v4_d + NBS, sizeof(double4)*N_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(index_h + NBS, index_d + NBS, sizeof(int)*N_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(spin_h + NBS, spin_d + NBS, sizeof(double3)*N_h[st], cudaMemcpyDeviceToHost);
+			cudaMemcpy(x4_h + NBS, x4_d + NBS, sizeof(double4) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			cudaMemcpy(v4_h + NBS, v4_d + NBS, sizeof(double4) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			cudaMemcpy(index_h + NBS, index_d + NBS, sizeof(int) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			cudaMemcpy(spin_h + NBS, spin_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			cudaMemcpy(love_h + NBS, love_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
 
 			int c = 0;
-			for(int i = 0; i < N_h[st]; ++i){
+			for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
 				vcom_h[st].x = 0.0;
 				vcom_h[st].y = 0.0;
 				vcom_h[st].z = 0.0;
@@ -1157,89 +1078,55 @@ __host__ void Data::Ejection(){
 				if(rsq > Rcut_h[st] * Rcut_h[st] && x4_h[i + NBS].w >= 0){
 					c = -3;
 					if(Nst == 1){
-						printf("Body %d ejected\n", index_h[i + NBS]);
-						fprintf(logfile, "Body %d ejected\n", index_h[i + NBS]);
+						if(x4_h[i + NBS].x > 0.0){
+							printf("Body %d ejected\n", index_h[i + NBS]);
+							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS]);
+						}
+						else{
+							printf("Test Particle %d ejected\n", index_h[i + NBS]);
+							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS]);
+						}
 					}
 					else{
-						printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
-						fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % 100);
+						if(x4_h[i + NBS].x > 0.0){
+							printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
+							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % 100);
+						}
+						else{
+							printf("In Simulation %s: Test Particle %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
+							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS] % 100);
+						}
 					}
 				}
 				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4_h[i + NBS].w >= 0){
 					c = -2;
 					if(Nst == 1){
-						printf("Body %d too close to central mass -> removed\n", index_h[i + NBS]);
-						fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS]);
+						if(x4_h[i + NBS].x > 0.0){
+							printf("Body %d too close to central mass -> removed\n", index_h[i + NBS]);
+							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS]);
+						}
+						else{
+							printf("Test Particle %d too close to central mass -> removed\n", index_h[i + NBS]);
+							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS]);
+						}
 					}
 					else{
-						printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
-						fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
+						if(x4_h[i + NBS].x > 0.0){
+							printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
+							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
+						}
+						else{
+							printf("In Simulation %s: Test Particle %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
+							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
+						}
 					}
 				}
 				if(c < 0){
 					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
-					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st], i, U_d + st, LI_d + st, vcom_d + st, N_h[st]);
-					
-					if(Nsmall_h[st] > 0) EjectionEnergysmallCall(v4small_d + NsmallS, Nsmall_h[st], vcom_d + st);
+					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st].x, i, U_d + st, LI_d + st, vcom_d + st, N_h[st], Nsmall_h[st]);
 				}
-			}
-			fclose(ejectfile);
-			fclose(logfile);
-		}
-	}
-}
-
-__host__ void Data::Ejectionsmall(){
-
-	FILE *ejectfile;
-	FILE *logfile;
-
-	if(Nst == 1) EjectionFlag_m[1] = 1;
-
-	for(int st = 0; st < Nst; ++st){
-		if(EjectionFlag_m[st + 1] > 0){
-			int NsmallS = NsmallS_h[st];
-			cudaMemcpy(x4small_h + NsmallS, x4small_d + NsmallS, sizeof(double4)*Nsmall_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(v4small_h + NsmallS, v4small_d + NsmallS, sizeof(double4)*Nsmall_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(indexsmall_h + NsmallS, indexsmall_d + NsmallS, sizeof(int)*Nsmall_h[st], cudaMemcpyDeviceToHost);
-			cudaMemcpy(spinsmall_h + NsmallS, spinsmall_d + NsmallS, sizeof(double3)*Nsmall_h[st], cudaMemcpyDeviceToHost);
-
-			ejectfile = fopen(GSF[st].ejectfilename, "a");
-			logfile = fopen(GSF[st].logfilename, "a");
-			int c = 0;
-			for(int i = 0; i < Nsmall_h[st]; ++i){
-				c = 0;
-				double rsq = x4small_h[i + NsmallS].x*x4small_h[i + NsmallS].x + x4small_h[i + NsmallS].y*x4small_h[i + NsmallS].y + x4small_h[i + NsmallS].z*x4small_h[i + NsmallS].z;
-				if(rsq > Rcut_h[st] * Rcut_h[st] && x4small_h[i + NsmallS].w >= 0){
-					c = -3;
-					if(Nst == 1){
-						printf("Test particle %d ejected\n", indexsmall_h[i + NsmallS]);
-						fprintf(logfile, "Test particle %d ejected\n", indexsmall_h[i + NsmallS]);
-					}
-					else{
-						printf("In Simulation %s: Test particle %d ejected\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
-						fprintf(logfile, "Test particle %d ejected\n", indexsmall_h[i + NsmallS] % 100);
-					}
-				}
-				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4small_h[i + NsmallS].w >= 0){
-					c = -2;
-					if(Nst == 1){
-						printf("Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
-						fprintf(logfile, "Test particle %d too close to central mass -> removed\n", indexsmall_h[i + NsmallS]);
-					}
-					else{
-						printf("In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
-						fprintf(logfile, "In Simulation %s: Test particle %d too close to central mass -> removed\n", GSF[st].path, indexsmall_h[i + NsmallS] % 100);
-					}
-				}
-				if(c < 0){
-					if( Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, indexsmall_h[i + NsmallS], x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, indexsmall_h[i + NsmallS] % 100, x4small_h[i + NsmallS].w, v4small_h[i + NsmallS].w, x4small_h[i + NsmallS].x, x4small_h[i + NsmallS].y, x4small_h[i + NsmallS].z, v4small_h[i + NsmallS].x, v4small_h[i + NsmallS].y, v4small_h[i + NsmallS].z, spinsmall_h[i + NsmallS].x, spinsmall_h[i + NsmallS].y, spinsmall_h[i + NsmallS].z, c);
-					EjectionEnergysmall2Call(x4small_d + NsmallS, i);
-				}
-
 			}
 			fclose(ejectfile);
 			fclose(logfile);
@@ -1256,11 +1143,11 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
-		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
+	//	removesmall_kernel <<< 1, 1>>> (Nsmall_d, NsmallS_h[st], st, naf.x_d, naf.y_d, naf.n, naf.icN);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, index_d, spin_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NULL, NULL, 0);
-		removesmall_kernel <<< 1, 1>>> (x4small_d, v4small_d, asmall_d, Nsmall_d, indexsmall_d, spinsmall_d, NsmallS_h[st], st, aelimitssmall_d, aecountsmall_d, enccountsmall_d, aecountsmallT_d, enccountsmallT_d, NULL, NULL, 0, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NULL, NULL, 0);
+	//	removesmall_kernel <<< 1, 1>>> (Nsmall_d, NsmallS_h[st], st, NULL, NULL, 0, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1282,10 +1169,11 @@ __host__ int Data::remove(){
 
 	}
 	
-	cudaMemcpy(x4_h, x4_d, sizeof(double)*4*NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(v4_h, v4_d, sizeof(double)*4*NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(index_h, index_d, sizeof(int)*NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(spin_h, spin_d, sizeof(double)*3*NT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(x4_h, x4_d, sizeof(double)*4*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(v4_h, v4_d, sizeof(double)*4*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(index_h, index_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(spin_h, spin_d, sizeof(double)*3*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(love_h, love_d, sizeof(double)*3*NconstT, cudaMemcpyDeviceToHost);
 	return NminFlag;
 }
 
@@ -1326,9 +1214,9 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
-__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, double3 *spinsmall_d, double3 *asmall_d, int *indexsmall_d, 
-double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, float4 *aelimitssmall_d, int *aecount_d, int *aecountsmall_d, int *enccount_d, int *enccountsmall_d, long long *aecountT_d, long long *aecountsmallT_d, long long *enccountT_d, long long *enccountsmallT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
+__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
+double *rcritv_d, 
+int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
 
 	for(int j = 0; j < N_d[st]; ++j){
 		x4_d[j + NT] = x4_d[j + NBS];
@@ -1336,6 +1224,7 @@ double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, in
 		xold_d[j + NT] = xold_d[j + NBS];
 		vold_d[j + NT] = vold_d[j + NBS];
 		spin_d[j + NT] = spin_d[j + NBS];
+		love_d[j + NT] = love_d[j + NBS];
 		a_d[j + NT] = a_d[j + NBS];
 		test_d[j + NT] = test_d[j + NBS];
 		index_d[j + NT] = index_d[j + NBS];
@@ -1353,19 +1242,6 @@ double *rcritvsmall_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, in
 	}
 //G3
 	for(int j = 0; j < Nsmall_d[st]; ++j){
-		x4small_d[j + NsmallT] = x4small_d[j + NsmallS];
-		v4small_d[j + NsmallT] = v4small_d[j + NsmallS];
-		xoldsmall_d[j + NsmallT] = xoldsmall_d[j + NsmallS];
-		voldsmall_d[j + NsmallT] = voldsmall_d[j + NsmallS];
-		spinsmall_d[j + NsmallT] = spinsmall_d[j + NsmallS];
-		asmall_d[j + NsmallT] = asmall_d[j + NsmallS];
-		indexsmall_d[j + NsmallT] = indexsmall_d[j + NsmallS];
-		rcritvsmall_d[j + NsmallT] = rcritvsmall_d[j + NsmallS];
-		aelimitssmall_d[j + NsmallT] = aelimitssmall_d[j + NsmallS];
-		aecountsmall_d[j + NsmallT] = aecountsmall_d[j + NsmallS];
-		enccountsmall_d[j + NsmallT] = enccountsmall_d[j + NsmallS];
-		aecountsmallT_d[j + NsmallT] = aecountsmallT_d[j + NsmallS];
-		enccountsmallT_d[j + NsmallT] = enccountsmallT_d[j + NsmallS];
 		for(int i = 0; i < nafn; ++i){
 			nafx_d[(j + NsmallT + naficN) * nafn + i] = nafx_d[(j + NsmallS + naficN) * nafn + i];
 			nafy_d[(j + NsmallT + naficN) * nafn + i] = nafy_d[(j + NsmallS + naficN) * nafn + i];
@@ -1400,30 +1276,27 @@ __host__ void Data::stopSimulations(){
 	NT = 0;
 	NsmallT = 0;
 	NB2T = 0;
-	Nsmall2T = 0;
 	NEnergyT = 0;
 
 	for(int st = 0; st < Nst; ++st){
 		//rearange arrays//
 #if USE_NAF == 1
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, a_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d,
-					    spinsmall_d, asmall_d, indexsmall_d, rcritvsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
+					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
 #else
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, a_d, test_d, index_d, rcrit_d, rcritv_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d,
-					    spinsmall_d, asmall_d, indexsmall_d, rcritvsmall_d, st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aelimitssmall_d, aecount_d, aecountsmall_d, enccount_d, enccountsmall_d, aecountT_d, aecountsmallT_d, enccountT_d, enccountsmallT_d, NULL, NULL, 0, 0);
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
+					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0, 0);
 #endif
 
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
 		NB2S[st] = NB2T;
-		Nsmall2S[st] = Nsmall2T;
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
 		NB2T += NB[st] * NmaxM;
-		Nsmall2T += Nsmall_h[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
 //printf("STOP %d %d %d\n", st, N_h[st], NT);
 	}
@@ -1459,7 +1332,6 @@ __host__ void Data::stopSimulations(){
 				NB[sst] = NB[sst + 1];
 				N4[sst] = N4[sst + 1];
 				N2[sst] = N2[sst + 1];
-				Nconst[sst] = Nconst[sst + 1];
 				Nmin[sst] = Nmin[sst + 1];
 				rho[sst] = rho[sst + 1];
 				delta[sst] = delta[sst + 1];
@@ -1468,6 +1340,7 @@ __host__ void Data::stopSimulations(){
 				N_h[sst] = N_h[sst + 1];
 				Nsmall_h[sst] = Nsmall_h[sst + 1];
 				Msun_h[sst] = Msun_h[sst + 1];
+				Spinsun_h[sst] = Spinsun_h[sst + 1];
 				idt_h[sst] = idt_h[sst + 1];
 				ict_h[sst] = ict_h[sst + 1];
 				dtiMsun_h[sst] = dtiMsun_h[sst + 1];
@@ -1485,7 +1358,6 @@ __host__ void Data::stopSimulations(){
 				NBS_h[sst] = NBS_h[sst + 1];
 				NsmallS_h[sst] = NsmallS_h[sst + 1];
 				NB2S[sst] = NB2S[sst + 1];
-				Nsmall2S[sst] = Nsmall2S[sst + 1];
 				NEnergy[sst] = NEnergy[sst + 1];
 			}
 			st -= 1;
@@ -1498,7 +1370,8 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
+	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1530,6 +1403,7 @@ __host__ int Data::freeOrbit(){
 	free(vold_h);
 	free(index_h);
 	free(spin_h);
+	free(love_h);
 	free(rcrit_h);
 	cudaFreeHost(Nenc_m);
 	free(aelimits_h);
@@ -1546,21 +1420,6 @@ __host__ int Data::freeOrbit(){
 
 	free(vcom_h);
 
-	free(x4small_h);
-	free(v4small_h);
-	free(xoldsmall_h);
-	free(voldsmall_h);
-	free(indexsmall_h);
-	free(spinsmall_h);
-	free(rcritvsmall_h);
-	cudaFreeHost(Nencpairssmall_h);
-	cudaFreeHost(Nencpairssmall2_h);
-	cudaFreeHost(Nencsmall_m);
-	free(aelimitssmall_h);
-	free(aecountsmall_h);
-	free(enccountsmall_h);
-	free(aecountsmallT_h);
-	free(enccountsmallT_h);
 	free(groupIterate_h);
 
 	free(U_h);
@@ -1586,6 +1445,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(vold_d);
 	cudaFree(index_d);
 	cudaFree(spin_d);
+	cudaFree(love_d);
 	cudaFree(a_d);
 	cudaFree(rcrit_d);
 	cudaFree(rcritv_d);
@@ -1617,25 +1477,6 @@ __host__ int Data::freeOrbit(){
 
 	cudaFree(vcom_d);
 	
-	cudaFree(x4small_d);
-	cudaFree(v4small_d);
-	cudaFree(xoldsmall_d);
-	cudaFree(voldsmall_d);
-	cudaFree(indexsmall_d);
-	cudaFree(spinsmall_d);
-	cudaFree(asmall_d);
-	cudaFree(rcritvsmall_d);
-	cudaFree(Nencpairssmall_d);
-	cudaFree(Nencpairssmall2_d);
-	cudaFree(Encpairssmall_d);
-	cudaFree(Encpairssmall2_d);
-
-	cudaFree(aelimitssmall_d);
-	cudaFree(aecountsmall_d);
-	cudaFree(enccountsmall_d);
-	cudaFree(aecountsmallT_d);
-	cudaFree(enccountsmallT_d);
-	
 	cudaFree(U_d);
 	cudaFree(LI_d);
 	cudaFree(Energy_d);
@@ -1649,9 +1490,11 @@ __host__ int Data::freeOrbit(){
 	cudaFree(K_d);
 	cudaFree(Kold_d);
 	cudaFree(groupIndex_d);
-	cudaFree(groupIndexsmall_d);
-	cudaFree(groupIndexsmallOld_d);
 	cudaFree(StopTime_d);
+#endif
+
+#if USE_RANDOM
+	cudaFree(random_d);
 #endif
 
 	cudaFree(Coll_d);

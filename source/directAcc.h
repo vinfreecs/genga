@@ -180,18 +180,11 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, int Nst, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
 
-        if(Nst == 1){
-		printf("Collision between body %d and %d\n", index[indexi], index[indexj]);
-	}
 	double3 vij;
 	double3 rij;
-	double rsq, vsq, ir, mimj, mtot;
-	double3 p, s;
 	double3 L;
-	double rcrit;
-
 
 	Coll[nc * 25 + 0] = time/365.25;
 	Coll[nc * 25 + 1] = (double)(index[indexi]);
@@ -219,16 +212,8 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
        	Coll[nc * 25 + 23] = spin[indexj].y;
        	Coll[nc * 25 + 24] = spin[indexj].z;
 
-	s.x = x4[i].x * x4[i].w + x4[j].x * x4[j].w;
-	s.y = x4[i].y * x4[i].w + x4[j].y * x4[j].w;
-	s.z = x4[i].z * x4[i].w + x4[j].z * x4[j].w;
-
-	p.x = v4[i].x * x4[i].w + v4[j].x * x4[j].w;
-	p.y = v4[i].y * x4[i].w + v4[j].y * x4[j].w;
-	p.z = v4[i].z * x4[i].w + v4[j].z * x4[j].w;
-
-	mimj = x4[i].w * x4[j].w;
-	mtot = x4[i].w + x4[j].w;
+	double mimj = x4[i].w * x4[j].w;
+	double mtot = x4[i].w + x4[j].w;
 
 	rij.x = x4[j].x - x4[i].x;
 	rij.y = x4[j].y - x4[i].y;
@@ -242,26 +227,23 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 	L.y = mimj/mtot * (-rij.x * vij.z + rij.z * vij.x);
 	L.z = mimj/mtot * ( rij.x * vij.y - rij.y * vij.x);
 
-	rsq = rij.x * rij.x + rij.y * rij.y + rij.z * rij.z + 1.0e-30;
-	ir = 1.0/sqrt(rsq);
+	double rsq = rij.x * rij.x + rij.y * rij.y + rij.z * rij.z + 1.0e-30;
+	double vsq = vij.x * vij.x + vij.y * vij.y + vij.z * vij.z + 1.0e-30;
 
-	vsq = vij.x * vij.x + vij.y * vij.y + vij.z * vij.z + 1.0e-30;
+	*U_d += 0.5 * mimj / mtot * vsq - mimj * ksq / sqrt(rsq);
 
-	*U_d += 0.5 * mimj / mtot * vsq - mimj * ksq * ir;
+	x4[i].x = (x4[i].x * x4[i].w + x4[j].x * x4[j].w) / mtot;
+	x4[i].y = (x4[i].y * x4[i].w + x4[j].y * x4[j].w) / mtot;
+	x4[i].z = (x4[i].z * x4[i].w + x4[j].z * x4[j].w) / mtot;
 
-	x4[i].x = s.x / mtot;
-	x4[i].y = s.y / mtot;
-	x4[i].z = s.z / mtot;
-
-	v4[i].x = p.x / mtot;
-	v4[i].y = p.y / mtot;
-	v4[i].z = p.z / mtot;
+	v4[i].x = (v4[i].x * x4[i].w + v4[j].x * x4[j].w) / mtot;
+	v4[i].y = (v4[i].y * x4[i].w + v4[j].y * x4[j].w) / mtot;
+	v4[i].z = (v4[i].z * x4[i].w + v4[j].z * x4[j].w) / mtot;
 
 	rcritv[i] = fmax(rcritv[i], rcritv[j]);
 	rcritv[j] = 0.0;
-	rcrit = fmax(rcrit_d[indexi], rcrit_d[indexj]);
 
-	rcrit_d[indexi] = rcrit;
+	rcrit_d[indexi] = fmax(rcrit_d[indexi], rcrit_d[indexj]);
 	rcrit_d[indexj] = 0.0;
 
 	spin[indexi].x += spin[indexj].x + L.x;
@@ -287,7 +269,7 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 		enccount[indexi] = enccount[indexj];
 		aecountT[indexi] = aecountT[indexj];
 		enccountT[indexi] = enccountT[indexj];
-        }
+	}
         if(x4[i].w == x4[j].w){
                 index[indexi] = min(index[indexi], index[indexj]);
 		aelimits[indexi] = aelimits[min(indexi, indexj)];
@@ -303,110 +285,13 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 
         v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
         v4[j].w = 0.0;
-}
-// **************************************
-// For test particles
-//This function performs a merger of two bodies i and j.
-//It also calculates the amount of energy which will be lost due
-//to the collision: U = 0.5 * mi* mj/(mi + mj) * vij^2 - G * mi * mj / rij
-//The index of the new bodie is the index of the more massiv one. If both bodies
-//have an equal mass then the new index is the smaller one.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
-//
-//****************************************
-__device__ void collidesmall(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall, volatile double *rcritv){
 
-	if(x4[i].w > 0.0 && x4[j].w > 0.0){
-
-		double3 s, p;
-		double mtot;
-
-		s.x = x4[i].x * x4[i].w + x4[j].x * x4[j].w;
-		s.y = x4[i].y * x4[i].w + x4[j].y * x4[j].w;
-		s.z = x4[i].z * x4[i].w + x4[j].z * x4[j].w;
-
-		p.x = v4[i].x * x4[i].w + v4[j].x * x4[j].w;
-		p.y = v4[i].y * x4[i].w + v4[j].y * x4[j].w;
-		p.z = v4[i].z * x4[i].w + v4[j].z * x4[j].w;
-
-		mtot = x4[i].w + x4[j].w;
-
-		x4[i].x = s.x / mtot;
-		x4[i].y = s.y / mtot;
-		x4[i].z = s.z / mtot;
-
-		v4[i].x = p.x / mtot;
-		v4[i].y = p.y / mtot;
-		v4[i].z = p.z / mtot;
-
-		rcritv[i] = fmax(rcritv[i], rcritv[j]);
-		rcritv[j] = 0.0;
-
-		v4[j].x = 0.0;
-		v4[j].y = 0.0;
-		v4[j].z = 0.0;
-
-		x4[j].x = 0.0;
-		x4[j].y = 1.0;
-		x4[j].z = 0.0;
-
-		x4[i].w = mtot;
-		x4[j].w = -1.0e-12;
-
-		v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
-		v4[j].w = 0.0;
-
-	}
-	else if(x4[i].w >= 0.0 && x4[j].w >= 0.0){
-		printf("Collision between body %d and Test particle %d\n", index[indexi], indexsmall[indexj]);
-
-		Coll[nc * 25 + 0] = time/365.25;
-		Coll[nc * 25 + 1] = (double)(index[indexi]);
-		Coll[nc * 25 + 2] = x4[i].w;
-		Coll[nc * 25 + 3] = v4[i].w;
-		Coll[nc * 25 + 4] = x4[i].x;
-		Coll[nc * 25 + 5] = x4[i].y;
-		Coll[nc * 25 + 6] = x4[i].z;
-		Coll[nc * 25 + 7] = v4[i].x;
-		Coll[nc * 25 + 8] = v4[i].y;
-		Coll[nc * 25 + 9] = v4[i].z;
-		Coll[nc * 25 + 10] = spin[indexi].x;
-		Coll[nc * 25 + 11] = spin[indexi].y;
-		Coll[nc * 25 + 12] = spin[indexi].z;
-		Coll[nc * 25 + 13] = (double)(indexsmall[indexj]);
-		Coll[nc * 25 + 14] = x4[j].w;
-		Coll[nc * 25 + 15] = v4[j].w;
-		Coll[nc * 25 + 16] = x4[j].x;
-		Coll[nc * 25 + 17] = x4[j].y;
-		Coll[nc * 25 + 18] = x4[j].z;
-		Coll[nc * 25 + 19] = v4[j].x;
-		Coll[nc * 25 + 20] = v4[j].y;
-		Coll[nc * 25 + 21] = v4[j].z;
-		Coll[nc * 25 + 22] = spinsmall[indexj].x;
-		Coll[nc * 25 + 23] = spinsmall[indexj].y;
-		Coll[nc * 25 + 24] = spinsmall[indexj].z;
-
-
-		x4[j].w = -1.0e-12;
-
-		v4[j].w = 0.0;
-
-		v4[j].x = 0.0;
-		v4[j].y = 0.0;
-		v4[j].z = 0.0;
-
-		x4[j].x = 0.0;
-		x4[j].y = 1.0;
-		x4[j].z = 0.0;
-	}
 }
 // **************************************
 // This function stores the details of close encounters
 //
 // Authors: Simon Grimm
-// July 2015
+// April 2016
 //
 //****************************************
 __device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
@@ -437,41 +322,5 @@ __device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int 
 	Coll[nc * 25 + 22] = spin[indexi].x;
 	Coll[nc * 25 + 23] = spin[indexi].y;
 	Coll[nc * 25 + 24] = spin[indexi].z;
-}
-// **************************************
-// This function stores the details of close encounters
-//
-// Authors: Simon Grimm
-// July 2015
-//
-//****************************************
-__device__ void storeEncounterssmall(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int *indexsmall, int nc, double *Coll, double time, double3 *spin, double3 *spinsmall){
-
-//printf("S Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], indexsmall[indexi]);
-	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexj]);
-	Coll[nc * 25 + 2] = x4[j].w;
-	Coll[nc * 25 + 3] = v4[j].w;
-	Coll[nc * 25 + 4] = x4[j].x;
-	Coll[nc * 25 + 5] = x4[j].y;
-	Coll[nc * 25 + 6] = x4[j].z;
-	Coll[nc * 25 + 7] = v4[j].x;
-	Coll[nc * 25 + 8] = v4[j].y;
-	Coll[nc * 25 + 9] = v4[j].z;
-	Coll[nc * 25 + 10] = spin[indexj].x;
-	Coll[nc * 25 + 11] = spin[indexj].y;
-	Coll[nc * 25 + 12] = spin[indexj].z;
-	Coll[nc * 25 + 13] = (double)(indexsmall[indexi]);
-	Coll[nc * 25 + 14] = x4[i].w;
-	Coll[nc * 25 + 15] = v4[i].w;
-	Coll[nc * 25 + 16] = x4[i].x;
-	Coll[nc * 25 + 17] = x4[i].y;
-	Coll[nc * 25 + 18] = x4[i].z;
-	Coll[nc * 25 + 19] = v4[i].x;
-	Coll[nc * 25 + 20] = v4[i].y;
-	Coll[nc * 25 + 21] = v4[i].z;
-	Coll[nc * 25 + 22] = spinsmall[indexi].x;
-	Coll[nc * 25 + 23] = spinsmall[indexi].y;
-	Coll[nc * 25 + 24] = spinsmall[indexi].z;
 }
 #endif

@@ -7,22 +7,20 @@
 //using a Bulirsh Stoer method with nb threds. Where n is the minimum of n^2 and 256
 //The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+////March 2016
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, double4 *xold_d, double4 *vold_d, double4 *xoldsmall_d, double4 *voldsmall_d, double *rcrit_d, double *rcritv_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *indexsmall_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, double3 *spinsmall_d, const int Nconst, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
+__global__ void BSBStepsmall_kernel(double4 *x4_d, double4 *v4_d, double4 *x4small_d, double4 *v4small_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, const int NB, const int N, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	int ii = idy / nb;
 	int jj = idy % nb;
-	double dt1 = dt; 
-	double dt2, dt22;
-	double t = 0.0;
-
-	const double tol = 1.0e-12;
+	volatile double dt1 = dt; 
+	volatile double dt2, dt22;
+	volatile double t = 0.0;
 
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
@@ -33,7 +31,6 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	__shared__ double4 vp_s[NN];
 	__shared__ double4 xt_s[NN];
 	__shared__ double4 vt_s[NN];
-
 	__shared__ double3 dx_s[NN][8];
 	__shared__ double3 dv_s[NN][8];
 
@@ -49,12 +46,15 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 	double test;
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
-	int idi;
-	int si = Encpairssmall2_d[Nconst * idx + st].y; 
-	N2 = Encpairssmall_d[si * Nconst].y;
+	volatile int idi;
+	volatile int si = Encpairs2_d[ (st+2) * NB + idx].y; 
+	N2 = Encpairs2_d[si].y;
+	volatile int start = Encpairs2_d[NB + si].y;
+
 	if(idy < N2){
-		idi = Encpairssmall_d[si * Nconst + idy].x;
-//printf("A BSs %d %d %d %d N2 %d %d %d\n", idx, idy, st, idi, N2, si, Nconst);
+		idi = Encpairs2_d[start + idy].x;
+//printf("BSs %d %d %d %d %d\n", idx, st, idi, index_d[idi], N2);
+
 	}
 	else idi = 0;
 
@@ -64,25 +64,23 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
         else sgnt = 1;
 
  	__syncthreads();
-
-
-	if(idy == 0){
-                x4_s[idy] = xoldsmall_d[idi];  
-                v4_s[idy] = voldsmall_d[idi];  
-                rcritv_s[idy] = 0.0;
-//printf("BSssmall %d %d %d %d %d %g %d %d\n", idx, st, idi, indexsmall_d[idi], idy, v4_s[idy].w, NN, N2);
-	}
-	else if(idy< N2){
-                x4_s[idy] = xold_d[idi];  
-                v4_s[idy] = vold_d[idi];  
-		rcritv_s[idy] = rcritv_d[idi];
-//printf("BSs %d %d %d %d %d %g\n", idx, st, idi, index_d[idi], idy, v4_s[idy].w);
+	if(idy< N2){
+		x4_s[idy] = xold_d[idi];  
+		v4_s[idy] = vold_d[idi];  
+		if(idi < N){
+			rcritv_s[idy] = rcritv_d[idi];
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
+		}
+		else{
+			rcritv_s[idy] = 0.0;
+//printf("BSsold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
+		}
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
-		x4_s[idy].w = 0.0;
+		x4_s[idy].w = -1.0e-12;
                 v4_s[idy].x = 0.0;
                 v4_s[idy].y = 0.0;
                 v4_s[idy].z = 0.0;
@@ -293,7 +291,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 						vt_s[idy].z += dt22 * a_s[idy * nb].z;
 					}
 					__syncthreads();
-				}
+				}//end of m loop
 				a_s[idy].x = 0.0;
 				a_s[idy].y = 0.0;
 				a_s[idy].z = 0.0;
@@ -324,13 +322,13 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 				if(idy < N2){
 					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
 
-					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * vt_s[idy].x);
-					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * vt_s[idy].y);
-					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + xp_s[idy].z + dt2 * vt_s[idy].z);
+					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + (xp_s[idy].x + (dt2 * vt_s[idy].x)));
+					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + (xp_s[idy].y + (dt2 * vt_s[idy].y)));
+					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + (xp_s[idy].z + (dt2 * vt_s[idy].z)));
 
-					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + vp_s[idy].x + dt2 * a_s[idy * nb].x);
-					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + vp_s[idy].y + dt2 * a_s[idy * nb].y);
-					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + vp_s[idy].z + dt2 * a_s[idy * nb].z);	
+					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy * nb].x)));
+					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy * nb].y)));
+					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy * nb].z)));	
 				}
 				
 				if(idy < N2){
@@ -373,7 +371,7 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 					if(NN >= 2) error[idy] = fmax(error[idy], error[idy + 1]);
 				}
 				__syncthreads();
-				if(error_s[0] < tol * tol || sgnt * dt1 < 1.0e-6){
+				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < 1.0e-6){
 
 					if(idy < N2){
 						xt_s[idy].x = dx_s[idy][0].x;
@@ -399,26 +397,26 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 						double enct = 0.0;
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
 						//write Encounters to file
-						if(enct > 0.0 && ii == 0){
+						if(enct > 0.0 && (xt_s[ii].w > 0.0 || xt_s[jj + l].w > 0.0)){
 //printf("idx %d\n", idx);
 							int ne = atomicAdd(NWriteEnc_d, 1);
 							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
-							storeEncounterssmall(xt_s, vt_s, ii, jj + l, Encpairssmall_d[si * Nconst + ii].x, Encpairssmall_d[si * Nconst + jj + l].x, index_d, indexsmall_d, ne, writeEnc_d, time + t/0.01720209895, spin_d, spinsmall_d);
+							storeEncounterssmall(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + ii].y, index_d, ne, writeEnc_d, time + t/0.01720209895, spin_d, N);
 						}
 					}
                                         __syncthreads();
                                         if(idy == 0) {
-                                               for(int c = 0; c < Ncol[0]; ++c){
+/*                                               for(int c = 0; c < Ncol[0]; ++c){
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = *Ncoll_d;
 								if(xt_s[i].w == 0.0 || xt_s[j].w == 0) nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-								collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * Nconst + i].x, Encpairssmall_d[si * Nconst + j].x, index_d, indexsmall_d, nc, Coll_d, time + t/0.01720209895, spin_d, spinsmall_d, rcritv_s);
+//								collidesmall(xt_s, vt_s, i, j, Encpairssmall_d[si * NencMax + i].x, Encpairssmall_d[si * NencMax + j].x, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s);
 							}
                                                 }
-                                        }
+  */                                      }
                                         __syncthreads();
 					t += dt1;				
 					if(n >= 8) dt1 *= 0.55;
@@ -436,17 +434,23 @@ __global__ void BSBStepsmall_kernel(double4 *x4small_d, double4 *v4small_d, doub
 					__syncthreads();
 					break;
 				}
-			}
+			}//end of n loop
 			if(f == 0) break;
 			__syncthreads();
 			dt1 *= 0.5;
-		}
+		}//end of ff loop
 		if(sgnt * t >= sgnt * dt) break;
 		__syncthreads();
+	}//end of tt loop
+	if(idy< N2){
+		if(idi < N){ 
+			x4_d[idi] = x4_s[idy]; 
+			v4_d[idi] = v4_s[idy];
+		}
+		else{
+			x4small_d[idi - N] = x4_s[idy]; 
+			v4small_d[idi - N] = v4_s[idy];
+		}
+//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z);
 	}
-	if(idy == 0){ 
-		x4small_d[idi] = x4_s[idy]; 
-		v4small_d[idi] = v4_s[idy];
-	}
-
 }

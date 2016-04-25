@@ -26,7 +26,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 
 	rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 	rcritv = fmax(rcritvi, rcritvj);
-	bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 //if (cl) printf("cl %d %d %d\n", i , j, icNB);
 	Encpairsb_d[icNB * i + j] = cl;
 
@@ -709,7 +709,7 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, boo
 	double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 
 	double rcritv = fmax(fi.w, fj.w);
-	bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 	Encpairsb_d[icNB * i + j] = cl; 
 	
 	double ir = 1.0 / sqrt(rsq);
@@ -745,7 +745,7 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 		rcritv = fmax(rcritvi, rcritvj);
 
-		bool cl = (rsq < pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+		bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 		Encpairsb_d[icNB * i + j] = cl;
 
 

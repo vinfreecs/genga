@@ -62,7 +62,7 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //March 2014
 //****************************************
 template < int E >
-__device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, int NencMax, double &test, const int Nconst){
+__device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NencMax, double &test){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s, sb;
 		double3 r3ij;
@@ -82,7 +82,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
-			if(rsq < pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
+			if(rsq < def_pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
 //printf("Precheck %d %d\n", i, j);
 				if( i < j){
 					Ni = atomicAdd(NencpairsI, 1);
@@ -97,15 +97,16 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 			}
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
-			if(rsq < pc * rcritv2){
-//if(E == 20) printf("Precheck 20 %d %d %d %d %d\n", i - NencMax, j, NencMax, Nconst, *NencpairsI);
-				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].x = i - icNB;
-				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].y = j;
-				*NencpairsI += 1;
+			if(rsq < def_pc * rcritv2){
+//if(E == 20) printf("Precheck 20 %d %d %d %d\n", i - NencMax, j, NencMax, *NencpairsI);
+				Encpairs_d[NencMax * i + *NencpairsJ].x = j;
+				Encpairs_d[NencMax * i + *NencpairsJ].y = i;
+				Encpairs_d[NencMax * i + NencMax - 1 - *NencpairsJ].y = j;
+				*NencpairsJ += 1;
 			}
 		}
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
-			if(rsq < pc * rcritv2){
+			if(rsq < def_pc * rcritv2){
 				if(i < j){
 //printf("Precheck 10 %d %d %d %d\n", i, j, NencMax, *NencpairsI);
 					Encpairs_d[NencMax * i + *NencpairsI].x = i;
@@ -124,7 +125,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
-			if( rsq >= pc * rcritv2) sb = s;
+			if( rsq >= def_pc * rcritv2) sb = s;
 //printf("%d %d %g %g %g Kick\n", i, j, 1.0, 1.0 / ir, s);
 		}
 		else{
@@ -162,7 +163,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 //
 // ********************************
 template < int E >
-__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, int NencMax, double &test, const int Nconst, double t){
+__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, int NencMax, double &test, double t){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -185,7 +186,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
 #if G3 == 1
-			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || rsq < pc * rcritv) && x4i.w > 0.0 && x4j.w > 0.0){	
+			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || rsq < def_pc * rcritv) && x4i.w > 0.0 && x4j.w > 0.0){	
 #else
 			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || B > G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
 
@@ -204,14 +205,14 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 			}
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
-			if(rsq < pc * rcritv2){
-				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].x = i - icNB;
-				Encpairs_d[Nconst * (i - icNB) + *NencpairsI].y = j;
+			if(rsq < def_pc * rcritv2){
+				Encpairs_d[NencMax * i + *NencpairsI].x = i;
+				Encpairs_d[NencMax * i + *NencpairsI].y = j;
 				*NencpairsI += 1;
 			}
 		}
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
-			if(rsq < pc * rcritv2){
+			if(rsq < def_pc * rcritv2){
 				if(i < j){
 					Encpairs_d[NencMax * i + *NencpairsI].x = i;
 					Encpairs_d[NencMax * i + *NencpairsI].y = j;
@@ -245,68 +246,22 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //This kernel performs the first kick of the time step, in the case of no close encounters.
 //It reuses the values from the seccond kick in the previous time step.
 
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+//April 2016
 //
 // ****************************************
-__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d){
+__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(x4_d[id].w >= 0.0){
+	if(id < N && x4_d[id].w >= 0.0){
 		v4_d[id].x += acck_d[id].x;
 		v4_d[id].y += acck_d[id].y;
 		v4_d[id].z += acck_d[id].z;
 //printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 	}
 }
-// **************************************
-//This kernel performs the first kick of the time step for test particles, in the case of no close encounters.
-//It reuses the values from the seccond kick in the previous time step.
-
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-// ****************************************
-__global__ void kickBsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double4 *x4small_d, double4 *v4small_d, double3 *accksmall_d, int N, int Nsmall){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-	if(id < N){
-		if(x4_d[id].w >= 0.0){
-			v4_d[id].x += acck_d[id].x;
-			v4_d[id].y += acck_d[id].y;
-			v4_d[id].z += acck_d[id].z;
-		}
-	}
-	else if(id < Nsmall + N){
-		if(x4small_d[id - N].w >= 0.0){
-			v4small_d[id - N].x += accksmall_d[id - N].x;
-			v4small_d[id - N].y += accksmall_d[id - N].y;
-			v4small_d[id - N].z += accksmall_d[id - N].z;
-		}
-	}
-}
-// **************************************
-//This kernel performs the first kick of the time step for the multi simulation mode, in the case of no close encounters.
-//It reuses the values from the seccond kick in the previous time step.
-
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-// ****************************************
-__global__ void kickMB_kernel(double4 *v4_d, double3 *acck_d, double *test_d, int NT){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;	
-	if(id < NT){
-		v4_d[id].x += acck_d[id].x;
-		v4_d[id].y += acck_d[id].y;
-		v4_d[id].z += acck_d[id].z;
-	}
-}
-
 // *******************************************
 //This kernel is used to sort the close encoutner list, to be able to reproduce simulations exactly
 //It shoud be used only for debugging or special cases.
@@ -403,7 +358,7 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 
 // ****************************************
 template <int Bl>
-__global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, double t){
+__global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -440,11 +395,11 @@ __global__ void kick32A_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		v4_d[id].x +=  __dmul_rn(a_s[idy].x, dtksq) + acck_d[id].x;
 		v4_d[id].y +=  __dmul_rn(a_s[idy].y, dtksq) + acck_d[id].y;
 		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq) + acck_d[id].z;
-//if(id == 6976) printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, a_s[idy].x, acck_d[id].x);
+//printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 	}
 }
 template <int Bl>
-__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, double t){
+__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -472,75 +427,9 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		v4_d[id].x +=  __dmul_rn(a_s[idy].x, dtksq) + acck_d[id].x;
 		v4_d[id].y +=  __dmul_rn(a_s[idy].y, dtksq) + acck_d[id].y;
 		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq) + acck_d[id].z;
-//if(id == 6976) printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, a_s[idy].x, acck_d[id].x);
+//printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 	}
 }
-// **************************************
-//This kernel performs the first kick of the time step for test particles, in the case of close interactions.
-//It reuses the values from the seccond kick in the previous time step, and adds the terms aij*dt*Kij for all
-//the bodies involved in a close encounter.
-//NI is the number of bodies involved in a close encounter with body i which have a bigger index than i.
-//NJ is the number of bodies involved in a close encounter with body i which have a smaller index than i.
-
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-
-// ****************************************
-template <int Bl>
-__global__ void kickAsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, double4 *x4small_d, double4 *v4small_d, int2 *Encpairssmall2_d, int Nsmall, double3 *accksmall_d, int NencMax, const int Nconst){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;	
-
-	__shared__ double3 a_s[Bl];
-
-	a_s[idy].x = 0.0;
-	a_s[idy].y = 0.0;
-	a_s[idy].z = 0.0;
-	__syncthreads();
-	
-	if(id < N){
-		int NI = Encpairs2_d[id * NencMax].x;
-		int NJ = Encpairs2_d[id * NencMax + 1].x;
-		double4 x4i = x4_d[id];
-		double rcritvi = rcritv_d[id];
-
-		for(int i = 0; i < NI; ++i){
-			int jj = Encpairs2_d[id * NencMax + i].y;
-			double4 x4j = x4_d[jj];
-//printf("AI %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
-			double rcritvj = rcritv_d[jj];
-			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
-		}
-		for(int i = 0; i < NJ; ++i){
-			int jj = Encpairs2_d[id * NencMax + NencMax - 1 - i].y;
-			double4 x4j = x4_d[jj];
-//printf("AJ %d %d %.40g %.40g %.40g %.40g\n", id, jj, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
-			double rcritvj = rcritv_d[jj];
-			accA(a_s[idy], x4i, x4j, rcritvi, rcritvj, jj, id);
-		}
-		v4_d[id].x +=  __dmul_rn(a_s[idy].x, dtksq)  + acck_d[id].x;
-		v4_d[id].y +=  __dmul_rn(a_s[idy].y, dtksq)  + acck_d[id].y;
-		v4_d[id].z +=  __dmul_rn(a_s[idy].z, dtksq)  + acck_d[id].z;
-//printf("K %d %.40g %.40g %.40g\n", id, v4_d[id].x, a_s[idy].x, acck_d[id].x);
-	}
-	else if(id < Nsmall + N){
-		int NI =  Encpairssmall2_d[(id - N) * Nconst].x;
-		double4 x4i = x4small_d[id - N];
-		for(int i = 0; i < NI; ++i){
-			int jj = Encpairssmall2_d[(id-N) * Nconst + i].y;
-			double4 x4j = x4_d[jj];
-//printf("AIsmall %d %d %.40g %.40g\n", id - N, jj, x4i.x, x4j.x);
-			double rcritvj = rcritv_d[jj];
-			accA(a_s[idy], x4i, x4j, 0.0, rcritvj, jj, id);
-		}
-		v4small_d[id - N].x +=  __dmul_rn(a_s[idy].x, dtksq) + accksmall_d[id - N].x;
-		v4small_d[id - N].y +=  __dmul_rn(a_s[idy].y, dtksq) + accksmall_d[id - N].y;
-		v4small_d[id - N].z +=  __dmul_rn(a_s[idy].z, dtksq) + accksmall_d[id - N].z;
-	}
-}
-
 
 // **************************************
 //This kernel performs the seccond kick of the time step, in the case NB = 16. NB is the next bigger number of N
@@ -621,9 +510,9 @@ __global__ void kick16_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 
 	if(idy < Bl){
 #if G3 == 0
-		acc<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, 0); 
+		acc<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, 0, t);
+		accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, t);
 #endif
 	}
 
@@ -745,9 +634,9 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	__syncthreads();
 	if(idy < Bl){
 #if G3 == 0
-		acc<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, 0); 
+		acc<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, 0, t); 
+		accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, t); 
 
 #endif
 	}
@@ -860,7 +749,7 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 //
 // ****************************************
 template <int Bl, int E>
-__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double4 *x4small_d, double4 *v4small_d, double3 *accksmall_d, int Nsmall, double *rcritvsmall_d, int *groupIndexsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int NB, const int Nconst, int NencMax){
+__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -890,7 +779,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		double rcritvi = rcritv_d[id];
 		double test;
 		for(int j = 0; j < N; ++j){
-			acc<E + 10>(a_s[idy], b_s[idy], x4i, x4_d[j], rcriti, rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairs2_d, j, id, NB, NencMax, test, 0);
+			acc<E + 10>(a_s[idy], b_s[idy], x4i, x4_d[j], rcriti, rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairs2_d, j, id, NencMax, test);
 		}
 		if(E >= 1){
 			v4_d[id].x += a_s[idy].x * dtksq;
@@ -910,28 +799,29 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		}
 	}
 	else if(id < N + Nsmall){
-		double rcritvi = rcritvsmall_d[id - N];
-		double4 x4i = x4small_d[id - N];
+		double rcritvi = rcritv_d[id];
+		double4 x4i = x4_d[id];
 		double test;
 		for(int j = 0; j < N; ++j){
-			acc<E + 20>(a_s[idy], b_s[idy], x4i, x4_d[j], 0.0 , rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairssmall2_d, j, id, N, NencMax, test, Nconst);
+			acc<E + 20>(a_s[idy], b_s[idy], x4i, x4_d[j], 0.0 , rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairs2_d, j, id, NencMax, test);
 		}
 		if(E >= 1){
-			v4small_d[id - N].x += a_s[idy].x * dtksq;
-			v4small_d[id - N].y += a_s[idy].y * dtksq;
-			v4small_d[id - N].z += a_s[idy].z * dtksq;
+			v4_d[id].x += a_s[idy].x * dtksq;
+			v4_d[id].y += a_s[idy].y * dtksq;
+			v4_d[id].z += a_s[idy].z * dtksq;
 		}
 		if(E <= 1){
-			accksmall_d[id - N].x += b_s[idy].x * dtksq;
-			accksmall_d[id - N].y += b_s[idy].y * dtksq;
-			accksmall_d[id - N].z += b_s[idy].z * dtksq;
+			acck_d[id].x += b_s[idy].x * dtksq;
+			acck_d[id].y += b_s[idy].y * dtksq;
+			acck_d[id].z += b_s[idy].z * dtksq;
 		}
 		if(E <= 2){
-			int Nesmall = atomicAdd(Nencpairssmall_d, NencpairsI);
-			for(int ii = 0; ii < NencpairsI; ++ii){
-				Encpairssmall_d[ii + Nesmall] = Encpairssmall2_d[Nconst * (id - N) + ii];
+			int Ne = atomicAdd(Nencpairs_d, NencpairsJ);
+			for(int ii = 0; ii < NencpairsJ; ++ii){
+				Encpairs_d[ii + Ne] = Encpairs2_d[NencMax * id + ii];
 			}
-			Encpairssmall2_d[Nconst * (id - N)].x = NencpairsI;
+			Encpairs2_d[NencMax * id].x = NencpairsI;
+			Encpairs2_d[NencMax * id + 1].x = NencpairsJ;
 		}
 	}
 }
@@ -1038,7 +928,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			ir = 1.0 / sqrt(rsq);
 			ir3 = ir * ir * ir;
 			if(E <= 2){
-				if(rsq < pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){  //prechecker
+				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){  //prechecker
 					if(idy >= Nmax){
 						int Ne = atomicAdd(Nencpairs_d, 1);
 						atomicAdd(Nencpairs_d + st_s[idy] + 1, 1);

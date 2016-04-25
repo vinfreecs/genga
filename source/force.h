@@ -6,13 +6,13 @@
 //June 2015
 //Authors: Simon Grimm
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < N){
-/*	
+	
 		int st = 0;
 
 		if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
@@ -20,7 +20,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
 		int index = index_d[id];
-		double Msun = Msun_d[st];			//This is the mass of the central star
+		double Msun = Msun_d[st].x;			//This is the mass of the central star
+		double4 Spinsun = Spinsun_d[st];			//This is the mass of the central star
 		double dt = dt_d[st] * Ct;			//This is the time step to do
 		double time = time_d[st] / 365.25;		//This is the time in years
 
@@ -28,11 +29,122 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 		a3.x = 0.0; 	
 		a3.y = 0.0;
 		a3.z = 0.0;
+
+		double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
+		double ir = 1.0 / sqrt(rsq);
 		
-		if(UseForce == 1){
-			//Insert here the force 	
-			
+		if(UseForce & 1){
+			// GR
+			double c = 10065.3201686;//c in AU / day * 0.0172020989
+			double csq = c * c;
+
+			double vsq = (v4.x * v4.x + v4.y * v4.y + v4.z * v4.z);
+			double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir; 
+
+			double A = ksq * (Msun + x4.w) * ir;
+			double B = A * ir / csq;
+
+			double eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
+
+			double C = 2.0 * (2.0 - eta) * rd;
+			double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
+
+			a3.x += B * (C * v4.x - D * x4.x * ir); 	
+			a3.y += B * (C * v4.y - D * x4.y * ir);
+			a3.z += B * (C * v4.z - D * x4.z * ir);
 		}
+		if(UseForce >> 1 & 1){
+			//Tidal force
+			double R2 = v4.w * v4.w;
+			double R5 = R2 * R2 * v4.w;
+			double ir3 = ir * ir * ir;
+			double ir7 = ir3 * ir3 * ir;
+
+			double E = -3.0 * love_d[id].x * ksq * Msun * Msun * R5 / x4.w * ir7;
+
+			a3.x += E * x4.x * ir;
+			a3.y += E * x4.y * ir;	
+			a3.z += E * x4.z * ir;
+		}
+		if(UseForce >> 2 & 1){
+			//Rotational Force
+			double Rsun2 = Msun_d[st].y * Msun_d[st].y;
+			double Rsun5 = Rsun2 * Rsun2 * Msun_d[st].y;
+			double lovesun = Msun_d[st].z;
+			double ir2 = ir * ir;
+			double ir4 = ir2 * ir2;
+
+			//compute rotation vector from spin vector
+			double iI = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double3 omegasun3;
+			omegasun3.x = Spinsun.x * iI;
+			omegasun3.y = Spinsun.y * iI;
+			omegasun3.z = Spinsun.z * iI;
+
+			double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
+
+			double F = -0.5 * lovesun * omegasun2 * Rsun5 * ir4;
+
+			a3.x += F * x4.x * ir;
+			a3.y += F * x4.y * ir;	
+			a3.z += F * x4.z * ir;
+}
+
+/*
+double Rsun2 = Msun_d[st].y * Msun_d[st].y;
+double Rsun3 = Rsun2 * Msun_d[st].y;
+double lovesunf = Msun_d[st].w;
+
+//compute rotation vector from spin vector
+double iIsun = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+double3 omegasun3;
+omegasun3.x = Spinsun.x * iIsun;
+omegasun3.y = Spinsun.y * iIsun;
+omegasun3.z = Spinsun.z * iIsun;
+
+double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
+
+double J2sun = lovesunf * omegasun2 * Rsun3 / (3.0 * ksq * Msun);
+
+
+double R2 = v4.w * v4.w;
+double R3 = R2 * v4.w;
+double lovef = love_d[st].y;
+
+//compute rotation vector from spin vector
+double iI = 5.0 / (2.0 * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+double3 omega3;
+omega3.x = spin_d[id].x * iI;
+omega3.y = spin_d[id].y * iI;
+omega3.z = spin_d[id].z * iI;
+
+double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
+
+double J2 = lovef * omega2 * R3 / (3.0 * ksq * x4.w);
+
+double t1 = 0.5 * ksq * x4.w * Msun;
+volatile double Csun = t1 * J2sun * Rsun2;
+volatile double Cp = t1 * J2 * R2;
+
+double ir2 = ir * ir;
+double ir3 = ir2 * ir;
+double ir5 = ir3 * ir2;
+double ir7 = ir5 * ir2;
+
+volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
+volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
+			
+
+double F1 = -3.0 * ir5 * (Csun + Cp) + 15.0 * ir7 * (Csun * r_omegasun * r_omegasun / omegasun2 + Cp * r_omega * r_omega / omega2);
+
+double F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
+double F3 = -6.0 * ir5 * Cp * r_omega / omega2;
+
+
+a3.x += F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x;
+a3.y += F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y;
+a3.z += F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z;
+*/
 
 		//apply the Kick
 		v4.x += a3.x * dt;
@@ -40,7 +152,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double *Msun_d
 		v4.z += a3.z * dt;
 
 		v4_d[id] = v4;
-*/
+
 	}
 }
 
@@ -61,7 +173,7 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
 }
 
 
-__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double *Msun_d, double *dt_d, double *time_d, int N, int Nst){
+__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double4 *Msun_d, double *dt_d, double *time_d, int N, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -113,7 +225,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 		if(x4i.w >= 0.0){
 
 			//int index = index_d[id];
-			double Msun = Msun_d[st];
+			double Msun = Msun_d[st].x;
 			//double dt = dt_d[st];
 			double time = time_d[st] / 365.25;		//time in years
 			double mu = ksq * (Msun + x4i.w);
@@ -451,7 +563,7 @@ printf("%g %d %g\n", time, id, omega);
 }
 #endif
 
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double *Msun_d, double *dt_d, double Ct, int N, int Nst){
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Ct, int N, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -484,7 +596,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			double RR = v4i.w * def_AU;		//covert radius in m 
 
 			//int index = index_d[id];
-			double Msun = Msun_d[st];
+			double Msun = Msun_d[st].x;
 			double dt = dt_d[st] * Ct;
 			double mu = ksq * (Msun + x4i.w);
 			double m = x4i.w;
@@ -523,7 +635,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 		
 			double e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
 
-			//compute rotation vetor from spin vector
+			//compute rotation vector from spin vector
 			double iI = 5.0 / (2.0 * m * v4i.w * v4i.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			double3 omega3;
 			omega3.x = spin.x * iI;

@@ -14,7 +14,6 @@
 // ****************************************
 __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const double dt, double &test, int id){
 
-	const double tol = 1.0e-12;
 	double3 a;
 	double3 a0;
 	double4 xp;
@@ -179,7 +178,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 
 					error = fmax(errorx, errorv);	
 
-					if(error <= tol * tol || sgnt * dt1 < 0.00001){
+					if(error <= def_tol * def_tol || sgnt * dt1 < 0.00001){
 
 						xt.x = dx[0].x; 
 						xt.y = dx[0].y;

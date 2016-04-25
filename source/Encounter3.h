@@ -17,20 +17,22 @@
 //E = 0: Used for Critical Radius 
 //E = 1: Used for Physical Radius 
 //E = 2: Used for Critical Radius with Test Particles
+//E = 3: Used for Critial Radius in multi simlation mode
 //Code is adapted from Mercury
 //
-// Authors: Simon Grimm, Joachim Stadel
-// July  2015
+// Authors: Simon Grimm
+// April 2016
 //
 // ****************************************
 template<int E>
 __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &time, int writeEncounters, double writeEncountersRadius){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j - N, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
-//if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
+//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
+//if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	int Enc = 0;
-	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
+//	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
+	if(i != j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double d0, d1, dd0, dd1;
 		double4 r1, r0;
 		double4 rd0, rd1;
@@ -48,17 +50,12 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 		if(E == 0 || E == 3){
 			rcrit = fmax(rcriti, rcritj);
 			rcritv = fmax(rcritvi, rcritvj);
-			f = cef;
+			f = def_cef;
 		}
 		if(E == 1){
 			rcrit = 0.0;
 			rcritv = rcriti + rcritj;
 			f = 1.0;
-		}
-		if(E == 2){
-			rcrit = rcritj;
-			rcritv = rcritvj;
-			f = cef;
 		}
 
 		r1.x = x4j.x - x4i.x;
@@ -137,11 +134,9 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
 
-//if((E == 0 || E >= 2))printf("d %d %d %.20g %.20g\n", i, j - N, delta, rcritv);
-
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
-//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %g %g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, v4i.w, v4j.w, E);
+//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %g %g %d\n", i, j, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, v4i.w, v4j.w, E);
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
@@ -153,12 +148,18 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 					encpairs[Ni].x = j;
 					encpairs[Ni].y = i;
 				}
-			}
-			if(E == 2){ //used for collision detetion
-				
-				Ni = atomicAdd(&Nenc, 1);	
-				encpairs[Ni].x = i;
-				encpairs[Ni].y = j - N;	
+// *****************
+//dont group test particles
+/*				if(x4i.w == 0.0){
+					encpairs[Ni].x = i;
+					encpairs[Ni].y = i;
+				}
+				if(x4j.w == 0.0){
+					encpairs[Ni].x = j;
+					encpairs[Ni].y = j;
+				}
+*/
+// *****************
 			}
 		}
 		else Enc = 0;
@@ -219,17 +220,12 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 		if(E == 0 || E == 3){
 			rcrit = fmax(rcriti, rcritj);
 			rcritv = fmax(rcritvi, rcritvj);
-			f = cef;
+			f = def_cef;
 		}
 		if(E == 1){
 			rcrit = 0.0;
 			rcritv = rcriti + rcritj;
 			f = 1.0;
-		}
-		if(E == 2){
-			rcrit = rcritj;
-			rcritv = rcritvj;
-			f = cef;
 		}
 
 		r1.x = x4j.x - x4i.x;
@@ -331,12 +327,6 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 					encpairs[Ni].y = i;
 				}
 			}
-			if(E == 2){ //used for collision detetion
-				
-				Ni = atomicAdd(&Nenc, 1);	
-				encpairs[Ni].x = i;
-				encpairs[Ni].y = j - N;	
-			}
 
 			if(delta <= 0.01 * rcritv*rcritv){
 		 		Ki = 0.0;
@@ -384,56 +374,6 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 	else return 0;
 }
 
-
-// **************************************
-// For test particles
-//This reads all encounter pairs from the prechecker, and calls the encounter function
-//to detect close encounter pairs.
-//All close encounter pairs are stored in the array Encpairs2_d. 
-//The number of close encounter pairs is stored in Nencpairs2_d.
-//
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-//
-// ****************************************
-__global__ void encountersmall_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, double4 *x4small_d, double4 *v4small_d, double4 *xoldsmall_d, double4 *voldsmall_d, int *Nencpairssmall_d, int2 *Encpairssmall_d, int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int N, int *enccount_d, int *enccountsmall_d, int si, double time, int writeEncounters, double writeEncountersRadius){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + idy;
-
-	int ii = 0;
-	int jj = 0;
-
-	int enccount = 0;
-
-	if(id < *Nencpairs_d){
-		ii = Encpairs_d[id].x;
-		jj = Encpairs_d[id].y;
-//printf("%d %d %d\n", ii, jj, id);
-	}
-	else if(id < *Nencpairs_d + *Nencpairssmall_d){
-		ii = Encpairssmall_d[id - *Nencpairs_d].x;
-		jj = Encpairssmall_d[id - *Nencpairs_d].y;
-//printf("small %d %d %d\n", ii, jj, id);
-
-	}
-	__syncthreads();
-	
-	if(id < *Nencpairs_d){
-		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius);
-		if(si == 0 && enccount > 0){
-			atomicAdd(&enccount_d[ii], 1);
-			atomicAdd(&enccount_d[jj], 1);
-		}
-	}
-	else if(id < *Nencpairs_d + *Nencpairssmall_d){
-		enccount = encounter<2>(x4small_d[ii], v4small_d[ii], xoldsmall_d[ii], voldsmall_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], 0.0, rcrit_d[jj], 0.0, rcritv_d[jj], dt, jj, ii + N , test_d, Encpairssmall2_d, *Nencpairssmall2_d, N, time, writeEncounters, writeEncountersRadius);
-		if(si == 0 && enccount > 0){
-			atomicAdd(&enccountsmall_d[ii], 1);
-		}
-	}
-
-}
 // **************************************
 //For the multi simulation mode
 //This reads all encounter pairs from the prechecker, and calls the encounter function
@@ -508,6 +448,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //
 // ****************************************
 __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int writeEncounters, double writeEncountersRadius){
+
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -539,46 +480,46 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 }
 
 
-__global__ void groupsmall1_kernel(int *Nencpairssmall_d, int2 *Encpairssmall_d, const int Nconst, int Nsmall){
+__global__ void groupsmall1_kernel(int *Nencpairssmall_d, int2 *Encpairssmall_d, const int NencMax, int Nsmall){
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + threadIdx.x;
 
 	if(id == 0) *Nencpairssmall_d = 0;
 
 	if(id < Nsmall){
-		Encpairssmall_d[id * Nconst].y = 1;
-		Encpairssmall_d[id * Nconst].x = id;
+		Encpairssmall_d[id * NencMax].y = 1;
+		Encpairssmall_d[id * NencMax].x = id;
 	}
 }
 
-__global__ void groupsmall2_kernel(int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int *Nencsmall_d, int2 *Encpairssmall_d, const int Nconst){
+__global__ void groupsmall2_kernel(int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int *Nencsmall_d, int2 *Encpairssmall_d, const int NencMax){
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + threadIdx.x;
 	if(id < *Nencpairssmall2_d){
 		int i = Encpairssmall2_d[id].x;
 		int j = Encpairssmall2_d[id].y;
-		int Nj = atomicAdd(&Encpairssmall_d[j * Nconst].y, 1);
-		Encpairssmall_d[j * Nconst + Nj].x = i;
+		int Nj = atomicAdd(&Encpairssmall_d[j * NencMax].y, 1);
+		Encpairssmall_d[j * NencMax + Nj].x = i;
 		if(Nj == 1){
 			int Ne = atomicAdd(&Nencsmall_d[0], 1);
-			Encpairssmall_d[Ne * Nconst + 1].y = j;
+			Encpairssmall_d[Ne * NencMax + 1].y = j;
 		}
 	}
 }
 
-__global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, const int Nconst){
+__global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, const int NencMax){
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + threadIdx.x;
 
 	if(id < Nencsmall_d[0]){
-		int i = Encpairssmall_d[id * Nconst + 1].y;
-		int nn = Encpairssmall_d[i * Nconst].y;
+		int i = Encpairssmall_d[id * NencMax + 1].y;
+		int nn = Encpairssmall_d[i * NencMax].y;
 		volatile int ne2 = 2;
 		if(nn > 0){
 			for(volatile int ii = 0; ii < 11; ++ii){
 				if(nn <= ne2){
 					int Ne = atomicAdd(&Nencsmall_d[ii + 1], 1);
-					Encpairssmall2_d[Ne * Nconst + ii].y = i;
+					Encpairssmall2_d[Ne * NencMax + ii].y = i;
 					break;
 				}
 				else{
@@ -607,21 +548,22 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 //
 //This Kernel must be launched only with one block!.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//December  2015
+//Authors: Simon Grimm
+//March  2016
 //
 // ****************************************
 template <int bn, int Bl, int E>
-__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int NencMax, int *groupIndex_d, int BN){
+__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int NencMax, int *groupIndex_d, int BN, int N){
 
 	int idy = threadIdx.x;
 
 	__shared__ volatile int T_s;
-	__shared__ int Nenc_s[12];
+	__shared__ int Nenc_s[def_GMax];
 	__shared__ int start_s[1];
 
 	int Ne = *Nencpairs2_d;
 	int BN2 = BN * BN -1;
+	if(BN > 46340) BN2 = 2147483647;	//prevent from overflow
 
 	int2 *A;
 	int2 *encpairs;
@@ -687,19 +629,28 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	if(idy == 0){
 		T_s = 1;
 	}
-	if(idy < 12) Nenc_s[idy] = 0;
+	if(idy < def_GMax) Nenc_s[idy] = 0;
 	if(idy == 0) start_s[0] = 0;
 
 	__syncthreads();
 	for(int i = 0; i < Ne; i += Bl){
 		if(idy + i < Ne){
 			//create list of direct close encounter pairs
-			int Ni = atomicAdd(&Encpairs_d[encpairs[idy + i].x].y, 1);
-			Encpairs_d[encpairs[idy + i].x * NencMax + Ni].x = encpairs[idy + i].y;
-			int Nj = atomicAdd(&Encpairs_d[encpairs[idy + i].y].y, 1);
-			Encpairs_d[encpairs[idy + i].y * NencMax + Nj].x = encpairs[idy + i].x;
+			volatile int ii = encpairs[idy + i].x;
+			volatile int jj = encpairs[idy + i].y;
+			volatile int Ni = 0;
+			volatile int Nj = 0;
+			if(jj < N){
+				Ni = atomicAdd(&Encpairs_d[ii].y, 1);
+				Encpairs_d[ii * NencMax + Ni].x = jj;
+			}
+			if(ii < N){
+				Nj = atomicAdd(&Encpairs_d[jj].y, 1);
+				Encpairs_d[jj * NencMax + Nj].x = ii;
+			}
 			//Encpairs_d[i].y contains the number of direct encounter paris of body i
 			//Encpairs_d[i * NencMax + j].x contains the indeces j of the direct encounter pairs
+//printf("%d %d %d %d\n", ii, jj, Ni, Nj);
 		}
 	}
 	__syncthreads();
@@ -770,6 +721,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 
 	for(int i = 0; i < BN; i += Bl){
 		if(idy + i < BN) B2[idy + i].y = -1;
+//printf("B %d %d\n", idy + i, B[idy + i].y);
 	}
 	__syncthreads();
 	// *Check now for new groups and increase the total number of groups* /
@@ -794,7 +746,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 //for(int i = 0; i < BN; i += Bl){
 //	if(idy + i < BN){
 //		if(B[idy + i].y < BN2){
-//printf("%d %d %d\n", idy + i, B[idy + i].y, B2[idy + i].y);
+//printf("B %d %d %d\n", idy + i, B[idy + i].y, B2[idy + i].y);
 //		}		
 //	}
 //}
@@ -803,7 +755,6 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	for(int i = 0; i < BN; i += Bl){
 		if(idy + i < BN){
 			groupIndex_d[idy + i] = B[idy + i].y;
-//printf("G %d %d %d\n", idy, B[idy].y,  groupIndex_d[idy]);
 		}
 	}
 #endif
@@ -858,9 +809,10 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 			int nn = Encpairs2_d[idy + i].y;
 			volatile int ne2 = 2;
 			if(nn > 0){
-				for(volatile int ii = 0; ii < 11; ++ii){
+				for(volatile int ii = 0; ii < def_GMax - 1; ++ii){
 					if(nn <= ne2){
 						int Ns = atomicAdd(&Nenc_s[ii + 1],1);
+//printf("G %d %d\n", ii + 1, Nenc_s[ii + 1]);
 						Encpairs2_d[ (ii+2) * BN + Ns].y = idy + i;
 						break;
 					} 
@@ -873,7 +825,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	}
 	__syncthreads();
 
-	if(idy < 12){
+	if(idy < def_GMax){
 		Nenc_d[idy] = Nenc_s[idy];
 	}
 
@@ -1013,7 +965,7 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 		volatile int ne2 = 2;
 		if(nn > 0){
 //printf("nn %d %d %d %d %d %d\n", st, idy, nn, Encpairs_d[(idy + NBS)* 16].x, Encpairs_d[((idy  + NBS)* 16)+ 1].x, Encpairs_d[((idy + NBS) * 16) + 2].x);
-			for(volatile int ii = 0; ii < 11; ++ii){
+			for(volatile int ii = 0; ii < def_GMax - 1; ++ii){
 				if(nn <= ne2){
 					Encpairs2_d[ (ii+1) + NmaxM * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
 					break;

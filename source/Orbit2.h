@@ -25,6 +25,7 @@ public:
 	double4 *vold_h, *vold_d;
 	int *index_h, *index_d;
 	double3 *spin_h, *spin_d;
+	double3 *love_h, *love_d;
 	double3 *a_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
@@ -69,29 +70,8 @@ public:
 	double3 *vcom_h, *vcom_d;
 
 #if USE_RANDOM
-	curandState *random_d, *randomsmall_d;
+	curandState *random_d;
 #endif
-
-	double4 *x4small_h, *x4small_d;
-	double4 *v4small_h, *v4small_d;
-	double4 *xoldsmall_h, *xoldsmall_d;
-	double4 *voldsmall_h, *voldsmall_d;
-	int *indexsmall_h, *indexsmall_d;
-	double3 *spinsmall_h, *spinsmall_d;
-	double3 *asmall_d;
-	double *rcritvsmall_h, *rcritvsmall_d;
-	int *groupIndexsmall_d;
-	int *groupIndexsmallOld_d;
-	int *Nencpairssmall_h, *Nencpairssmall_d;
-	int *Nencpairssmall2_h, *Nencpairssmall2_d;
-	int2 *Encpairssmall_d;
-	int2 *Encpairssmall2_d;
-	int *Nencsmall_m, *Nencsmall_d;
-	float4 *aelimitssmall_h, *aelimitssmall_d;
-	int *aecountsmall_h, *aecountsmall_d;
-	int *enccountsmall_h, *enccountsmall_d;
-	long long *aecountsmallT_h, *aecountsmallT_d;
-	long long *enccountsmallT_h, *enccountsmallT_d;
 
 	double *U_h, *U_d;	//internal Energy
 	double *LI_h, *LI_d;	//internal Angular Momentum
@@ -130,12 +110,11 @@ public:
 	__host__ int copyGridae();
 	__host__ int init();
 	__host__ int ic();
-	__host__ void HelioToDemo(double4 *, double4 *, double, int, double4 *, double4 *, int);
-	__host__ void DemoToHelio(double4 *, double4 *, double, int, double4 *, double4 *, int);
+	__host__ void HelioToDemo(double4 *, double4 *, double, int);
+	__host__ void DemoToHelio(double4 *, double4 *, double, int);
 	__host__ int remove();
 	__host__ void stopSimulations();
 	__host__ void Ejection();
-	__host__ void Ejectionsmall();
 	__host__ int freeOrbit();
 
 	//FG2
@@ -163,9 +142,7 @@ public:
 
 	//Energy
 	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);
-	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double3 *, double, int, double *, double *, double3 *, int);
-	__host__ void EjectionEnergysmallCall(double4 *, int, double3 *);
-	__host__ void EjectionEnergysmall2Call(double4 *, int);
+	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double3 *, double, int, double *, double *, double3 *, int, int);
 
 	//integrator
 	__host__ void SymplecticP(int);
@@ -206,7 +183,8 @@ public:
 	__host__ void BSsmallCall(int, double);
 	__host__ void BSBMCall(int);
 
-	__host__ void BSACall(int, int, int);
+	__host__ void BSACall(int, int, int, int, double, double);
+	__host__ void BSAsmallCall(int, int, int, int, double, double);
 
 	//gas
 	__host__ void GasAlloc();
@@ -242,7 +220,7 @@ private:
 	__host__ void resize(int &, int &, int &, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, double4 *, double4 *, double3 *, int *, int, int, float4 *, float4 *, int *, int *, int *, int *, long long *, long long *, long long *, long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, int *, int *, long long *, long long *, int, int);
 
 };
 #endif

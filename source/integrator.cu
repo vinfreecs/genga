@@ -4,9 +4,6 @@
 #include "FG2.h"
 #include "Encounter3.h"
 #include "BSB.h"
-#include "BSB64.h"
-#include "BSBsmall.h"
-#include "BSB64small.h" 
 #include "BSBM.h"
 #include "BSB64M.h"
 #include "ComEnergy.h"
@@ -111,10 +108,10 @@ __host__ void  Data::IrregularStep(double dTau){
 // **************************************
 // This kernel sets initial values for the Encouter pair arrays
 //Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//March 2016
 // **************************************3
 template <int Bl>
-__global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acck_d, double *K_d, double *Kold_d, double4 *StopTime_d, int *groupIndex_d, int NB, int NencMax){
+__global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double *K_d, double *Kold_d, double4 *StopTime_d, int *groupIndex_d, int NB, int NencMax){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -135,9 +132,6 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acc
 			Encpairs2_d[(idy + i) * NencMax + idx].y = -1;	
 		}
 		if(idx == 0){
-			acck_d[idy + i].x = 0.0;
-			acck_d[idy + i].y = 0.0;
-			acck_d[idy + i].z = 0.0;
 #if G3 > 0
 			groupIndex_d[idy + i] = -1;
 #endif
@@ -147,37 +141,22 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acc
 
 // **************************************
 //This kernel sets initial values for the test particle mode
-__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NB, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, int Nsmall, int *groupIndexsmall_d){
+__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int Nsmall, int NencMax){
 
 	int idx = blockIdx.x;
 	int id = blockIdx.x * blockDim.x + idx;
 
-	if(id < NB * NB){
+	if(id < (icNB + Nsmall) * NencMax){
 		Encpairs_d[id].x = -1;
 		Encpairs_d[id].y = -1;
 
 		Encpairs2_d[id].x = -1;
 		Encpairs2_d[id].y = -1;
 	}
-
-	if(id < Nsmall){
-		for(int i = 0; i < 2 * NmaxTestParticles; ++i){
-			Encpairssmall_d[id * 2 * NmaxTestParticles + i].x = -1;
-			Encpairssmall_d[id * 2 * NmaxTestParticles + i].y = -1;
-			Encpairssmall2_d[id * 2 * NmaxTestParticles + i].x = -1;
-			Encpairssmall2_d[id * 2 * NmaxTestParticles + i].y = -1;
-		}
-	}
-#if G3 > 0
-	if(id < Nsmall){
-		groupIndexsmall_d[id] = -1;
-	}
-#endif
-
 }
 
 template <int Bl>
-__global__ void initialM_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *acck_d, int NT){
+__global__ void initialM_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NT){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -190,9 +169,6 @@ __global__ void initialM_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double3 *ac
 			Encpairs2_d[id * Bl + i].x = -1;
 			Encpairs2_d[id * Bl + i].y = -1;
 		}
-		acck_d[id].x = 0.0;
-		acck_d[id].y = 0.0;
-		acck_d[id].z = 0.0;
 	}
 }
 
@@ -242,7 +218,11 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
 		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
-		
+	
+if(x4i.w == 0){
+rcrit_d[id] = 0.0;
+rcritv_d[id] = 0.0;
+}	
 
 		//Check for Ejections or to small distances to the Sun
 		if((rsq > Rcut * Rcut || rsq < RcutSun * RcutSun) && x4_d[id].w >= 0){
@@ -261,71 +241,6 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 #endif
 	}
 }
-// **************************************
-// For test particles
-//This kernel calculates the critical radius rcrit = max(n1 * Rh, n2 * dt * v), with the 
-//Hill radius Rh = r * (m/(3Msun))^1/3, the velocity v and two constants n1 and  n2.
-//rcritv is used for the the prechecker.
-//In Rh we use the radius instead of the semi major axis.
-//It searches also for ejections.
-//
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
-//****************************************/
-__global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *rcrit_d, double *rcritv_d, double dt, double *test_d, double n1, double n2, double Rcut, double RcutSun, int *EjectionFlag_d, double4 *x4small_d, double4 *v4small_d, int Nsmall, int N){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
-	double4 x4i;
-	double4 v4i;
-
-	double rcrit, rcritv ;
-	double rsq, vsq, r, v;
-
-	if(id < N){
-		x4i = x4_d[id];
-		v4i = v4_d[id];
-	}
-	else if (id < N + Nsmall){
-                x4i = x4small_d[id - N];
-                v4i = v4small_d[id - N];
-	}
-	else{
-		x4i.x = 0.0;
-		x4i.y = 0.0;
-		x4i.z = 0.0;
-		x4i.w = 0.0;
-		v4i.x = 0.0;
-		v4i.y = 0.0;
-		v4i.z = 0.0;
-		v4i.w = 0.0;
-	}
-	__syncthreads();
-
-	rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
-
-	if(id < N){
-		vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z + 1.0e-30;
-		r = sqrt(rsq);
-		v = sqrt(vsq);
-
-		rcrit = n1 * r * cbrt(x4i.w  / ( Msun * 3.0));
-		rcritv = fmax(rcrit, n2 * dt * v);
-
-		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
-		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
-//		rcrit_d[id] = rcrit;
-//		rcritv_d[id] = rcritv;
-	}
-	if(id < N + Nsmall){
-        	//Check for Ejections or to small distances to the Sun
-        	if((rsq > Rcut * Rcut || rsq < RcutSun * RcutSun) && x4i.w >= 0.0){
-		 	EjectionFlag_d[0] = 1;
-		}
-	}
-
-}
 
 // **************************************
 //For the multi simulation mode
@@ -339,7 +254,7 @@ __global__ void Rcritsmall_kernel(double4 *x4_d, double4 *v4_d, double Msun, dou
 //March 2016
 //
 // ****************************************
-__global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, double *rcrit_d, double *rcritv_d, double *dt_d, double *test_d, double *n1_d, double *n2_d, double *Rcut_d, double *RcutSun_d, int *EjectionFlag_d, int *index_d, int Nst, int NT, double *time_d, double *idt_d, double *ict_d, long long timeStep){
+__global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double4 *Msun_d, double *rcrit_d, double *rcritv_d, double *dt_d, double *test_d, double *n1_d, double *n2_d, double *Rcut_d, double *RcutSun_d, int *EjectionFlag_d, int *index_d, int Nst, int NT, double *time_d, double *idt_d, double *ict_d, long long timeStep){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -355,7 +270,7 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double *Msun_d, doub
 	double rsq, vsq, r, v;
 
 	if(id < NT){
-		double Msun = Msun_d[st];
+		double Msun = Msun_d[st].x;
 		double n1 = n1_d[st];
 		double n2 = n2_d[st];
 		double Rcut = Rcut_d[st];
@@ -429,67 +344,76 @@ __host__ int Data::step(){
 
 
 __host__ void Data::firstKick_16(){
-	initial_kernel < 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick16_kernel < 16, 40, 0 > <<< N_h[0] , 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_32(){
-	initial_kernel < 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 32, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_64(){
-	initial_kernel < 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 64, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_128(){
-	initial_kernel < 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 128 ><<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_256(){
-	initial_kernel < 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc256b_kernel <128, 256> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 256 ><<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_512(){
-	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_1024(){
-	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_2048(){
-	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< 32, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< 32, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_largeN(){
-	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, a_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
-	Rcrit_kernel <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
+	Rcrit_kernel <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_small(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
-	cudaMemset(asmall_d, 0, NsmallT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 
-	int nbInitialsmall = (max(Nsmall_h[0], NB[0] * NB[0]) + 255) / 256;
-	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, NB[0], Encpairssmall_d, Encpairssmall2_d, Nsmall_h[0], groupIndexsmall_d);
-	Rcritsmall_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0], P.NencMax);
+	int nbInitialsmall = ((icNB + Nsmall_h[0]) * P.NencMax + 255) / 256;
+	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, icNB, Nsmall_h[0], P.NencMax);
+	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0]);
+	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
 }
 __host__ void Data::firstKick_M(long long ts){
-	initialM_kernel < NmaxM > <<< (NT + 31) / 32, 32 >>>(Encpairs_d, Encpairs2_d, a_d, NT);
+	cudaMemset(a_d, 0, NT*sizeof(double3));
+	initialM_kernel < NmaxM > <<< (NT + 31) / 32, 32 >>>(Encpairs_d, Encpairs2_d, NT);
 	RcritM_kernel <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT, time_d, idt_d, ict_d, ts);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0> <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[SIn - 1], index_d, NT, test_d);
 }
@@ -501,29 +425,32 @@ __host__ void Data::BSCall(int NB, int si, double t){
 	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
 #if G3 < 2
 
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-//		if(Nenc_m[6] > 0) BSBStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 5, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
-		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 5, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 6, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 7, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 7, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
 
-		if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 8, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 9, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 10, NB, P.NencMax, Ncoll_d, Coll_d, t, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 8, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 9, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 10, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
-		//if(Nenc_m[9] > 0) BSACall(8, 512, Nenc_m[9]);
+		int nn = 4096;
+		for(int st = 11; st < def_GMax - 1; ++st){
+			if(Nenc_m[st + 1] > 0) BSACall(st, nn, Nenc_m[st + 1], si, t, FGt[si]);
+			nn *= 2;
+		}
 
 #else
-		if(Nenc_m[1] > 0) BSBKStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBKStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBKStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBKStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[1] > 0) BSBKStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[2] > 0) BSBKStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[3] > 0) BSBKStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[4] > 0) BSBKStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
 //for more than 16 bodies the l loop is needed again
 
@@ -533,25 +460,51 @@ __host__ void Data::BSCall(int NB, int si, double t){
 }
 
 __host__ void Data::BSsmallCall(int si, double t){
-	for(int st = 0; st < 6; ++st)   cudaStreamCreate(&stream[st]);
-		if(Nencsmall_m[1] > 0) BSBStepsmall_kernel <2, 2> <<< Nencsmall_m[1], 4, 0, stream[0] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 0, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nencsmall_m[2] > 0) BSBStepsmall_kernel <4, 4> <<< Nencsmall_m[2], 16, 0, stream[1] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 1, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nencsmall_m[3] > 0) BSBStepsmall_kernel <8, 8> <<< Nencsmall_m[3], 64, 0, stream[2] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 2, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nencsmall_m[4] > 0) BSBStepsmall_kernel <16, 16> <<< Nencsmall_m[4], 256, 0, stream[3] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 3, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nencsmall_m[5] > 0) BSBStepsmall_kernel <32, 8> <<< Nencsmall_m[5], 256, 0, stream[4] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 4, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nencsmall_m[6] > 0) BSBStep64small_kernel <64, 4> <<< Nencsmall_m[6], 256, 0, stream[5] >>> (x4small_d, v4small_d, xold_d, vold_d, xoldsmall_d, voldsmall_d, rcrit_d, rcritv_d, Encpairssmall_d, Encpairssmall2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 5, index_d, indexsmall_d, Ncoll_d, Coll_d, t, spin_d, spinsmall_d, Nconst[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
-		cudaDeviceSynchronize();
-
-		if(Nenc_m[1] > 0) BSBStep_kernel < 2, 2 > <<< Nenc_m[1], 4,   0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBStep_kernel < 4, 4 > <<< Nenc_m[2], 16,  0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBStep_kernel < 8, 8 > <<< Nenc_m[3], 64,  0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8 > <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[6] > 0) BSBStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0], U_d, 5, index_d, Ncoll_d, Coll_d, t, spin_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NmaxTestParticles, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 7, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 
 
-	for(int st = 0; st < 6; ++st) cudaStreamDestroy(stream[st]);
+		if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 8, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 9, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 10, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+
+		int nn = 4096;
+		for(int st = 11; st < def_GMax - 1; ++st){
+			if(Nenc_m[st + 1] > 0) BSAsmallCall(st, nn, Nenc_m[st + 1], si, t, FGt[si]);
+			nn *= 2;
+		}
+
+/*
+
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+
+		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 7, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+
+		if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 8, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 9, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 10, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+
+		int nn = 4096;
+		for(int st = 11; st < def_GMax - 1; ++st){
+			if(Nenc_m[st + 1] > 0) BSAsmallCall(st, nn, Nenc_m[st + 1], si, t, FGt[si]);
+			nn *= 2;
+		}
+*/
+	for(int st = 0; st < 9; ++st) cudaStreamDestroy(stream[st]);
 	cudaDeviceSynchronize();
 }
 
@@ -608,7 +561,6 @@ __host__ int Data::writeEncCall(){
 
 __host__ int Data::EjectionCall(){
 	Ejection();
-	Ejectionsmall();
 	EjectionFlag_m[0] = 0;
 	EjectionFlag_m[1] = 0;
 	EjectionFlag2 = 1;
@@ -620,7 +572,6 @@ __host__ int Data::EjectionCall(){
 }
 __host__ void Data::EjectionMCall(){
 	Ejection();
-	Ejectionsmall();
 	int NminFlag = remove();
 	if(NminFlag == 1){
 		stopSimulations();
@@ -644,25 +595,25 @@ __host__ int Data::PoincareSectionCall(int NB, double t){
 		return 0;
 	}
 	switch(NB){
-		case 16: PoincareSection <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 16: PoincareSection <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 32: PoincareSection <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 32: PoincareSection <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 64: PoincareSection <<< 2, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 64: PoincareSection <<< 2, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 128: PoincareSection <<< 4, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 128: PoincareSection <<< 4, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 256: PoincareSection <<< 8, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 256: PoincareSection <<< 8, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 512: PoincareSection <<< 16, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 512: PoincareSection <<< 16, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 1024: PoincareSection <<< 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 1024: PoincareSection <<< 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
-		case 2048: PoincareSection <<< 64, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		case 2048: PoincareSection <<< 64, 32 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 		break;
 	}
 	if(NB > 2048){
-		PoincareSection <<< (NB + 31) / 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0], N_h[0], 0, PFlag_d);
+		PoincareSection <<< (NB + 31) / 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 	}
 
 	cudaMemcpy(PFlag_h, PFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -689,36 +640,76 @@ __global__ void testA_kernel(double4 *x4_d, double4 *v4_d, int A){
 if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
 
 }
-
-__host__ int Data::step_16(){
-if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
-if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0], Nst);
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
-}
-	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
-#if SERIAL_GROUPING == 1
-	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], P.NencMax);
-#endif
-#if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d);
-#else
-	kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d);
-#endif
+/*
+__host__ int Data::step_16Simple(){
+	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d, N_h[0]);
 	EjectionFlag2 = 0;
-	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <16, 32, 1> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		fg_kernel <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 16, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 16, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 16, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 16, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			cudaDeviceSynchronize();
+			BSCall(16, si, time_h[0]);
+		}
+		EjectionFlag2 = 0;
+		if(Ncoll_m[0] > 0){
+			int col = CollisionCall();
+			if(col == 0) return 0;
+		}
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+			int rem = RemoveCall();
+			if( rem == 0) return 0;
+		}
+		if(NWriteEnc_m[0] > 0){
+			int enc = writeEncCall();
+			if(enc == 0) return 0;
+		}
+	HC32_kernel <16, 32, 2> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
+	EjectionFlag2 = 0;
+	kick16_kernel<16, 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
+	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
+	if(EjectionFlag_m[0] > 0){
+		int Ej = EjectionCall();
+		if(Ej == 0) return 0;
+	}
+	return 1;
+}
+*/
+__host__ int Data::step_16(){
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[0]);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0], Nst);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+}
+	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+#if SERIAL_GROUPING == 1
+	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], P.NencMax);
+#endif
+#if G3 == 0
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <16> <<< 1, 16 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d, N_h[0]);
+#else
+	kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d, N_h[0]);
+#endif
+	EjectionFlag2 = 0;
+	for(int si = 0; si < SIn; ++si){
+		HC32_kernel <16, 32, 1> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
+		fg_kernel <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		if(Nencpairs_h[0] > 0){
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel < 16, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 16, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(16, si, time_h[0]);
 		}
@@ -740,11 +731,11 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 			kick16_kernel<16, 40, 2> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
 	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0], Nst);
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
@@ -753,11 +744,11 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	kick16_kernel<16, 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0], Nst);
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -773,32 +764,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 __host__ int Data::step_32(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<1, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<1, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <32, 64, 1> <<< 3, 32 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		fg_kernel <<< 1, 32 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 32, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 32, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 32, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 32, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 
 			BSCall(32, si, time_h[0]);
@@ -820,10 +811,10 @@ if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElement
 			kick32_kernel<32, 64, 2> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
@@ -831,10 +822,10 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	kick32_kernel<32, 64, 1> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -848,32 +839,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 __host__ int Data::step_64(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<2, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<2, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d);
+	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32A_kernel <32> <<<2, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel<64, 64, 1> <<< 3, 64 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
-		fg_kernel <<< 2, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		fg_kernel <<< 2, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 64, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 64, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 64, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 64, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(64, si, time_h[0]);
 		}
@@ -894,10 +885,10 @@ if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElement
 			kick32_kernel<64, 64, 2 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
@@ -905,10 +896,10 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	kick32_kernel<64, 64, 1 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, time_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -922,32 +913,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 __host__ int Data::step_128(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
 	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[0]);
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<4, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d);
+	if(*Nencpairs_h > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<4, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HC128_kernel < 128, 128, 1 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< 4, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		HC128b_kernel < 128, 1 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+		fg_kernel <<< 4, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 128, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 128, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 128, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 128, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(128, si, time_h[0]);
 		}
@@ -964,37 +955,37 @@ if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElemen
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HC128_kernel < 128, 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+			HC128b_kernel < 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 			acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], icNB, P.NencMax, time_h[0]);
 			EncMatrix_kernel < 128 ><<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
-	HC128_kernel < 128, 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+	HC128b_kernel < 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 	acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 128 ><<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -1008,32 +999,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 __host__ int Data::step_256(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0],  test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x,  test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<8, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<8, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HC128_kernel < 256, 256, 1 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< 8, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		HC128b_kernel < 256, 1 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+		fg_kernel <<< 8, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 256, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 256, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 256, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 256, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 
 			cudaDeviceSynchronize();
 			BSCall(256, si, time_h[0]);		
@@ -1051,37 +1042,37 @@ if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElemen
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HC128_kernel < 256, 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+			HC128b_kernel < 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 			acc256b_kernel <128, 256> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 			EncMatrix_kernel < 256 ><<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
-	HC128_kernel < 256, 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+	HC128b_kernel < 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 	acc256b_kernel <128, 256> <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 256 ><<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -1096,32 +1087,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 __host__ int Data::step_512(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<16, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<16, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HC128_kernel < 512, 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< 16, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		HC128b_kernel < 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+		fg_kernel <<< 16, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 512, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 512, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 512, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 512, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(512, si, time_h[0]);
 		}
@@ -1138,39 +1129,39 @@ if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElemen
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HC128_kernel < 512, 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+			HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 			EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
 
-	HC128_kernel < 512, 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+	HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 
 	if(EjectionFlag_m[0] > 0){
@@ -1185,32 +1176,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 __host__ int Data::step_1024(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <32> <<<32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HC128_kernel < 512, 1024, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		HC128b_kernel < 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+		fg_kernel <<< 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 1, 512, 3> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 1, 512, 4> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 1, 512, 3> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 1, 512, 4> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(1024, si, time_h[0]);
 		}
@@ -1227,37 +1218,37 @@ if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElemen
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HC128_kernel < 512, 1024, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+			HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 			EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
-	HC128_kernel < 512, 1024, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+	HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -1272,32 +1263,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 __host__ int Data::step_2048(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< 64, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< 64, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel<32> <<<64, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel<32> <<<64, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HC128_kernel < 512, 2048, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< 64, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		HC128b_kernel < 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+		fg_kernel <<< 64, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(2048, si, time_h[0]);
 		}
@@ -1314,24 +1305,24 @@ if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElemen
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HC128_kernel < 512, 2048, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+			HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 			EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
-	HC128_kernel < 512, 2048, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
+	HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, NB[0], time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 	//ForceDriver(x4_d, rcritv_d, a_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dtksq_h[0] * Kt[SIn - 1], icNB[0], NB[0], N_h[0]);
@@ -1339,13 +1330,13 @@ if(P.Usegas == 1 || P.UseForce > 0){
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Spinsun_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -1360,32 +1351,32 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 __host__ int Data::step_largeN(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
-	Rcrit_kernel <<< (N_h[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
+	Rcrit_kernel <<< (N_h[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<< (NB[0] + 31) / 32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
 #if G3 == 0
-	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #else
-	kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC128b_kernel < 512, 1 > <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0]);
-		fg_kernel <<< (N_h[0] + 31) / 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0], test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		fg_kernel <<< (N_h[0] + 31) / 32, 32 >>>(x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, NB[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			int NF = (Nencpairs2_h[0] + 511)/(512);
-			if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
+			if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
+			if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0], N_h[0]);
 			cudaDeviceSynchronize();
 			BSCall(NB[0], si, time_h[0]);
 		}
@@ -1409,15 +1400,15 @@ if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d,
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<< (NB[0] + 31) / 32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+			if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[si], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 
 
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
 	}
@@ -1431,15 +1422,15 @@ if(P.Usegas == 1 || P.UseForce > 0){
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<< (NB[0] + 31) / 32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
 #endif
-	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d);
+	if(Nencpairs_h[0] > 0) kick32Ab_kernel < 32 > <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 
 
 if(P.Usegas == 1 || P.UseForce > 0){
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], 1);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], -1);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -1454,50 +1445,35 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 __host__ int Data::step_small(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], 1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1){
 		GasAccCall_16(time_d, dt_d, Ct[0]);
 		GasAccCall_small(time_d, dt_d, Ct[0]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-		force <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, indexsmall_d, Msun_d, dt_d, Ct[0], time_d, Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0], Nst);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, spinsmall_d, indexsmall_d, Msun_d, dt_d, Ct[0], Nsmall_h[0], Nst);
-		//if(P.UseForce == 2) rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (randomsmall_d, x4small_d, v4small_d, spinsmall_d, indexsmall_d, dt_d, Nsmall_h[0], Nst, time_h[0]);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		//if(P.UseForce == 2) rotation_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, dt_d, N_h[0] + Nsmall_h[0], Nst, time_h[0]);
+		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
 	}
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], -1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
-	Rcritsmall_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, Msun_h[0], rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-	if(Nencpairs_h[0] > 0 || Nencpairssmall_h[0] > 0 || EjectionFlag2 > 0) kickAsmall_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0], x4small_d, v4small_d, Encpairssmall2_d, Nsmall_h[0], asmall_d, P.NencMax, Nconst[0]);
-	else kickBsmall_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, x4small_d, v4small_d, asmall_d, N_h[0], Nsmall_h[0]);
+	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0]);
+	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32A_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0] + Nsmall_h[0], P.NencMax, time_h[0]);
+	else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
-		HCsmall_kernel <256, 1> <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairssmall_d, Nencpairs2_d, Nencpairssmall2_d, Nenc_d, Nencsmall_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-		fgsmall_kernel <<<(N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, dt_h[0] * FGt[si], Msun_h[0], test_d, x4small_d, v4small_d, xoldsmall_d, voldsmall_d, asmall_d, indexsmall_d, Nsmall_h[0], N_h[0], aelimits_d, aelimitssmall_d, aecount_d, aecountsmall_d, Gridaecount_d, Gridaicount_d, si);
-		if(Nencpairs_h[0] > 0 || Nencpairssmall_h[0] > 0){
-			encountersmall_kernel <<< (Nencpairs_h[0] + Nencpairssmall_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, x4small_d, v4small_d, xoldsmall_d, v4small_d, Nencpairssmall_d, Encpairssmall_d, Nencpairssmall2_d, Encpairssmall2_d, N_h[0], enccount_d, enccountsmall_d, si, time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
-			cudaMemcpy(Nencpairssmall2_h, Nencpairssmall2_d, sizeof(int), cudaMemcpyDeviceToHost);
+		HC128b_kernel <512, 1> <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0] + Nsmall_h[0], time_h[0]);
+		fg_kernel <<<(N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, xold_d, vold_d, a_d, index_d, groupIndex_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, Nsmall_h[0] + N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si);
+		if(Nencpairs_h[0] > 0){
+			encounter_kernel <<< (Nencpairs_h[0] + 31)/ 32, 32 >>> (x4_d, v4_d, xold_d, vold_d, x4G3_d, v4G3_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, K_d, Kold_d, StopTime_d, N_h[0] + Nsmall_h[0], time_h[0], P.WriteEncounters, P.WriteEncountersRadius);
 			cudaDeviceSynchronize();
 
-			if(Nsmall_h[0] > 0) groupsmall1_kernel <<< (Nsmall_h[0] + 127)/128, 128 >>>(Nencpairssmall_d, Encpairssmall_d, Nconst[0], Nsmall_h[0]);
-			if(Nencpairssmall2_h[0] > 0) groupsmall2_kernel <<< (Nencpairssmall2_h[0] + 127)/128, 128 >>> (Nencpairssmall2_d, Encpairssmall2_d, Nencsmall_d, Encpairssmall_d, Nconst[0]);
-			if(NmaxTestParticles <= 512){
-				cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-				int NF = (Nencpairs2_h[0] + 511)/(512);
-				if(NF == 1) group_kernel < NmaxTestParticles, 512, 1 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-				if(NF > 1) group_kernel < NmaxTestParticles, 512, 2 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			}
-			else if(NmaxTestParticles <= 2048){
-				cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-				int NF = (Nencpairs2_h[0] + 511)/(512);
-				if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-				if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, NB[0]);
-			}
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			int NF = (Nencpairs2_h[0] + 511)/(512);
+			if(NF == 1) group_kernel < 1, 512, 3 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, N_h[0] + Nsmall_h[0], N_h[0]);
+			if(NF > 1) group_kernel < 1, 512, 4 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, groupIndex_d, N_h[0] + Nsmall_h[0], N_h[0]);
 
-			cudaDeviceSynchronize();
-			if(Nencsmall_m[0] > 0) groupsmall3_kernel<<< (Nencsmall_m[0] + 127)/128, 128 >>> (Nencsmall_d, Encpairssmall_d, Encpairssmall2_d, Nconst[0]);
 			cudaDeviceSynchronize();
 			BSsmallCall(si, time_h[0]);
 		}
@@ -1514,45 +1490,39 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 			if(enc == 0) return 0;
 		}
 		if(si < SIn - 1){
-			HCsmall_kernel<256, 3> <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairssmall_d, Nencpairs2_d, Nencpairssmall2_d, Nenc_d, Nencsmall_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-			kicksmall_kernel < 128, 2 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d,Encpairssmall2_d, NB[0], Nconst[0], P.NencMax);
+			HC128b_kernel<512, 2> <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0] + Nsmall_h[0], time_h[0]);
+			kicksmall_kernel < 128, 2 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
 if(P.Usegas == 1 || P.UseForce > 0){
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], 1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.Usegas == 1){
 		GasAccCall_16(time_d, dt_d, Ct[si]);
 		GasAccCall_small(time_d, dt_d, Ct[si]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-		force <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, indexsmall_d, Msun_d, dt_d, Ct[si], time_d, Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0], Nst);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, spinsmall_d, indexsmall_d, Msun_d, dt_d, Ct[si], Nsmall_h[0], Nst);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
 	}
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], -1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(Nencpairssmall_h, Nencpairssmall_d, sizeof(int), cudaMemcpyDeviceToHost);
 		}
 	}
-	HCsmall_kernel<256, 2> <<< 3, 256 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairssmall_d, Nencpairs2_d, Nencpairssmall2_d, Nenc_d, Nencsmall_d, x4small_d, v4small_d, Nsmall_h[0], N_h[0]);
-	kicksmall_kernel < 128, 1 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, x4small_d, v4small_d, asmall_d, Nsmall_h[0], rcritvsmall_d, groupIndexsmall_d, Nencpairssmall_d, Encpairssmall_d, Encpairssmall2_d, NB[0], Nconst[0], P.NencMax);
+	HC128b_kernel<512, 2> <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0] + Nsmall_h[0], time_h[0]);
+	kicksmall_kernel < 128, 1 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
 
 if(P.Usegas == 1 || P.UseForce > 0){
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], 1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.Usegas == 1){
 		GasAccCall_16(time_d, dt_d, Ct[SIn - 1]);
 		GasAccCall_small(time_d, dt_d, Ct[SIn - 1]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-		force <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, indexsmall_d, Msun_d, dt_d, Ct[SIn - 1], time_d, Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0], Nst);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (Nsmall_h[0] + 255) / 256, 256 >>> (x4small_d, v4small_d, spinsmall_d, indexsmall_d, Msun_d, dt_d, Ct[SIn - 1], Nsmall_h[0], Nst);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
 	}
-	comsmall_kernel < 256 > <<< 1, 256 >>> (x4_d, v4_d, x4small_d, v4small_d, vcom_d, U_d, Msun_h[0], test_d, N_h[0], Nsmall_h[0], -1);
+	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpy(Nencpairssmall_h, Nencpairssmall_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
 		if(Ej == 0) return 0;
@@ -1561,14 +1531,14 @@ if(P.Usegas == 1 || P.UseForce > 0){
 }
 __host__ int Data::step_M(){
 if(P.Usegas == 1 || P.UseForce > 0){
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, index_d, NBS_d, NT, test_d, 1);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], time_d, NT, Nst, P.UseForce);
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, index_d, NBS_d, NT, test_d, -1);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, NT, Nst, P.UseForce);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 }
 	RcritM_kernel <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT, time_d, idt_d, ict_d, timeStep);
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 3 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[SIn - 1], index_d, NT, test_d);
-	else kickMB_kernel <<< (NT + 127) / 128, 128>>> (v4_d, a_d, test_d, NT);
+	else kick32B_kernel <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, a_d, NT);
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 1 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dtiMsun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst);
@@ -1598,10 +1568,10 @@ if(P.Usegas == 1 || P.UseForce > 0){
 			HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dtiMsun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst);
 			KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[si], index_d, NT, test_d);
 if(P.Usegas == 1 || P.UseForce > 0){
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, index_d, NBS_d, NT, test_d, 1);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], time_d, NT, Nst, P.UseForce);
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, NBS_d, index_d, NT, test_d, -1);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, NT, Nst, P.UseForce);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, NBS_d, index_d, NT, test_d, -1);
 }
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 		}
@@ -1609,10 +1579,10 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dtiMsun_d, index_d, NT, Ct[SIn - 1], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[SIn - 1], index_d, NT, test_d);
 if(P.Usegas == 1 || P.UseForce > 0){
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, index_d, NBS_d, NT, test_d, 1);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], time_d, NT, Nst, P.UseForce);
-	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, U_d, index_d, NBS_d, NT, test_d, -1);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, NT, Nst, P.UseForce);
+	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 }
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(EjectionFlag_m[0] > 0){

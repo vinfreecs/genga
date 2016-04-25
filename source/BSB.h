@@ -14,7 +14,7 @@
 //  ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -23,8 +23,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	volatile double dt1 = dt; 
 	volatile double dt2, dt22;
 	volatile double t = 0.0;
-
-	const double tol = 1.0e-12;
 
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
@@ -69,8 +67,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
  	__syncthreads();
 	if(idy < N2){
-                x4_s[idy] = xold_d[idi];  
-                v4_s[idy] = vold_d[idi];  
+		x4_s[idy] = xold_d[idi];  
+		v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
 	}
@@ -78,7 +76,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		x4_s[idy].x = 0.0;
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
-		x4_s[idy].w = -1.0e-12;//0.0;
+		x4_s[idy].w = -1.0e-12;
                 v4_s[idy].x = 0.0;
                 v4_s[idy].y = 0.0;
                 v4_s[idy].z = 0.0;
@@ -428,7 +426,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(NN >= 2) error[idy] = fmax(error[idy], error[idy + 1]);
 				}
 				__syncthreads();
-				if(error_s[0] < tol * tol || sgnt * dt1 < 1.0e-6){
+				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < 1.0e-6){
 
 					if(idy < N2){
 						xt_s[idy].x = dx_s[idy][0].x;
@@ -454,7 +452,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						double enct = 0.0;
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
 						//write Encounters to file
-//if(xt_s[ii].w >= 0.0 && xt_s[jj + l].w >= 0.0 && (index_d[Encpairs2_d[start + ii].x] < 0 || index_d[Encpairs2_d[start + jj + l].x] < 0)) printf("Negative %5d %5d %5d %5d %5d %5d %5d %5d %g %g %g %g\n", index_d[Encpairs2_d[start + ii].x], index_d[Encpairs2_d[start + jj + l].x], Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, ii, jj + l, start, NN, x4_s[ii].w, x4_s[jj + l].w, xold_d[Encpairs2_d[start + ii].x].w, xold_d[Encpairs2_d[start + jj + l].x].w);
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
 							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
@@ -469,7 +466,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
-								collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, Nst, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 #if G3 > 0
 									int iK = Encpairs2_d[start + i].x;
 									int jK = Encpairs2_d[start + j].x;
@@ -562,10 +559,11 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	}
 #endif
 	if(idy < N2){
+//if(x4_s[idy].w <= 0){
 		x4_d[idi] = x4_s[idy]; 
 		v4_d[idi] = v4_s[idy];
 		rcritv_d[idi] = rcritv_s[idy];
-//if(time > 920) printf("final%g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, index_d[idi], NN, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w);
-//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z);
+//}
+//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z);
 	}
 }

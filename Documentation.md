@@ -47,6 +47,12 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The central Mass, in solar masses
  * Value of close encounter parameter n1
  * Value of close encounter parameter n2
+ * The Star Radius in AU
+ * The Star Love Number
+ * The Star fluid Love Number
+ * The Star spin_x in Solar masses AU^2 * day / 0.0172020989
+ * The Star spin_y in Solar masses AU^2 * day / 0.0172020989
+ * The Star spin_z in Solar masses AU^2 * day / 0.0172020989
  * The Input file name
  * The input file format:
 
@@ -67,10 +73,12 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * Sz = z-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
     * i = index of the body; optional, the default value is the line number in the input file. Don't give two bodies the same index.
     * t = start time of the simulation in years, optional. The default is zero.
-    *  amin = minimal value of semi major axis range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
+    * amin = minimal value of semi major axis range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
     * amax = maximal value of semi major axis range for aecount; optional, the default value is 100. See [here](#markdown-header-aelimits) for more details
     * emin = minimal value of eccentricity range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
-    *  emax = maximal value of eccentricity range for aecount; optional, the default value is 1.0. See [here](#markdown-header-aelimits) for more details
+    * emax = maximal value of eccentricity range for aecount; optional, the default value is 1.0. See [here](#markdown-header-aelimits) for more details
+    * k2 = potential Love number of degree 2
+    * k2f = fluid Love number of degree 2
     * \- = skip this column, optional
 
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.
@@ -397,5 +405,11 @@ In the multi simulation mode, the indexes of the particles should not be greater
 
 # Additional Forces #
 in the file 'force.h' can be included additional forces. In this kernel, all coordinates have already been converted into heliocentric coordinates.
-In the 'param.dat' can be specified a number 'doForce' for different forces. The kernel is executed for doForce > 0.
+In the 'param.dat' can be specified a binary number 'Use force' for different forces. The kernel is executed for Use force > 0.
+Implemented are the following forces:
 
+ * General Relativity correction: binay number 1
+ * Tidal forces: binary number 2
+ * Rotational Forces: binary number 4
+
+For example 'Use force = 5' will use GR and Rotational forces, 'Use force = 2' will only use Tidal forces.

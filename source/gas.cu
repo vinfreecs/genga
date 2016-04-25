@@ -326,7 +326,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst, double Ct){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst, double Ct){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -336,7 +336,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	double dt = dt_d[st] * Ct;
 	double dTime = time_d[st] / 365.25;
 
-	double Msun = Msun_d[st];
+	double Msun = Msun_d[st].x;
 	double U = 0.0;
 
 	int ip, jp0, jp1;
@@ -709,7 +709,7 @@ __host__ void Data::GasAccCall_largeN(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4small_d, v4small_d, indexsmall_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
