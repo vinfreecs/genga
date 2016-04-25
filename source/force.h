@@ -34,7 +34,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		double ir = 1.0 / sqrt(rsq);
 		
 		if(UseForce & 1){
-			// GR
+			// GR  see Fabrycky 2010 equation 2
 			double c = 10065.3201686;//c in AU / day * 0.0172020989
 			double csq = c * c;
 
@@ -54,7 +54,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.z += B * (C * v4.z - D * x4.z * ir);
 		}
 		if(UseForce >> 1 & 1){
-			//Tidal force
+			//Tidal force see Fabrycky 2010 equation 3
 			double R2 = v4.w * v4.w;
 			double R5 = R2 * R2 * v4.w;
 			double ir3 = ir * ir * ir;
@@ -67,7 +67,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.z += E * x4.z * ir;
 		}
 		if(UseForce >> 2 & 1){
-			//Rotational Force
+			//Rotational Force see Fabrycky 2010 equation 4
 			double Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			double Rsun5 = Rsun2 * Rsun2 * Msun_d[st].y;
 			double lovesun = Msun_d[st].z;
@@ -88,7 +88,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.x += F * x4.x * ir;
 			a3.y += F * x4.y * ir;	
 			a3.z += F * x4.z * ir;
-}
+		}
 
 /*
 double Rsun2 = Msun_d[st].y * Msun_d[st].y;
