@@ -324,6 +324,9 @@ __host__ void Host::Halloc(){
 			else if(strcmp(ff + f * 5, "k2f") == 0){
 				GSF[st].informat[f] = 21;
 			}
+			else if(strcmp(ff + f * 5, "tau") == 0){
+				GSF[st].informat[f] = 22;
+			}
 		}	
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
@@ -554,6 +557,16 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Star tau =") == 0){
+
+			er = fscanf (paramfile, "%lf", &Spinsun_h[st].w);
+
+			if(er <= 0){
+				printf("Error: Star tau is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "n1 =") == 0){
 			er = fscanf (paramfile, "%lf", &n1_h[st]);
 
@@ -652,6 +665,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 				else if(strcmp(sp, "k2f") == 0){
 					GSF[st].informat[f] = 21;
+				}
+				else if(strcmp(sp, "tau") == 0){
+					GSF[st].informat[f] = 22;
 				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
@@ -1692,6 +1708,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Star spin_x: %g\n", Spinsun_h[st].x);
 			fprintf(infofile, "Star spin_y: %g\n", Spinsun_h[st].y);
 			fprintf(infofile, "Star spin_z: %g\n", Spinsun_h[st].z);
+			fprintf(infofile, "Star tau: %g\n", Spinsun_h[st].w);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
 #if G3 > 0
@@ -1722,6 +1739,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 19) fprintf(infofile, "t ");
 				else if(GSF[st].informat[f] == 20) fprintf(infofile, "k2 ");
 				else if(GSF[st].informat[f] == 21) fprintf(infofile, "k2f ");
+				else if(GSF[st].informat[f] == 22) fprintf(infofile, "tau ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");

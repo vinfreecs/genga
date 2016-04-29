@@ -3,8 +3,8 @@
 // This is a template function for additional forces
 // The velocities in this kernel are already converted to heliocentric coordinates
 //
-//June 2015
-//Authors: Simon Grimm
+// April 2016
+// Authors: Simon Grimm
 // **********************************************************
 __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
 
@@ -53,6 +53,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.y += B * (C * v4.y - D * x4.y * ir);
 			a3.z += B * (C * v4.z - D * x4.z * ir);
 		}
+/*
 		if(UseForce >> 1 & 1){
 			//Tidal force see Fabrycky 2010 equation 3
 			double R2 = v4.w * v4.w;
@@ -89,62 +90,112 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.y += F * x4.y * ir;	
 			a3.z += F * x4.z * ir;
 		}
-
-/*
-double Rsun2 = Msun_d[st].y * Msun_d[st].y;
-double Rsun3 = Rsun2 * Msun_d[st].y;
-double lovesunf = Msun_d[st].w;
-
-//compute rotation vector from spin vector
-double iIsun = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
-double3 omegasun3;
-omegasun3.x = Spinsun.x * iIsun;
-omegasun3.y = Spinsun.y * iIsun;
-omegasun3.z = Spinsun.z * iIsun;
-
-double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
-
-double J2sun = lovesunf * omegasun2 * Rsun3 / (3.0 * ksq * Msun);
-
-
-double R2 = v4.w * v4.w;
-double R3 = R2 * v4.w;
-double lovef = love_d[st].y;
-
-//compute rotation vector from spin vector
-double iI = 5.0 / (2.0 * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
-double3 omega3;
-omega3.x = spin_d[id].x * iI;
-omega3.y = spin_d[id].y * iI;
-omega3.z = spin_d[id].z * iI;
-
-double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
-
-double J2 = lovef * omega2 * R3 / (3.0 * ksq * x4.w);
-
-double t1 = 0.5 * ksq * x4.w * Msun;
-volatile double Csun = t1 * J2sun * Rsun2;
-volatile double Cp = t1 * J2 * R2;
-
-double ir2 = ir * ir;
-double ir3 = ir2 * ir;
-double ir5 = ir3 * ir2;
-double ir7 = ir5 * ir2;
-
-volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
-volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
-			
-
-double F1 = -3.0 * ir5 * (Csun + Cp) + 15.0 * ir7 * (Csun * r_omegasun * r_omegasun / omegasun2 + Cp * r_omega * r_omega / omega2);
-
-double F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
-double F3 = -6.0 * ir5 * Cp * r_omega / omega2;
-
-
-a3.x += F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x;
-a3.y += F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y;
-a3.z += F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z;
 */
+
+		double3 omega3;
+		double3 omegasun3;
+		double Rsun2, Rsun3, Rsun5;
+		double R2, R3, R5;
+		double ir2, ir3, ir5, ir7;
+		if(UseForce >> 1 & 1 || UseForce >> 2 & 1){
+			Rsun2 = Msun_d[st].y * Msun_d[st].y;
+			Rsun3 = Rsun2 * Msun_d[st].y;
+			Rsun5 = Rsun3 * Rsun2;
+
+			R2 = v4.w * v4.w;
+			R3 = R2 * v4.w;
+			R5 = R3 * R2;
+
+			//compute rotation vector from spin vector
+			double iIsun = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			omegasun3.x = Spinsun.x * iIsun;
+			omegasun3.y = Spinsun.y * iIsun;
+			omegasun3.z = Spinsun.z * iIsun;
+
+			//compute rotation vector from spin vector
+			double iI = 5.0 / (2.0 * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			omega3.x = spin_d[id].x * iI;
+			omega3.y = spin_d[id].y * iI;
+			omega3.z = spin_d[id].z * iI;
+
+
+			ir2 = ir * ir;
+			ir3 = ir2 * ir;
+			ir5 = ir3 * ir2;
+			ir7 = ir5 * ir2;
+
+		}
+
+		if(UseForce >> 1 & 1){
+			//Tidal Force see Bolmont et al 2015 equation 15
+			double Msun2 = Msun * Msun;
+			double lovesun = Msun_d[st].z;
+			double tausun = Spinsun_d[st].w;
+
+			double m2 = x4.w * x4.w;
+			double love = love_d[id].x;
+			double tau = love_d[id].z;
+
+			volatile double tsun = 3.0 * ksq * m2 * Rsun5 * ir7 * lovesun;
+			volatile double t = 3.0 * ksq * Msun2 * R5 * ir7 * love;
+
+			double Psun = tsun * tausun * ir;
+			double P = t * tau * ir;
+
+			double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir;
+			
+			double F1 = -tsun - t - 3.0 * rd * (Psun + P);
+
+			double3 h3;
+			h3.x = ( x4.y * v4.z) - (x4.z * v4.y);
+			h3.y = (-x4.x * v4.z) + (x4.z * v4.x);
+			h3.z = ( x4.x * v4.y) - (x4.y * v4.x);
+
+			double3 t1;
+			t1.x = ( h3.y * x4.z) - (h3.z * x4.y) * ir2;
+			t1.y = (-h3.x * x4.z) + (h3.z * x4.x) * ir2;
+			t1.z = ( h3.x * x4.y) - (h3.y * x4.x) * ir2;
+
+			double3 t2;
+			t2.x = ( omega3.y * x4.z) - (omega3.z * x4.y);
+			t2.y = (-omega3.x * x4.z) + (omega3.z * x4.x);
+			t2.z = ( omega3.x * x4.y) - (omega3.y * x4.x);
+			
+			double3 t3;
+			t3.x = ( omegasun3.y * x4.z) - (omegasun3.z * x4.y);
+			t3.y = (-omegasun3.x * x4.z) + (omegasun3.z * x4.x);
+			t3.z = ( omegasun3.x * x4.y) - (omegasun3.y * x4.x);
+
+			double F2 = F1 + (Psun + P) * rd * ir;
+
+			a3.x += (F2 * x4.x + P * (t2.x - t1.x) + Psun * (t3.x - t1.x)) / x4.w;
+			a3.y += (F2 * x4.y + P * (t2.y - t1.y) + Psun * (t3.y - t1.y)) / x4.w;
+			a3.z += (F2 * x4.z + P * (t2.z - t1.z) + Psun * (t3.z - t1.z)) / x4.w;
+		}
+
+		if(UseForce >> 2 & 1){
+			//Rotational Force see Bolmont et al 2015 equation 15
+			double lovesunf = Msun_d[st].w;
+			double lovef = love_d[st].y;
+
+			double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
+
+			double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
+			volatile double Csun = x4.w * lovesunf * omegasun2 * Rsun5 / 6.0;
+			volatile double Cp = Msun * lovef * omega2 * R5 / 6.0;
+
+			volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
+			volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
+
+			volatile double F1 = -3.0 * ir5 * (Csun + Cp) + 15.0 * ir7 * (Csun * r_omegasun * r_omegasun / omegasun2 + Cp * r_omega * r_omega / omega2);
+			volatile double F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
+			volatile double F3 = -6.0 * ir5 * Cp * r_omega / omega2;
+
+			a3.x += (F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x) / x4.w;
+			a3.y += (F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y) / x4.w;
+			a3.z += (F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z) / x4.w;
+		}
+
 
 		//apply the Kick
 		v4.x += a3.x * dt;

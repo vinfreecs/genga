@@ -53,6 +53,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Star spin_x in Solar masses AU^2 * day / 0.0172020989
  * The Star spin_y in Solar masses AU^2 * day / 0.0172020989
  * The Star spin_z in Solar masses AU^2 * day / 0.0172020989
+ * The Star tau (time lag)
  * The Input file name
  * The input file format:
 

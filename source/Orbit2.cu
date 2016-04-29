@@ -531,6 +531,7 @@ __host__ int Data::readic(int st){
 				}
 				else if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
 				else if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
+				else if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
 			}
 			if(index < 0) index *= -1;
 			if(v.w == 0){
