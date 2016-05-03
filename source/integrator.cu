@@ -218,6 +218,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
 		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+
 	
 if(x4i.w == 0){
 rcrit_d[id] = 0.0;
@@ -1453,8 +1454,8 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 	}
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) rotation_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, dt_d, N_h[0] + Nsmall_h[0], Nst, time_h[0]);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
+	//	if(P.UseForce == 32) rotation_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, dt_d, N_h[0] + Nsmall_h[0], Nst, time_h[0]);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1500,7 +1501,7 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	}
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1518,7 +1519,7 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	}
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }

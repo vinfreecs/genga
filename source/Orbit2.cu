@@ -489,6 +489,7 @@ __host__ int Data::readic(int st){
 	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 
 	int ii = 0;
+	int iismall = 0;
 	
 	double skip;
 	double4 x, v;
@@ -496,7 +497,6 @@ __host__ int Data::readic(int st){
 	double3 love;
 	int index;
 	float4 aelimits;
-
 	if(P.tRestart == 0){
 		for(int i = 0; i < N + Nsmall; ++i){
 			x = x4_h[i + NBS];
@@ -537,14 +537,19 @@ __host__ int Data::readic(int st){
 			if(v.w == 0){
 				v.w = cbrt((x.w * 0.75 ) / (M_PI * rho[st] * AU * AU * AU / Solarmass));
 			}
-			x4_h[ii + NBS] = x;
-			v4_h[ii + NBS] = v;
-			spin_h[ii + NBS] = spin;
-			love_h[ii + NBS] = love;
-			if(Nst == 1) index_h[ii + NBS] = index;
-			else index_h[ii + NBS] = index % 100 + 100*st;
-			aelimits_h[ii + NBS] = aelimits;
+			int NBSN = NBS;
+			if(x.w == 0 && P.UseTestParticles == 1) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+			else NBSN -= iismall;
+
+			x4_h[ii + NBSN] = x;
+			v4_h[ii + NBSN] = v;
+			spin_h[ii + NBSN] = spin;
+			love_h[ii + NBSN] = love;
+			if(Nst == 1) index_h[ii + NBSN] = index;
+			else index_h[ii + NBSN] = index % 100 + 100*st;
+			aelimits_h[ii + NBSN] = aelimits;
 			++ii;
+			if(x.w == 0 && P.UseTestParticles == 1) ++iismall;
 		}
 	}
 	else{
@@ -1216,8 +1221,7 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, 
-int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int naficN){
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn){
 
 	for(int j = 0; j < N_d[st]; ++j){
 		x4_d[j + NT] = x4_d[j + NBS];
@@ -1240,14 +1244,6 @@ int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, floa
 			nafx_d[(j + NT) * nafn + i] = nafx_d[(j + NBS) * nafn + i];
 			nafy_d[(j + NT) * nafn + i] = nafy_d[(j + NBS) * nafn + i];
 		}
-	}
-//G3
-	for(int j = 0; j < Nsmall_d[st]; ++j){
-		for(int i = 0; i < nafn; ++i){
-			nafx_d[(j + NsmallT + naficN) * nafn + i] = nafx_d[(j + NsmallS + naficN) * nafn + i];
-			nafy_d[(j + NsmallT + naficN) * nafn + i] = nafy_d[(j + NsmallS + naficN) * nafn + i];
-		}
-
 	}
 }
 
@@ -1284,11 +1280,11 @@ __host__ void Data::stopSimulations(){
 #if USE_NAF == 1
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n, naf.icN);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n);
 #else
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0, 0);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0);
 #endif
 
 		NBS_h[st] = NT;

@@ -505,7 +505,9 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						double enct = 0.0;
 						volatile int jg = Encpairs_d[idi * NencMax + i].x;
 						volatile int j = Encpairs_d[NB + jg].y;
+if(Encpairs2_d[start + i].x < Encpairs2_d[start + j].x){
 						encounter<1>(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], v4_s[idy].w, v4_s[j].w, 0.0, 0.0, dt1, idy, j, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
+}
 						//write Encounters to file
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
@@ -880,7 +882,9 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						for(int ii = 0; ii < Ne; ++ii){
 							double enct = 0.0;
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
+if(idi < j){
 							encounter<1>(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], vold_d[idi].w, vold_d[j].w, 0.0, 0.0, dt1, idi, j, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
+}
 							//write Encounters to file
 							if(enct > 0.0){
 								int ne = atomicAdd(NWriteEnc_d, 1);
@@ -1211,7 +1215,9 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 				for(int i = 0; i < Ne; ++i){	
 					double enct = 0.0;
 					volatile int j = Encpairs_d[idi * NencMax + i].x;
+if(idi < j){
 					encounter<1>(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], vold_d[idi].w, vold_d[j].w, 0.0, 0.0, dt1, idi, j, &test, Colpairs_s, Ncol[0], 0, enct, writeEncounters, writeEncountersRadius);
+}
 					//write Encounters to file
 					if(enct > 0.0){
 						int ne = atomicAdd(NWriteEnc_d, 1);

@@ -19,11 +19,11 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
-		int index = index_d[id];
+//		int index = index_d[id];
 		double Msun = Msun_d[st].x;			//This is the mass of the central star
-		double4 Spinsun = Spinsun_d[st];			//This is the mass of the central star
+		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star
 		double dt = dt_d[st] * Ct;			//This is the time step to do
-		double time = time_d[st] / 365.25;		//This is the time in years
+//		double time = time_d[st] / 365.25;		//This is the time in years
 
 		double3 a3;
 		a3.x = 0.0; 	
@@ -552,10 +552,10 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 		if(x4i.w >= 0.0){
 
 			double rd = curand_uniform(&random);
-//			random_d[id] = random;
+			random_d[id] = random;
 //printf("%d %g\n", id, x);
 
-			double RR = v4i.w * def_AU;	//covert radius in m 
+			double RR = v4i.w * def_AU;	//convert radius in m 
 			double V = 5000.0;		//collisional velocity in m / s
 			double rho = 3500.0; 		//density of body in kg/m^3, /this is needed because test particles have zero mass
 
@@ -584,7 +584,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			p = p / 365.25 * dt / dayUnit;	//probability per time step
 
 			if(rd < p){
-				//reset the rotation rate an spin vector
+				//reset the rotation rate and spin vector
 				rd = curand_uniform(&random);
 				double omin = 1.0 / (36.0 * 2.0 * RR);
 				double omax = 1.0 / (2.0 * RR);
@@ -767,7 +767,6 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 				
 
 			}
-	
 //printf("a %d %g %g %g %g %g %g %g %g %g %g %g\n", id, a, e, m, RR, omega, v4i.x, v4i.y, v4i.z,  Theta, E, M);
 
 			double3 rs3;
@@ -825,9 +824,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			double Gsd = (Bx * Cx - Ax * Dx) * iC2D2;
 
 			double WD = t2 / (1.0 + lamda);
-			a3.x += WD * (Gsd * rs3.x + Gcd * srs3.x);
-			a3.y += WD * (Gsd * rs3.y + Gcd * srs3.y);
-			a3.z += WD * (Gsd * rs3.z + Gcd * srs3.z);
+
+			if(omega != 0.0){
+				a3.x += WD * (Gsd * rs3.x + Gcd * srs3.x);
+				a3.y += WD * (Gsd * rs3.y + Gcd * srs3.y);
+				a3.z += WD * (Gsd * rs3.z + Gcd * srs3.z);
+			}
 //		printf("D %d %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g\n", id, a3.x, a3.y, a3.z, srs3.x, srs3.y, srs3.z, Gcd, Gsd, WD, lamda);
 			}
 			
@@ -873,9 +875,11 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 			double WS = (sp * alpha * (cM * Gcd - sM * Gsd) + sq * beta * (sM * Gcd + cM * Gsd)) / (1.0 + lamda);
 			double aS = t2 * WS;
-			a3.x += aS * omega3.x;
-			a3.y += aS * omega3.y;
-			a3.z += aS * omega3.z;
+			if(omega != 0.0){
+				a3.x += aS * omega3.x;
+				a3.y += aS * omega3.y;
+				a3.z += aS * omega3.z;
+			}
 //		printf("S %d %g %g %g %.10g %.10g %.10g %.10g %.10g %g %g %g %g %g\n", id, a3.x, a3.y, a3.z, sp, sq, sp * sp + sq * sq, RR, Gcd, Gsd, n, lamda, sM, cM);
 			}
 

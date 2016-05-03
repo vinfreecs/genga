@@ -180,7 +180,7 @@ int main(int argc, char*argv[]){
 #if USE_NAF == 1
 			//compute the x and y arrays for the naf algorithm
 			int NAFstep = 0;
-			D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+			D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 			++NAFstep;
 #endif
 
@@ -417,7 +417,7 @@ int main(int argc, char*argv[]){
 #if USE_NAF == 1
 			//compute the x and y arrays for the naf algorithm
 			if(D.timeStep % D.P.NAFinterval == 0){
-				D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.x4small_d, D.v4small_d, D.index_d, D.NBS_d, D.vcom_d, D.U_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0], D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+				D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 				++NAFstep;
 				if(NAFstep % D.P.NAFn0 == 0){
 					er = D.naf.nafCall(D.NT, D.N_h, D.N_d, D.Nsmall_h, D.Nsmall_d, D.Nst, D.GSF, D.time_h, D.time_d, D.idt_h, D.P.NAFformat, D.P.NAFinterval, D.index_h, D.index_d, D.NBS_h);
