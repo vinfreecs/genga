@@ -472,9 +472,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				if(setElements_c[i] == 10){
 					M = (M0 + (M1 - M0) * x) * dayUnit;	//t0 epoch time day to day'
 					M *= sqrt(mu / (a * a * a));		//Mean anomaly
-	//if(id == 0) printf("%g ", M);
 					M = fmod(M, 2.0*M_PI);
-	//if(id == 0) printf("%g\n", M);
 				}
 			}
 			for(int i = 0; i < nelements; ++i){
@@ -613,6 +611,63 @@ printf("%g %d %g\n", time, id, omega);
 	}
 }
 #endif
+
+// destroy body j and create nf debris particles
+__global__ void fragment_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int N, int Nsmall, int nf, int j){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < nf){
+		double4 x4 = x4_d[j];
+		double4 v4 = v4_d[j];
+		double3 spin = spin_d[j];
+
+		
+		x4_d[id + N + Nsmall].x = x4.x;
+		x4_d[id + N + Nsmall].y = x4.y;
+		x4_d[id + N + Nsmall].z = x4.z;
+		x4_d[id + N + Nsmall].w = 0.0;
+
+		v4_d[id + N + Nsmall].x = v4.x + 0.01;
+		v4_d[id + N + Nsmall].y = v4.y;
+		v4_d[id + N + Nsmall].z = v4.z;
+		v4_d[id + N + Nsmall].w = 0.0;
+
+		spin_d[id + N + Nsmall].x = 0.0;
+		spin_d[id + N + Nsmall].y = 0.0;
+		spin_d[id + N + Nsmall].z = 0.0;
+
+		index_d[id + N + Nsmall] = 1000 + id;
+	}
+
+	__syncthreads();
+	if(id == 0){
+		x4_d[j].x = 0.0;
+		x4_d[j].y = 1.0;
+		x4_d[j].z = 0.0;
+		x4_d[j].w = -1.0e-12;
+
+		v4_d[j].x = 0.0;
+		v4_d[j].y = 0.0;
+		v4_d[j].z = 0.0;
+		v4_d[j].w = 0.0;
+
+		spin_d[j].x = 0.0;
+		spin_d[j].y = 0.0;
+		spin_d[j].z = 0.0;
+
+		index_d[j] = -1;
+	}
+}
+__host__ void fragmentCall(){
+	int nf = 100;
+	int st = 0;
+	fragment_kernel <<< (nf + 511) / 512, 512 >>> (x4_d, v4_d, spin_d, index_d, N_h[st], Nsmall_h[st], nf, 10);
+	Nsmall_h[st] += nf;
+	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
+}
+
 
 __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Ct, int N, int Nst){
 

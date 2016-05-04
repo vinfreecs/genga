@@ -110,6 +110,10 @@
 //Maximum close encounter group size  = 2^(def_GMax)
 #define def_GMax 20
 
+//Additional array size for debris particles
+#define def_Ndebris 1000
+
+
 //Parameters for fastfg
 #define FGN 127				//Number of elements in table for fastfg
 #define PI_N M_PI/FGN

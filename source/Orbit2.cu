@@ -1084,7 +1084,7 @@ __host__ void Data::Ejection(){
 				if(rsq > Rcut_h[st] * Rcut_h[st] && x4_h[i + NBS].w >= 0){
 					c = -3;
 					if(Nst == 1){
-						if(x4_h[i + NBS].x > 0.0){
+						if(x4_h[i + NBS].w > 0.0){
 							printf("Body %d ejected\n", index_h[i + NBS]);
 							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS]);
 						}
@@ -1094,7 +1094,7 @@ __host__ void Data::Ejection(){
 						}
 					}
 					else{
-						if(x4_h[i + NBS].x > 0.0){
+						if(x4_h[i + NBS].w > 0.0){
 							printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
 							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % 100);
 						}
@@ -1107,7 +1107,7 @@ __host__ void Data::Ejection(){
 				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4_h[i + NBS].w >= 0){
 					c = -2;
 					if(Nst == 1){
-						if(x4_h[i + NBS].x > 0.0){
+						if(x4_h[i + NBS].w > 0.0){
 							printf("Body %d too close to central mass -> removed\n", index_h[i + NBS]);
 							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS]);
 						}
@@ -1117,7 +1117,7 @@ __host__ void Data::Ejection(){
 						}
 					}
 					else{
-						if(x4_h[i + NBS].x > 0.0){
+						if(x4_h[i + NBS].w > 0.0){
 							printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
 							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
 						}

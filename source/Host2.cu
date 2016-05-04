@@ -1817,7 +1817,7 @@ __host__ void Host::Tsizes(){
 		icNB = NB[0];
 		NBNencT = (icNB + Nsmall_h[0]) * P.NencMax;
 	}
-	NconstT = NT + NsmallT;
+	NconstT = NT + NsmallT + def_Ndebris;
 }
 
 // **************************************
