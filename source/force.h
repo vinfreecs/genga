@@ -660,6 +660,7 @@ __global__ void fragment_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, i
 		index_d[j] = -1;
 	}
 }
+/*
 __host__ void fragmentCall(){
 	int nf = 100;
 	int st = 0;
@@ -667,7 +668,7 @@ __host__ void fragmentCall(){
 	Nsmall_h[st] += nf;
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 }
-
+*/
 
 __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Ct, int N, int Nst){
 
