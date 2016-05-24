@@ -799,3 +799,83 @@ __host__ int Data::printEncounters(){
 	return 1;
 }
 
+//This function prints details of fragmentations
+__host__ int Data::printFragments(int nf){
+
+	int st = 0; 
+	GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+	fprintf(GSF[st].logfile, "Created %d fragments\n", nf);
+	printf("Created %d fragments\n", nf);
+	fclose(GSF[st].logfile);
+
+	if(nf > def_Nfragments){
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+		fprintf(GSF[st].logfile, "Error: More particles created than def_Nfragments: %d %d\n", nf, def_Nfragments);
+		printf("Error: Error: More particles created than def_Nfragments: %d %d\n", nf, def_Nfragments);
+		fclose(GSF[st].logfile);
+
+		return 0;
+	}
+
+	if(N_h[0] + Nsmall_h[0] >= NconstT){
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+		fprintf(GSF[st].logfile, "Error: Too many particles created\n");
+		printf("Error: Too many particles created\n");
+		fclose(GSF[st].logfile);
+
+		return 0;
+	}
+ 
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * def_Nfragments, cudaMemcpyDeviceToHost);
+
+	FILE *fragmentfile;
+	for(int nc = 0; nc < nf + 1; ++nc){
+		int st;
+		if(Nst == 1) st = 0;
+		else st = (int)(Fragments_h[nc * 25 + 1]) / 100;
+		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
+
+		for(int in = 0; in < 13; ++in){
+			if(in == 1 || in == 13){
+				if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[nc * 25 + in]));
+				else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[nc * 25 + in])) % 100);
+			}
+			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * 25 + in]);
+		}
+		if(nc == 0) fprintf(fragmentfile, " -1\n");
+		else{
+			if(Fragments_h[nc * 25 + 3] * def_AU < 0.1) fprintf(fragmentfile, " 2\n");
+			else fprintf(fragmentfile, " 1\n");
+		}
+		fclose(fragmentfile);
+	}
+	return 1;
+}
+//This function prints details of rotation resets
+__host__ int Data::printRotation(){
+
+	int st = 0; 
+	GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+	fprintf(GSF[st].logfile, "Rotation reset\n");
+	printf("Rotation reset\n");
+	fclose(GSF[st].logfile);
+
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25, cudaMemcpyDeviceToHost);
+
+	FILE *fragmentfile;
+	if(Nst == 1) st = 0;
+	else st = (int)(Fragments_h[1]) / 100;
+	fragmentfile = fopen(GSF[st].fragmentfilename, "a");
+
+	for(int in = 0; in < 13; ++in){
+		if(in == 1 || in == 13){
+			if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[in]));
+			else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[in])) % 100);
+		}
+		else fprintf(fragmentfile, "%.20g ", Fragments_h[in]);
+	}
+	fprintf(fragmentfile, " 0\n");
+	fclose(fragmentfile);
+	return 1;
+}
+

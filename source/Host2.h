@@ -31,6 +31,7 @@ public:
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta;			//number of timesteps
+	int MaxIndex;				//highest index of all bodies and test particles
 
 	struct Parameter P;			//parameters, for all Simulations the same
 	struct GSFiles *GSF;			//Information for the different simulations

@@ -749,7 +749,7 @@ int main(int argc, char*argv[]){
 	// Create buffer object and register it with CUDA
 	glGenBuffers(1, &positionsVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
-	unsigned int size = (D.N_h[0] + D.Nsmall_h[0]) *  sizeof(double4);
+	unsigned int size = (D.N_h[0] + D.Nsmall_h[0] + def_Nfragments) *  sizeof(double4);
 
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
 	error = cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);

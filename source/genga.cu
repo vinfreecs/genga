@@ -447,7 +447,6 @@ int main(int argc, char*argv[]){
 	//print last informations
 	D.printLastTime();
 	D.LastInfo();
-      
 
 	//free all the memory on the Host and on the Device
 	er = D.freeOrbit();

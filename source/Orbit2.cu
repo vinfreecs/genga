@@ -25,6 +25,7 @@ __host__ void Data::AllocateOrbitt(){
 	LI0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(25 * MaxColl * Nst * sizeof(double));
 	writeEnc_h = (double*)malloc(25 * MaxWriteEnc * Nst * sizeof(double));
+	Fragments_h = (double*)malloc(25 * def_Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
 	aecount_h = (int*)malloc(NconstT * sizeof(int));
 	enccount_h = (int*)malloc(NconstT * sizeof(int));
@@ -67,9 +68,10 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Energy_d, NEnergyT * sizeof(double));
 	cudaMalloc((void **) &Energy0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
-	cudaMalloc((void **) &Nenc_d, def_GMax * sizeof(int));
-	cudaMalloc((void **) &Ncoll_d, sizeof(int));
-	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
+//	cudaMalloc((void **) &Nenc_d, def_GMax * sizeof(int));
+//	cudaMalloc((void **) &Ncoll_d, sizeof(int));
+//	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
+//	cudaMalloc((void **) &nFragments_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
@@ -78,6 +80,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * MaxWriteEnc);
+	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
 	cudaMalloc((void **) &aecount_d, NconstT * sizeof(int));
 	cudaMalloc((void **) &enccount_d, NconstT * sizeof(int));
@@ -122,6 +125,7 @@ __host__ void Data::AllocateOrbitt(){
 #endif
 
 #if USE_RANDOM
+	srand48(time(NULL));
 	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
 #endif
 
@@ -138,14 +142,7 @@ __host__ int Data::CMallocateOrbit(){
 	if(error != 0) return 0;
 
 	cudaHostAlloc((void **)&Nenc_m, def_GMax * sizeof(int), cudaHostAllocMapped);
-	error = cudaGetLastError();
-	fprintf(masterfile,"CudaHostAlloc error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
-
 	cudaHostGetDevicePointer((void **)&Nenc_d, (void *)Nenc_m, 0);
-	error = cudaGetLastError();
-	fprintf(masterfile,"mapping error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
 
 	cudaHostAlloc((void **)&Ncoll_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&Ncoll_d, (void *)Ncoll_m, 0);
@@ -155,6 +152,9 @@ __host__ int Data::CMallocateOrbit(){
 
 	cudaHostAlloc((void **)&EjectionFlag_m, (Nst + 1)*sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&EjectionFlag_d, (void *)EjectionFlag_m, 0);
+
+	cudaHostAlloc((void **)&nFragments_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&nFragments_d, (void *)nFragments_m, 0);
 
 	cudaHostAlloc((void **)&EncFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&EncFlag_d, (void *)EncFlag_m, 0);
@@ -320,6 +320,7 @@ __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
 	NWriteEnc_m[0] = 0;
+	nFragments_m[0] = 0;
 	for(int i = 0; i < def_GMax; ++i){
 		Nenc_m[i] = 0;
 	}
@@ -391,6 +392,10 @@ __host__ int Data::init(){
 		writeEnc_h[i] = 0.0;
 	}
 
+	for(int i = 0; i < Nst * 25 * def_Nfragments; ++i){
+		Fragments_h[i] = 0.0;
+	}
+
 	for(int st = 0; st < Nst + 1; ++st){    
 		Nencpairs_h[st] = 0;
 		Nencpairs2_h[st] = 0;
@@ -450,6 +455,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * 25 * MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * MaxWriteEnc, cudaMemcpyHostToDevice);
+	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * def_Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(aecount_d, aecount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(enccount_d, enccount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
@@ -490,6 +496,7 @@ __host__ int Data::readic(int st){
 
 	int ii = 0;
 	int iismall = 0;
+	MaxIndex = 0;
 	
 	double skip;
 	double4 x, v;
@@ -537,6 +544,7 @@ __host__ int Data::readic(int st){
 			if(v.w == 0){
 				v.w = cbrt((x.w * 0.75 ) / (M_PI * rho[st] * AU * AU * AU / Solarmass));
 			}
+			MaxIndex = max(MaxIndex, index);
 			int NBSN = NBS;
 			if(x.w == 0 && P.UseTestParticles == 1) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
 			else NBSN -= iismall;
@@ -1427,9 +1435,11 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(Ncoll_m);
 	cudaFreeHost(NWriteEnc_m);
 	cudaFreeHost(EjectionFlag_m);
+	cudaFreeHost(nFragments_m);
 	cudaFreeHost(EncFlag_m);
 	free(Coll_h);
 	free(writeEnc_h);
+	free(Fragments_h);
 	cudaFreeHost(test_h);
 #if poincareFlag == 1
 	free(PFlag_h);
@@ -1479,7 +1489,6 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Energy_d);
 	cudaFree(Energy0_d);
 	cudaFree(LI0_d);
-
 #if poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
@@ -1496,6 +1505,7 @@ __host__ int Data::freeOrbit(){
 
 	cudaFree(Coll_d);
 	cudaFree(writeEnc_d);
+	cudaFree(Fragments_d);
 	cudaFree(test_d);
 	
 	error = cudaGetLastError();

@@ -1330,6 +1330,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(GSF[st].collisionfilename, "%sCollisions%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].ejectfilename, "%sEjections%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].encounterfilename, "%sEncounters%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].fragmentfilename, "%sFragments%s.dat", GSF[st].path, GSF[st].X);
 		
 		//create files or erase content//
 		if(P.tRestart == 0){
@@ -1346,6 +1347,10 @@ __host__ int Host::Param(int argc, char*argv[]){
 			if(P.WriteEncounters > 0){
 				GSF[st].encounterfile = fopen(GSF[st].encounterfilename, "w");
 				fclose(GSF[st].encounterfile);  
+			}
+			if(P.UseForce == 32){
+				GSF[st].fragmentfile = fopen(GSF[st].fragmentfilename, "w");
+				fclose(GSF[st].fragmentfile);  
 			}
 		}
 
@@ -1779,6 +1784,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
+			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
+			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
+			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
+			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
 		}
 		fclose(GSF[st].logfile);
 	}
@@ -1817,7 +1826,7 @@ __host__ void Host::Tsizes(){
 		icNB = NB[0];
 		NBNencT = (icNB + Nsmall_h[0]) * P.NencMax;
 	}
-	NconstT = NT + NsmallT + def_Ndebris;
+	NconstT = NT + NsmallT + def_Nfragments;
 }
 
 // **************************************

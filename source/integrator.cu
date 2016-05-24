@@ -420,7 +420,6 @@ __host__ void Data::firstKick_M(long long ts){
 }
 
 
-//BSstep_kernel <16,16> <<< 1, 16 >>> (x4_d, v4_d, xold_d, vold_d, Encpairs2_d, Msun, dt, test_d, N, Nenc_d, U_d, rcrit_d, dtBS_d, k_d);
 cudaStream_t stream[12];
 __host__ void Data::BSCall(int NB, int si, double t){
 	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
@@ -431,6 +430,7 @@ __host__ void Data::BSCall(int NB, int si, double t){
 		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+
 
 		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
@@ -483,28 +483,6 @@ __host__ void Data::BSsmallCall(int si, double t){
 			nn *= 2;
 		}
 
-/*
-
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, N_h[0] + Nsmall_h[0], N_h[0], P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-
-		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 7, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-
-		if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 8, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 9, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 10, N_h[0] + Nsmall_h[0], N_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-
-		int nn = 4096;
-		for(int st = 11; st < def_GMax - 1; ++st){
-			if(Nenc_m[st + 1] > 0) BSAsmallCall(st, nn, Nenc_m[st + 1], si, t, FGt[si]);
-			nn *= 2;
-		}
-*/
 	for(int st = 0; st < 9; ++st) cudaStreamDestroy(stream[st]);
 	cudaDeviceSynchronize();
 }
@@ -1336,7 +1314,7 @@ if(P.Usegas == 1 || P.UseForce > 0){
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Spinsun_d, Msun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -1454,8 +1432,8 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 	}
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-	//	if(P.UseForce == 32) rotation_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, dt_d, N_h[0] + Nsmall_h[0], Nst, time_h[0]);
 		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1482,9 +1460,23 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 			int col = CollisionCall();
 			if(col == 0) return 0;
 		}
+
+if(P.UseForce == 32){
+	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
+	if(nFragments_m[0] > 0){
+		int er = printFragments(nFragments_m[0]);
+		if(er == 0) return 0;
+		er = RemoveCall();
+		if(er == 0) return 0;
+	}
+
+	rotationCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, Fragments_d, time_h[0], nFragments_m, nFragments_d);
+	if(nFragments_m[0] > 0){
+		int er = printRotation();
+		if(er == 0) return 0;
+	}
+}
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
-			int rem = RemoveCall();
-			if( rem == 0) return 0;
 		}
 		if(NWriteEnc_m[0] > 0){
 			int enc = writeEncCall();
@@ -1493,6 +1485,7 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 		if(si < SIn - 1){
 			HC128b_kernel<512, 2> <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0] + Nsmall_h[0], time_h[0]);
 			kicksmall_kernel < 128, 2 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[si], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
+
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.Usegas == 1){
@@ -1502,6 +1495,7 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
 		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1520,6 +1514,7 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	if(P.UseForce > 0){
 		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
 		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }

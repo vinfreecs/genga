@@ -84,6 +84,8 @@ public:
 	int CollisionFlag;
 	double *Coll_h, *Coll_d;
 	double *writeEnc_h, *writeEnc_d;
+	double *Fragments_h, *Fragments_d;
+	int *nFragments_m, *nFragments_d;
 	int *NWriteEnc_m, *NWriteEnc_d;
 	double *test_h, *test_d;
 
@@ -136,6 +138,8 @@ public:
 	__host__ void GridaeOutput();
 	__host__ void printCollisions();
 	__host__ int printEncounters();
+	__host__ int printFragments(int);
+	__host__ int printRotation();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int);

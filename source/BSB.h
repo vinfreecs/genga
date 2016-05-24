@@ -463,8 +463,8 @@ if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 					__syncthreads();
 					if(idy == 0) {
 						for(int c = 0; c < Ncol[0]; ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+							int i = Colpairs_s[c].y;
+							int j = Colpairs_s[c].x;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;

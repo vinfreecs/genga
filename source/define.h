@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.41
+#define Version 3.43
 
 
 //Default parameter values
@@ -62,11 +62,12 @@
 #define def_NencMax 512
 
 
-#define def_pc 3.0 				//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
+#define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define MaxWriteEnc 128			//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer 
+#define def_Nfragments 1		//Additional array size for debris particles
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
 
@@ -97,6 +98,7 @@
 #define dayUnit 0.01720209895
 #define def_AU 149597870700.0		//AU in m
 #define def_Solarmass 1.98855e30       //solar mass in Kg
+#define def_c 299792458.0  	       //speed of light im m/s
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
@@ -110,8 +112,6 @@
 //Maximum close encounter group size  = 2^(def_GMax)
 #define def_GMax 20
 
-//Additional array size for debris particles
-#define def_Ndebris 1000
 
 
 //Parameters for fastfg
@@ -160,6 +160,20 @@
 #include <curand_kernel.h>
 #endif
 
+//values for Asteroids in force function
+//#define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
+#define Asteroid_rho 2250.0	//density of body in kg/m^3	Veritas
+
+//#define Asteroid_C 680	//Specific Heat Capacity in J/kgK Hebe
+#define Asteroid_C 500		//Specific Heat Capacity in J/kgK Veritas
+
+//#define Asteroid_A 0.2	//Bond albedo			Hebe
+#define Asteroid_A 0.069	//Bond albedo			Veritas
+	
+
+//#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
+#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
+
 
 #ifndef STRUCT_H
 #define STRUCT_H
@@ -199,7 +213,7 @@ struct Parameter{
 
 //File names of Simulstions
 struct GSFiles{
-	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile, *encounterfile;
+	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile, *encounterfile, *fragmentfile;
 	char outputfilename[128];
 	char inputfilename[128];
 	char Originputfilename[128];
@@ -209,6 +223,7 @@ struct GSFiles{
 	char collisionfilename[128];
 	char ejectfilename[128];
 	char encounterfilename[128];
+	char fragmentfilename[128];
 	char X[128];
 	int informat[25];
 	char path[128];
