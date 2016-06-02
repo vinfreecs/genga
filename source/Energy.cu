@@ -102,7 +102,6 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 
 			if(idy == 0){
 				V_s[0] *= 0.5 * ksq * x4_d[idx].w;
-
 				V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
 
 				Energy_d[idx] = V_s[0];

@@ -96,6 +96,17 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	//Eccentric Anomaly
 	E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 	if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+
+	//Mean Anomaly
+	double M = E - e * sin(E);
+
+	if(e >= 1){
+		E = acosh((e + t) / (1.0 + e * t));
+		if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+		M = E - e * sinh(E);
+	}
+
+
 }
 
 int main(int argc, char*argv[]){

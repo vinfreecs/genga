@@ -462,9 +462,9 @@ if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 					}
 					__syncthreads();
 					if(idy == 0) {
-						for(int c = 0; c < Ncol[0]; ++c){
-							int i = Colpairs_s[c].y;
-							int j = Colpairs_s[c].x;
+						for(int c = 0; c < min(Ncol[0], MaxColl - 1); ++c){
+							int i = Colpairs_s[c].x;
+							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = atomicAdd(Ncoll_d, 1);
 								if(nc >= MaxColl -1) nc = MaxColl -1;
@@ -479,6 +479,7 @@ if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 #endif
 							}
 						}
+						if(Ncol[0] >= MaxColl - 1) Ncoll_d[0] = MaxColl - 1;
 					}
 					__syncthreads();
 					t += dt1;				

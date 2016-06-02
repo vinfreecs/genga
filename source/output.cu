@@ -588,37 +588,6 @@ __host__ void Data::GridaeOutput(){
 }
 
 
-//This function prints information if there are too many Collisions which fit not in allocated memory
-//It stops the integration
-__host__ void Data::printMaxColl(){
-	printf("Error: Too many Collisions, MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
-	if(Nst ==1){
-		GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-		fprintf(GSF[0].logfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
-		fprintf(GSF[0].logfile, "Total number of groups when Error accured: %d; ", Nenc_m[0]);
-		int nn = 2;
-		for(int st = 1; st < def_GMax; ++st){
-			if(Nenc_m[st] > 0) fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
-			nn *= 2;
-		}
-		fprintf(GSF[0].logfile, "\n");
-
-		cudaMemcpy(Coll_h, Coll_d, sizeof(double)*25*MaxColl, cudaMemcpyDeviceToHost);
-		for(int nc = 0; nc < MaxColl; ++nc){
-			for(int in = 0; in < 25; ++in){
-				fprintf(GSF[0].logfile, "%d ", (int)(Coll_h[nc * 25 + in]));
-			}
-			fprintf(GSF[0].logfile, "\n");
-		}
-
-		fclose(GSF[0].logfile);
-	}
-	else{
-		fprintf(masterfile,"Error: MaxColl too small. Ncoll = %d. Integration Stopped at timestep = %lld\n", Ncoll_m[0], timeStep);
-	}
-}
-
-
 //This function prints information if a too big close encounter group occurs and stops the integrations
 __host__ int Data::MaxGroups(){
 	for(int nm = def_GMax - 1; nm < def_GMax; ++nm){

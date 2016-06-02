@@ -187,7 +187,7 @@ __global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //
 // ****************************************
 
-template <int Bl, int NB>
+template <int Bl>
 __global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -231,7 +231,7 @@ __global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 	__syncthreads();
 
-	for(int i = 0; i < NB; i += Bl){ 
+	for(int i = 0; i < N; i += Bl){ 
 		if(idy + i < N){
 			double4 x4j = x4_d[idy + i];
 			double rcritvj = rcritv_d[idy + i];
@@ -431,7 +431,7 @@ __global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //
 // ****************************************
 template <int Bl>
-__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, int NB, double t){
+__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int icNB, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -468,7 +468,7 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 		a3_s[idy].z = 0.0;
 
 		__syncthreads();
-		for(int i = 0; i < NB; i += Bl_2){
+		for(int i = 0; i < N; i += Bl_2){
 			if(idy + i < N){
 				double4 x4j = x4_d[idy + i];
 				double rcritvj = rcritv_d[idy + i];
@@ -488,7 +488,7 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 
 		__syncthreads();
 
-		for(int i = 0; i < NB; i += Bl_2){
+		for(int i = 0; i < N; i += Bl_2){
 			if(idy-Bl_2 + i < N){
 				double4 x4j = x4_d[idy-Bl_2 + i];
 				double rcritvj = rcritv_d[idy-Bl_2 + i];

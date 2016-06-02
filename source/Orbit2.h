@@ -134,7 +134,6 @@ public:
 	__host__ void CoordinateOutput(int);
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
-	__host__ void printMaxColl();
 	__host__ void GridaeOutput();
 	__host__ void printCollisions();
 	__host__ int printEncounters();
@@ -177,7 +176,7 @@ public:
 	__host__ int step_M();
 
 	__host__ int CollisionCall();
-	__host__ void CollisionMCall();
+	__host__ int CollisionMCall();
 	__host__ int RemoveCall();
 	__host__ int writeEncCall();
 	__host__ int writeEncMCall();

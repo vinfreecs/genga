@@ -31,7 +31,6 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 //if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	int Enc = 0;
-//	if(i < j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
 	if(i != j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double d0, d1, dd0, dd1;
 		double4 r1, r0;
@@ -140,6 +139,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
+				if(E == 1 && Nenc >= MaxColl) Ni = MaxColl - 1;
 				if(x4i.w >= x4j.w){
 					encpairs[Ni].x = i;
 					encpairs[Ni].y = j;
@@ -148,6 +148,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 					encpairs[Ni].x = j;
 					encpairs[Ni].y = i;
 				}
+
 // *****************
 //dont group test particles
 /*				if(x4i.w == 0.0){
@@ -184,8 +185,8 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 				if(t > 0.0 && t < 1.0){
 					time = t;
 //printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
-/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
-*/				}
+//					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
+				}
 			}
 		}
 

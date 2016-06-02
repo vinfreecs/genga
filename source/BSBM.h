@@ -404,7 +404,9 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
 						double enct = 0.0;
+if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol_s[0], 0, enct, writeEncounters, writeEncountersRadius);
+}
 						//write Encounters to file
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
@@ -414,7 +416,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 					}
                                         __syncthreads();
 					if(idy == 0) {
-						for(int c = 0; c < Ncol_s[0]; ++c){
+						for(int c = 0; c < min(Ncol_s[0], MaxColl); ++c){
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
@@ -423,8 +425,9 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 								collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t/0.01720209895, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 							}
 						}
+						if(Ncol_s[0] >= MaxColl - 1) Ncoll_d[0] = MaxColl - 1;
 					}
-										__syncthreads();
+					__syncthreads();
 					t += dt1;				
 					if(n >= 8) dt1 *= 0.55;
 					if(n < 7) dt1 *= 1.3;

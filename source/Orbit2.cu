@@ -762,7 +762,6 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //March 2014
 // ***************************************
 __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
-
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -778,7 +777,6 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 		for(int j = 0; j < N; ++j){
 			//remove ghost bodies and rearrange arrays
 			if(x4_d[j + NBS].w < 0){
-
 				int Na = j + NBS;
 				int Nb = N-1 + NBS;
 				

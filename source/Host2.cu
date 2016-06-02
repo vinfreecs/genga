@@ -951,7 +951,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Gas dTau_diss =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%lf", &P.G_dTau_diss);
-				if(er <= 0 || P.G_dTau_diss <= 0.0){
+				if(er <= 0){
 					printf("Error: dTau_diss value is not valid!\n");
 					return 0;
 				}
@@ -1265,6 +1265,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 	if(strcmp(P.setElementsfilename, "-") != 0){
 		P.setElements = 1;
+	}
+	if(P.Usegas == 1 && P.G_dTau_diss <= 0.0){
+		printf("Error: dTau_diss value is not valid!\n");
+		return 0;
 	}
 
 	return 1;
@@ -1762,6 +1766,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
 			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax);                  // use only argument in simulation 0
+			fprintf(infofile, "Nfragments: %d\n", def_Nfragments);
 			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
@@ -1782,12 +1787,12 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
-			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
-			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
 			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
+			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
+			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}
 		fclose(GSF[st].logfile);
 	}

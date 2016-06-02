@@ -272,11 +272,6 @@ int main(int argc, char*argv[]){
 				if(er == 0) return 0;
 			}
 
-			//Check for too many Collisions//
-			if(D.Ncoll_m[0] >= MaxColl-1){
-				D.printMaxColl();
-				return 0;
-			}
 	
 			error = cudaGetLastError();
 			if(error != 0){

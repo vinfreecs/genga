@@ -15,7 +15,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 	
 		int st = 0;
 
-		if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+		if(Nst > 1) st = index_d[id] / 100;	//st is the sub simulation index
 
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
@@ -373,6 +373,12 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				//Eccentric Anomaly
 				E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+		
+
+				if(e >= 1){
+					E = acosh((e + t) / (1.0 + e * t));
+					if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+				}
 
 	//printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 			}
@@ -870,9 +876,9 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 	int st = 0;
 
-	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
-
 	if(id < N){
+
+		if(Nst > 1) st = index_d[id] / 100;	//st is the sub simulation index
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
@@ -1137,7 +1143,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 			v4_d[id] = v4i;
 
-	//printf("%g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+//printf("Y %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 		}	
 
 	}
@@ -1247,108 +1253,115 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 		e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
 	
 		e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
+		if(e < 1.0){
 
-		t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
-		if(t < -1.0) t = -1.0;
-		if(t > 1.0) t = 1.0;
-		w = acos(t);
-		if(e3.z < 0.0) w = 2.0 * M_PI - w;
-		if(n == 0) w = 0.0;
+			t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
+			if(t < -1.0) t = -1.0;
+			if(t > 1.0) t = 1.0;
+			w = acos(t);
+			if(e3.z < 0.0) w = 2.0 * M_PI - w;
+			if(n == 0) w = 0.0;
 
-		//True Anomaly
-		t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
-		if(t < -1.0) t = -1.0;
-		if(t > 1.0) t = 1.0;
-		Theta = acos(t);
-		if(u < 0.0) Theta = 2.0 * M_PI - Theta;
-
-		//Non circular, equatorial orbit
-		if(e > 1.0e-10 && inc < 1.0e-10){
-			Omega = 0.0;
-			w = acos(e3.x / e);
-			if(e3.y < 0.0) w = 2.0 * M_PI - w;
-		}
-		
-		//circular, inclindes orbit
-		if(e < 1.0e-10 && inc > 1.0e-11){
-			w = 0.0;
-		}
-		
-		//circular, equatorial orbit
-		if(e < 1.0e-10 && inc < 1.0e-11){
-			w = 0.0;
-			Omega = 0.0;
-		}
-
-		if(w == 0 && Omega != 0.0){
-			t = (-h3.y * x4i.x + h3.x * x4i.y) / n * ir;
+			//True Anomaly
+			t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
 			if(t < -1.0) t = -1.0;
 			if(t > 1.0) t = 1.0;
 			Theta = acos(t);
-			if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+			if(u < 0.0) Theta = 2.0 * M_PI - Theta;
+
+			//Non circular, equatorial orbit
+			if(e > 1.0e-10 && inc < 1.0e-10){
+				Omega = 0.0;
+				w = acos(e3.x / e);
+				if(e3.y < 0.0) w = 2.0 * M_PI - w;
+			}
+			
+			//circular, inclindes orbit
+			if(e < 1.0e-10 && inc > 1.0e-11){
+				w = 0.0;
+			}
+			
+			//circular, equatorial orbit
+			if(e < 1.0e-10 && inc < 1.0e-11){
+				w = 0.0;
+				Omega = 0.0;
+			}
+
+			if(w == 0 && Omega != 0.0){
+				t = (-h3.y * x4i.x + h3.x * x4i.y) / n * ir;
+				if(t < -1.0) t = -1.0;
+				if(t > 1.0) t = 1.0;
+				Theta = acos(t);
+				if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+			}
+			if(w == 0 && Omega == 0.0){
+				Theta = acos(x4i.x * ir);
+				if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
+
+			}
+
+			//Eccentric Anomaly
+			E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
+			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+
+			if(e >= 1){
+				E = acosh((e + t) / (1.0 + e * t));
+				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+			}
+
+
+//printf("K1 %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+
+			//modify elements
+			double tt1 = 1.0 - e * e;
+			double tt2 = sqrt(tt1);
+			double dadt = -(eta * ia) * Q * (2.0 + 3.0 * e * e) / (tt1 * tt2);
+			double dedt = -2.5 * (eta * ia * ia) * Q * e / tt2;
+
+			a += dadt * dt;
+			e += dedt * dt;
+//printf("K2 %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+
+			//Convert to Cartesian Coordinates
+
+			double cw = cos(w);
+			double sw = sin(w);
+			double cOmega = cos(Omega);
+			double sOmega = sin(Omega);
+			double ci = cos(inc);
+			double si = sin(inc);
+
+			double3 P3;
+			P3.x = cw * cOmega - sw * ci * sOmega;
+			P3.y = cw * sOmega + sw * ci * cOmega;
+			P3.z = sw * si;
+
+			double3 Q3;
+			Q3.x = -sw * cOmega - cw * ci * sOmega;
+			Q3.y = -sw * sOmega + cw * ci * cOmega;
+			Q3.z = cw * si;
+
+			double cE = cos(E);
+			double sE = sin(E);
+			double t1 = a * (cE - e);
+			double t2 = a * sqrt(1.0 - e * e) * sE;
+
+			x4i.x =  t1 * P3.x + t2 * Q3.x;
+			x4i.y =  t1 * P3.y + t2 * Q3.y;
+			x4i.z =  t1 * P3.z + t2 * Q3.z;
+
+			double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+			t1 = -sE;
+			t2 = sqrt(1.0 - e * e) * cE;
+
+			v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
+			v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
+			v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
+
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
 		}
-		if(w == 0 && Omega == 0.0){
-			Theta = acos(x4i.x * ir);
-			if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
-
-		}
-
-		//Eccentric Anomaly
-		E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
-		if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-
-
-//printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
-
-		//modify elements
-		double tt1 = 1.0 - e * e;
-		double tt2 = sqrt(tt1);
-		double dadt = -(eta * ia) * Q * (2.0 + 3.0 * e * e) / (tt1 * tt2);
-		double dedt = -2.5 * (eta * ia * ia) * Q * e / tt2;
-
-		a += dadt * dt;
-		e += dedt * dt;
-
-
-		//Convert to Cartesian Coordinates
-
-		double cw = cos(w);
-		double sw = sin(w);
-		double cOmega = cos(Omega);
-		double sOmega = sin(Omega);
-		double ci = cos(inc);
-		double si = sin(inc);
-
-		double3 P3;
-		P3.x = cw * cOmega - sw * ci * sOmega;
-		P3.y = cw * sOmega + sw * ci * cOmega;
-		P3.z = sw * si;
-
-		double3 Q3;
-		Q3.x = -sw * cOmega - cw * ci * sOmega;
-		Q3.y = -sw * sOmega + cw * ci * cOmega;
-		Q3.z = cw * si;
-
-		double cE = cos(E);
-		double sE = sin(E);
-		double t1 = a * (cE - e);
-		double t2 = a * sqrt(1.0 - e * e) * sE;
-
-		x4i.x =  t1 * P3.x + t2 * Q3.x;
-		x4i.y =  t1 * P3.y + t2 * Q3.y;
-		x4i.z =  t1 * P3.z + t2 * Q3.z;
-
-		double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-		t1 = -sE;
-		t2 = sqrt(1.0 - e * e) * cE;
-
-		v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
-		v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
-		v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
-
-		x4_d[id] = x4i;
-		v4_d[id] = v4i;
-//printf("%g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+//printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 	}	
 }
 
