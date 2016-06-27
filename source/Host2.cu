@@ -1825,13 +1825,14 @@ __host__ void Host::Tsizes(){
 	NBNencT = NB2T;
 	icNB = NmaxM;
 
+	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
 		NT = NB[0];
 		NB2T = (long long int)(NB[0]) * (long long int)(NB[0]);
 		icNB = NB[0];
-		NBNencT = (icNB + Nsmall_h[0]) * P.NencMax;
+		NBNencT = NconstT * P.NencMax;
+		NEnergyT = max(NconstT, 8);
 	}
-	NconstT = NT + NsmallT + def_Nfragments;
 }
 
 // **************************************

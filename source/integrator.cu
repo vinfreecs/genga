@@ -141,12 +141,12 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double *K_d,
 
 // **************************************
 //This kernel sets initial values for the test particle mode
-__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int icNB, int Nsmall, int NencMax){
+__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NconstT, int NencMax){
 
 	int idx = blockIdx.x;
 	int id = blockIdx.x * blockDim.x + idx;
 
-	if(id < (icNB + Nsmall) * NencMax){
+	if(id < NconstT * NencMax){
 		Encpairs_d[id].x = -1;
 		Encpairs_d[id].y = -1;
 
@@ -408,7 +408,7 @@ __host__ void Data::firstKick_small(){
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 
 	int nbInitialsmall = ((icNB + Nsmall_h[0]) * P.NencMax + 255) / 256;
-	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, icNB, Nsmall_h[0], P.NencMax);
+	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, NconstT, P.NencMax);
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0]);
 	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
 }
@@ -1472,9 +1472,8 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 			int col = CollisionCall();
 			if(col == 0) return 0;
 		}
-
 if(P.UseForce == 32){
-	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
+	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex, x4_h, v4_h, spin_h, index_h);
 	if(nFragments_m[0] > 0){
 		int er = printFragments(nFragments_m[0]);
 		if(er == 0) return 0;
@@ -1518,11 +1517,15 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	}
 	HC128b_kernel<512, 2> <<< 3, 512 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[SIn - 1], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0] + Nsmall_h[0], time_h[0]);
 	kicksmall_kernel < 128, 1 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
-//acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
-//EncMatrix_kernel < 512 ><<< dim3(1, N_h[0] + Nsmall_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0] + Nsmall_h[0], EncFlag_d);
-//cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-//if(Nencpairs_h[0] > 0) kick32A_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0] + Nsmall_h[0], P.NencMax, time_h[0]);
-//else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
+
+/*
+accsmall_kernel < 128 > <<< Nsmall_h[0], 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, N_h[0], Nsmall_h[0], P.NencMax, time_h[0], EncFlag_d);
+acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
+EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
+cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
+if(Nencpairs_h[0] > 0) kick32A_kernel <128> <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcritv_d, dtksq_h[0] * Kt[SIn - 1], Encpairs2_d, test_d, N_h[0] + Nsmall_h[0], P.NencMax, time_h[0]);
+else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
+*/
 // ******
 
 if(P.Usegas == 1 || P.UseForce > 0){

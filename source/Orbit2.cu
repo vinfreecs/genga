@@ -68,10 +68,6 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Energy_d, NEnergyT * sizeof(double));
 	cudaMalloc((void **) &Energy0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
-//	cudaMalloc((void **) &Nenc_d, def_GMax * sizeof(int));
-//	cudaMalloc((void **) &Ncoll_d, sizeof(int));
-//	cudaMalloc((void **) &NWriteEnc_d, sizeof(int));
-//	cudaMalloc((void **) &nFragments_d, sizeof(int));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
@@ -307,7 +303,8 @@ __global__ void randomInit_kernel(curandState *random_d, int N){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
-		curand_init(0, id, 0, &random_d[id]);
+		//curand_init(0, id, 0, &random_d[id]);
+		curand_init(clock64(), id, 0, &random_d[id]);
 	}
 }
 
@@ -408,6 +405,7 @@ __host__ int Data::init(){
 	}
 
 #if USE_RANDOM
+	
 	randomInit_kernel <<< (NconstT + 255) / 256, 256>>> (random_d, NconstT);
 #endif
 
@@ -614,7 +612,7 @@ __host__ int Data::readic(int st){
 
 				if(P.FormatS == 0) index_h[i + NBS] += 100*st;
 				aecountT_h[i + NBS] = (long long)(aecount * P.tRestart);
-
+				MaxIndex = max(MaxIndex, index_h[i + NBS]);
 				++ii;
 			}
 		}
@@ -682,7 +680,7 @@ __host__ int Data::readic(int st){
 
 				if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
 				aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
-
+				MaxIndex = max(MaxIndex, index);
 				++ii;
 
 				fclose(infile);
@@ -691,6 +689,7 @@ __host__ int Data::readic(int st){
 			fclose(OrigInfile);
 		}
 	}
+	printf("MaxIndex: %d\n", MaxIndex);
 	if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
 	return ii;
 } 

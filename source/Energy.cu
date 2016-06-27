@@ -834,9 +834,9 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	if(idy == 0){
 		volatile double Tsun = 0.5 / Msun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);  
 		//Lsun
-		L_s[0].x += s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y;
-		L_s[0].y += s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z;
-		L_s[0].z += s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x;
+		L_s[0].x += (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun;
+		L_s[0].y += (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun;
+		L_s[0].z += (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun;
 		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
 		V_s[0] *= def_Kg;
 		T_s[0] *= def_Kg;
@@ -1073,9 +1073,9 @@ test_d[idy] = E_s[idy];
 	if(idy == 0){
 		volatile double Tsun = 0.5 / Msun * (p_s[0].x * p_s[0].x + p_s[0].y * p_s[0].y + p_s[0].z * p_s[0].z);
 		//Lsun
-		L_s[0].x += s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y;
-		L_s[0].y += s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z;
-		L_s[0].z += s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x;
+		L_s[0].x += (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun;
+		L_s[0].y += (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun;
+		L_s[0].z += (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun;
 		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
 		V_s[0] *= def_Kg;
 		T_s[0] *= def_Kg;

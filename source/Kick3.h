@@ -98,7 +98,7 @@ __device__ void  acc(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double
 		}
 		if(E <= 22 && E >= 20){ // prechecker used for Test Particle Mode
 			if(rsq < def_pc * rcritv2){
-//if(E == 20) printf("Precheck 20 %d %d %d %d\n", i - NencMax, j, NencMax, *NencpairsI);
+//printf("Precheck 20 %d %d %d %d\n", i, j, NencMax, *NencpairsJ);
 				Encpairs_d[NencMax * i + *NencpairsJ].x = j;
 				Encpairs_d[NencMax * i + *NencpairsJ].y = i;
 				Encpairs_d[NencMax * i + NencMax - 1 - *NencpairsJ].y = j;
@@ -730,6 +730,75 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	}
 }
 
+// **************************************
+//This kernel performs the seccond kick of the time step for test particles
+//It calculates the acceleration between all bodies with respect to the changeover function K.
+//It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
+//it the next time step.
+//It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
+//The number of close encounter candidates is stored in Nencpairs_d.
+//
+//E = 0: Precheck + acck. used in initial step
+//E = 1: Kick + Precheck + acck. used in main steps
+//E = 2: Kick + Precheck. used in mid term steps of higher order integration
+//
+//
+//Authors: Simon Grimm, Joachim Stadel
+////March 2014
+//
+// ****************************************
+template <int Bl, int E>
+__global__ void kicksmallb_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	__shared__ double3 a_s[Bl];
+	__shared__ double3 b_s[Bl];
+	int NencpairsI;
+	int NencpairsJ;
+
+	a_s[idy].x = 0.0;
+	a_s[idy].y = 0.0;
+	a_s[idy].z = 0.0;
+
+	b_s[idy].x = 0.0;
+	b_s[idy].y = 0.0;
+	b_s[idy].z = 0.0;
+
+	NencpairsI = 0;
+	NencpairsJ = 0;
+
+
+	__syncthreads();
+
+	if(id < Nsmall){
+		double rcritvi = rcritv_d[id + N];
+		double4 x4i = x4_d[id + N];
+		double test;
+		for(int j = 0; j < N; ++j){
+			acc<E + 20>(a_s[idy], b_s[idy], x4i, x4_d[j], 0.0 , rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairs2_d, j, id + N, NencMax, test);
+		}
+		if(E >= 1){
+			v4_d[id + N].x += a_s[idy].x * dtksq;
+			v4_d[id + N].y += a_s[idy].y * dtksq;
+			v4_d[id + N].z += a_s[idy].z * dtksq;
+		}
+		if(E <= 1){
+			acck_d[id + N].x += b_s[idy].x * dtksq;
+			acck_d[id + N].y += b_s[idy].y * dtksq;
+			acck_d[id + N].z += b_s[idy].z * dtksq;
+		}
+		if(E <= 2){
+			int Ne = atomicAdd(Nencpairs_d, NencpairsJ);
+			for(int ii = 0; ii < NencpairsJ; ++ii){
+				Encpairs_d[ii + Ne] = Encpairs2_d[NencMax * (id + N) + ii];
+			}
+			Encpairs2_d[NencMax * (id + N)].x = NencpairsI;
+			Encpairs2_d[NencMax * (id + N) + 1].x = NencpairsJ;
+		}
+	}
+}
 
 // **************************************
 //This kernel performs the seccond kick of the time step for test particles

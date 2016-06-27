@@ -3,7 +3,10 @@
 // This is a template function for additional forces
 // The velocities in this kernel are already converted to heliocentric coordinates
 //
-// April 2016
+// non canonical perturbations are treated in a symplectic way by the implicicit midpoint
+// method, according to Mikkola 1997
+//
+// June 2016
 // Authors: Simon Grimm
 // **********************************************************
 __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
@@ -30,28 +33,23 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		a3.y = 0.0;
 		a3.z = 0.0;
 
+		// **********************************************************
+		// prepare first all values which dont depend on the velocity
+		// **********************************************************
+
 		double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
 		double ir = 1.0 / sqrt(rsq);
-		
+
+		double A, B, eta;
+
 		if(UseForce & 1){
 			// GR  see Fabrycky 2010 equation 2
 			double c = 10065.3201686;//c in AU / day * 0.0172020989
 			double csq = c * c;
 
-			double vsq = (v4.x * v4.x + v4.y * v4.y + v4.z * v4.z);
-			double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir; 
-
-			double A = ksq * (Msun + x4.w) * ir;
-			double B = A * ir / csq;
-
-			double eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
-
-			double C = 2.0 * (2.0 - eta) * rd;
-			double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
-
-			a3.x += B * (C * v4.x - D * x4.x * ir); 	
-			a3.y += B * (C * v4.y - D * x4.y * ir);
-			a3.z += B * (C * v4.z - D * x4.z * ir);
+			A = ksq * (Msun + x4.w) * ir;
+			B = A * ir / csq;
+			eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 		}
 /*
 		if(UseForce >> 1 & 1){
@@ -91,12 +89,14 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.z += F * x4.z * ir;
 		}
 */
-
 		double3 omega3;
 		double3 omegasun3;
 		double Rsun2, Rsun3, Rsun5;
 		double R2, R3, R5;
-		double ir2, ir3, ir5, ir7;
+		double ir2, ir3, ir5, ir7, ir8;
+		double F1;
+		double P, Psun;
+		double3 t2, t3;
 		if(UseForce >> 1 & 1 || UseForce >> 2 & 1){
 			Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			Rsun3 = Rsun2 * Msun_d[st].y;
@@ -118,14 +118,12 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			omega3.y = spin_d[id].y * iI;
 			omega3.z = spin_d[id].z * iI;
 
-
 			ir2 = ir * ir;
 			ir3 = ir2 * ir;
 			ir5 = ir3 * ir2;
 			ir7 = ir5 * ir2;
-
+			ir8 = ir5 * ir3;
 		}
-
 		if(UseForce >> 1 & 1){
 			//Tidal Force see Bolmont et al 2015 equation 15
 			double Msun2 = Msun * Msun;
@@ -136,43 +134,21 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			double love = love_d[id].x;
 			double tau = love_d[id].z;
 
-			volatile double tsun = 3.0 * ksq * m2 * Rsun5 * ir7 * lovesun;
-			volatile double t = 3.0 * ksq * Msun2 * R5 * ir7 * love;
+			volatile double tsun = 3.0 * ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
+			volatile double t = 3.0 * ksq * Msun2 * R5 * ir8 * love / x4.w;
 
-			double Psun = tsun * tausun * ir;
-			double P = t * tau * ir;
-
-			double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir;
-			
-			double F1 = -tsun - t - 3.0 * rd * (Psun + P);
-
-			double3 h3;
-			h3.x = ( x4.y * v4.z) - (x4.z * v4.y);
-			h3.y = (-x4.x * v4.z) + (x4.z * v4.x);
-			h3.z = ( x4.x * v4.y) - (x4.y * v4.x);
-
-			double3 t1;
-			t1.x = ( h3.y * x4.z) - (h3.z * x4.y) * ir2;
-			t1.y = (-h3.x * x4.z) + (h3.z * x4.x) * ir2;
-			t1.z = ( h3.x * x4.y) - (h3.y * x4.x) * ir2;
-
-			double3 t2;
+			Psun = tsun * tausun;
+			P = t * tau;
+			F1 = -tsun - t;
+	
 			t2.x = ( omega3.y * x4.z) - (omega3.z * x4.y);
 			t2.y = (-omega3.x * x4.z) + (omega3.z * x4.x);
 			t2.z = ( omega3.x * x4.y) - (omega3.y * x4.x);
 			
-			double3 t3;
 			t3.x = ( omegasun3.y * x4.z) - (omegasun3.z * x4.y);
 			t3.y = (-omegasun3.x * x4.z) + (omegasun3.z * x4.x);
 			t3.z = ( omegasun3.x * x4.y) - (omegasun3.y * x4.x);
-
-			double F2 = F1 + (Psun + P) * rd * ir;
-
-			a3.x += (F2 * x4.x + P * (t2.x - t1.x) + Psun * (t3.x - t1.x)) / x4.w;
-			a3.y += (F2 * x4.y + P * (t2.y - t1.y) + Psun * (t3.y - t1.y)) / x4.w;
-			a3.z += (F2 * x4.z + P * (t2.z - t1.z) + Psun * (t3.z - t1.z)) / x4.w;
 		}
-
 		if(UseForce >> 2 & 1){
 			//Rotational Force see Bolmont et al 2015 equation 15
 			double lovesunf = Msun_d[st].w;
@@ -195,6 +171,60 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.y += (F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y) / x4.w;
 			a3.z += (F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z) / x4.w;
 		}
+
+		// **********************************************************
+		// Now add the velocity dependent terms and interate the 
+		// implicit midpoint method
+		// **********************************************************
+
+		double3 a3t, a3told;
+		double4 v4t = v4;
+		a3told.x = 0.0;
+		a3told.y = 0.0;
+		a3told.z = 0.0;
+		
+		for(int k = 0; k < 30; ++k){
+		
+			a3t.x = 0.0;
+			a3t.y = 0.0;
+			a3t.z = 0.0;
+			if(UseForce & 1){
+				// GR  see Fabrycky 2010 equation 2
+				double vsq = (v4t.x * v4t.x + v4t.y * v4t.y + v4t.z * v4t.z);
+				double rd = (x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z) * ir; 
+
+				double C = 2.0 * (2.0 - eta) * rd;
+				double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
+
+				a3t.x += B * (C * v4t.x - D * x4.x * ir); 	
+				a3t.y += B * (C * v4t.y - D * x4.y * ir);
+				a3t.z += B * (C * v4t.z - D * x4.z * ir);
+			}
+
+			if(UseForce >> 1 & 1){
+				//Tidal Force see Bolmont et al 2015 equation 15
+				double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
+				double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);
+
+				a3t.x += F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x;
+				a3t.y += F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y;
+				a3t.z += F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z;
+			}
+			v4t.x = v4.x + 0.5 * dt * a3t.x;
+			v4t.y = v4.y + 0.5 * dt * a3t.y;
+			v4t.z = v4.z + 0.5 * dt * a3t.z;
+
+			if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
+	//printf("%d\n", k);
+				break;
+			}
+
+			a3told = a3t;
+		}
+
+		a3.x += a3t.x;
+		a3.y += a3t.y;
+		a3.z += a3t.z;
 
 		//apply the Kick
 		v4.x += a3.x * dt;
@@ -553,79 +583,82 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 		volatile double4 v4 = v4_d[id];
 		double3 spin = spin_d[id];
 		curandState random = random_d[id];
+	
+		if(x4.w >= 0.0){
 
-		//mass of the parent body
-		double RR = v4.w * def_AU;	//convert radius in m
-		double M = x4.w;
-		if(x4.w == 0.0){
-			M = Asteroid_rho * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
-			M /= def_Solarmass;								//mass im Solar masses
-		}
-
-		double V = 5000.0;		//collisional velocity in m / s
-
-
-		//compute rotation vector from spin vector
-		double iI = 5.0 / (2.0 * M * v4.w * v4.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
-		double3 omega3;
-		omega3.x = spin.x * iI;
-		omega3.y = spin.y * iI;
-		omega3.z = spin.z * iI;
-
-		double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);   //angular velocity in 1 / day * 0.017
-		omega *= dayUnit / (24.0 * 3600.0); 					//in 1 / s
-
-		//compute probability of rotation reset
-		double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * V);
-		//double p = 1.0e-16 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
-		double p = 1.0e-18 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
-		p = p * 3600.0 * 24.0 * dt / dayUnit;					//probability per time step
-		double rd = curand_uniform(&random);
-		int accept = -2;
-		if(rd < p) {
-			accept = atomicMax(&nFragments_d[0], 0);
-	printf("A %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
-		}
-		if(accept == -1){
-			//reset the rotation rate and spin vector
-			rd = curand_uniform(&random);
-			double omin = 1.0 / (36.0 * RR);
-			double omax = 1.0 / (RR);
-			omega = rd * (omax - omin) + omin;        //rotations per s
-	printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
-			omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
-
-			double S = 2.0 / 5.0 * M * v4.w * v4.w * omega;
-			double u = curand_uniform(&random);
-			double theta = curand_uniform(&random) * 2.0 * M_PI;
-			//sign
-			double s = curand_uniform(&random);;
-
-			double t2 = S * sqrt(1.0 - u * u);
-			spin.x = t2 * cos(theta);
-			spin.y = t2 * sin(theta);
-			spin.z = S * u;
-
-			if( s > 0.5){
-				spin.z *= -1.0;
+			//mass of the parent body
+			double RR = v4.w * def_AU;	//convert radius in m
+			double M = x4.w;
+			if(x4.w == 0.0){
+				M = Asteroid_rho * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
+				M /= def_Solarmass;								//mass im Solar masses
 			}
-			spin_d[id] = spin;
 
-			Fragments_d[0] = time/365.25;
-			Fragments_d[1] = (double)(index_d[id]);
-			Fragments_d[2] = x4_d[id].w;
-			Fragments_d[3] = v4_d[id].w;
-			Fragments_d[4] = x4_d[id].x;
-			Fragments_d[5] = x4_d[id].y;
-			Fragments_d[6] = x4_d[id].z;
-			Fragments_d[7] = v4_d[id].x;
-			Fragments_d[8] = v4_d[id].y;
-			Fragments_d[9] = v4_d[id].z;
-			Fragments_d[10] = spin_d[id].x;
-			Fragments_d[11] = spin_d[id].y;
-			Fragments_d[12] = spin_d[id].z;
+			double V = 5000.0;		//collisional velocity in m / s
 
-			atomicMax(&nFragments_d[0], 1);
+
+			//compute rotation vector from spin vector
+			double iI = 5.0 / (2.0 * M * v4.w * v4.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double3 omega3;
+			omega3.x = spin.x * iI;
+			omega3.y = spin.y * iI;
+			omega3.z = spin.z * iI;
+
+			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);   //angular velocity in 1 / day * 0.017
+			omega *= dayUnit / (24.0 * 3600.0); 					//in 1 / s
+
+			//compute probability of rotation reset
+			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * V);
+//double p = 1.0e-1 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
+			double p = 1.0e-18 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
+			p = p * 3600.0 * 24.0 * dt / dayUnit;					//probability per time step
+			double rd = curand_uniform(&random);
+			int accept = -2;
+			if(rd < p) {
+				accept = atomicMax(&nFragments_d[0], 0);
+printf("A %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+			}
+			if(accept == -1){
+				//reset the rotation rate and spin vector
+				rd = curand_uniform(&random);
+				double omin = 1.0 / (36.0 * RR);
+				double omax = 1.0 / (RR);
+				omega = rd * (omax - omin) + omin;        //rotations per s
+printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
+
+				double S = 2.0 / 5.0 * M * v4.w * v4.w * omega;
+				double u = curand_uniform(&random);
+				double theta = curand_uniform(&random) * 2.0 * M_PI;
+				//sign
+				double s = curand_uniform(&random);;
+
+				double t2 = S * sqrt(1.0 - u * u);
+				spin.x = t2 * cos(theta);
+				spin.y = t2 * sin(theta);
+				spin.z = S * u;
+
+				if( s > 0.5){
+					spin.z *= -1.0;
+				}
+				spin_d[id] = spin;
+
+				Fragments_d[0] = time/365.25;
+				Fragments_d[1] = (double)(index_d[id]);
+				Fragments_d[2] = x4_d[id].w;
+				Fragments_d[3] = v4_d[id].w;
+				Fragments_d[4] = x4_d[id].x;
+				Fragments_d[5] = x4_d[id].y;
+				Fragments_d[6] = x4_d[id].z;
+				Fragments_d[7] = v4_d[id].x;
+				Fragments_d[8] = v4_d[id].y;
+				Fragments_d[9] = v4_d[id].z;
+				Fragments_d[10] = spin_d[id].x;
+				Fragments_d[11] = spin_d[id].y;
+				Fragments_d[12] = spin_d[id].z;
+
+				atomicMax(&nFragments_d[0], 1);
+			}
 		}
 		random_d[id] = random;
 	}
@@ -645,211 +678,218 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 		volatile double4 x4 = x4_d[id];
 		volatile double4 v4 = v4_d[id];
 		curandState random = random_d[id];
+		curand_uniform(&random);
+		random_d[id] = random;
+		
+		if(x4.w >= 0.0){
 
-		//mass of the parent body
-		double RR = v4.w * def_AU;	//convert radius in m
-		double M = x4.w;
-		if(x4.w == 0.0){
-			M = Asteroid_rho * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
-		}
+			//mass of the parent body
+			double RR = v4.w * def_AU;	//convert radius in m
+			double M = x4.w;
+			if(x4.w == 0.0){
+				M = Asteroid_rho * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
+			}
 
-		double p = 1.0 / (2.0e7 * sqrt(RR));	//probability per year per body
-//		double p = 1.0 / (2.0e4 * sqrt(RR));	//probability per year per body
-		p = p / 365.25 * dt / dayUnit;  	//probability per time step per body
-		double rd = curand_uniform(&random);
-		int accept = -2;
-		if(rd < p) {
-			accept = atomicMax(&nFragments_d[0], 0);
-		}
-		if(accept == -1){
-			double x0 = 0.01;    //m
-			double x1 = RR;      //m
+			double p = 1.0 / (2.0e7 * sqrt(RR));	//probability per year per body
+//double p = 1.0 / (2.0e4 * sqrt(RR));	//probability per year per body
+			p = p / 365.25 * dt / dayUnit;  	//probability per time step per body
+			double rd = curand_uniform(&random);
+			volatile int accept = -2;
+//if(index_d[id] > 23000) printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
+			if(rd < p) {
+				accept = atomicMax(&nFragments_d[0], 0);
+printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
+			}
+			if(accept == -1){
+				double x0 = 0.01;    //m
+				double x1 = RR;      //m
 
-			volatile int ii;
-			double vscaleT = 0.0;
-			for(ii = 0; ii < 10000; ++ii){
+				volatile int ii;
+				double vscaleT = 0.0;
+				for(ii = 0; ii < 10000; ++ii){
 
-				//mass
-				double n = -1.5;
-				double u = curand_uniform(&random);
-				double r = pow((pow(x1,n+1) - pow(x0,n+1)) * u + pow(x0, n+1), 1.0/(n+1));
-				double m = Asteroid_rho * 4.0 / 3.0 * M_PI * r * r * r; //mass in Kg;
+					//mass
+					double n = -1.5;
+					double u = curand_uniform(&random);
+					double r = pow((pow(x1,n+1) - pow(x0,n+1)) * u + pow(x0, n+1), 1.0/(n+1));
+					double m = Asteroid_rho * 4.0 / 3.0 * M_PI * r * r * r; //mass in Kg;
 
-				M -= m;
-				if(M <= 0.0){
-					m += M;
-					M = 0.0;
-					r = cbrt(m * 3.0 / (Asteroid_rho * 4.0 * M_PI));
-				}
+					M -= m;
+					if(M <= 0.0){
+						m += M;
+						M = 0.0;
+						r = cbrt(m * 3.0 / (Asteroid_rho * 4.0 * M_PI));
+					}
 
-				double vscale = curand_uniform(&random) * 2.0 * 0.2 + (1.0 - 0.2) * pow(m, -1.0/6.0);
-				vscaleT += vscale;
-				//velocity
-				double v = 31.0 * vscale; //m/s
+					double vscale = curand_uniform(&random) * 2.0 * 0.2 + (1.0 - 0.2) * pow(m, -1.0/6.0);
+					vscaleT += vscale;
+					//velocity
+					double v = 31.0 * vscale; //m/s
 
-				//direction 
-				u = curand_uniform(&random);
-				double theta = curand_uniform(&random) * 2.0 * M_PI;
+					//direction 
+					u = curand_uniform(&random);
+					double theta = curand_uniform(&random) * 2.0 * M_PI;
 
-				//sign
-				double s = curand_uniform(&random);
+					//sign
+					double s = curand_uniform(&random);
 
-				double x = 3 * RR * sqrt(1.0 - u * u) * cos(theta);
-				double y = 3 * RR * sqrt(1.0 - u * u) * sin(theta);
-				double z = 3 * RR * u;
+					double x = 3 * RR * sqrt(1.0 - u * u) * cos(theta);
+					double y = 3 * RR * sqrt(1.0 - u * u) * sin(theta);
+					double z = 3 * RR * u;
 
-				volatile double vx = v * sqrt(1.0 - u * u) * cos(theta);
-				volatile double vy = v * sqrt(1.0 - u * u) * sin(theta);
-				volatile double vz = v * u;
-	//printf("A %d %g %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, vu, v4.x);
+					volatile double vx = v * sqrt(1.0 - u * u) * cos(theta);
+					volatile double vy = v * sqrt(1.0 - u * u) * sin(theta);
+					volatile double vz = v * u;
+printf("A %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
-				if( s > 0.5){
-					z *= -1.0;
-					vz *= -1.0;
-				}
+					if( s > 0.5){
+						z *= -1.0;
+						vz *= -1.0;
+					}
 
-				x /= def_AU;
-				y /= def_AU;
-				z /= def_AU;
-				r /= def_AU;
+					x /= def_AU;
+					y /= def_AU;
+					z /= def_AU;
+					r /= def_AU;
 
-				vx = vx / def_AU * 3600.0 * 24.0 / dayUnit;
-				vy = vy / def_AU * 3600.0 * 24.0 / dayUnit;
-				vz = vz / def_AU * 3600.0 * 24.0 / dayUnit;
-	//printf("B %d %g %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, vu, v4.x);
+					vx = vx / def_AU * 3600.0 * 24.0 / dayUnit;
+					vy = vy / def_AU * 3600.0 * 24.0 / dayUnit;
+					vz = vz / def_AU * 3600.0 * 24.0 / dayUnit;
+printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
-				m /= def_Solarmass;
+					m /= def_Solarmass;
 
-				x4_d[ii + N + Nsmall].x = x4.x + x;
-				x4_d[ii + N + Nsmall].y = x4.y + y;
-				x4_d[ii + N + Nsmall].z = x4.z + z;
-				x4_d[ii + N + Nsmall].w = 0.0;
+					x4_d[ii + N + Nsmall].x = x4.x + x;
+					x4_d[ii + N + Nsmall].y = x4.y + y;
+					x4_d[ii + N + Nsmall].z = x4.z + z;
+					x4_d[ii + N + Nsmall].w = 0.0;
 
-				v4_d[ii + N + Nsmall].x = vx;
-				v4_d[ii + N + Nsmall].y = vy;
-				v4_d[ii + N + Nsmall].z = vz;
-				v4_d[ii + N + Nsmall].w = r;
+					v4_d[ii + N + Nsmall].x = vx;
+					v4_d[ii + N + Nsmall].y = vy;
+					v4_d[ii + N + Nsmall].z = vz;
+					v4_d[ii + N + Nsmall].w = r;
 
 
-				//rotation rate and spin vector
-				rd = curand_uniform(&random);
-				double omin = 1.0 / (36.0 * r);
-				double omax = 1.0 / r;
-				double omega = rd * (omax - omin) + omin;        //rotations per s
-				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
+					//rotation rate and spin vector
+					rd = curand_uniform(&random);
+					double omin = 1.0 / (36.0 * r);
+					double omax = 1.0 / r;
+					double omega = rd * (omax - omin) + omin;        //rotations per s
+					omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
-				double S = 2.0 / 5.0 * m * v4.w * v4.w * omega;
-				u = curand_uniform(&random);
-				theta = curand_uniform(&random) * 2.0 * M_PI;
-				//sign
-				s = curand_uniform(&random);;
+					double S = 2.0 / 5.0 * m * v4.w * v4.w * omega;
+					u = curand_uniform(&random);
+					theta = curand_uniform(&random) * 2.0 * M_PI;
+					//sign
+					s = curand_uniform(&random);;
 
-				double t2 = S * sqrt(1.0 - u * u);
-				double3 spin;
-				spin.x = t2 * cos(theta);
-				spin.y = t2 * sin(theta);
-				spin.z = S * u;
+					double t2 = S * sqrt(1.0 - u * u);
+					double3 spin;
+					spin.x = t2 * cos(theta);
+					spin.y = t2 * sin(theta);
+					spin.z = S * u;
 
-				if( s > 0.5){
-					spin.z *= -1.0;
-				}
-				spin_d[ii + N + Nsmall] = spin;
-				index_d[ii + N + Nsmall] = MaxIndex + ii + 1;
+					if( s > 0.5){
+						spin.z *= -1.0;
+					}
+					spin_d[ii + N + Nsmall] = spin;
+					index_d[ii + N + Nsmall] = MaxIndex + ii + 1;
+
 
 //printf("%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g 0\n", time/365.25, index_d[ii + N + Nsmall], x4_d[ii + N + Nsmall].w, v4_d[ii + N + Nsmall].w, x4_d[ii + N + Nsmall].x, x4_d[ii + N + Nsmall].y, x4_d[ii + N + Nsmall].z, v4_d[ii + N + Nsmall].x, v4_d[ii + N + Nsmall].y, v4_d[ii + N + Nsmall].z, spin_d[ii + N + Nsmall].x, spin_d[ii + N + Nsmall].y, spin_d[ii + N + Nsmall].z);
 
-				if(M == 0.0) break;
-				if(N + Nsmall + ii >= NconstT){
-					Nsmall_d[st] += ii;
-					atomicMax(&nFragments_d[0], ii);
-					break;
+					if(M == 0.0) break;
+					if(N + Nsmall + ii >= NconstT){
+						Nsmall_d[st] += ii;
+						atomicMax(&nFragments_d[0], ii);
+						break;
+					}
 				}
-			}
-			//rescale the velocity
+				//rescale the velocity
 //printf("%g\n", vscaleT);
-			for(int i = 0; i < ii; ++i){
-				
-				double vx = v4_d[i + N + Nsmall].x / vscaleT;
-				double vy = v4_d[i + N + Nsmall].y / vscaleT;
-				double vz = v4_d[i + N + Nsmall].z / vscaleT;
+				for(int i = 0; i < ii; ++i){
+					
+					double vx = v4_d[i + N + Nsmall].x / vscaleT;
+					double vy = v4_d[i + N + Nsmall].y / vscaleT;
+					double vz = v4_d[i + N + Nsmall].z / vscaleT;
 
-				v4_d[i + N + Nsmall].x = v4.x + vx;
-				v4_d[i + N + Nsmall].y = v4.y + vy;
-				v4_d[i + N + Nsmall].z = v4.z + vz;
+					v4_d[i + N + Nsmall].x = v4.x + vx;
+					v4_d[i + N + Nsmall].y = v4.y + vy;
+					v4_d[i + N + Nsmall].z = v4.z + vz;
 
 
-				Fragments_d[(i + 1) * 25 + 0] = time/365.25;
-				Fragments_d[(i + 1) * 25 + 1] = (double)(index_d[i + N + Nsmall]);
-				Fragments_d[(i + 1) * 25 + 2] = x4_d[i + N + Nsmall].w;
-				Fragments_d[(i + 1) * 25 + 3] = v4_d[i + N + Nsmall].w;
-				Fragments_d[(i + 1) * 25 + 4] = x4_d[i + N + Nsmall].x;
-				Fragments_d[(i + 1) * 25 + 5] = x4_d[i + N + Nsmall].y;
-				Fragments_d[(i + 1) * 25 + 6] = x4_d[i + N + Nsmall].z;
-				Fragments_d[(i + 1) * 25 + 7] = v4_d[i + N + Nsmall].x;
-				Fragments_d[(i + 1) * 25 + 8] = v4_d[i + N + Nsmall].y;
-				Fragments_d[(i + 1) * 25 + 9] = v4_d[i + N + Nsmall].z;
-				Fragments_d[(i + 1) * 25 + 10] = spin_d[i + N + Nsmall].x;
-				Fragments_d[(i + 1) * 25 + 11] = spin_d[i + N + Nsmall].y;
-				Fragments_d[(i + 1) * 25 + 12] = spin_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * 25 + 0] = time/365.25;
+					Fragments_d[(i + 1) * 25 + 1] = (double)(index_d[i + N + Nsmall]);
+					Fragments_d[(i + 1) * 25 + 2] = x4_d[i + N + Nsmall].w;
+					Fragments_d[(i + 1) * 25 + 3] = v4_d[i + N + Nsmall].w;
+					Fragments_d[(i + 1) * 25 + 4] = x4_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * 25 + 5] = x4_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * 25 + 6] = x4_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * 25 + 7] = v4_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * 25 + 8] = v4_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * 25 + 9] = v4_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * 25 + 10] = spin_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * 25 + 11] = spin_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * 25 + 12] = spin_d[i + N + Nsmall].z;
 
-	//printf("%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g 0\n", time/365.25, index_d[i + N + Nsmall], x4_d[i + N + Nsmall].w, v4_d[i + N + Nsmall].w, x4_d[i + N + Nsmall].x, x4_d[i + N + Nsmall].y, x4_d[i + N + Nsmall].z, v4_d[i + N + Nsmall].x, v4_d[i + N + Nsmall].y, v4_d[i + N + Nsmall].z, spin_d[i + N + Nsmall].x, spin_d[i + N + Nsmall].y, spin_d[i + N + Nsmall].z);
+//printf("%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g 0\n", time/365.25, index_d[i + N + Nsmall], x4_d[i + N + Nsmall].w, v4_d[i + N + Nsmall].w, x4_d[i + N + Nsmall].x, x4_d[i + N + Nsmall].y, x4_d[i + N + Nsmall].z, v4_d[i + N + Nsmall].x, v4_d[i + N + Nsmall].y, v4_d[i + N + Nsmall].z, spin_d[i + N + Nsmall].x, spin_d[i + N + Nsmall].y, spin_d[i + N + Nsmall].z);
 
-				//remove too small particles
-				double r = v4_d[i + N + Nsmall].w;
-				if(r * def_AU < 0.1){
-					x4_d[i + N + Nsmall].x = 1.0;
-					x4_d[i + N + Nsmall].y = 0.0;
-					x4_d[i + N + Nsmall].z = 0.0;
-					x4_d[i + N + Nsmall].w = -1.0e-12;
+					//remove too small particles
+					double r = v4_d[i + N + Nsmall].w;
+					if(r * def_AU < 0.1){
+						x4_d[i + N + Nsmall].x = 1.0;
+						x4_d[i + N + Nsmall].y = 0.0;
+						x4_d[i + N + Nsmall].z = 0.0;
+						x4_d[i + N + Nsmall].w = -1.0e-12;
 
-					v4_d[i + N + Nsmall].x = 0.0;
-					v4_d[i + N + Nsmall].y = 0.0;
-					v4_d[i + N + Nsmall].z = 0.0;
-					v4_d[i + N + Nsmall].w = 0.0;
+						v4_d[i + N + Nsmall].x = 0.0;
+						v4_d[i + N + Nsmall].y = 0.0;
+						v4_d[i + N + Nsmall].z = 0.0;
+						v4_d[i + N + Nsmall].w = 0.0;
 
+					}
 				}
+			
+			
+//printf("%d %g %g %g %d %d %d\n", id, p, RR, rd, ii, N + Nsmall, NconstT);
+				Nsmall_d[st] += ii;
+				atomicMax(&nFragments_d[0], ii);
+
+				Fragments_d[0] = time/365.25;
+				Fragments_d[1] = (double)(index_d[id]);
+				Fragments_d[2] = x4_d[id].w;
+				Fragments_d[3] = v4_d[id].w;
+				Fragments_d[4] = x4_d[id].x;
+				Fragments_d[5] = x4_d[id].y;
+				Fragments_d[6] = x4_d[id].z;
+				Fragments_d[7] = v4_d[id].x;
+				Fragments_d[8] = v4_d[id].y;
+				Fragments_d[9] = v4_d[id].z;
+				Fragments_d[10] = spin_d[id].x;
+				Fragments_d[11] = spin_d[id].y;
+				Fragments_d[12] = spin_d[id].z;
+
+				x4_d[id].x = 0.0;
+				x4_d[id].y = 1.0;
+				x4_d[id].z = 0.0;
+				x4_d[id].w = -1.0e-12;
+
+				v4_d[id].x = 0.0;
+				v4_d[id].y = 0.0;
+				v4_d[id].z = 0.0;
+				v4_d[id].w = 0.0;
+
+				spin_d[id].x = 0.0;
+				spin_d[id].y = 0.0;
+				spin_d[id].z = 0.0;
+
+				index_d[id] = -1;
 			}
-		
-		
-printf("%d %g %g %g %d %d %d\n", id, p, RR, rd, ii, N + Nsmall, NconstT);
-			Nsmall_d[st] += ii;
-			atomicMax(&nFragments_d[0], ii);
-
-			Fragments_d[0] = time/365.25;
-			Fragments_d[1] = (double)(index_d[id]);
-			Fragments_d[2] = x4_d[id].w;
-			Fragments_d[3] = v4_d[id].w;
-			Fragments_d[4] = x4_d[id].x;
-			Fragments_d[5] = x4_d[id].y;
-			Fragments_d[6] = x4_d[id].z;
-			Fragments_d[7] = v4_d[id].x;
-			Fragments_d[8] = v4_d[id].y;
-			Fragments_d[9] = v4_d[id].z;
-			Fragments_d[10] = spin_d[id].x;
-			Fragments_d[11] = spin_d[id].y;
-			Fragments_d[12] = spin_d[id].z;
-
-			x4_d[id].x = 0.0;
-			x4_d[id].y = 1.0;
-			x4_d[id].z = 0.0;
-			x4_d[id].w = -1.0e-12;
-
-			v4_d[id].x = 0.0;
-			v4_d[id].y = 0.0;
-			v4_d[id].z = 0.0;
-			v4_d[id].w = 0.0;
-
-			spin_d[id].x = 0.0;
-			spin_d[id].y = 0.0;
-			spin_d[id].z = 0.0;
-
-			index_d[id] = -1;
 		}
-		random_d[id] = random;
 	}
 }
 
-__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
+__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex, double4 *x4_h, double4 *v4_h, double3 *spin_h, int *index_h){
 	int st = 0;
 	nFragments_m[0] = -1;
 	fragment_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
@@ -864,7 +904,6 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	nFragments_m[0] = -1;
 	rotation_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
 	cudaDeviceSynchronize();
-
 }
 #endif
 

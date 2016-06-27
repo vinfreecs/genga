@@ -275,8 +275,8 @@ int main(int argc, char*argv[]){
 	
 			error = cudaGetLastError();
 			if(error != 0){
-				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
-				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+				printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
+				fprintf(D.masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
 				return 0;
 			}
 			//Print Energy and log information//

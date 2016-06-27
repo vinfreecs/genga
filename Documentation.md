@@ -80,6 +80,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * emax = maximal value of eccentricity range for aecount; optional, the default value is 1.0. See [here](#markdown-header-aelimits) for more details
     * k2 = potential Love number of degree 2
     * k2f = fluid Love number of degree 2
+    * tau = time lag
     * \- = skip this column, optional
 
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.

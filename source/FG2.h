@@ -151,7 +151,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			}
 			else dec = __fma_rn(-0.85, e, dm); //dm - 0.85*e;
 			converge = fabs(en * dt *DOUBLE_EPS);
-			for(i = 0; i < 32; ++i) {
+			for(i = 0; i < 128; ++i) {
 
 				//s = sin(dec);
 				//c = cos(dec);
@@ -176,7 +176,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 				else dec = 0.5*(LOW + UP);
 				if (dec==LOW || dec==UP) break;
 			}
-			if(i < 31){
+			if(i < 127){
 				iwp = 1.0/wp;
 				air_ = -1.0/ria;
 				t1 = (1.0-c);
