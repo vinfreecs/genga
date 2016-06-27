@@ -71,24 +71,14 @@ int loop(Data D, double &time){
 				if(er == 0) return 0;
 			}
 
-			//Check for too many Collisions//
-			if(D.Ncoll_m[0] >= MaxColl-1){
-				D.printMaxColl();
-				return 0;
-			}
-	
 			error = cudaGetLastError();
 			if(error != 0){
-				printf("Step error = %d = %s\n",error, cudaGetErrorString(error));
-				fprintf(D.masterfile, "Step error = %d = %s\n",error, cudaGetErrorString(error));
+				printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
+				fprintf(D.masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
 				return 0;
 			}
 			//Print Energy and log information//
 			if(D.timeStep % D.P.ei == 0){
-				if(D.CollisionFlag == 1){
-					int rem = D.RemoveCall();
-					if( rem == 0) return 0;
-				}
 				if(bufferCount >= D.P.Buffer){
 					D.EnergyOutput();
 				}
@@ -137,7 +127,7 @@ int loop(Data D, double &time){
 #endif
 			}
 			// print time information //
-			if(D.timeStep % D.P.ci == 0){
+			if(D.P.ci > 0 && D.timeStep % D.P.ci == 0){
 				if(bufferCount >= D.P.Buffer){
 					D.printTime();
 					fflush(D.masterfile);
@@ -569,7 +559,6 @@ int main(int argc, char*argv[]){
 
 	//Allocate memory for parameters on the host:
 	H.Halloc();
-	cudaDeviceSynchronize();
 
 	// Read parameters from param file //
 	printf("Read parameters\n");
@@ -630,6 +619,14 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 	printf("Initial Conditions OK\n");
 
+#if USE_NAF == 1
+	er = D.naf.alloc1(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.P.tRestart, D.idt_h, D.ict_h, D.P.NAFn0, D.P.NAFnfreqs);
+	if(er == 0) return 0;
+
+	er = D.naf.alloc2(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.GSF, D.P.NAFformat, D.P.tRestart, D.index_h);
+	if(er == 0) return 0;
+#endif
+
 	//remove ghost particles and reorder arrays//
 	int NminFlag = D.remove();
 
@@ -682,7 +679,12 @@ int main(int argc, char*argv[]){
 	}
 
 	fflush(D.masterfile);
-
+#if USE_NAF == 1
+	//compute the x and y arrays for the naf algorithm
+	int NAFstep = 0;
+	D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+	++NAFstep;
+#endif
 	if(D.Nst > 1){
 		D.firstKick_M(0);
 	}

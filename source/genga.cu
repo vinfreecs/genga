@@ -178,10 +178,10 @@ int main(int argc, char*argv[]){
 
 	fflush(D.masterfile);
 #if USE_NAF == 1
-			//compute the x and y arrays for the naf algorithm
-			int NAFstep = 0;
-			D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
-			++NAFstep;
+	//compute the x and y arrays for the naf algorithm
+	int NAFstep = 0;
+	D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
+	++NAFstep;
 #endif
 
 	if(D.Nst > 1){
@@ -271,7 +271,6 @@ int main(int argc, char*argv[]){
 				er = D.MaxGroups();
 				if(er == 0) return 0;
 			}
-
 	
 			error = cudaGetLastError();
 			if(error != 0){
@@ -291,8 +290,6 @@ int main(int argc, char*argv[]){
 					D.copyGridae();
 				}
 			}
-
-
 
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
