@@ -345,60 +345,60 @@ __host__ int Data::step(){
 
 
 __host__ void Data::firstKick_16(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 16 > <<< NB[0] , 16 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick16_kernel < 16, 40, 0 > <<< N_h[0] , 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_32(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 32 > <<< NB[0] , 32 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 32, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_64(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 64 > <<< NB[0] , 64 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	kick32_kernel < 64, 64, 0 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, icNB, P.NencMax, 0.0);
 }
 __host__ void Data::firstKick_128(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 128 > <<< NB[0] , 128 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 128 ><<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_256(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 256 > <<< NB[0] , 256 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc256b_kernel < 128 > <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 256 ><<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_512(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_1024(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel < 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_2048(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< 32, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
 	EncMatrix_kernel < 512 ><<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], EncFlag_d);
 }
 __host__ void Data::firstKick_largeN(){
-	cudaMemset(a_d, 0, NT*sizeof(double3));
+	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	initial_kernel< 512 > <<< NB[0] , 512 >>>(Encpairs_d, Encpairs2_d, K_d, Kold_d, StopTime_d, groupIndex_d, NB[0], P.NencMax);
 	Rcrit_kernel <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], icNB, P.NencMax, time_h[0]);
@@ -672,14 +672,14 @@ __host__ int Data::step_16Simple(){
 }
 */
 __host__ int Data::step_16(){
-if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0], Nst);
-	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
-}
+//if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
+//	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+//if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+//	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Kt[0]);
+//	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
+//	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[0], N_h[0], Nst);
+//	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+//}
 	Rcrit_kernel <<< 1, 16 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
 #if SERIAL_GROUPING == 1
 	Sort_kernel<<<1, 16 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -690,6 +690,14 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 #else
 	kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d, N_h[0]);
 #endif
+if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
+	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[0], N_h[0], Nst);
+	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+}
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HC32_kernel <16, 32, 1> <<< 3, 16 >>> (x4_d, v4_d, dtiMsun_h[0] * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0]);
@@ -722,9 +730,9 @@ if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElement
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
-	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0], Nst);
+	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -735,9 +743,9 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0], Nst);
+	if(P.Usegas == 1) GasAccCall_16(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 	com32_kernel < 16, 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -756,8 +764,8 @@ __host__ int Data::step_32(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 1, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -802,8 +810,8 @@ if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElement
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -813,8 +821,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_32(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 32, 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -831,8 +839,8 @@ __host__ int Data::step_64(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 2, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -876,8 +884,8 @@ if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElement
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -887,8 +895,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_64(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com32_kernel < 64, 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -905,8 +913,8 @@ __host__ int Data::step_128(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
-	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[0]);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Kt[0]);
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -956,8 +964,8 @@ if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElemen
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -973,8 +981,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_128(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -991,8 +999,8 @@ __host__ int Data::step_256(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x,  test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -1043,8 +1051,8 @@ if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElemen
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -1060,8 +1068,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_256(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -1079,8 +1087,8 @@ __host__ int Data::step_512(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -1131,8 +1139,8 @@ if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElemen
 
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -1149,8 +1157,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_512(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 
@@ -1168,8 +1176,8 @@ __host__ int Data::step_1024(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -1219,8 +1227,8 @@ if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElemen
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -1236,8 +1244,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_1024(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -1255,8 +1263,8 @@ __host__ int Data::step_2048(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< 64, 32 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -1306,8 +1314,8 @@ if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElemen
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -1324,8 +1332,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, N_h[0]);
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_2048(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -1344,8 +1352,8 @@ __host__ int Data::step_largeN(){
 if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
-	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	Rcrit_kernel <<< (N_h[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0]);
@@ -1397,8 +1405,8 @@ if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d,
 
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 		}
@@ -1419,8 +1427,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_largeN(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 	com128_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 }
 	if(EjectionFlag_m[0] > 0){
@@ -1439,13 +1447,13 @@ if(P.Usegas == 1 || P.UseForce > 0 || P.setElements > 0){
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 	if(P.Usegas == 1){
-		GasAccCall_16(time_d, dt_d, Ct[0]);
-		GasAccCall_small(time_d, dt_d, Ct[0]);
+		GasAccCall_16(time_d, dt_d, Kt[0]);
+		GasAccCall_small(time_d, dt_d, Kt[0]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
-		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[0], N_h[0] + Nsmall_h[0], Nst);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[0], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[0], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1502,13 +1510,13 @@ if(P.UseForce == 32){
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.Usegas == 1){
-		GasAccCall_16(time_d, dt_d, Ct[si]);
-		GasAccCall_small(time_d, dt_d, Ct[si]);
+		GasAccCall_16(time_d, dt_d, Kt[si]);
+		GasAccCall_small(time_d, dt_d, Kt[si]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
-		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[si], N_h[0] + Nsmall_h[0], Nst);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1531,13 +1539,13 @@ else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a
 if(P.Usegas == 1 || P.UseForce > 0){
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.Usegas == 1){
-		GasAccCall_16(time_d, dt_d, Ct[SIn - 1]);
-		GasAccCall_small(time_d, dt_d, Ct[SIn - 1]);
+		GasAccCall_16(time_d, dt_d, Kt[SIn - 1]);
+		GasAccCall_small(time_d, dt_d, Kt[SIn - 1]);
 	}
 	if(P.UseForce > 0){
-		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
-		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Ct[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
 	}
 	com128_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 }
@@ -1551,8 +1559,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 __host__ int Data::step_M(){
 if(P.Usegas == 1 || P.UseForce > 0){
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
-	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[0]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[0], time_d, NT, Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[0]);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[0], time_d, NT, Nst, P.UseForce);
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 }
 	RcritM_kernel <<< (NT + 127) / 128, 128>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT, time_d, idt_d, ict_d, timeStep);
@@ -1589,8 +1597,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 			KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[si], index_d, NT, test_d);
 if(P.Usegas == 1 || P.UseForce > 0){
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
-	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[si]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[si], time_d, NT, Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, NT, Nst, P.UseForce);
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, NBS_d, index_d, NT, test_d, -1);
 }
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1600,8 +1608,8 @@ if(P.Usegas == 1 || P.UseForce > 0){
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[SIn - 1], index_d, NT, test_d);
 if(P.Usegas == 1 || P.UseForce > 0){
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
-	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Ct[SIn - 1]);
-	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Ct[SIn - 1], time_d, NT, Nst, P.UseForce);
+	if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
+	if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce);
 	comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 }
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);

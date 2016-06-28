@@ -322,13 +322,8 @@ __host__ int Data::init(){
 		Nenc_m[i] = 0;
 	}
 	EjectionFlag_m[0] = 0;
-	for(int st = 0; st < Nst; ++st){
-		EjectionFlag_m[st + 1] = 0;
-		for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-			index_h[NBS_h[st] + i] = i+st*100;
-		}
-	}
-	for(int i = 0; i < NT + NsmallT; ++i){
+	for(int i = 0; i < NconstT; ++i){
+		index_h[i] = -1;
 		rcrit_h[i] = 0.0;
 		x4_h[i].x = 1.0;
 		x4_h[i].y = 0.0;
@@ -361,6 +356,12 @@ __host__ int Data::init(){
 		enccount_h[i] = 0;
 		aecountT_h[i] = 0;
 		enccountT_h[i] = 0;
+	}
+	for(int st = 0; st < Nst; ++st){
+		EjectionFlag_m[st + 1] = 0;
+		for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
+			index_h[NBS_h[st] + i] = i+st*100;
+		}
 	}
 	for(int i = 0; i < P.Buffer * 21 * NconstT; ++i){
 		coordinateBuffer_h[i] = 0.0;
@@ -405,7 +406,6 @@ __host__ int Data::init(){
 	}
 
 #if USE_RANDOM
-	
 	randomInit_kernel <<< (NconstT + 255) / 256, 256>>> (random_d, NconstT);
 #endif
 
