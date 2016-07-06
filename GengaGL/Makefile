@@ -12,3 +12,4 @@ GLUT = -framework OpenGL -framework GLUT
 endif
 gengaGL: $(source) $(headers)
 	nvcc $(ARCH) -o gengaGL $(source) $(GLUT)
+#	nvcc $(ARCH) -ccbin=g++-4.9 -o gengaGL $(source) $(GLUT)

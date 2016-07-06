@@ -9,7 +9,7 @@
 // June 2016
 // Authors: Simon Grimm
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Ct, double *time_d, int N, int Nst, int UseForce){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -17,15 +17,14 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 	if(id < N){
 	
 		int st = 0;
-
-		if(Nst > 1) st = index_d[id] / 100;	//st is the sub simulation index
+		int index = index_d[id];
+		if(Nst > 1) st = index / 100;	//st is the sub simulation index
 
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
-//		int index = index_d[id];
 		double Msun = Msun_d[st].x;			//This is the mass of the central star
 		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star
-		double dt = dt_d[st] * Ct;			//This is the time step to do
+		double dt = dt_d[st] * Kt;			//This is the time step to do
 //		double time = time_d[st] / 365.25;		//This is the time in years
 
 		double3 a3;
@@ -215,7 +214,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			v4t.z = v4.z + 0.5 * dt * a3t.z;
 
 			if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
-	//printf("%d\n", k);
+//printf("%d %d\n", id, k);
 				break;
 			}
 
@@ -232,7 +231,6 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		v4.z += a3.z * dt;
 
 		v4_d[id] = v4;
-
 	}
 }
 
@@ -908,7 +906,7 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 #endif
 
 
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Ct, int N, int Nst){
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -935,7 +933,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
-			double dt = dt_d[st] * Ct;
+			double dt = dt_d[st] * Kt;
 			double mu = ksq * (Msun + x4i.w);
 			double m = x4i.w;
 			if(x4i.w == 0.0){
@@ -1221,7 +1219,7 @@ __device__ void alpha(double e){
 */
 
 
-__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Ct, int N, int Nst){
+__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1237,7 +1235,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 		double4 v4i = v4_d[id];
 
 		double Msun = Msun_d[st].x;
-		double dt = dt_d[st] * Ct;
+		double dt = dt_d[st] * Kt;
 		double mu = ksq * (Msun + x4i.w);
 		double m = x4i.w;
 		double RR = v4i.w * def_AU;					//covert radius in m	

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.46
+#define Version 3.47
 
 //Default parameter values
 #define def_TimeStep 6
@@ -173,7 +173,8 @@
 	
 
 //#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
-#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
+//#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
+#define Asteroid_K 0.01         //Thermal conductivity in W/mK	Veritas
 
 
 #ifndef STRUCT_H
