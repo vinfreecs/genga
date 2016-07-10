@@ -194,7 +194,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 	}
 		
 	if(E == 2){
-		if(id < Nst + 1){
+		if(id >= 0 && id < Nst + 1){
 			Nencpairs_d[id] = 0;		//This variable is needed in the Kick_kernel
 		}
 	}

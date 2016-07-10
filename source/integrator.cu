@@ -141,34 +141,17 @@ __global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double *K_d,
 
 // **************************************
 //This kernel sets initial values for the test particle mode
-__global__ void initialsmall_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NconstT, int NencMax){
+__global__ void initialb_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NBNencT){
 
 	int idx = blockIdx.x;
 	int id = blockIdx.x * blockDim.x + idx;
 
-	if(id < NconstT * NencMax){
+	if(id < NBNencT){
 		Encpairs_d[id].x = -1;
 		Encpairs_d[id].y = -1;
 
 		Encpairs2_d[id].x = -1;
 		Encpairs2_d[id].y = -1;
-	}
-}
-
-template <int Bl>
-__global__ void initialM_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NT){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + idy;
-
-	if(id < NT){
-		for(int i = 0; i < Bl; ++i){
-			Encpairs_d[id * Bl + i].x = -1;
-			Encpairs_d[id * Bl + i].y = -1;
-
-			Encpairs2_d[id * Bl + i].x = -1;
-			Encpairs2_d[id * Bl + i].y = -1;
-		}
 	}
 }
 
@@ -407,14 +390,13 @@ __host__ void Data::firstKick_largeN(){
 __host__ void Data::firstKick_small(){
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 
-	int nbInitialsmall = ((icNB + Nsmall_h[0]) * P.NencMax + 255) / 256;
-	initialsmall_kernel <<< nbInitialsmall, 256 >>> (Encpairs_d, Encpairs2_d, NconstT, P.NencMax);
+	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0]);
 	kicksmall_kernel < 128, 0 > <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dtksq_h[0] * Kt[SIn - 1], N_h[0], Nencpairs_d, Encpairs_d, Encpairs2_d, Nsmall_h[0], P.NencMax);
 }
 __host__ void Data::firstKick_M(long long ts){
 	cudaMemset(a_d, 0, NT*sizeof(double3));
-	initialM_kernel < NmaxM > <<< (NT + 31) / 32, 32 >>>(Encpairs_d, Encpairs2_d, NT);
+	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	RcritM_kernel <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, Msun_d, rcrit_d, rcritv_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, Nst, NT, time_d, idt_d, ict_d, ts);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0> <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dtksq_d, Kt[SIn - 1], index_d, NT, test_d);
 }
@@ -1463,7 +1445,7 @@ __host__ int Data::step_small(){
 			if(col == 0) return 0;
 		}
 if(P.UseForce == 32){
-	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex, x4_h, v4_h, spin_h, index_h);
+/*	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex, x4_h, v4_h, spin_h, index_h);
 	if(nFragments_m[0] > 0){
 		int er = printFragments(nFragments_m[0]);
 		if(er == 0) return 0;
@@ -1476,6 +1458,7 @@ if(P.UseForce == 32){
 		int er = printRotation();
 		if(er == 0) return 0;
 	}
+*/
 }
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
 			int rem = RemoveCall();

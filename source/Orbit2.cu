@@ -292,10 +292,12 @@ __host__ int Data::copyGridae(){
         return 1;
 }
 
-__global__ void BufferInit_kernel(double *coordinateBuffer_d){
+__global__ void BufferInit_kernel(double *coordinateBuffer_d, int N){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	coordinateBuffer_d[id] = 0.0;
+	if(id < N){
+		coordinateBuffer_d[id] = 0.0;
+	}
 }
 
 #if USE_RANDOM
@@ -376,8 +378,8 @@ __host__ int Data::init(){
 			NBufferIrr[i * Nst + st].y = Nsmall_h[st];
 		}
 	}
-	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d);
-	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d);
+	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d, P.Buffer * 21 * NconstT);
+	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d, P.Buffer * 21 * NconstT);
 	for(int i = 0; i < NEnergyT; ++i){
 		Energy_h[i] = 0.0;
 	}
@@ -565,7 +567,6 @@ __host__ int Data::readic(int st){
 		double Et = atof(Ets);
 		double time = 0.0;
 		double aecount = 0.0;
-
 		if(P.FormatP == 1){
 			//skip previous time steps
 			if(P.FormatT == 0) fscanf (infile, "%lf",&time);
@@ -619,9 +620,11 @@ __host__ int Data::readic(int st){
 		if(P.FormatP == 0){
 			ii = 0;
 			FILE *OrigInfile;	
-			OrigInfile = fopen(GSF[st].Originputfilename, "r");
+			char Origfilename[160];
+			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
+			OrigInfile = fopen(Origfilename, "r");
 			for(int k = 0; k < 1000000000; ++k){
-				int i;
+				int i = ii;
 				double skip = 0.0;
 				int eri = 1;
 				for(int f = 0; f < 22; ++f){
@@ -689,7 +692,6 @@ __host__ int Data::readic(int st){
 			fclose(OrigInfile);
 		}
 	}
-	printf("MaxIndex: %d\n", MaxIndex);
 	if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
 	return ii;
 } 

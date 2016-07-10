@@ -855,7 +855,6 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	int Ne = Nencpairs2_d[st + 1];
 	int BN2 = BN * BN - 1;
 	__syncthreads();
-//if(idy == 0) printf("G %d %d %d\n", idx, st, Ne);
 
 	if(idy == 0){
 		T_s = 1;
@@ -868,7 +867,6 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		encpairs_s[idy].x = Encpairs2_d[idy + NBS * NmaxM].x - NBS;
 		encpairs_s[idy].y = Encpairs2_d[idy + NBS * NmaxM].y - NBS;
 		A_s[idy] = encpairs_s[idy].x;
-//printf("%d %d\n", encpairs_s[idy].x, encpairs_s[idy].y);
 	}
 	//encpairs_s[idy] contains the two close encounter pairs//
 	else{

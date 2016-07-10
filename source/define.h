@@ -78,6 +78,10 @@
 //ignore the lock file and start GENGA anyway
 #define IgnoreLockFile 1
 
+//stop Simulation at close encounters
+#define StopAtEncounter 1
+
+
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
 #define Gasnr_g 189

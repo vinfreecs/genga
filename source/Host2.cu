@@ -1502,7 +1502,7 @@ __host__ int Host::icSize(int st){
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 		OrigInfile = fopen(Origfilename, "r");
 		for(int k = 0; k < 1000000000; ++k){
-			int i;
+			int i = NNN + NNNsmall;
 			double skip = 0.0;
 			int eri = 1;
 			for(int f = 0; f < 22; ++f){
@@ -1530,7 +1530,6 @@ __host__ int Host::icSize(int st){
 					else{
 						er = fscanf (infile, "%s",t);
 					}
-					
 					if(er <= 0){ //error by reading
 						er1 = 0;
 						break;
@@ -1765,7 +1764,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
-			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax);                  // use only argument in simulation 0
+			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0
 			fprintf(infofile, "Nfragments: %d\n", def_Nfragments);
 			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
