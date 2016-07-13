@@ -603,7 +603,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			omega3.z = spin.z * iI;
 
 			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);   //angular velocity in 1 / day * 0.017
-			omega *= dayUnit / (24.0 * 3600.0); 					//in 1 / s
+			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0);					//in 1 / s
 
 			//compute probability of rotation reset
 			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * V);
@@ -619,9 +619,7 @@ printf("A %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 			if(accept == -1){
 				//reset the rotation rate and spin vector
 				rd = curand_uniform(&random);
-				double omin = 1.0 / (36.0 * RR);
-				double omax = 1.0 / (RR);
-				omega = rd * (omax - omin) + omin;        //rotations per s
+				double omega = 1.0/((rd * 35 + 1.0) * RR); //rotations per s
 printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
@@ -745,6 +743,11 @@ printf("A %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 						vz *= -1.0;
 					}
 
+					//rotation rate and spin vector
+					rd = curand_uniform(&random);
+					double omega = 1.0/((rd * 35 + 1.0) * r);	//rotations per s
+					omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
+
 					x /= def_AU;
 					y /= def_AU;
 					z /= def_AU;
@@ -768,14 +771,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 					v4_d[ii + N + Nsmall].w = r;
 
 
-					//rotation rate and spin vector
-					rd = curand_uniform(&random);
-					double omin = 1.0 / (36.0 * r);
-					double omax = 1.0 / r;
-					double omega = rd * (omax - omin) + omin;        //rotations per s
-					omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
-
-					double S = 2.0 / 5.0 * m * v4.w * v4.w * omega;
+					double S = 2.0 / 5.0 * m * r * r * omega;
 					u = curand_uniform(&random);
 					theta = curand_uniform(&random) * 2.0 * M_PI;
 					//sign
@@ -1172,7 +1168,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			a3.y *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
 			a3.z *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
 
-		//printf("%g %g %g %g %g %g %g\n", RR, a, omega, n, a3.x, a3.y, a3.z);
+		//printf("%d %g %g %g %g %g %g %g %g\n", id, m, RR, a, omega, n, a3.x, a3.y, a3.z);
 
 			v4i.x += a3.x * dt;
 			v4i.y += a3.y * dt;

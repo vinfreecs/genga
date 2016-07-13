@@ -579,7 +579,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "n2 =") == 0){
 
 			er = fscanf (paramfile, "%lf", &n2_h[st]);
-
+#if StopAtEncounter
+			n2_h[st] = 0.0;
+#endif
 			if(er <= 0){
 				printf("Error: n2 is not valid!\n");
 				return 0;
@@ -1695,6 +1697,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
+			fprintf(infofile, "Stop at close Encounters: %d\n", StopAtEncounter);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0

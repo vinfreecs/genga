@@ -147,9 +147,10 @@ Here it can also be chosen if the gas disc is included or not.
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
+ * StopAtEncounter i: When set to 1, then the multisimulation mode stop simulations when a close encounter occurres. With this option n2 is set to zero in order to find only physical close encounters.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
- * NmaxTestParticles i: Set the maximal number of massive bodies in the test particle mode.
+ * def_GMax i: Defines the maximum size of close encoutner groups as 2^GMax.
 
 
 Here i means an integer and f a floating point value. 

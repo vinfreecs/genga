@@ -1321,14 +1321,22 @@ __host__ void Data::stopSimulations(){
 			s = 1;
 		}
 		else if(N_h[st] < Nmin[st]){
+#if StopAtEncounter
+			printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
+			fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
+			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+			fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
+			fclose(GSF[st].logfile);
+			s = 1;
+#else
 			printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
 			fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
 			fclose(GSF[st].logfile);
 			s = 1;
+#endif
 		}
-
 		if(s == 1){
 			for(int sst = st; sst < Nst - 1; ++sst){
 				GSF[sst] = GSF[sst + 1];
