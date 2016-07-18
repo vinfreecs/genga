@@ -14,7 +14,7 @@
 //  ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, double *K_d, double *Kold_d, int *groupIndex_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -91,7 +91,19 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		a_s[idy + nb*NN].x = 0.0;
                 a_s[idy + nb*NN].y = 0.0;
                 a_s[idy + nb*NN].z = 0.0;
-	}
+
+/*
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			double mu = ksq * Msun;
+			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
+			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
+			double ir = 1.0/sqrt(rsq);
+			double ia = 2.0*ir-vsq/mu;
+			dt *= 1.0 - 1.5 * mu * ia / c2;
+			dt1 = dt;
+		}
+*/	}
 	if(idy < MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;

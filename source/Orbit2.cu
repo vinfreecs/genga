@@ -1325,7 +1325,7 @@ __host__ void Data::stopSimulations(){
 			s = 1;
 		}
 		else if(N_h[st] < Nmin[st]){
-#if StopAtEncounter
+#if StopAtEncounter > 0
 			printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
 			fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");

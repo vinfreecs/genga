@@ -147,7 +147,7 @@ Here it can also be chosen if the gas disc is included or not.
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
- * StopAtEncounter i: When set to 1, then the multisimulation mode stops simulations when a close encounter occurres (d < n1 * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
+ * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurres (d < StopAtEncounter * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * def_GMax i: Defines the maximum size of close encoutner groups as 2^GMax.

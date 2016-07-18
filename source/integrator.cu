@@ -199,6 +199,12 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		rcrit = n1 * r * cbrt(x4i.w  / ( Msun * 3.0));
 		rcritv = fmax(rcrit, n2 * dt * v);
 
+#if StopAtEncounter > 0
+		//rescale non n2 rcrit 
+		rcrit = StopAtEncounter * rcrit / n1
+
+#endif
+
 		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
 		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
 
@@ -272,6 +278,12 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double4 *Msun_d, dou
 
 		rcrit = n1 * r * cbrt(x4i.w  / ( Msun * 3.0));
 		rcritv = fmax(rcrit, n2 * dt * v);
+
+#if StopAtEncounter > 0
+		//rescale non n2 rcrit 
+		rcrit = StopAtEncounter * rcrit / n1
+
+#endif
 
 		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
 		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
@@ -407,11 +419,11 @@ __host__ void Data::BSCall(int NB, int si, double t){
 	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
 #if G3 < 2
 
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NB, K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
 
 
 		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, NB, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
@@ -444,11 +456,11 @@ __host__ void Data::BSCall(int NB, int si, double t){
 
 __host__ void Data::BSsmallCall(int si, double t){
 	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
-		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
-		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
+		if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
+		if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (x4_d, v4_d, xold_d, vold_d, a_d, rcrit_d, rcritv_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, t, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N_h[0] + Nsmall_h[0], K_d, Kold_d, groupIndex_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, P.UseForce);
 
 		if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 5, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
 		if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 6, N_h[0] + Nsmall_h[0], P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d);
@@ -1537,7 +1549,7 @@ __host__ int Data::step_M(){
 			encounterM_kernel < NmaxM > <<< (Nencpairs_h[0] + 31) / 32 , 32 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_d, Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, index_d, NBS_d, N_d, enccount_d, si, FGt[si], Nst, time_d, P.WriteEncounters, P.WriteEncountersRadius, StopFlag_d);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			if(Nencpairs2_h[0] > 0){
-#if StopAtEncounter
+#if StopAtEncounter > 0
 				cudaMemcpy(StopFlag_h, StopFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
 				if(StopFlag_h[0] == 1){
 					cudaMemcpy(N_h, N_d, Nst * sizeof(int), cudaMemcpyDeviceToHost);

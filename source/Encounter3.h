@@ -417,7 +417,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
-#if StopAtEncounter 
+#if StopAtEncounter > 0 
 			if(enccount == 1){
 				N_d[st] = 0;
 				StopFlag_d[0] = 1;
