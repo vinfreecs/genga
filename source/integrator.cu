@@ -201,7 +201,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 #if StopAtEncounter > 0
 		//rescale non n2 rcrit 
-		rcrit = StopAtEncounter * rcrit / n1
+		rcrit = StopAtEncounterRadius * rcrit / n1;
 
 #endif
 
@@ -281,7 +281,7 @@ __global__ void RcritM_kernel(double4 *x4_d, double4 *v4_d, double4 *Msun_d, dou
 
 #if StopAtEncounter > 0
 		//rescale non n2 rcrit 
-		rcrit = StopAtEncounter * rcrit / n1
+		rcrit = StopAtEncounterRadius * rcrit / n1;
 
 #endif
 
