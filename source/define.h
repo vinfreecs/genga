@@ -79,8 +79,8 @@
 #define IgnoreLockFile 1
 
 //stop Simulation at close encounters
-#define StopAtEncounter 1
-#define StopAtEncounterRadius 0.2
+#define StopAtEncounter 0
+#define StopAtEncounterRadius 1.0
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
