@@ -82,6 +82,7 @@ public:
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int *EncFlag_d, *EncFlag_m;
 	int CollisionFlag;
+	int *StopFlag_d, *StopFlag_h;
 	double *Coll_h, *Coll_d;
 	double *writeEnc_h, *writeEnc_d;
 	double *Fragments_h, *Fragments_d;

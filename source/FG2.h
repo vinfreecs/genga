@@ -52,10 +52,10 @@ __host__ void Data::constantCopySC(double *S_h, double *C_h){
 //See Danby for f and g method
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//July 2016
 //
 //***************************************/
-__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id, int index){
+__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id, int index, int UseForce){
 
 	if(x4i.w >= 0){
 
@@ -95,8 +95,12 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 		u =  x4i.x*v4i.x + x4i.y*v4i.y + x4i.z*v4i.z;
 		ir = 1.0/sqrt(rsq);
 		ia = 2.0*ir-vsq/mu;
-		if(ia > 0){
 
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			dt *= 1.0 - 1.5 * mu * ia / c2;
+		}
+		if(ia > 0){
 			t1 = ia*ia;
 			ria = rsq*ir*ia;
 			en = sqrt(mu*t1*ia);
@@ -151,6 +155,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			}
 			else dec = __fma_rn(-0.85, e, dm); //dm - 0.85*e;
 			converge = fabs(en * dt *DOUBLE_EPS);
+
 			for(i = 0; i < 128; ++i) {
 
 				//s = sin(dec);
@@ -216,10 +221,10 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 //See Danby for f and g method
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//July 2016
 //
 //***************************************/
-__device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id){
+__device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id, int UseForce){
 
 	if(x4i.w >= 0){
 		int ii,i,j,jnew;
@@ -248,6 +253,10 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 		u =  x4i.x*v4i.x + x4i.y*v4i.y + x4i.z*v4i.z;
 		ir = 1.0/sqrt(rsq);
 		ia = 2.0*ir-vsq/mu;
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			dt *= 1.0 - 1.5 * mu * ia / c2;
+		}
 
 		if(ia > 0){
 
@@ -354,7 +363,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
 			PFlag_d[0] = 1;
 			double dtt = -x4oldi.y / v4oldi.y;
-			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index);
+			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index, 0);
 //			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
 			xold_d[id] = x4oldi;
 			vold_d[id] = v4oldi;
@@ -370,11 +379,11 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //There are 2 different FG, and one Burlish Stoer function, fastest one is fastfg.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2016
+//Authors: Simon Grimm
+//July 2016
 //
 // *****************************************
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -393,9 +402,9 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4i, v4i, dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
-//		BSSinglestep(x4i, v4i, Msun, dt, test, test);
+		//fastfg(x4i, v4i, dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+		fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+//		BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
@@ -413,11 +422,11 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //for multi simulation mode
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2016
+//Authors: Simon Grimm
+//July 2016
 //
 // *****************************************
-__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si){
+__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -439,9 +448,9 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4i, v4i, dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
-		fgfull(x4i, v4i, dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index);
-		//BSSinglestep(x4i, v4i, Msun, dt * FGt, test, test);
+		//fastfg(x4i, v4i, dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+		fgfull(x4i, v4i, dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+		//BSSinglestep(x4i, v4i, Msun, dt * FGt, test, test); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;

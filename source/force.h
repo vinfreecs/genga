@@ -7,7 +7,7 @@
 // method, according to Mikkola 1997
 //
 // June 2016
-// Authors: Simon Grimm
+// Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
 __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce){
 
@@ -41,6 +41,16 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 		double A, B, eta;
 
+                if(UseForce & 1){
+                        // GR part depending on position only (see Saha & Tremaine 1994)
+			double mu = ksq * (Msun + x4.w);
+                        A = mu/(rsq * def_cm);
+                        B = 2.0 * A * A;
+                        a3.x -= B * x4.x;
+                        a3.y -= B * x4.y;
+                        a3.z -= B * x4.z;
+                }
+/*
 		if(UseForce & 1){
 			// GR  see Fabrycky 2010 equation 2
 			double c = 10065.3201686;//c in AU / day * 0.0172020989
@@ -50,6 +60,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			B = A * ir / csq;
 			eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 		}
+*/
 /*
 		if(UseForce >> 1 & 1){
 			//Tidal force see Fabrycky 2010 equation 3
@@ -176,54 +187,57 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		// implicit midpoint method
 		// **********************************************************
 
-		double3 a3t, a3told;
-		double4 v4t = v4;
-		a3told.x = 0.0;
-		a3told.y = 0.0;
-		a3told.z = 0.0;
-		
-		for(int k = 0; k < 30; ++k){
-		
-			a3t.x = 0.0;
-			a3t.y = 0.0;
-			a3t.z = 0.0;
-			if(UseForce & 1){
-				// GR  see Fabrycky 2010 equation 2
-				double vsq = (v4t.x * v4t.x + v4t.y * v4t.y + v4t.z * v4t.z);
-				double rd = (x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z) * ir; 
 
-				double C = 2.0 * (2.0 - eta) * rd;
-				double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
+		if(UseForce >> 1 & 1 || UseForce & 1){
+			double3 a3t, a3told;
+			double4 v4t = v4;
+			a3told.x = 0.0;
+			a3told.y = 0.0;
+			a3told.z = 0.0;
+			
+			for(int k = 0; k < 30; ++k){
+			
+				a3t.x = 0.0;
+				a3t.y = 0.0;
+				a3t.z = 0.0;
+	/*			if(UseForce & 1){
+					// GR  see Fabrycky 2010 equation 2
+					double vsq = (v4t.x * v4t.x + v4t.y * v4t.y + v4t.z * v4t.z);
+					double rd = (x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z) * ir; 
 
-				a3t.x += B * (C * v4t.x - D * x4.x * ir); 	
-				a3t.y += B * (C * v4t.y - D * x4.y * ir);
-				a3t.z += B * (C * v4t.z - D * x4.z * ir);
+					double C = 2.0 * (2.0 - eta) * rd;
+					double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
+
+					a3t.x += B * (C * v4t.x - D * x4.x * ir); 	
+					a3t.y += B * (C * v4t.y - D * x4.y * ir);
+					a3t.z += B * (C * v4t.z - D * x4.z * ir);
+				}
+	*/
+				if(UseForce >> 1 & 1){
+					//Tidal Force see Bolmont et al 2015 equation 15
+					double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
+					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);
+
+					a3t.x += F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x;
+					a3t.y += F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y;
+					a3t.z += F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z;
+				}
+				v4t.x = v4.x + 0.5 * dt * a3t.x;
+				v4t.y = v4.y + 0.5 * dt * a3t.y;
+				v4t.z = v4.z + 0.5 * dt * a3t.z;
+
+				if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
+	//printf("%d %d\n", id, k);
+					break;
+				}
+
+				a3told = a3t;
 			}
 
-			if(UseForce >> 1 & 1){
-				//Tidal Force see Bolmont et al 2015 equation 15
-				double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
-				double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);
-
-				a3t.x += F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x;
-				a3t.y += F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y;
-				a3t.z += F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z;
-			}
-			v4t.x = v4.x + 0.5 * dt * a3t.x;
-			v4t.y = v4.y + 0.5 * dt * a3t.y;
-			v4t.z = v4.z + 0.5 * dt * a3t.z;
-
-			if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
-//printf("%d %d\n", id, k);
-				break;
-			}
-
-			a3told = a3t;
+			a3.x += a3t.x;
+			a3.y += a3t.y;
+			a3.z += a3t.z;
 		}
-
-		a3.x += a3t.x;
-		a3.y += a3t.y;
-		a3.z += a3t.z;
 
 		//apply the Kick
 		v4.x += a3.x * dt;
@@ -681,7 +695,7 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 
 			//mass of the parent body
 			double RR = v4.w * def_AU;	//convert radius in m
-			double M = x4.w;
+			double M = x4.w * def_Solarmass; //mass in Kg
 			if(x4.w == 0.0){
 				M = Asteroid_rho * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
 			}

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.48
+#define Version 3.49
 
 //Default parameter values
 #define def_TimeStep 6
@@ -102,8 +102,9 @@
 #define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
 #define def_AU 149597870700.0		//AU in m
-#define def_Solarmass 1.98855e30       //solar mass in Kg
-#define def_c 299792458.0  	       //speed of light im m/s
+#define def_Solarmass 1.98855e30	//solar mass in Kg
+#define def_c 299792458.0		//speed of light in m/s
+#define def_cm 10065.3201686		//speed of light in AU / day * 0.0172020989	
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
@@ -178,7 +179,7 @@
 
 //#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
 //#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
-#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
+#define Asteroid_K 0.01         //Thermal conductivity in W/mK	Veritas
 
 
 #ifndef STRUCT_H

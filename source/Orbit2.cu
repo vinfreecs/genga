@@ -43,6 +43,8 @@ __host__ void Data::AllocateOrbitt(){
 	groupIterate_h = (int*)malloc(sizeof(int));
 
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
+	StopFlag_h = (int*)malloc(sizeof(int));
+	StopFlag_h[0] = 0;
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
@@ -114,6 +116,8 @@ __host__ void Data::AllocateOrbitt(){
 	
 #endif
 	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
+	cudaMalloc((void **) &StopFlag_d, sizeof(int));
+	cudaMemcpy(StopFlag_d, StopFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 
 #if poincareFlag == 1
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
@@ -1448,6 +1452,7 @@ __host__ int Data::freeOrbit(){
 	free(writeEnc_h);
 	free(Fragments_h);
 	cudaFreeHost(test_h);
+	free(StopFlag_h);
 #if poincareFlag == 1
 	free(PFlag_h);
 #endif	
@@ -1496,6 +1501,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Energy_d);
 	cudaFree(Energy0_d);
 	cudaFree(LI0_d);
+	cudaFree(StopFlag_d);
 #if poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif

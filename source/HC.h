@@ -11,10 +11,10 @@
 //E = 2 : perform C Kick + reset Nencpairs + update time.
 //
 //Authors: Simon Grimm
-//April 2016
+//July 2016
 //*****************************************
 template <int Bl, int E>
-__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t){
+__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t, int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -88,6 +88,15 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
 			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
+			if(UseForce & 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idy + i];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dt;
+				if(idx == 0) x4_d[idy + i].x -= __dmul_rn(v4.x, vcdt);
+				if(idx == 1) x4_d[idy + i].y -= __dmul_rn(v4.y, vcdt);
+				if(idx == 2) x4_d[idy + i].z -= __dmul_rn(v4.z, vcdt);
+			}
 		}
 	}
 }
@@ -102,12 +111,12 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msu
 //E = 1 : perform C Kick.
 //E = 2 : perform C Kick + reset Nencpairs + update time.
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2015
+//Authors: Simon Grimm
+//July 2016
 //
 //  *****************************************
 template < int Bl, int Bl2, int E>
-__global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N){
+__global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -159,6 +168,15 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 		if(idx == 0) x4_d[idy].x += a1_s[0] * dti2Msun;
 		if(idx == 1) x4_d[idy].y += a1_s[0] * dti2Msun;
 		if(idx == 2) x4_d[idy].z += a1_s[0] * dti2Msun;
+			if(UseForce & 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idy];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dt;
+				if(idx == 0) x4_d[idy].x -= __dmul_rn(v4.x, vcdt);
+				if(idx == 1) x4_d[idy].y -= __dmul_rn(v4.y, vcdt);
+				if(idx == 2) x4_d[idy].z -= __dmul_rn(v4.z, vcdt);
+			}
 	}
 }
 
@@ -172,18 +190,19 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dti2Msun,
 //E = 1 : perform C Kick.
 //E = 2 : perform C Kick + reset Nencpairs
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Authors: Simon Grimm
+//JUly 2016
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double *dti2Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
 	__shared__ volatile double3 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
 	volatile double dti2Msun;
+	volatile double dt;
 	if(E == 1){
 		if(id >= 0 && id < Nst + 1){
 			Nencpairs2_d[id] = 0;           //This variable is needed in the Encounter_kernel
@@ -205,6 +224,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
 		dti2Msun = dti2Msun_d[st_s[idy]] * Ct;
+		dt = dt_d[st_s[idy]] * Ct;
 	}
 	else{
 		st_s[idy] = -idy-1;
@@ -212,6 +232,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		p_s[idy].y = 0.0;
 		p_s[idy].z = 0.0;
 		dti2Msun = 0.0;
+		dt = 0.0;
 	}
 	//halo
 	if(idy < Nmax / 2){
@@ -397,5 +418,15 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dti2Msun
 		x4_d[id].x += p_s[idy].x * dti2Msun;
 		x4_d[id].y += p_s[idy].y * dti2Msun;
 		x4_d[id].z += p_s[idy].z * dti2Msun;
+                if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
+                        double c2 = def_cm * def_cm;
+			double4 v4 = v4_d[id];
+                        double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+                        double vcdt = 2.0*vsq/c2 * dt;
+                        x4_d[id].x -= v4.x * vcdt;
+                        x4_d[id].y -= v4.y * vcdt;
+                        x4_d[id].z -= v4.z * vcdt;
+                }
 	}
+
 }

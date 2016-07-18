@@ -387,7 +387,7 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 //
 // ****************************************
 template < int Nmax >
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius, int *StopFlag_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -418,7 +418,10 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
 #if StopAtEncounter 
-			N_d[st] = 0;
+			if(enccount == 1){
+				N_d[st] = 0;
+				StopFlag_d[0] = 1;
+			}
 #endif
 			if(Ne == 0){
 				//write a list with simulations containing close encounters

@@ -579,9 +579,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "n2 =") == 0){
 
 			er = fscanf (paramfile, "%lf", &n2_h[st]);
-#if StopAtEncounter
-			n2_h[st] = 0.0;
-#endif
 			if(er <= 0){
 				printf("Error: n2 is not valid!\n");
 				return 0;
