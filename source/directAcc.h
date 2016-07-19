@@ -281,7 +281,9 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 
         x4[i].w = mtot;
         x4[j].w = -1.0e-12;
-
+#if StopAtCollision
+	x4[i].w = -1.0e-12;
+#endif
         v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
         v4[j].w = 0.0;
 

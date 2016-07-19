@@ -329,6 +329,7 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular){
 
 //This function copies the data from the device to host and calls the printoutput function
 // irregular indicates irregular output intervals, which are read from a calendar file
+//irregular =2 means print Coordinates at Collision time
 __host__ void Data::CoordinateOutput(int irregular){
 
 	if(Nst > 1 && timeStep < P.deltaT){
@@ -361,12 +362,16 @@ __host__ void Data::CoordinateOutput(int irregular){
 		int NBS = NBS_h[st];
 
 		if(P.FormatP == 1){
-			if(Nst == 1 || P.FormatS == 0){
+			if(irregular == 2){
+				sprintf(GSF[st].outputfilename,"OutCollision.dat");
+				GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+			}
+			else if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
 					if(irregular == 0){
 						sprintf(GSF[st].outputfilename,"%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
-					else{
+					else if(irregular == 1){
 						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
@@ -375,7 +380,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					if(irregular == 0){
 						sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
 					}
-					else{
+					else if(irregular == 1){
 						sprintf(GSF[st].outputfilename,"%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
 					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
@@ -386,7 +391,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					if(irregular == 0){
 						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
-					else{
+					else if(irregular == 1){
 						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
@@ -396,7 +401,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					if(irregular == 0){
 						sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
 					}
-					else{
+					else if(irregular == 1){
 						sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
 					}
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");

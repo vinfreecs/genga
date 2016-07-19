@@ -514,7 +514,12 @@ __host__ int Data::CollisionCall(){
 	printCollisions();
 	CollisionFlag = 1;
 	Ncoll_m[0] = 0;
-	return 1;
+#if StopAtCollision == 0 
+ 	return 1;
+#else
+	CoordinateOutput(2);
+	return 0;
+#endif
 }
 __host__ int Data::CollisionMCall(){
 	if(Ncoll_m[0] >= MaxColl - 1){

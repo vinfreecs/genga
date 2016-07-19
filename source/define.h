@@ -82,6 +82,9 @@
 #define StopAtEncounter 0
 #define StopAtEncounterRadius 1.0
 
+
+#define StopAtCollision 0
+
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
 #define Gasnr_g 189
