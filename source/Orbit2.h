@@ -58,6 +58,7 @@ public:
 	double3 *dv_d;
 	double *dt1_d;
 	double *t1_d;
+	double *dtgr_d;
 	int *BSAstop_h, *BSAstop_d;
 
 	// G3 Data

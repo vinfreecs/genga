@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.49
+#define Version 3.50
 
 //Default parameter values
 #define def_TimeStep 6

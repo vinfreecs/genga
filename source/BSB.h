@@ -71,6 +71,16 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		v4_s[idy] = vold_d[idi];  
 		rcritv_s[idy] = rcritv_d[idi];
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			double mu = ksq * Msun;
+			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
+			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
+			double ir = 1.0/sqrt(rsq);
+			double ia = 2.0*ir-vsq/mu;
+			dt *= 1.0 - 1.5 * mu * ia / c2;
+			dt1 = dt;
+		}
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
@@ -91,19 +101,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		a_s[idy + nb*NN].x = 0.0;
                 a_s[idy + nb*NN].y = 0.0;
                 a_s[idy + nb*NN].z = 0.0;
-
-/*
-		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
-			double c2 = def_cm * def_cm;
-			double mu = ksq * Msun;
-			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
-			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
-			double ir = 1.0/sqrt(rsq);
-			double ia = 2.0*ir-vsq/mu;
-			dt *= 1.0 - 1.5 * mu * ia / c2;
-			dt1 = dt;
-		}
-*/	}
+	}
 	if(idy < MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;

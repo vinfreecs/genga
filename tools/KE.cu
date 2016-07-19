@@ -139,7 +139,7 @@ int main(int argc, char*argv[]){
 
 	printf("tmin: %ld, tmax: %ld, step: %d, Name: %s\n", kmin, kmax, step, X);
 
-	int N = 110000;
+	int N = 200000;
 	int NN = 0;
 	double Msun = 1.0;
 

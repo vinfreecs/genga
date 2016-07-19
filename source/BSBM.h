@@ -12,7 +12,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double4 *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d){
+__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double4 *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int NB, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -82,6 +82,16 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		rcritv_s[idy] = rcritv_d[idi];
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
 //printf("BSB %d %d %d %.40g %.40g %.40g %.40g %.40g %.40g\n", sstt, idy, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z);
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			double mu = ksq * Msun;
+			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
+			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
+			double ir = 1.0/sqrt(rsq);
+			double ia = 2.0*ir-vsq/mu;
+			dt *= 1.0 - 1.5 * mu * ia / c2;
+			dt1 = dt;
+		}
 	}
 	else if(idy < NN){
 		x4_s[idy].x = 0.0;
