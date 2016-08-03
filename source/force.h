@@ -39,7 +39,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
 		double ir = 1.0 / sqrt(rsq);
 
-		double A, B, eta;
+		double A, B;
 
                 if(UseForce & 1){
                         // GR part depending on position only (see Saha & Tremaine 1994)
@@ -51,6 +51,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
                         a3.z -= B * x4.z;
                 }
 /*
+		double eta;
 		if(UseForce & 1){
 			// GR  see Fabrycky 2010 equation 2
 			double c = 10065.3201686;//c in AU / day * 0.0172020989

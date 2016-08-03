@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.50
+#define Version 3.51
 
 //Default parameter values
 #define def_TimeStep 6
@@ -173,8 +173,8 @@
 //#define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
 #define Asteroid_rho 2250.0	//density of body in kg/m^3	Veritas
 
-//#define Asteroid_C 680	//Specific Heat Capacity in J/kgK Hebe
-#define Asteroid_C 500		//Specific Heat Capacity in J/kgK Veritas
+//#define Asteroid_C 680.0	//Specific Heat Capacity in J/kgK Hebe
+#define Asteroid_C 500.0	//Specific Heat Capacity in J/kgK Veritas
 
 //#define Asteroid_A 0.2	//Bond albedo			Hebe
 #define Asteroid_A 0.069	//Bond albedo			Veritas

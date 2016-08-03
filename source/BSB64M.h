@@ -69,6 +69,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	double Msun = Msun_d[sstt];
 	double time = time_d[sstt];
 	double dt = dt_d[sstt] * FGt;
+	double dtgr = 1.0;
 	dt1 = dt;
 
         if(dt < 0.0){
@@ -90,8 +91,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
 			double ir = 1.0/sqrt(rsq);
 			double ia = 2.0*ir-vsq/mu;
-			dt *= 1.0 - 1.5 * mu * ia / c2;
-			dt1 = dt;
+			dtgr = 1.0 - 1.5 * mu * ia / c2;
 		}
 	}
 	else if(idy < NN){
@@ -172,13 +172,13 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				__syncthreads();
 
 				if(idy < N2){
-					accEncSun(x4_s[idy], a_s[idy * nb], ksq * Msun);
+					accEncSun(x4_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
 				}
 
 				if(idy < NN){
-					xp_s[idy].x = x4_s[idy].x + dt2 * v4_s[idy].x;
-					xp_s[idy].y = x4_s[idy].y + dt2 * v4_s[idy].y;
-					xp_s[idy].z = x4_s[idy].z + dt2 * v4_s[idy].z;
+					xp_s[idy].x = x4_s[idy].x + dt2 * dtgr * v4_s[idy].x;
+					xp_s[idy].y = x4_s[idy].y + dt2 * dtgr * v4_s[idy].y;
+					xp_s[idy].z = x4_s[idy].z + dt2 * dtgr * v4_s[idy].z;
 					xp_s[idy].w = x4_s[idy].w;
 
 					vp_s[idy].x = v4_s[idy].x + dt2 * a_s[idy * nb].x;  
@@ -215,11 +215,11 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 				if(idy < NN){
-					accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun);
+					accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
 
-					xt_s[idy].x = x4_s[idy].x + dt22 * vp_s[idy].x;
-					xt_s[idy].y = x4_s[idy].y + dt22 * vp_s[idy].y;
-					xt_s[idy].z = x4_s[idy].z + dt22 * vp_s[idy].z;
+					xt_s[idy].x = x4_s[idy].x + dt22 * dtgr * vp_s[idy].x;
+					xt_s[idy].y = x4_s[idy].y + dt22 * dtgr * vp_s[idy].y;
+					xt_s[idy].z = x4_s[idy].z + dt22 * dtgr * vp_s[idy].z;
 					xt_s[idy].w = x4_s[idy].w;
 
 					vt_s[idy].x = v4_s[idy].x + dt22 * a_s[idy * nb].x;
@@ -259,11 +259,11 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 
 					if(idy < N2){
-						accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
+						accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
 
-						xp_s[idy].x += dt22 * vt_s[idy].x;
-						xp_s[idy].y += dt22 * vt_s[idy].y;
-						xp_s[idy].z += dt22 * vt_s[idy].z;
+						xp_s[idy].x += dt22 * dtgr * vt_s[idy].x;
+						xp_s[idy].y += dt22 * dtgr * vt_s[idy].y;
+						xp_s[idy].z += dt22 * dtgr * vt_s[idy].z;
 
 						vp_s[idy].x += dt22 * a_s[idy * nb].x;
 						vp_s[idy].y += dt22 * a_s[idy * nb].y;
@@ -299,11 +299,11 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 
 					if(idy < N2){
-						accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun);
+						accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
 
-						xt_s[idy].x += dt22 * vp_s[idy].x;
-						xt_s[idy].y += dt22 * vp_s[idy].y;
-						xt_s[idy].z += dt22 * vp_s[idy].z;
+						xt_s[idy].x += dt22 * dtgr * vp_s[idy].x;
+						xt_s[idy].y += dt22 * dtgr * vp_s[idy].y;
+						xt_s[idy].z += dt22 * dtgr * vp_s[idy].z;
 
 						vt_s[idy].x += dt22 * a_s[idy * nb].x;
 						vt_s[idy].y += dt22 * a_s[idy * nb].y;
@@ -339,11 +339,11 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 				if(idy < N2){
-					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun);
+					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
 
-					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * vt_s[idy].x);
-					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * vt_s[idy].y);
-					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + xp_s[idy].z + dt2 * vt_s[idy].z);
+					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * dtgr * vt_s[idy].x);
+					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * dtgr * vt_s[idy].y);
+					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + xp_s[idy].z + dt2 * dtgr * vt_s[idy].z);
 
 					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + vp_s[idy].x + dt2 * a_s[idy * nb].x);
 					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + vp_s[idy].y + dt2 * a_s[idy * nb].y);
@@ -414,7 +414,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
 						double enct = 0.0;
-						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1, ii, jj + l, &test, Colpairs_s, Ncol_s[0], 0, enct, writeEncounters, writeEncountersRadius);
+						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1 * dtgr, ii, jj + l, &test, Colpairs_s, Ncol_s[0], 0, enct, writeEncounters, writeEncountersRadius);
 						//write Encounters to file
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
