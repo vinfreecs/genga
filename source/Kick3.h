@@ -744,7 +744,7 @@ __global__ void kick32_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 //
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2014
 //
 // ****************************************
 template <int Bl, int E>
@@ -814,11 +814,11 @@ __global__ void kicksmallb_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2014
 //
 // ****************************************
 template <int Bl, int E>
-__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax){
+__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax, double MinMass){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -847,7 +847,9 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		double rcriti = rcrit_d[id];
 		double rcritvi = rcritv_d[id];
 		double test;
-		for(int j = 0; j < N; ++j){
+		int N1 = N;
+		if(MinMass > 0.0) N1 = N + Nsmall;
+		for(int j = 0; j < N1; ++j){
 			acc<E + 10>(a_s[idy], b_s[idy], x4i, x4_d[j], rcriti, rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, &NencpairsJ, Encpairs2_d, j, id, NencMax, test);
 		}
 		if(E >= 1){

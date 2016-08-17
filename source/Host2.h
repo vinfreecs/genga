@@ -72,6 +72,9 @@ public:
 
 	double *setElementsData_h, *setElementsData_d;
 	int *setElementsLine_d;
+	double4 *GasData_h, *GasData_d;
+	int GasDatanr;
+	double2 GasDatatime;
 	
 	__host__ Host(long long);
 	__host__ int NSimulations(int, char*argv[]);
@@ -84,6 +87,8 @@ public:
 	__host__ void Tsizes();
 	__host__ int readIrregularOutputs();
 	__host__ int readSetElements();
+	__host__ int readGasFile();
+	__host__ int readGasFile2(double);
 	__host__ int freeHost();
 
 	//force

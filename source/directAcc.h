@@ -8,8 +8,8 @@
 ////March 2014
 //
 // ****************************************
-__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j){
-	if(x4i.w >= 0 && x4j.w > 0 && i != j){
+__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double MinMass){
+	if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
 
 		double3 r3;
 		double rsq;
@@ -51,8 +51,8 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 ////March 2014
 //
 // ****************************************
-__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K){
-	if(x4i.w >= 0 && x4j.w > 0 && i != j){
+__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K, double MinMass){
+	if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
 
 		double3 r3;
 		double rsq;
@@ -87,7 +87,7 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &t
 // ****************************************
 __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 
-	if(x4i.w >= 0){
+	if(x4i.w >= 0.0){
 		double rsq;
 		double ir, ir3;
 		double s;
@@ -109,8 +109,8 @@ __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 //March 2014
 //
 // **************************************************
-__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int NB){
-        if(x4i.w >= 0 && x4j.w > 0 && i != j){
+__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int NB, double MinMass){
+        if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
 
                 double3 r3;
                 double rsq;
@@ -145,8 +145,8 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 //*************************************************
-__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int E){
-        if(x4i.w >= 0 && x4j.w > 0 && i != j){
+__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int E, double MinMass){
+        if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
                 double3 r3;
                 double rsq;
                 double ir, ir3;

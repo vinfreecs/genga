@@ -551,7 +551,7 @@ __host__ int Data::readic(int st){
 			}
 			MaxIndex = max(MaxIndex, index);
 			int NBSN = NBS;
-			if(x.w == 0 && P.UseTestParticles == 1) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+			if(x.w >= 0.0 && x.w < P.MinMass && P.UseTestParticles == 1) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
 			else NBSN -= iismall;
 
 			x4_h[ii + NBSN] = x;
@@ -562,7 +562,7 @@ __host__ int Data::readic(int st){
 			else index_h[ii + NBSN] = index % 100 + 100*st;
 			aelimits_h[ii + NBSN] = aelimits;
 			++ii;
-			if(x.w == 0 && P.UseTestParticles == 1) ++iismall;
+			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles == 1) ++iismall;
 		}
 	}
 	else{

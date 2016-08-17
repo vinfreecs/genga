@@ -658,7 +658,6 @@ __host__ void Data::printTime(){
 		cudaEventElapsedTime(&times, tt2, tt3);
 
 		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
-		//fprintf(GSF[st].timefile, "%g\n", times + timems/1000000.0);
 		fprintf(GSF[st].timefile, "%g\n", times * 0.001);
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);

@@ -31,7 +31,7 @@ __global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doub
 
 	__syncthreads();
 
-	if(m > 0 && idy < N){
+	if(m > 0.0 && idy < N){
 		p_s[idy].x = m * v4_s[idy].x;
 		p_s[idy].y = m * v4_s[idy].y;
 		p_s[idy].z = m * v4_s[idy].z;
@@ -127,7 +127,7 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, dou
 	for(int i = 0; i < N; i += Bl){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
-			if(m > 0){
+			if(m > 0.0){
 				p_s[idy].x += m * v4_d[idy + i].x;
 				p_s[idy].y += m * v4_d[idy + i].y;
 				p_s[idy].z += m * v4_d[idy + i].z;
@@ -210,14 +210,14 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, dou
 	for(int i = 0; i < N; i += Bl){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
-			if(m > 0 && f == 1){
+			if(m > 0.0 && f == 1){
 				//Convert to Heliocentric coordinates
 				v4_d[idy + i].x += p_s[0].x * iMsun;
 				v4_d[idy + i].y += p_s[0].y * iMsun;
 				v4_d[idy + i].z += p_s[0].z * iMsun;
 
 			}
-			if(m > 0 && f == -1){
+			if(m > 0.0 && f == -1){
 				//Convert to Democratic coordinates
 				double iMsunp = 1.0 / (Msun + p_s[0].w);
 				v4_d[idy + i].x -= p_s[0].x * iMsunp;

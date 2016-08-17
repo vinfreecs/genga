@@ -57,7 +57,7 @@ __host__ void Data::constantCopySC(double *S_h, double *C_h){
 //***************************************/
 __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id, int index, int UseForce){
 
-	if(x4i.w >= 0){
+	if(x4i.w >= 0.0){
 
 		double f,g,fd,gd;                               /* Gauss's f, g, fdot and gdot */
 		double rsq,vsq,ir;
@@ -100,7 +100,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			double c2 = def_cm * def_cm;
 			dt *= 1.0 - 1.5 * mu * ia / c2;
 		}
-		if(ia > 0){
+		if(ia > 0.0){
 			t1 = ia*ia;
 			ria = rsq*ir*ia;
 			en = sqrt(mu*t1*ia);
@@ -164,7 +164,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 				wpp = ec*s + es*c;
 				wppp = ec*c - es*s;
 				mw = dm - dec + wpp;
-				if(mw < 0){
+				if(mw < 0.0){
 					UP = dec;
 				}
 				else LOW = dec;
@@ -226,7 +226,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 //***************************************/
 __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id, int UseForce){
 
-	if(x4i.w >= 0){
+	if(x4i.w >= 0.0){
 		int ii,i,j,jnew;
 		double sgn,dEj,f0,f1,f2,f3;
 		double y,dy,y2,y4,A,B;
@@ -258,7 +258,7 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 			dt *= 1.0 - 1.5 * mu * ia / c2;
 		}
 
-		if(ia > 0){
+		if(ia > 0.0){
 
 			t1 = ia*ia;
 			ria = rsq*ir*ia;

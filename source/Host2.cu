@@ -244,6 +244,7 @@ __host__ void Host::Halloc(){
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	sprintf(P.setElementsfilename, "%s", "-");
 	P.setElements = 0;
+	sprintf(P.Gasfilename, "%s", "-");
 
 	char format[50];
 	sprintf(format, def_InputFileFormat);
@@ -1096,6 +1097,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Gas file name =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", &P.Gasfilename);
+	
+				if(er <= 0){
+					printf("Error: Gas file name = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "NAF variables =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFvars);
@@ -1265,9 +1281,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(strcmp(P.setElementsfilename, "-") != 0){
 		P.setElements = 1;
 	}
+	if(strcmp(P.Gasfilename, "-") != 0){
+		P.Usegas = 2;
+	}
 	if(P.Usegas == 1 && P.G_dTau_diss <= 0.0){
 		printf("Error: dTau_diss value is not valid!\n");
 		return 0;
+	}
+	if(P.UseTestParticles == 1){
+		P.MinMass = def_MinMass;
+	}
+	else{
+		P.MinMass = 0.0;
 	}
 
 	return 1;
@@ -1539,7 +1564,7 @@ __host__ int Host::icSize(int st){
 				if(er1 == 1){
 					if(Nst == 1 || P.FormatS == 0){
 						if(Et == time){
-							if(m > 0.0) ++NNN;
+							if(m > P.MinMass) ++NNN;
 							else ++NNNsmall;
 						}
 						if(NNN + NNNsmall == NN){
@@ -1784,6 +1809,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
+			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
 			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
@@ -1902,7 +1928,6 @@ __host__ int Host::readSetElements(){
 	int er = fscanf(Efile, "%d", &nbodies);
 	if(er <= 0) return 0;
 
-printf("%d\n", nbodies);
 	int nelements = 0;
 	char sp[16];
 	fgets(sp, 2, Efile);
@@ -2020,6 +2045,123 @@ printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelement
 
 	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
 	cudaMemset(setElementsLine_d, 0, sizeof(int));
+	return 1;
+}
+
+// **************************************
+// This function reads the Gas disk file
+// Authors: Simon Grimm
+// July 2016
+// ******************************************
+__host__ int Host::readGasFile(){
+
+	FILE *Efile;
+	Efile = fopen(P.Gasfilename, "r");
+	if(Efile == NULL){
+		printf("Error: Gas file not found: %s\n", P.Gasfilename);		
+		fprintf(masterfile, "Error: Gas file not found: %s\n", P.Gasfilename);		
+		return 0;
+	}
+	int er = 0;
+	//The elements are time, r, Sigma and h
+	//read time 0
+	double t0, r0, Sigma0, h0;
+	double t1, r1, Sigma1, h1;
+	er = fscanf(Efile, "%lf", &t0);
+	er = fscanf(Efile, "%lf", &r0);
+	er = fscanf(Efile, "%lf", &Sigma0);
+	er = fscanf(Efile, "%lf", &h0);
+
+	//determine the number of values in r
+	int nr;
+	for(nr = 1; nr < 10000; ++nr){
+		er = fscanf(Efile, "%lf", &t1);
+		er = fscanf(Efile, "%lf", &r1);
+		er = fscanf(Efile, "%lf", &Sigma1);
+		er = fscanf(Efile, "%lf", &h1);
+		if(t1 > t0) break;
+		if(er <= 0){
+			printf("Error: Gas file not correct: %s\n", P.Gasfilename);		
+			fprintf(masterfile, "Error: Gas file not correct: %s\n", P.Gasfilename);		
+			return 0;
+		}
+	}
+printf("nr %d\n", nr);
+
+	fclose(Efile);
+
+	//allocate memory
+	GasData_h = (double4*)malloc(nr *  sizeof(double4));	//2 time steps and 2 values
+	cudaMalloc((void **) &GasData_d, nr * sizeof(double4));
+	Efile = fopen(P.Gasfilename, "r");
+
+	double skip;
+	//read data0
+	for(int i = 0; i < nr; ++i){
+		er = fscanf(Efile, "%lf", &skip);
+		er = fscanf(Efile, "%lf", &skip);
+		er = fscanf(Efile, "%lf", &GasData_h[i].x);
+		er = fscanf(Efile, "%lf", &GasData_h[i].y);
+	}
+	//read data1
+	for(int i = 0; i < nr; ++i){
+		er = fscanf(Efile, "%lf", &skip);
+		er = fscanf(Efile, "%lf", &skip);
+		er = fscanf(Efile, "%lf", &GasData_h[i].z);
+		er = fscanf(Efile, "%lf", &GasData_h[i].w);
+	}
+	cudaMemcpy(GasData_d, GasData_h, nr * sizeof(double4), cudaMemcpyHostToDevice);
+	GasDatanr = nr;
+	GasDatatime.x = t0;
+	GasDatatime.y = t1;
+	fclose(Efile);
+	printf("Read Gas file OK\n");
+	return 1;
+}
+// **************************************
+// This function reads the next time step of the Gas File
+// Authors: Simon Grimm
+// July 2016
+// ******************************************
+__host__ int Host::readGasFile2(double time){
+
+	FILE *Efile;
+	Efile = fopen(P.Gasfilename, "r");
+	int nr = GasDatanr;
+	//The elements are time, r, Sigma and h
+	//read time 0
+	double t, r, t0, t1;
+	int er = 0;
+	//determine the number of values in r
+	for(int j = 0; j < 10000; ++j){
+		for(int i = 0; i < nr; ++i){
+			er = fscanf(Efile, "%lf", &t);
+			er = fscanf(Efile, "%lf", &r);
+			if(t < time){
+				t0 = t;
+				er = fscanf(Efile, "%lf", &GasData_h[i].x);
+				er = fscanf(Efile, "%lf", &GasData_h[i].y);
+			}
+			else{
+				t1 = t;
+				er = fscanf(Efile, "%lf", &GasData_h[i].z);
+				er = fscanf(Efile, "%lf", &GasData_h[i].w);
+			}
+		}
+		if(t > time){
+		printf("Gas Data line %d %g\n", j * nr, t);
+			break;
+		}
+		if(er <= 0){
+			printf("Error: Gas file not correct: %s\n", P.Gasfilename);		
+			return 0;
+		}
+	}
+
+	fclose(Efile);
+	cudaMemcpy(GasData_d, GasData_h, nr * sizeof(double4), cudaMemcpyHostToDevice);
+	GasDatatime.x = t0;
+	GasDatatime.y = t1;
 	return 1;
 }
 

@@ -18,7 +18,7 @@ __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 		r.z = x4j.z - x4i.z;
 		rsq = r.x*r.x + r.y*r.y + r.z*r.z;
 
-		if(rsq > 0){
+		if(rsq > 0.0){
 			ir = 1.0/sqrt(rsq);
 			a = -x4j.w * ir;
 		}
@@ -40,7 +40,7 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 	double a = 0.0;
 
 	rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
-	if(rsq > 0 ){
+	if(rsq > 0.0){
 		ir = 1.0/sqrt(rsq);
 		a = -ksqMsun * x4i.w * ir;
 	}
@@ -71,10 +71,10 @@ __global__ void potentialEnergy64_kernel(double4 *x4_d, double4 *v4_d, double Ms
 	__syncthreads();
 
 	if(idx < N){
-		if(x4_d[idx].w > 0){
+		if(x4_d[idx].w > 0.0){
 
 			for (int i = 0; i < N; i += Bl){
-				if(x4_d[idy + i].w > 0 && idy + i < N){
+				if(x4_d[idy + i].w > 0.0 && idy + i < N){
 					V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
 				}
 			}
@@ -148,7 +148,7 @@ __global__ void EjectionEnergy64_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	__syncthreads();
 
 	for (int i = 0; i < N; i += Bl){
-		if(x4_d[idy + i].w > 0 && idy + i < N){
+		if(x4_d[idy + i].w > 0.0 && idy + i < N){
 			m_s[idy] += x4_d[idy + i].w;
 			V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
 			T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
@@ -364,9 +364,9 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 	__syncthreads();
 
 	if(idx < N){
-		if(x4_d[idx].w > 0){
+		if(x4_d[idx].w > 0.0){
 
-			if(x4_d[idy].w > 0 && idy < N){
+			if(x4_d[idy].w > 0.0 && idy < N){
 				V_s[idy] += PE(x4_d[idx], x4_d[idy], idx, idy);
 			}		
 		}
@@ -384,7 +384,7 @@ __global__ void potentialEnergy32_kernel(double4 *x4_d, double4 *v4_d, double Ms
 
 	__syncthreads();
 	if(idx < N && idy == 0){
-		if(x4_d[idx].w > 0){
+		if(x4_d[idx].w > 0.0){
 			V_s[0] *= (0.5 * ksq) * x4_d[idx].w;
 			V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
 			Energy_d[idx] = V_s[0];
@@ -437,7 +437,7 @@ __global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *s
         s_s[idy + Bl].y = 0.0;
         s_s[idy + Bl].z = 0.0;
 
-	if(x4_d[idy].w > 0 && idy < N){
+	if(x4_d[idy].w > 0.0 && idy < N){
 		m_s[idy] = x4_d[idy].w;
 		V_s[idy] += PE(x4_d[idx], x4_d[idy], idx, idy);
 		T_s[idy] = 0.5 * m_s[idy] * (v4_d[idy].x * v4_d[idy].x + v4_d[idy].y * v4_d[idy].y + v4_d[idy].z * v4_d[idy].z);
@@ -566,7 +566,7 @@ __global__ void EjectionEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	
 	__syncthreads();
 
-	if(x4_d[idy].w > 0 && idy < N){	
+	if(x4_d[idy].w > 0.0 && idy < N){	
 		T_s[idy] = 0.5 * x4_d[idy].w * (v4_d[idy].x * v4_d[idy].x + v4_d[idy].y * v4_d[idy].y + v4_d[idy].z * v4_d[idy].z);
 	}
 	__syncthreads();
@@ -630,7 +630,7 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 	p_s[idy].z = 0.0;
 
 	for(int i = 0; i < N; i += Bl){
-		if(x4_d[idy + i].w > 0 && idy + i < N){
+		if(x4_d[idy + i].w > 0.0 && idy + i < N){
 			s_s[idy].x += x4_d[idy + i].w * x4_d[idy + i].x;
 			s_s[idy].y += x4_d[idy + i].w * x4_d[idy + i].y;
 			s_s[idy].z += x4_d[idy + i].w * x4_d[idy + i].z;
@@ -729,7 +729,7 @@ __global__ void kineticEnergy128_kernel(double4 *x4_d, double4 *v4_d, double3 *s
 			V_s[idy] += Energy_d[idy + i];
 			double4 x4 = x4_d[idy + i];
 			double4 v4 = v4_d[idy + i];
-			if(x4_d[idy + i].w > 0){
+			if(x4_d[idy + i].w > 0.0){
 				T_s[idy] += 0.5 * x4.w * (v4.x * v4.x +  v4.y * v4.y + v4.z * v4.z);
 			}
 			//convert to barycentric positions
@@ -922,7 +922,7 @@ __global__ void kineticEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *sp
 
 	__syncthreads();
 
-	if(x4_d[idy].w > 0 && idy < N){
+	if(x4_d[idy].w > 0.0 && idy < N){
 		s_s[idy].x = x4_d[idy].w * x4_s[idy].x;
 		s_s[idy].y = x4_d[idy].w * x4_s[idy].y;
 		s_s[idy].z = x4_d[idy].w * x4_s[idy].z;
@@ -1005,7 +1005,7 @@ __global__ void kineticEnergy32_kernel(double4 *x4_d, double4 *v4_d, double3 *sp
 	__syncthreads();
 	if(idy < N){
 		V_s[idy] = Energy_d[idy];
-		if(x4_s[idy].w > 0){
+		if(x4_s[idy].w > 0.0){
 			T_s[idy] = 0.5 * x4_s[idy].w * (v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z);
 		}
 		E_s[idy] =  V_s[idy] + T_s[idy];

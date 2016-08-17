@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.51
+#define Version 3.52
 
 //Default parameter values
 #define def_TimeStep 6
@@ -211,6 +211,7 @@ struct Parameter{
 	char IrregularOutputsfilename[128];
 	int setElements;
 	char setElementsfilename[128];
+	char Gasfilename[128];
 	int WriteEncounters;
 	double WriteEncountersRadius;
 	int NAFvars;
@@ -219,6 +220,7 @@ struct Parameter{
 	int NAFformat;
 	int NAFinterval;
 	int NencMax;
+	double MinMass;
 };
 
 //File names of Simulstions

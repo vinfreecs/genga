@@ -36,7 +36,7 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 
 	__syncthreads(); 
 	for (int i = 0; i < N; i+= Bl){
-		if(x4_d[idy + i].w > 0 && idy + i < N){
+		if(x4_d[idy + i].w > 0.0 && idy + i < N){
 			if(idx == 0){
 				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
 			}

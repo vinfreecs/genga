@@ -208,6 +208,7 @@ public:
 	__host__ void GasAccCall_2048(double *, double *, double);
 	__host__ void GasAccCall_largeN(double *, double *, double);
 	__host__ void GasAccCall_small(double *, double *, double);
+	__host__ void GasAccCall2_small(double *, double *, double);
 	__host__ void GasAccCall_M(double *, double *, double);
 
 #if poincareFlag == 1

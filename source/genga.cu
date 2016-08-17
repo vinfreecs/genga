@@ -235,9 +235,23 @@ int main(int argc, char*argv[]){
 		if(er == 0){
 			return 0;
 		}
+		//skip Irregular output times which are before the simulation starts
+		double starttime = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
+		for(int i = 0; i < D.NIrrOutputs; ++i){
+			if(D.IrrOutputs[i] >= starttime){
+				break;
+			}
+			++D.irrTimeStep;
+		}
 	}
 	if(D.P.setElements == 1){
 		er = D.readSetElements();
+		if(er == 0){
+			return 0;
+		}
+	}
+	if(D.P.Usegas == 2){
+		er = D.readGasFile();
 		if(er == 0){
 			return 0;
 		}
@@ -288,6 +302,12 @@ int main(int argc, char*argv[]){
 			if(H.P.UseaeGrid == 1){ 
 				if(D.timeStep % 10000 == 0){
 					D.copyGridae();
+				}
+			}
+			if(D.P.Usegas == 2 && D.time_h[0] / 365.25 > D.GasDatatime.y){
+				er = D.readGasFile2(D.time_h[0] / 365.25);
+				if(er == 0){
+					return 0;
 				}
 			}
 
@@ -342,7 +362,6 @@ int main(int argc, char*argv[]){
 				int ni = 1;
 				for(int i = 0; i < ni; ++i){
 					double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
-
 					D.IrregularStep(dTau);
 					for(int st = 0; st < D.Nst; ++st){
 						D.time_h[st] += dTau * D.idt_h[st];

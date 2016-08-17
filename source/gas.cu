@@ -392,6 +392,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
                 if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
 
 		Sigma *= depfac;
+//if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
 
 		ip = floor(10*r1);
 		rr0 = GasDisk_d[ip - 1].z;
@@ -441,7 +442,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 		}
 		double m = x4.w;
 		if(m == 0.0) m = MgasSmall;
-		if(m < Mgiant && Sigma > 0){
+		if(m < Mgiant && Sigma > 0.0){
 			
 			//Enhanced Drag
 			double Soft;
@@ -469,7 +470,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			
 			v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 			v_rel = sqrt(v_rel);
-			if(m > 0) v_rel *= M_PI / m * Soft * Soft * rho;
+			if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
 			else v_rel = 0.0;
 
 			a_x += -v_rel * v_rel3.x;
@@ -528,7 +529,178 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	if(id < N){
 		v4_d[id] = v4;
 	
-		if(x4.w > 0){
+		if(x4.w > 0.0){
+			U = 0.5 * x4.w * (v2 - v2B);
+			Energy_d[id] += U;
+		}
+	}
+}
+
+// *************************************************
+// This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
+//
+// ****************************************************
+__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	int st = 0;
+
+	double rin = 0.25;
+	double rout = 1000.0;
+	double rs = log(rout / rin) / ((double)(nr - 1)); //slope in distance profile 
+
+	if(Nst > 1 && id < N) st = index_d[id] / 100;
+	double dt = dt_d[st] * Ct;
+	double dTime = time_d[st] / 365.25;
+
+//if(id == 0) printf("rs %g %g %g %g\n", rs, GasDatatime.x, GasDatatime.y, dTime);
+
+	double Msun = Msun_d[st].x;
+	double U = 0.0;
+
+	double v_kep, eta, v_gas, rho;
+	double3 v_rel3;
+	double v_rel_r, v_rel_th, v_rel;
+
+	double h, zh;
+	double Sigma;
+
+
+	double4 x4;
+	double4 v4;
+
+	if(id < N){
+		x4 = x4_d[id];
+		v4 = v4_d[id];
+	}
+	else{
+		x4.x = 0.0;
+		x4.y = 0.0;
+		x4.z = 0.0;
+		x4.w = 0.0;
+		v4.x = 0.0;
+		v4.y = 0.0;
+		v4.z = 0.0;
+		v4.w = 0.0;
+	}
+
+	double r1 = x4.x * x4.x + x4.y * x4.y;
+	double rsq = r1 + x4.z * x4.z;
+	double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+	r1 = sqrt(r1);
+	double r = sqrt(rsq);
+
+	volatile double a_r = 0.0;
+	volatile double a_th = 0.0;
+	volatile double a_x = 0.0;
+	volatile double a_y = 0.0;
+	volatile double a_z = 0.0;
+
+	__syncthreads();
+	
+	if(id < N && r1 > rin && r1 < rout){ //otherwise there is no gas
+
+		int ri = (int)(log(r1 / rin) / rs);
+		double ri0 = rin * exp(rs * ri);
+		double ri1 = rin * exp(rs * (ri + 1));
+
+		double4 GasData0 = GasData_d[ri];
+		double4 GasData1 = GasData_d[ri + 1];
+
+		double tr = (r1 - ri0) / (ri1 - ri0);
+		double Sigma0 = (GasData1.x - GasData0.x) * tr + GasData0.x;
+		double h0 = (GasData1.y - GasData0.y) * tr + GasData0.y;
+		double Sigma1 = (GasData1.z - GasData0.z) * tr + GasData0.z;
+		double h1 = (GasData1.w - GasData0.w) * tr + GasData0.w;
+		double tt = (dTime - GasDatatime.x) / (GasDatatime.y - GasDatatime.x);
+		Sigma = (Sigma1 - Sigma0) * tt + Sigma0;
+		Sigma *= 1.49598*1.49598/1.98892*1.0e-7;
+		h = ((h1 - h0) * tt + h0) * r1;
+
+//if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
+
+		zh = x4.z / h;
+		double G_alpha = 1.0;
+
+		double m = x4.w;
+		if(m == 0.0) m = MgasSmall;
+		if(m < Mgiant && Sigma > 0.0){
+		
+			v_kep = sqrt(Msun * ksq / r1); 
+			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
+			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
+
+			rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
+			v_rel3.x = v4.x + v_gas * x4.y / r1; 
+			v_rel3.y = v4.y - v_gas * x4.x / r1;
+			v_rel3.z = v4.z;
+
+			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+			
+			v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
+			v_rel = sqrt(v_rel);
+			if(m > 0.0) v_rel *= M_PI / m * v4.w * v4.w * rho;
+			else v_rel = 0.0;
+
+			a_x += -v_rel * v_rel3.x;
+			a_y += -v_rel * v_rel3.y;
+			a_z += -v_rel * v_rel3.z;
+
+			//tidal damping
+			v_rel3.x = v4.x + v_kep * x4.y / r1;
+			v_rel3.y = v4.y - v_kep * x4.x / r1;
+			v_rel3.z = v4.z;
+
+			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+
+			double Mtot = Msun + m;
+			double Etot = 0.5 * vsq - ksq * Mtot / r;
+			double3 L;
+			L.x = x4.y * v4.z - x4.z * v4.y;
+			L.y = x4.z * v4.x - x4.x * v4.z;
+			L.z = x4.x * v4.y - x4.y * v4.x;
+
+			double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
+			double esq = 1.0 + 2.0 * Etot * Lsq /(Mtot * Mtot);
+			double isq = 1.0 - L.z * L.z / Lsq;
+			double a = -0.5/Etot;
+
+			double r1h2 = r1 * r1 / (h * h);
+			
+			double chi = 0.5 * a * sqrt(esq + isq) / h;
+			double chi3 = chi * chi * chi;
+
+			double iTau_tid1 = m * (Sigma * r1 * r1) * r1h2	/ (r1 * sqrt(r1)); //a = ri because of circular orbit
+			double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
+			iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
+
+			a_th += -0.5 * iTau_tid1 * v_kep; //circular
+
+			a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
+			a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
+			a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;
+		}
+		a_x += (x4.x * a_r - x4.y * a_th) / r1;
+		a_y += (x4.y * a_r + x4.x * a_th) / r1;
+	}
+	__syncthreads();
+
+	double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+	//Kick
+        v4.x += a_x * dt;
+        v4.y += a_y * dt;
+        v4.z += a_z * dt;
+
+	double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+	__syncthreads();
+
+	if(id < N){
+		v4_d[id] = v4;
+	
+		if(x4.w > 0.0){
 			U = 0.5 * x4.w * (v2 - v2B);
 			Energy_d[id] += U;
 		}
@@ -718,7 +890,9 @@ __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, dou
 	gasEnergy_kernel< NmaxM, 2 * NmaxM > <<< 1, NmaxM, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
 }
 
-
+__host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
+	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d);
+}
 
 __host__ int Data::freeGas(){
 	cudaError_t error;
