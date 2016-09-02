@@ -702,7 +702,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Use Test Particles =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.UseTestParticles);
-				if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 1){
+				if(er <= 0 || P.UseTestParticles < 0 || P.UseTestParticles > 2){
 					printf("Error: Test Particle Mode not valid\n");
 					return 0;
 				}
@@ -1288,7 +1288,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error: dTau_diss value is not valid!\n");
 		return 0;
 	}
-	if(P.UseTestParticles == 1){
+	if(P.UseTestParticles > 0){
 		P.MinMass = def_MinMass;
 	}
 	else{
@@ -1494,20 +1494,20 @@ __host__ int Host::icSize(int st){
 			if(P.FormatP == 1){ // All particles in one time file
 				if(P.FormatS == 0 || P.tRestart == 0 || Nst == 1){
 					if(Et == time){
-						if(m > 0.0) ++NN;
+						if(m > P.MinMass) ++NN;
 						else ++Nsmall_h[st];
 					}
 				}
 				else if(index / 100 == st){
 					if(Et == time){
-						if(m > 0.0) ++NN;
+						if(m > P.MinMass) ++NN;
 						else ++Nsmall_h[st];
 					}
 				}
 			}
 			if(P.FormatP == 0){
 				if(P.tRestart == 0){
-					if(m > 0.0) ++NN;
+					if(m > P.MinMass) ++NN;
 					else ++Nsmall_h[st];
 				}
 				else ++NN;
@@ -1853,7 +1853,10 @@ __host__ void Host::Tsizes(){
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
 		NT = NB[0];
-		NB2T = (long long int)(NB[0]) * (long long int)(NB[0]);
+		NB2T = (long long int)(NconstT) * (long long int)(NB[0]);
+		if(P.UseTestParticles > 0){
+			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NB[0]);
+		}
 		icNB = NB[0];
 		NBNencT = NconstT * P.NencMax;
 		NEnergyT = max(NconstT, 8);

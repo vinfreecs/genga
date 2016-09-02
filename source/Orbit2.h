@@ -146,7 +146,7 @@ public:
 	__host__ void CoordinateToBuffer(int, int);
 
 	//Energy
-	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int);
+	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int, int);
 	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double3 *, double, int, double *, double *, double3 *, int, int);
 
 	//integrator
@@ -196,17 +196,9 @@ public:
 	__host__ void GasDisk(double *, double *, double *, double, int);
 	__host__ int setGasDisk();
 	__host__ int freeGas();
-	__host__ void gasEnergyCall(int, double *, double *, double *, cudaStream_t, int, int);
+	__host__ void gasEnergyCall(int, double *, double *, double *, cudaStream_t, int, int, int);
 	__host__ void gasEnergyMCall(int, double *, double *, double *, cudaStream_t, int, int);
-	__host__ void GasAccCall_16(double *, double *, double);
-	__host__ void GasAccCall_32(double *, double *, double);
-	__host__ void GasAccCall_64(double *, double *, double);
-	__host__ void GasAccCall_128(double *, double *, double);
-	__host__ void GasAccCall_256(double *, double *, double);
-	__host__ void GasAccCall_512(double *, double *, double);
-	__host__ void GasAccCall_1024(double *, double *, double);
-	__host__ void GasAccCall_2048(double *, double *, double);
-	__host__ void GasAccCall_largeN(double *, double *, double);
+	__host__ void GasAccCall(double *, double *, double);
 	__host__ void GasAccCall_small(double *, double *, double);
 	__host__ void GasAccCall2_small(double *, double *, double);
 	__host__ void GasAccCall_M(double *, double *, double);

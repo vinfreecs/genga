@@ -8,7 +8,7 @@
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
 //E = 1 : perform C Kick.
-//E = 2 : perform C Kick + reset Nencpairs + update time.
+//E = 2 : perform C Kick + reset Nencpairs 
 //
 //Authors: Simon Grimm
 //July 2016
@@ -19,16 +19,21 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-        if(E == 1){
-                if(idy == 0 && idx == 0){
-                        Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
-                }
-                if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
-        }
-        if(E == 2){
-                if(idy == 0 && idx == 0){
-                        Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
-                }
+	if(E == 1){
+		if(idy == 0 && idx == 0){
+			Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
+	}
+	if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
+	}
+	if(E == 2){
+		if(idy == 0 && idx == 0){
+			Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
+		}
+	}
+	if(E == 3){
+		if(idy == 0 && idx == 0){
+			Nencpairs_d[0] = -1;	//This variable is needed in the Kick_kernel
+		}
 	}
 	__shared__  double a1_s[Bl];
 
@@ -36,15 +41,16 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 
 	__syncthreads(); 
 	for (int i = 0; i < N; i+= Bl){
-		if(x4_d[idy + i].w > 0.0 && idy + i < N){
+		double m = x4_d[idy + i].w;
+		if(m > 0.0 && idy + i < N){
 			if(idx == 0){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].x;
+				a1_s[idy] += m * v4_d[idy + i].x;
 			}
 			if(idx == 1){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].y;
+				a1_s[idy] += m * v4_d[idy + i].y;
 			}
 			if(idx == 2){
-				a1_s[idy] += x4_d[idy + i].w * v4_d[idy + i].z;
+				a1_s[idy] += m * v4_d[idy + i].z;
 			}
 		}
 	}
@@ -109,13 +115,12 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
 //E = 1 : perform C Kick.
-//E = 2 : perform C Kick + reset Nencpairs + update time.
+//E = 2 : perform C Kick + reset Nencpairs
 //
 //Authors: Simon Grimm
-//July 2016
-//
+//August 2016
 //  *****************************************
-template < int Bl, int Bl2, int E>
+template < int Bl2, int E>
 __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, int UseForce){
 
 	int idy = threadIdx.x;
@@ -133,30 +138,29 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 	}
 	__shared__ double a1_s[Bl2];
 
-	if(x4_d[idy].w > 0.0 && idy < N){
+	for(int i = 0; i < Bl2; i += blockDim.x){
+		a1_s[idy + i] = 0.0;
+	}
+	__syncthreads();
+
+	double m = x4_d[idy].w;
+	if(m > 0.0 && idy < N){
 		if(idx == 0){
-			a1_s[idy] = x4_d[idy].w * v4_d[idy].x;
+			a1_s[idy] = m * v4_d[idy].x;
 		}
 		if(idx == 1){
-			a1_s[idy] = x4_d[idy].w * v4_d[idy].y;
+			a1_s[idy] = m * v4_d[idy].y;
 		}
 		if(idx == 2){
-			a1_s[idy] = x4_d[idy].w * v4_d[idy].z;
+			a1_s[idy] = m * v4_d[idy].z;
 		}
-	}
-	else{
-		a1_s[idy] = 0.0;
-	}
-
-	if(Bl <= 32){
-		a1_s[idy + Bl] = 0.0;
 	}
 
 	__syncthreads();
 	if(idy < 32){
 		volatile double *a = a1_s;
-		if(Bl >= 64) a[idy] += a[idy + 32];
-		if(Bl >= 32) a[idy] += a[idy + 16];
+		if(blockDim.x >= 64) a[idy] += a[idy + 32];
+		if(blockDim.x >= 32) a[idy] += a[idy + 16];
 		a[idy] += a[idy + 8];
 		a[idy] += a[idy + 4];
 		a[idy] += a[idy + 2];

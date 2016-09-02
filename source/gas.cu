@@ -710,31 +710,31 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 
 // ************************************
 //this kernel sums up all the Energy loss due to the Gas Disc and adds to the internal Energy
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
-// ***********************************33
-template <int NB, int Bl>
+//Author: Simon Grimm
+//August 2016
+// *************************************
+template < int Bl2 >
 __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, int st, int N){
 
         int idy = threadIdx.x;
 
-        __shared__ volatile double U_s[Bl];
+        __shared__ volatile double U_s[Bl2];
 
-	for(int i = 0; i < Bl; i += blockDim.x){
+	for(int i = 0; i < Bl2; i += blockDim.x){
 		U_s[idy + i] = 0.0;
 	}
 
 	__syncthreads();
 
-	for(int i = 0; i < NB ;i += Bl){
+	for(int i = 0; i < N ;i += blockDim.x){
 		if(idy + i < N){
 			U_s[idy] += Energy_d[idy + i];
 		}
 	}
 //printf("%d %g\n", idy, U_s[idy]);
 	__syncthreads();
-	int s = Bl/2;
-	for(int i = 6; i < log2f(Bl); ++i){
+	int s = blockDim.x/2;
+	for(int i = 6; i < log2f(blockDim.x); ++i){
 		if( idy < s ) {
 			U_s[idy] += U_s[idy + s];
 		}
@@ -743,12 +743,12 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 	}
 
 	if(idy < 32){
-		if(Bl >= 64) U_s[idy] += U_s[idy + 32];
-		if(Bl >= 32) U_s[idy] += U_s[idy + 16];
-		if(Bl >= 16) U_s[idy] += U_s[idy + 8];
-		if(Bl >= 8) U_s[idy] += U_s[idy + 4];
-		if(Bl >= 4) U_s[idy] += U_s[idy + 2];
-		if(Bl >= 2) U_s[idy] += U_s[idy + 1];
+		if(blockDim.x >= 64) U_s[idy] += U_s[idy + 32];
+		if(blockDim.x >= 32) U_s[idy] += U_s[idy + 16];
+		if(blockDim.x >= 16) U_s[idy] += U_s[idy + 8];
+		if(blockDim.x >= 8) U_s[idy] += U_s[idy + 4];
+		if(blockDim.x >= 4) U_s[idy] += U_s[idy + 2];
+		if(blockDim.x >= 2) U_s[idy] += U_s[idy + 1];
 	}
 
 	__syncthreads();
@@ -756,55 +756,7 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 	if(idy == 0){
 		U_d[0] += U_s[0];
 	}
-        for(int i = 0; i < NB ;i += Bl){
-		if(idy + i < N){
-                	Energy_d[idy + i] = 0.0;
-		}
-        }
-
-}
-template < int Bl>
-__global__ void gasEnergyb_kernel(double *Energy_d, double *U_d, double *test_d, int st, int N){
-
-        int idy = threadIdx.x;
-
-        __shared__ volatile double U_s[Bl];
-
-	U_s[idy] = 0.0;
-
-	__syncthreads();
-
-	for (int i = 0; i < N ;i += Bl){
-		if(idy + i < N){
-			U_s[idy] += Energy_d[idy + i];
-		}
-	}
-//printf("%d %g\n", idy, U_s[idy]);
-	__syncthreads();
-	int s = Bl/2;
-	for(int i = 6; i < log2f(Bl); ++i){
-		if( idy < s ) {
-			U_s[idy] += U_s[idy + s];
-		}
-		__syncthreads();
-		s /= 2;
-	}
-
-	if(idy < 32){
-		if(Bl >= 64) U_s[idy] += U_s[idy + 32];
-		if(Bl >= 32) U_s[idy] += U_s[idy + 16];
-		if(Bl >= 16) U_s[idy] += U_s[idy + 8];
-		if(Bl >= 8) U_s[idy] += U_s[idy + 4];
-		if(Bl >= 4) U_s[idy] += U_s[idy + 2];
-		if(Bl >= 2) U_s[idy] += U_s[idy + 1];
-	}
-
-	__syncthreads();
-
-	if(idy == 0){
-		U_d[0] += U_s[0];
-	}
-        for (int i = 0; i < N ;i += Bl){
+        for(int i = 0; i < N ;i += blockDim.x){
 		if(idy + i < N){
                 	Energy_d[idy + i] = 0.0;
 		}
@@ -813,72 +765,58 @@ __global__ void gasEnergyb_kernel(double *Energy_d, double *U_d, double *test_d,
 }
 
 //This function calls the Gas Energy kernel
-__host__ void Data::gasEnergyCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
-        switch(NB){
-                case 16:{
-			gasEnergy_kernel< 16, 32> <<< 1, 16, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 32:{
-			gasEnergy_kernel< 32, 64> <<< 1, 32, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 64:{
-			gasEnergy_kernel< 64, 64> <<< 1, 64, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 128:{
-			gasEnergy_kernel< 128, 128> <<< 1, 128, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 256:{
-			gasEnergy_kernel< 256, 256> <<< 1, 256, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 512:{
-			gasEnergy_kernel< 512, 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 1024:{
-			gasEnergy_kernel< 1024, 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-                case 2048:{
-			gasEnergy_kernel< 2048, 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-                };
-                break;
-        }
-	if(NB > 2048){
-			gasEnergyb_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+__host__ void Data::gasEnergyCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N, int Nsmall){
+
+	if(Nsmall == 0){
+		switch(NB){
+			case 16:{
+				gasEnergy_kernel< 32> <<< 1, 16, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 32:{
+				gasEnergy_kernel< 64> <<< 1, 32, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 64:{
+				gasEnergy_kernel< 64> <<< 1, 64, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 128:{
+				gasEnergy_kernel< 128> <<< 1, 128, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 256:{
+				gasEnergy_kernel< 256> <<< 1, 256, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 512:{
+				gasEnergy_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 1024:{
+				gasEnergy_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+			case 2048:{
+				gasEnergy_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+			};
+			break;
+		}
+		if(NB > 2048){
+			gasEnergy_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+		}
+	}
+	else{
+			gasEnergy_kernel< 512> <<< 1, 512, 0, hstream>>> (Energy_d, U_d, test_d, st, N + Nsmall);
 	}
 }
+__host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
+	gasEnergy_kernel < 2 * NmaxM > <<< 1, NmaxM, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
+}
 
-__host__ void Data::GasAccCall_16(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 1, 16 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_32(double *time_d, double *dt_d, double Ct){
-        GasAcc <<< 1, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_64(double *time_d, double *dt_d, double Ct){
-        GasAcc <<< 2, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_128(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 4, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_256(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 8, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_512(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 16, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_1024(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_2048(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< 64, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
-}
-__host__ void Data::GasAccCall_largeN(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+__host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
+	int nt = min(32, NB[0]);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
 	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
@@ -886,10 +824,6 @@ __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
 	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
 }
-__host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int st, int N){
-	gasEnergy_kernel< NmaxM, 2 * NmaxM > <<< 1, NmaxM, 0, hstream>>> (Energy_d, U_d, test_d, st, N);
-}
-
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
 	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d);
 }

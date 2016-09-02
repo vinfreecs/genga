@@ -5,11 +5,11 @@
 //This function computes the term a = mj/rij^3 * (1 - Kij).
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2014
 //
 // ****************************************
 __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double MinMass){
-	if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
+	if(x4i.w >= 0.0 && x4j.w >= MinMass && i != j){
 
 		double3 r3;
 		double rsq;
@@ -48,7 +48,7 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 //This function is only here for testing
 //
 //Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//March 2014
 //
 // ****************************************
 __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K, double MinMass){

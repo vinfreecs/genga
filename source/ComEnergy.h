@@ -1,130 +1,28 @@
 #ifndef COMENERGY_H
 #define COMENERGY_H
-// *********************************************************
-// This kernel computes the kinetic energy of the center of mass
-// it converts the velocities between heliocentric and democratic coordinates
-//
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
-// ***********************************************************
-template < int Bl, int Bl2>
-__global__ void com32_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
-	int idy = threadIdx.x;
-
-	__shared__ double4 p_s[Bl2];
-	__shared__ double4 v4_s[Bl];
-
-	double m = 0.0;
-
-	if(idy < N){
-		m = x4_d[idy].w;
-		v4_s[idy] = v4_d[idy];
-	}
-	else{
-		v4_s[idy].x = 0.0;
-		v4_s[idy].y = 0.0;
-		v4_s[idy].z = 0.0;
-		v4_s[idy].w = 0.0;
-	}
-
-
-	__syncthreads();
-
-	if(m > 0.0 && idy < N){
-		p_s[idy].x = m * v4_s[idy].x;
-		p_s[idy].y = m * v4_s[idy].y;
-		p_s[idy].z = m * v4_s[idy].z;
-		p_s[idy].w = m;
-	}
-	else{
-		p_s[idy].x = 0.0;
-		p_s[idy].y = 0.0;
-		p_s[idy].z = 0.0;
-		p_s[idy].w = 0.0;
-	}
-
-	if(Bl <= 32){
-		p_s[idy + Bl].x = 0.0;
-		p_s[idy + Bl].y = 0.0;
-		p_s[idy + Bl].z = 0.0;
-		p_s[idy + Bl].w = 0.0;
-	}
-
-	__syncthreads();
-	if(idy < 32){
-		volatile double4 *p = p_s;
-		if(Bl >= 64) p[idy].x += p[idy + 32].x;
-		if(Bl >= 32) p[idy].x += p[idy + 16].x;
-		if(Bl >= 16) p[idy].x += p[idy + 8].x;
-		if(Bl >= 8) p[idy].x += p[idy + 4].x;
-		if(Bl >= 4) p[idy].x += p[idy + 2].x;
-		if(Bl >= 2) p[idy].x += p[idy + 1].x;
-
-		if(Bl >= 64) p[idy].y += p[idy + 32].y;
-		if(Bl >= 32) p[idy].y += p[idy + 16].y;
-		if(Bl >= 16) p[idy].y += p[idy + 8].y;
-		if(Bl >= 8) p[idy].y += p[idy + 4].y;
-		if(Bl >= 4) p[idy].y += p[idy + 2].y;
-		if(Bl >= 2) p[idy].y += p[idy + 1].y;
-
-		if(Bl >= 64) p[idy].z += p[idy + 32].z;
-		if(Bl >= 32) p[idy].z += p[idy + 16].z;
-		if(Bl >= 16) p[idy].z += p[idy + 8].z;
-		if(Bl >= 8) p[idy].z += p[idy + 4].z;
-		if(Bl >= 4) p[idy].z += p[idy + 2].z;
-		if(Bl >= 2) p[idy].z += p[idy + 1].z;
-
-		if(Bl >= 64) p[idy].w += p[idy + 32].w;
-		if(Bl >= 32) p[idy].w += p[idy + 16].w;
-		if(Bl >= 16) p[idy].w += p[idy + 8].w;
-		if(Bl >= 8) p[idy].w += p[idy + 4].w;
-		if(Bl >= 4) p[idy].w += p[idy + 2].w;
-		if(Bl >= 2) p[idy].w += p[idy + 1].w;
-	}
-	__syncthreads();
-	double iMsun = 1.0 / Msun;
-	if(idy == 0){
-		if(f == 0){
-			vcom_d[0].x = p_s[0].x;
-			vcom_d[0].y = p_s[0].y;
-			vcom_d[0].z = p_s[0].z;
-		}
-	}
-	if(idy < N && f == 1){
-		//Convert to Heliocentric coordinates
-		v4_d[idy].x += p_s[0].x * iMsun;
-		v4_d[idy].y += p_s[0].y * iMsun;
-		v4_d[idy].z += p_s[0].z * iMsun;
-	}
-	if(idy < N && f == -1){
-		//Convert to Democratic coordinates
-		double iMsunp = 1.0 / (Msun + p_s[0].w);
-		v4_d[idy].x -= p_s[0].x * iMsunp;
-		v4_d[idy].y -= p_s[0].y * iMsunp;
-		v4_d[idy].z -= p_s[0].z * iMsunp;
-	}
-}
 // *********************************************************
 //This kernel computes the kinetic energy of the center of mass
 // it converts the velocities between heliocentric and democratic coordinates
 //
-//Authors: Simon Grimm, Joachim Stadel
-////March 2014
+//Author: Simon Grimm
+//August 2016
 // ***********************************************************
 template < int Bl>
-__global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
+__global__ void com_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
 
 	__shared__ double4 p_s[Bl];
 
-	p_s[idy].x = 0.0;
-	p_s[idy].y = 0.0;
-	p_s[idy].z = 0.0;
-	p_s[idy].w = 0.0;
+	for(int i = 0; i < Bl; i += blockDim.x){
+		p_s[idy + i].x = 0.0;
+		p_s[idy + i].y = 0.0;
+		p_s[idy + i].z = 0.0;
+		p_s[idy + i].w = 0.0;
+	}
 
-	for(int i = 0; i < N; i += Bl){
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
 			if(m > 0.0){
@@ -137,64 +35,48 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, dou
 	}
 	__syncthreads();
 
-	if(Bl >= 512){
-		if(idy < 256){
-			p_s[idy].x += p_s[idy + 256].x;
-			p_s[idy].y += p_s[idy + 256].y;
-			p_s[idy].z += p_s[idy + 256].z;
-			p_s[idy].w += p_s[idy + 256].w;
-		}
-	}
-	__syncthreads();
 
-	if(Bl >= 256){
-		if(idy < 128){
-			p_s[idy].x += p_s[idy + 128].x;
-			p_s[idy].y += p_s[idy + 128].y;
-			p_s[idy].z += p_s[idy + 128].z;
-			p_s[idy].w += p_s[idy + 128].w;
+	int s = blockDim.x/2;
+	for(int i = 6; i < log2f(blockDim.x); ++i){
+		if( idy < s ) {
+			p_s[idy].x += p_s[idy + s].x;
+			p_s[idy].y += p_s[idy + s].y;
+			p_s[idy].z += p_s[idy + s].z;
+			p_s[idy].w += p_s[idy + s].w;
 		}
+		__syncthreads();
+		s /= 2;
 	}
-	__syncthreads();
 
-	if(Bl >= 128){
-		if(idy < 64){
-			p_s[idy].x += p_s[idy + 64].x;
-			p_s[idy].y += p_s[idy + 64].y;
-			p_s[idy].z += p_s[idy + 64].z;
-			p_s[idy].w += p_s[idy + 64].w;
-		}
-	}
-	__syncthreads();
 	if(idy < 32){
 		volatile double4*p = p_s;
-		p[idy].x += p[idy + 32].x;
-		p[idy].x += p[idy + 16].x;
-		p[idy].x += p[idy + 8].x;
-		p[idy].x += p[idy + 4].x;
-		p[idy].x += p[idy + 2].x;
-		p[idy].x += p[idy + 1].x;
+		if(blockDim.x >= 64) p[idy].x += p[idy + 32].x;
+		if(blockDim.x >= 32) p[idy].x += p[idy + 16].x;
+		if(blockDim.x >= 16) p[idy].x += p[idy + 8].x;
+		if(blockDim.x >= 8) p[idy].x += p[idy + 4].x;
+		if(blockDim.x >= 4) p[idy].x += p[idy + 2].x;
+		if(blockDim.x >= 2) p[idy].x += p[idy + 1].x;
 
-		p[idy].y += p[idy + 32].y;
-		p[idy].y += p[idy + 16].y;
-		p[idy].y += p[idy + 8].y;
-		p[idy].y += p[idy + 4].y;
-		p[idy].y += p[idy + 2].y;
-		p[idy].y += p[idy + 1].y;
+		if(blockDim.x >= 64) p[idy].y += p[idy + 32].y;
+		if(blockDim.x >= 32) p[idy].y += p[idy + 16].y;
+		if(blockDim.x >= 16) p[idy].y += p[idy + 8].y;
+		if(blockDim.x >= 8) p[idy].y += p[idy + 4].y;
+		if(blockDim.x >= 4) p[idy].y += p[idy + 2].y;
+		if(blockDim.x >= 2) p[idy].y += p[idy + 1].y;
 
-		p[idy].z += p[idy + 32].z;
-		p[idy].z += p[idy + 16].z;
-		p[idy].z += p[idy + 8].z;
-		p[idy].z += p[idy + 4].z;
-		p[idy].z += p[idy + 2].z;
-		p[idy].z += p[idy + 1].z;
+		if(blockDim.x >= 64) p[idy].z += p[idy + 32].z;
+		if(blockDim.x >= 32) p[idy].z += p[idy + 16].z;
+		if(blockDim.x >= 16) p[idy].z += p[idy + 8].z;
+		if(blockDim.x >= 8) p[idy].z += p[idy + 4].z;
+		if(blockDim.x >= 4) p[idy].z += p[idy + 2].z;
+		if(blockDim.x >= 2) p[idy].z += p[idy + 1].z;
 
-		p[idy].w += p[idy + 32].w;
-		p[idy].w += p[idy + 16].w;
-		p[idy].w += p[idy + 8].w;
-		p[idy].w += p[idy + 4].w;
-		p[idy].w += p[idy + 2].w;
-		p[idy].w += p[idy + 1].w;
+		if(blockDim.x >= 64) p[idy].w += p[idy + 32].w;
+		if(blockDim.x >= 32) p[idy].w += p[idy + 16].w;
+		if(blockDim.x >= 16) p[idy].w += p[idy + 8].w;
+		if(blockDim.x >= 8) p[idy].w += p[idy + 4].w;
+		if(blockDim.x >= 4) p[idy].w += p[idy + 2].w;
+		if(blockDim.x >= 2) p[idy].w += p[idy + 1].w;
 	}
 	__syncthreads();
 
@@ -207,17 +89,17 @@ __global__ void com128_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, dou
 			vcom_d[0].z = p_s[0].z;
 		}
 	}
-	for(int i = 0; i < N; i += Bl){
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
-			if(m > 0.0 && f == 1){
+			if(m >= 0.0 && f == 1){
 				//Convert to Heliocentric coordinates
 				v4_d[idy + i].x += p_s[0].x * iMsun;
 				v4_d[idy + i].y += p_s[0].y * iMsun;
 				v4_d[idy + i].z += p_s[0].z * iMsun;
 
 			}
-			if(m > 0.0 && f == -1){
+			if(m >= 0.0 && f == -1){
 				//Convert to Democratic coordinates
 				double iMsunp = 1.0 / (Msun + p_s[0].w);
 				v4_d[idy + i].x -= p_s[0].x * iMsunp;

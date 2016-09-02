@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.52
+#define Version 3.53
 
 //Default parameter values
 #define def_TimeStep 6
@@ -66,8 +66,9 @@
 #define MaxWriteEnc 128			//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer 
-#define def_Nfragments 100		//Additional array size for debris particles
-#define def_MinMass 0.0			
+#define def_Nfragments 0		//Additional array size for debris particles
+#define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
+#define def_MatrixMaxSize 16384
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0

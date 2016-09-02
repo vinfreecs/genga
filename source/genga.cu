@@ -134,6 +134,7 @@ int main(int argc, char*argv[]){
 		NminFlag = 0;
 	}
 
+	if(D.P.UseTestParticles == 2) D.P.MinMass = 0.0;
 	cudaDeviceSynchronize();
 	printf("Compute initial Energy\n");
 
@@ -188,7 +189,7 @@ int main(int argc, char*argv[]){
 		D.firstKick_M(0);
 	}
 	else{
-		if(D.P.UseTestParticles == 1) D.firstKick_small();
+		if(D.P.UseTestParticles > 0) D.firstKick_small();
 		else{
 			switch( D.NB[0] ) {
 				case 16: D.firstKick_16();

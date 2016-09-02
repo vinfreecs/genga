@@ -140,7 +140,10 @@ __host__ int Data::CMallocateOrbit(){
 	cudaError_t error;
 	error = cudaGetLastError();
 	fprintf(masterfile,"CudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
+	if(error != 0){
+		printf("CudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
 	cudaHostAlloc((void **)&Nenc_m, def_GMax * sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&Nenc_d, (void *)Nenc_m, 0);
@@ -164,7 +167,10 @@ __host__ int Data::CMallocateOrbit(){
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"mapping error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
+	if(error != 0){
+		printf("mapping error = %d = %s\n",error, cudaGetErrorString(error));
+		 return 0;
+	}
 
 	return 1;
 
@@ -202,8 +208,11 @@ __host__ int Data::GridaeAlloc(){
 	constantCopy();
 
 	error = cudaGetLastError();
-	fprintf(masterfile,"GrieaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
+	fprintf(masterfile,"GrideaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("GrideaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
 	return 1;
 }
@@ -291,8 +300,11 @@ __host__ int Data::copyGridae(){
 	}
 	cudaMemset(Gridaicount_d, 0, sizeof(int)*GridNai);
         error = cudaGetLastError();
-        fprintf(masterfile,"Grieae copy error = %d = %s\n",error, cudaGetErrorString(error));
-        if(error != 0) return 0;
+        fprintf(masterfile,"Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
+        if(error != 0){
+        	printf("Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
         return 1;
 }
@@ -475,7 +487,10 @@ __host__ int Data::ic(){
 	cudaMemcpy(ict_d, ict_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	error = cudaGetLastError();
 	fprintf(masterfile,"cudaMemcopy error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0) return 0;
+	if(error != 0){
+		printf("cudaMemcopy error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
 	return 1;
 }
@@ -551,7 +566,7 @@ __host__ int Data::readic(int st){
 			}
 			MaxIndex = max(MaxIndex, index);
 			int NBSN = NBS;
-			if(x.w >= 0.0 && x.w < P.MinMass && P.UseTestParticles == 1) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+			if(x.w >= 0.0 && x.w < P.MinMass && P.UseTestParticles > 0) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
 			else NBSN -= iismall;
 
 			x4_h[ii + NBSN] = x;
@@ -562,7 +577,7 @@ __host__ int Data::readic(int st){
 			else index_h[ii + NBSN] = index % 100 + 100*st;
 			aelimits_h[ii + NBSN] = aelimits;
 			++ii;
-			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles == 1) ++iismall;
+			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles > 0) ++iismall;
 		}
 	}
 	else{
@@ -927,6 +942,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					enccountT_d[Na] = enccountT_d[Nb];
 					enccountT_d[Nb] = 0;
 
+					Energy_d[Na] = Energy_d[Nb];
+					Energy_d[Nb] = 0.0;
+
 					test_d[Na] = test_d[Nb];
 					test_d[Nb] = -1.0;
 
@@ -998,6 +1016,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				aecountT_d[Nb] = 0;
 				enccountT_d[Na] = enccountT_d[Nb];
 				enccountT_d[Nb] = 0;
+
+				Energy_d[Na] += Energy_d[Nb];
+				Energy_d[Nb] = 0.0;
 
 				test_d[Na] = test_d[Nb];
 				test_d[Nb] = -1.0;

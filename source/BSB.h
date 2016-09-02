@@ -57,7 +57,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 	if(idy < N2){
 		idi = Encpairs2_d[start + idy].x;
-//printf("BS2 %d %d %d %d %d\n", idx, st, idi, index_d[idi], N2);
+//printf("BS2 %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], N2);
 	}
 	else idi = 0;
 

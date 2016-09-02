@@ -39,10 +39,10 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The time step, in days
  * The output name
  * The Energy output interval, in time steps. When it is set to zero, then no Energy outputs are written.
- * The Coordinates output interval, in time steps. When it is set to zero, then no coordinare outputs are written.
+ * The Coordinates output interval, in time steps. When it is set to zero, then no coordinate outputs are written.
  * The number of outputs per Coordinate output interval.
  * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
- * The file name of irregular coordinarte output calendar. "-" means no irregular outputs. See [here](#markdown-header-irregular-coodinate-output) for more details. 
+ * The file name of irregular coordinate output calendar. "-" means no irregular outputs. See [here](#markdown-header-irregular-coordinate-output) for more details. 
  * The total number of integration steps
  * The central Mass, in solar masses
  * Value of close encounter parameter n1
@@ -92,11 +92,11 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Order of the symplectic integrator. The options are 2, 4 or 6
  * The maximum number of close encounter pairs for each body
  * Use aeGrid, 0 or 1. See [here](#markdown-header-aegrid) for more details
- * Miminal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * Mininal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal major axis for the aeCount grid. See [here](#markdown-header-aegrid) for more details
- * Miminal eccentricity for the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * Mininal eccentricity for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal eccentricity for the aeCount grid. See [here](#markdown-header-aegrid) for more details
- * Miminal inclination for the aeCount grid. See [here](#markdown-header-aegrid) for more details
+ * Mininal inclination for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * Maximal inclination for the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The number of cells in a of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The number of cells in e of the aeCount grid. See [here](#markdown-header-aegrid) for more details
@@ -107,7 +107,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The dissipation time for the gas disc in years
  * The power law exponent for the gas disc, alpha 
  * use additional force, which is specified in the file force.h See [here](#markdown-additional-forces) for more details
- * FormatS:  Output file format for multi simulation run. 0: all simulatios write to different files, 1: all simulations write to the same file.
+ * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
  * Report Encounters: When this is set to one, then close encounters with a separation less than a factor times the physical radius of the body are reported to a file.
@@ -143,15 +143,16 @@ Here it can also be chosen if the gas disc is included or not.
 
  * All default parameters for the 'param.dat' file. See [here](#markdown-header-the-param.dat-file) for more details
 
- * pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
+ * def_pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
  * MaxColl i: Maximum number of Collisions per time step that can be stored
- * cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
+ * def_cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
+ * def_MinMass f: Minimal Mass for massive particles in Test particle mode, lighter particles are treated as test particles.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
- * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurres (d < StopAtEncounterRadius * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
+ * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurs (d < StopAtEncounterRadius * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
  * StopAtEncounterRadius f: factor to stop simulations at close encounters in multisimulation mode
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
- * def_GMax i: Defines the maximum size of close encoutner groups as 2^GMax.
+ * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
 
 
 Here i means an integer and f a floating point value. 
@@ -233,7 +234,7 @@ In this format, at each coordinate output interval, a new file is created which 
  * amin, amax, emin and emax are the specified boundaries for the aeCount box, see [here](#markdown-header-aelimits) for more details. At a collision, the same rules as for the index are applied to these values.
  * aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits. See [here](#markdown-header-aelimits) for more details.
  * aecountT is the integrated value of all previous aecount values.
- * enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with an other (massive) particle.
+ * enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
  * test can be used for some individual values
 
 ### FormatS = 1, FormatT = 0 FormatP = 1: Out<name>.dat
@@ -259,7 +260,7 @@ This file contains information about the number of particles and the energy. At 
  * N: Number of particles
  * V: Total potential energy
  * T: Total Kinetic energy
- * LI: Angulat momentum lost at ejections
+ * LI: Angular momentum lost at ejections
  * U: Inner energy created from collisions, ejections or gas disc
  * ETotal: Total Energy
  * LTotla: Total Angular Momentum
@@ -294,7 +295,7 @@ In this file are listed the details of the ejected particles. An ejection happen
 
 
 ## The encounter file Encounters<name>.dat
-This file is only generated when the 'Report Encounters' argument in the 'param.dat' file is greater than zero. It contains the coordinates before the cloasest encounter between two bodies.
+This file is only generated when the 'Report Encounters' argument in the 'param.dat' file is greater than zero. It contains the coordinates before the closest encounter between two bodies.
 
     time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
     .
@@ -318,16 +319,16 @@ The file contains the following informations (see [here](#markdown-header-the-po
     .
     .
 
-The crossing events are written consecutively the the file. After each coordinate output intervall another file is created to reduce the file sizes.
+The crossing events are written consecutively the the file. After each coordinate output interval another file is created to reduce the file sizes.
 
 ##The master file: master.out
-The master file contains information about the used hardware and simulation progress. If an error occurs than the master file contains more details about that. 
+The master file contains information about the used hardware and simulation progress. If an error occurs then the master file contains more details about that. 
 
-# Irregular coodinate output #
+# Irregular coordinate output #
 In the 'param.dat' file can be specified the name of a calendar file, using the argument 'Irregular output calendar = <fileName>'
 This file must contain line by line the desired output times of the coordinates in years.
-When this option is used, then output files with names OutIrr... similar to the orignial output files are created. They contain the coordinate outputs of the 
-specified time. When the multi simulation mode is uses, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
+When this option is used, then output files with names OutIrr... similar to the original output files are created. They contain the coordinate outputs of the 
+specified time. When the multi simulation mode is used, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
 When the argument of 'Irregular output calendar' is equal to "-", or if this line is missing in the 'param.dat', then no irregular output files are generated
  
 
@@ -344,13 +345,13 @@ The aeLimits values amin, amax, emin and emax are limits for the semi major axis
 This values can be useful in a stability analysis of planetary systems. 
 
 # aeGrid #
-The aeGrid is a semi-major axis versus eccentricity grid, and/or a semi-major axis versus inclination grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity or inclination. The dimensions of the grid can be set in the 'param.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin, aeGrid_emax, aeGrid_imin and aeGrid_imax values, where the semi-major axis 'a' is a positive value in astronomical units, the eccentricity 'e' a value between zero and one and the inclination 'i' is an angle bwtween 0 and pi.
+The aeGrid is a semi-major axis versus eccentricity grid, and/or a semi-major axis versus inclination grid, which counts the time steps that particles spend in certain ranges in semi major axis and eccentricity or inclination. The dimensions of the grid can be set in the 'param.dat' file with the aeGrid_amin, aeGrid_amax, aeGrid_emin, aeGrid_emax, aeGrid_imin and aeGrid_imax values, where the semi-major axis 'a' is a positive value in astronomical units, the eccentricity 'e' a value between zero and one and the inclination 'i' is an angle between 0 and pi.
 The resolution of the grid can be set by the Na, Ne and Ni values.
 In the multi simulation mode all sub-simulations are contributing to the same files.
 
 # The Poincare surface of section #
 By setting the parameter ** poincareFlag 1 ** in the define.h file, GENGA prints the Poincare surface of section. It prints the coordinates of x and v when a particles crosses the positive x coordinate.
-Note that this works only using the second order Intergrator, and not for test particles or in the multi simulation mode. An example of the surface of section  of 32 planetesimals can be found [here](https://www.youtube.com/watch?v=a_4cjXVDEAw).
+Note that this works only using the second order integrator, and not for test particles or in the multi simulation mode. An example of the surface of section  of 32 planetesimals can be found [here](https://www.youtube.com/watch?v=a_4cjXVDEAw).
 
 
 # Gas disc #
@@ -366,16 +367,20 @@ The parameters for the gas disc can be set in:
     * h_1: scale height at 1AU for c = 1km/s
     * Sigma_10: surface density at 1AU
     * Mgiant: Maximum mass for gas drag
-    * M_Enhance: factor for enhamcement
-    * Mass_pl: factor for enhamcement
-    * fMass_min: factor for enhamcement 
+    * M_Enhance: factor for enhancement
+    * Mass_pl: factor for enhancement
+    * fMass_min: factor for enhancement 
  * param.dat:
     * Dissipation time for the gas in years
     * power law exponent for the gas disc (must be 1 in the current version of GENGA)
 
 # Test particle mode
-The test particle mode should be used in simulation with only a small number of massive bodies and lots of massless test particles. The test particles doesn't interact with other test particles. The maximum number of massive bodies in the test particle mode can be set with the NmaxTestParticles parameter in the file define.h. Increasing the number of massive bodies reduces the possible number of test particles due to limited memory.
-The test particle mode can be started with the -TP 1 console argument are by setting the 'use Test Particles' value in the 'param.dat' file to one. 
+The test particle mode can be used to speed up simulations with lots of small particles.
+
+ * Test Particle mode = 1: The test particles don't interact with other test particles or massive bodies. They feel the gravitational potential of the massive bodies.
+ * Test Particle mode = 2: The test particles don't interact with other test particles. They feel the gravitational potential of the massive bodies and vice versa.
+
+The test particle mode can be started with the '-TP 1' or '-TP 2'  console argument or by changing the 'use Test Particles' value in the 'param.dat' file. 
 
 # Multi simulation mode
 The multi simulation mode can be used to simulate a large number of small simulations with up to 16 massive particles. For each simulation a new directory is needed, containing the initial condition file and the param.dat file. Note that not all parameters in the 'param.dat' file can be chosen individually, these are only:
@@ -412,7 +417,7 @@ in the file 'force.h' can be included additional forces. In this kernel, all coo
 In the 'param.dat' can be specified a binary number 'Use force' for different forces. The kernel is executed for Use force > 0.
 Implemented are the following forces:
 
- * General Relativity correction: binay number 1
+ * General Relativity correction: binary number 1
  * Tidal forces: binary number 2
  * Rotational Forces: binary number 4
 

@@ -217,7 +217,7 @@ __host__ int Data::firstEnergy(){
 	for(int hst = 0; hst < 16; ++hst) cudaStreamCreate(&hstream[hst]);
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], 0);
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 0);
 	}
 	for(int hst = 0; hst < 16; ++hst) cudaStreamDestroy(hstream[hst]);
 	error = cudaGetLastError();
@@ -236,7 +236,7 @@ __host__ void Data::EnergyOutput(){
 		cudaStreamCreate(&hstream[hst]);
 	}
 	if(P.Usegas == 1){
-		if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0]);
+		if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0], Nsmall_h[0]);
 		else{
 			for(int st = 0; st < Nst; ++st){
 				int NBS = NBS_h[st];
@@ -246,7 +246,7 @@ __host__ void Data::EnergyOutput(){
 	}
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], 1);
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 1);
 	}
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamDestroy(hstream[hst]);

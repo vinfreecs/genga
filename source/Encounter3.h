@@ -27,7 +27,7 @@
 template<int E>
 __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, int &Nenc, int N, double &time, int writeEncounters, double writeEncountersRadius, double MinMass){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
+//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.40g %.40g %.40g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 //if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	int Enc = 0;
@@ -487,56 +487,6 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 }
 
 
-__global__ void groupsmall1_kernel(int *Nencpairssmall_d, int2 *Encpairssmall_d, const int NencMax, int Nsmall){
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + threadIdx.x;
-
-	if(id == 0) *Nencpairssmall_d = 0;
-
-	if(id < Nsmall){
-		Encpairssmall_d[id * NencMax].y = 1;
-		Encpairssmall_d[id * NencMax].x = id;
-	}
-}
-
-__global__ void groupsmall2_kernel(int *Nencpairssmall2_d, int2 *Encpairssmall2_d, int *Nencsmall_d, int2 *Encpairssmall_d, const int NencMax){
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + threadIdx.x;
-	if(id < *Nencpairssmall2_d){
-		int i = Encpairssmall2_d[id].x;
-		int j = Encpairssmall2_d[id].y;
-		int Nj = atomicAdd(&Encpairssmall_d[j * NencMax].y, 1);
-		Encpairssmall_d[j * NencMax + Nj].x = i;
-		if(Nj == 1){
-			int Ne = atomicAdd(&Nencsmall_d[0], 1);
-			Encpairssmall_d[Ne * NencMax + 1].y = j;
-		}
-	}
-}
-
-__global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2 *Encpairssmall2_d, const int NencMax){
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + threadIdx.x;
-
-	if(id < Nencsmall_d[0]){
-		int i = Encpairssmall_d[id * NencMax + 1].y;
-		int nn = Encpairssmall_d[i * NencMax].y;
-		volatile int ne2 = 2;
-		if(nn > 0){
-			for(volatile int ii = 0; ii < 11; ++ii){
-				if(nn <= ne2){
-					int Ne = atomicAdd(&Nencsmall_d[ii + 1], 1);
-					Encpairssmall2_d[Ne * NencMax + ii].y = i;
-					break;
-				}
-				else{
-					ne2 *= 2;
-				}
-			}
-		}
-	}
-}
-
 // **************************************
 //This Kernel sorts all close encounter pairs into independent groups, using a 
 //parallel sorting algorithm. 
@@ -555,9 +505,8 @@ __global__ void groupsmall3_kernel(int *Nencsmall_d, int2 *Encpairssmall_d, int2
 //
 //This Kernel must be launched only with one block!.
 //
-//Authors: Simon Grimm
+//Author: Simon Grimm
 //March  2016
-//
 // ****************************************
 template <int bn, int Bl, int E>
 __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int NencMax, int *groupIndex_d, int BN, int N){
