@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.53
+#define Version 3.54
 
 //Default parameter values
 #define def_TimeStep 6
@@ -192,9 +192,9 @@
 
 struct Parameter{
 	int dev;                        //Number of device
-	int ei;                         //Energy output intervall
-	int ci;                         //Coordinate output intervall
-	int nci;                        //Number of outputs per intervall
+	int ei;                         //Energy output interval
+	int ci;                         //Coordinate output interval
+	int nci;                        //Number of outputs per interval
 	int UseTestParticles;
 	long long tRestart;             //timestep for restart
 	long long deltaT;               //Number of time steps to do

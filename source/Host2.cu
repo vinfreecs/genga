@@ -174,8 +174,8 @@ __host__ int Host::DeviceInfo(){
 
 // ************************************************
 //This function allocates memory on the Host
-//Authors: Simon Grimm, Joachim Stadel
-//Mai 2015
+//Authors: Simon Grimm
+//September 2016
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
@@ -183,7 +183,6 @@ __host__ void Host::Halloc(){
 	N2 = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int*)malloc(Nst*sizeof(int));
 	rho = (double*)malloc(Nst*sizeof(double));	
-	delta = (long long*)malloc(Nst*sizeof(long long));
 
 	P.dev = 0;
 	GSF = (struct GSFiles*)malloc(Nst*sizeof(struct GSFiles));
@@ -202,6 +201,7 @@ __host__ void Host::Halloc(){
 	time_h = (double*)malloc(Nst*sizeof(double));
 	dt_h = (double*)malloc(Nst*sizeof(double));
 	dtksq_h = (double*)malloc(Nst*sizeof(double));
+	delta_h = (long long*)malloc(Nst*sizeof(long long));
 
 	//Initialize parameters with default values
 	P.ei = def_EnergyOutputInterval;
@@ -349,13 +349,13 @@ __host__ void Host::Halloc(){
 		time_h[st] = 0.0;
 		dt_h[st] = 0.0;
 		dtksq_h[st] = 0.0;
+		delta_h[st] = def_IntegrationSteps;
 
 		NB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
-		delta[st] = def_IntegrationSteps;
 		sprintf(GSF[st].X, def_Name);
 		sprintf(GSF[st].inputfilename, def_InputFile);
 
@@ -435,7 +435,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.ci);
 	
-				if(er <= 0 || P.ci < 0){
+				if(er <= 0 || P.ci < -1){
 					printf("Error: Coordinates outut interval is not valid!\n");
 					return 0;
 				}
@@ -478,15 +478,15 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Integration steps =") == 0){
-			er = fscanf (paramfile, "%lld", &delta[st]);
+			er = fscanf (paramfile, "%lld", &delta_h[st]);
 	
-			if(er <= 0 || delta[st] <= 0){
+			if(er <= 0 || delta_h[st] <= 0){
 				printf("Error: Inegration steps are not valid!\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
-			if(st == 0) P.deltaT = delta[st];
-			else P.deltaT = max(P.deltaT, delta[st]);
+			if(st == 0) P.deltaT = delta_h[st];
+			else P.deltaT = max(P.deltaT, delta_h[st]);
 		}
 		else if(strcmp(sp, "Central Mass =") == 0){
 
@@ -1232,7 +1232,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(argv[i], "-I") == 0){
 			P.deltaT = atol(argv[i + 1]);
-			delta[st] = P.deltaT;
+			delta_h[st] = P.deltaT;
 		}
 		else if(strcmp(argv[i], "-n1") == 0){
 			n1_h[st] = atof(argv[i + 1]);
@@ -1294,7 +1294,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	else{
 		P.MinMass = 0.0;
 	}
-
+#if StopAtCollision == 1
+	P.ci = -1;
+#endif
 	return 1;
 }
 
@@ -1655,8 +1657,8 @@ __host__ int Host::size(){
 
 // ************************************************
 //This function allocates memory on the device
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Author: Simon Grimm
+//September 2016
 // ***********************************************
 __host__ void Host::Calloc(){
 	cudaMalloc((void **) &n1_d,Nst*sizeof(double));
@@ -1673,6 +1675,7 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &time_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dtksq_d,Nst*sizeof(double));
+	cudaMalloc((void **) &delta_d,Nst*sizeof(long long));
 
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1687,13 +1690,14 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(delta_d, delta_h, Nst*sizeof(long long), cudaMemcpyHostToDevice);
 }
 
-// ************************************************
+//************************************************
 //This function prints the parametes on screen and into the infofiles
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
-//  **************************************************
+//Authors: Simon Grimm
+//September 2016
+//**************************************************
 __host__ void Host::Info(){
 	FILE *infofile;
 
@@ -1733,7 +1737,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);				// use only argument in simulation 0
 			fprintf(infofile, "Use Irregular outputs: %d\n", P.IrregularOutputs);			// use only argument in simulation 0
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
-			fprintf(infofile, "Integration steps: %lld\n", delta[st]);
+			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
 			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
 			fprintf(infofile, "Star Love Number: %g\n", Msun_h[st].z);
@@ -1787,6 +1791,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
+			fprintf(infofile, "MinMass: %g\n", def_MinMass);
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
 			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0
@@ -2176,7 +2181,6 @@ __host__ int Host::freeHost(){
 	free(N2);
 	free(Nmin);
 	free(rho);
-	free(delta);
 	
 	free(n1_h);
 	free(n2_h);
@@ -2192,6 +2196,7 @@ __host__ int Host::freeHost(){
 	free(time_h);
 	free(dt_h);
 	free(dtksq_h);
+	free(delta_h);
 	
 	cudaFree(n1_d);
 	cudaFree(n2_d);
@@ -2207,6 +2212,7 @@ __host__ int Host::freeHost(){
 	cudaFree(time_d);
 	cudaFree(dt_d);
 	cudaFree(dtksq_d);
+	cudaFree(delta_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

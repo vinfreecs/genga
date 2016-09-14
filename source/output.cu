@@ -169,7 +169,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		if(P.FormatP == 0){
 			char outputfilename[160];
 			if(Nst == 1){
-				if(irregular == 0){
+				if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
 				}
 				else{
@@ -177,7 +177,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 				}
 			}
 			else{
-				if(irregular == 0){
+				if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
 				}
 				else{
@@ -329,13 +329,14 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular){
 
 //This function copies the data from the device to host and calls the printoutput function
 // irregular indicates irregular output intervals, which are read from a calendar file
-//irregular =2 means print Coordinates at Collision time
+//irregular = 2 means to print Coordinates at Collision time
+//irregular = 3 means to print the last time step
 __host__ void Data::CoordinateOutput(int irregular){
 
-	if(Nst > 1 && timeStep < P.deltaT){
+	if(Nst > 1 && timeStep < P.deltaT && irregular < 3){
 		int s = 0;
 		for(int st = 0; st < Nst; ++st){
-			if(timeStep >= delta[st]){
+			if(timeStep >= delta_h[st]){
 				s = 1;
 				N_h[st] = 0;
 			}
@@ -368,7 +369,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 			else if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
-					if(irregular == 0){
+					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 						sprintf(GSF[st].outputfilename,"%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else if(irregular == 1){
@@ -377,7 +378,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
 				if(P.FormatT == 1){
-					if(irregular == 0){
+					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 						sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
 					}
 					else if(irregular == 1){
@@ -388,7 +389,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 			else{
 				if(P.FormatT == 0){
-					if(irregular == 0){
+					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else if(irregular == 1){
@@ -398,7 +399,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
 				if(P.FormatT == 1){
-					if(irregular == 0){
+					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 						sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
 					}
 					else if(irregular == 1){
@@ -409,10 +410,11 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 
+		if(irregular < 3 || timeStep == delta_h[st]){
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
-		printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
-
-		if(P.FormatP == 1) fclose(GSF[st].outputfile);
+			if(P.FormatP == 1) fclose(GSF[st].outputfile);
+		}
 
 	}
 	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long)*NconstT, cudaMemcpyHostToDevice);
@@ -527,7 +529,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 	if(timeStep < P.deltaT){
 		int s = 0;
 		for(int st = 0; st < Nst; ++st){
-			if(timeStep >= delta[st]){
+			if(timeStep >= delta_h[st]){
 				s = 1;
 				N_h[st] = 0;
 			}

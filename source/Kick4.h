@@ -806,9 +806,16 @@ __global__ void accsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		__syncthreads();
 
 		if(idy == 0){
-			acck_d[idx].x = __dmul_rn(a1[0 + blockDim.x * itx].x, dtksq);
-			acck_d[idx].y = __dmul_rn(a1[0 + blockDim.x * itx].y, dtksq);
-			acck_d[idx].z = __dmul_rn(a1[0 + blockDim.x * itx].z, dtksq);
+			if(E == 1){
+				acck_d[idx].x = __dmul_rn(a1[0 + blockDim.x * itx].x, dtksq);
+				acck_d[idx].y = __dmul_rn(a1[0 + blockDim.x * itx].y, dtksq);
+				acck_d[idx].z = __dmul_rn(a1[0 + blockDim.x * itx].z, dtksq);
+			}
+			if(E == 2){
+				acck_d[idx].x = -__dmul_rn(a1[0 + blockDim.x * itx].x, dtksq);
+				acck_d[idx].y = -__dmul_rn(a1[0 + blockDim.x * itx].y, dtksq);
+				acck_d[idx].z = -__dmul_rn(a1[0 + blockDim.x * itx].z, dtksq);
+			}
 			if(E == 1) Encpairs2_d[idx * NencMax].x = 0; //NI
 		}
 	}

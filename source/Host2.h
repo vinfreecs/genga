@@ -30,7 +30,7 @@ public:
 	int *N2;				//number of bodies divided by 2
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
-	long long *delta;			//number of timesteps
+	long long *delta_h, *delta_d;		//number of timesteps
 	int MaxIndex;				//highest index of all bodies and test particles
 
 	struct Parameter P;			//parameters, for all Simulations the same

@@ -1328,7 +1328,6 @@ __host__ void Data::stopSimulations(){
 		NsmallT += Nsmall_h[st];
 		NB2T += NB[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
-//printf("STOP %d %d %d\n", st, N_h[st], NT);
 	}
 
 	cudaMemcpy(U_h, U_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
@@ -1338,7 +1337,7 @@ __host__ void Data::stopSimulations(){
 
 	for(int st = 0; st < Nst; ++st){
 		int s = 0;
-		if(timeStep >= delta[st]){
+		if(timeStep >= delta_h[st]){
 			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
 			fprintf(masterfile,"In Simulation %s: Rreached the end, simulation stopped\n", GSF[st].path);
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -1372,7 +1371,6 @@ __host__ void Data::stopSimulations(){
 				N2[sst] = N2[sst + 1];
 				Nmin[sst] = Nmin[sst + 1];
 				rho[sst] = rho[sst + 1];
-				delta[sst] = delta[sst + 1];
 				n1_h[sst] = n1_h[sst + 1];
 				n2_h[sst] = n2_h[sst + 1];
 				N_h[sst] = N_h[sst + 1];
@@ -1387,6 +1385,7 @@ __host__ void Data::stopSimulations(){
 				time_h[sst] = time_h[sst + 1];
 				dt_h[sst] = dt_h[sst + 1];
 				dtksq_h[sst] = dtksq_h[sst + 1];
+				delta_h[sst] = delta_h[sst + 1];
 
 				U_h[sst] = U_h[sst + 1];
 				LI_h[sst] = LI_h[sst + 1];
@@ -1418,6 +1417,7 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(delta_d, delta_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1426,7 +1426,7 @@ __host__ void Data::stopSimulations(){
 
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
-	remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
+	if(Nst > 0) remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
 
 }
 
