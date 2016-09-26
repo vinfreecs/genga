@@ -1584,7 +1584,7 @@ if(P.UseForce == 32){
 			EncMatrixsmall_kernel < 1 > <<< dim3(1, N1, 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, icNB, P.NencMax, N_h[0], N1, nn, EncFlag_d);
 		}
 		if(P.UseTestParticles == 2){
-			ntx = min(256, ((Nsmall_h[0]+ 31) / 32) * 32); 
+			ntx = min(256, ((Nsmall_h[0] + 31) / 32) * 32);
 			nty = 512 / ntx;
 			for(int nn = N_h[0]; nn < N_h[0] + Nsmall_h[0]; nn += def_MatrixMaxSize){
 				int N1 = min(N_h[0] + Nsmall_h[0]- nn, def_MatrixMaxSize);

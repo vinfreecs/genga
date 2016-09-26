@@ -442,8 +442,15 @@ __host__ int Data::ic(){
 			int icerr = 0;
 			icerr = readic(st);
 			if(icerr == 0){
+				printf("Error: Could not read initial conditions\n");
 				fprintf(GSF[st].logfile, "Error: Could not read initial conditions\n");
 				fprintf(masterfile, "Error in Simulation %s\n", GSF[st].path);
+				return 0;
+			}
+			if(Nsmall_h[st] <= 0 && P.UseTestParticles > 0){
+				printf("Error: No Test Particles found\n");
+				fprintf(GSF[st].logfile, "Error: No Test Particles found\n");
+				fprintf(masterfile, "Error: No Test Particles found %s\n", GSF[st].path);
 				return 0;
 			}
 			fclose(GSF[st].logfile);
