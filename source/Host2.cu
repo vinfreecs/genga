@@ -1294,7 +1294,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	else{
 		P.MinMass = 0.0;
 	}
-#if StopAtCollision == 1
+#if def_StopAtCollision == 1
 	P.ci = -1;
 #endif
 	return 1;
@@ -1724,6 +1724,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Stop at close Encounters: %d\n", StopAtEncounter);
+			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
+			fprintf(infofile, "Stop collision minimum mass: %d\n", def_StopMinMass);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
@@ -1837,7 +1839,6 @@ __host__ void Host::Info(){
 __host__ void Host::Tsizes(){
 	NBS_h = (int*)malloc(Nst*sizeof(int));
 	NsmallS_h = (int*)malloc(Nst*sizeof(int));
-	NB2S = (int*)malloc(Nst*sizeof(int));
 	NEnergy = (int*)malloc(Nst*sizeof(int));
 
 	cudaMalloc((void **) &NBS_d, Nst*sizeof(int));
@@ -1845,7 +1846,6 @@ __host__ void Host::Tsizes(){
 	for(int st = 0; st < Nst; ++st){
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
-		NB2S[st] = NB2T;
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
@@ -1853,16 +1853,14 @@ __host__ void Host::Tsizes(){
 		NEnergyT += max(NB[st], 8);
 	}
 	NBNencT = NB2T;
-	icNB = NmaxM;
 
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
 		NT = NB[0];
-		NB2T = (long long int)(NconstT) * (long long int)(NB[0]);
+		NB2T = (long long int)(NconstT) * (long long int)(NconstT);
 		if(P.UseTestParticles > 0){
-			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NB[0]);
+			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NconstT);
 		}
-		icNB = NB[0];
 		NBNencT = NconstT * P.NencMax;
 		NEnergyT = max(NconstT, 8);
 	}

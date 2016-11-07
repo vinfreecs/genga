@@ -74,9 +74,10 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 	if(idx < N){
 		if(x4_d[idx].w > 0.0){
 			for(int i = 0; i < N; i += blockDim.x){
-				if(x4_d[idy + i].w > 0.0 && idy + i < N){
-					V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
-				}
+				if(idy + i < N){
+					if(x4_d[idy + i].w > 0.0){
+						V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
+				}	}
 			}
 
 			__syncthreads();
@@ -386,14 +387,16 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin
 	}
 
 	for(int i = 0; i < N; i += blockDim.x){
-		double m = x4_d[idy + i].w;
-		if(m > 0.0 && idy + i < N){
-			s_s[idy].x += m * x4_d[idy + i].x;
-			s_s[idy].y += m * x4_d[idy + i].y;
-			s_s[idy].z += m * x4_d[idy + i].z;
-			p_s[idy].x += m * v4_d[idy + i].x;
-			p_s[idy].y += m * v4_d[idy + i].y;
-			p_s[idy].z += m * v4_d[idy + i].z;
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m > 0.0){
+				s_s[idy].x += m * x4_d[idy + i].x;
+				s_s[idy].y += m * x4_d[idy + i].y;
+				s_s[idy].z += m * x4_d[idy + i].z;
+				p_s[idy].x += m * v4_d[idy + i].x;
+				p_s[idy].y += m * v4_d[idy + i].y;
+				p_s[idy].z += m * v4_d[idy + i].z;
+			}
 		}
 	}
 	__syncthreads();

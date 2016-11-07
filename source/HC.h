@@ -41,16 +41,18 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 
 	__syncthreads(); 
 	for (int i = 0; i < N; i+= Bl){
-		double m = x4_d[idy + i].w;
-		if(m > 0.0 && idy + i < N){
-			if(idx == 0){
-				a1_s[idy] += m * v4_d[idy + i].x;
-			}
-			if(idx == 1){
-				a1_s[idy] += m * v4_d[idy + i].y;
-			}
-			if(idx == 2){
-				a1_s[idy] += m * v4_d[idy + i].z;
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m > 0.0){
+				if(idx == 0){
+					a1_s[idy] += m * v4_d[idy + i].x;
+				}
+				if(idx == 1){
+					a1_s[idy] += m * v4_d[idy + i].y;
+				}
+				if(idx == 2){
+					a1_s[idy] += m * v4_d[idy + i].z;
+				}
 			}
 		}
 	}
@@ -142,17 +144,19 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 		a1_s[idy + i] = 0.0;
 	}
 	__syncthreads();
-
-	double m = x4_d[idy].w;
-	if(m > 0.0 && idy < N){
-		if(idx == 0){
-			a1_s[idy] = m * v4_d[idy].x;
-		}
-		if(idx == 1){
-			a1_s[idy] = m * v4_d[idy].y;
-		}
-		if(idx == 2){
-			a1_s[idy] = m * v4_d[idy].z;
+	double m = -1.0e-12;
+	if(idy < N){
+		m = x4_d[idy].w;
+		if(m > 0.0){
+			if(idx == 0){
+				a1_s[idy] = m * v4_d[idy].x;
+			}
+			if(idx == 1){
+				a1_s[idy] = m * v4_d[idy].y;
+			}
+			if(idx == 2){
+				a1_s[idy] = m * v4_d[idy].z;
+			}
 		}
 	}
 

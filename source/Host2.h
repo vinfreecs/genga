@@ -57,10 +57,8 @@ public:
 	long long int NB2T;
 	int NBNencT;
 	int NEnergyT;
-	int icNB;
 
 	int *NsmallS_h;
-	int *NB2S;
 	int *NEnergy;
 
 	int *NBS_h, *NBS_d;			//starting point in memory of individual simulations

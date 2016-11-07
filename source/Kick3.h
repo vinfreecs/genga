@@ -135,7 +135,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //
 // ********************************
 template < int E >
-__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int icNB, int NencMax, double &test, double t){
+__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NconstT, int NencMax, double &test, double t){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -158,9 +158,9 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
 #if G3 == 1
-			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || rsq < def_pc * rcritv) && x4i.w > 0.0 && x4j.w > 0.0){	
+			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) || rsq < def_pc * rcritv) && x4i.w > 0.0 && x4j.w > 0.0){	
 #else
-			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) || B > G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
+			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) || B > G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
 
 #endif
 //printf("Precheck %d %d\n", i, j);
@@ -199,7 +199,7 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 
 		s = x4j.w * ir3;
 
-		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < icNB) s = 0.0;
+		if(groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) s = 0.0;
 
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
@@ -224,12 +224,13 @@ __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, in
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
-
-	if(id < N && x4_d[id].w >= 0.0){
-		v4_d[id].x += acck_d[id].x;
-		v4_d[id].y += acck_d[id].y;
-		v4_d[id].z += acck_d[id].z;
+	if(id < N){
+		if(x4_d[id].w >= 0.0){
+			v4_d[id].x += acck_d[id].x;
+			v4_d[id].y += acck_d[id].y;
+			v4_d[id].z += acck_d[id].z;
 //printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+		}
 	}
 }
 // *******************************************
@@ -388,7 +389,7 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 #if G3 == 0
 		acc_d<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		//accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, t);
+		//accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t);
 #endif
 	}
 
@@ -461,7 +462,7 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //
 //****************************************
 template < int Bl, int Bl2, int E>
-__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int icNB, int NencMax, double t, int N){
+__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NconstT, int NencMax, double t, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -517,7 +518,7 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 #if G3 == 0
 		acc_d<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		//accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, icNB, NencMax, test, t); 
+		//accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t); 
 
 #endif
 	}

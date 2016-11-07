@@ -137,7 +137,7 @@ public:
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
 	__host__ void GridaeOutput();
-	__host__ void printCollisions();
+	__host__ int printCollisions();
 	__host__ int printEncounters();
 	__host__ int printFragments(int);
 	__host__ int printRotation();

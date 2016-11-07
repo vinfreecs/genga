@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.54
+#define Version 3.55
 
 //Default parameter values
 #define def_TimeStep 6
@@ -68,7 +68,7 @@
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer 
 #define def_Nfragments 0		//Additional array size for debris particles
 #define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
-#define def_MatrixMaxSize 16384
+#define def_MatrixMaxSize 16384		//slice Encounter matrix to reduce memory usage
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
@@ -84,7 +84,8 @@
 #define StopAtEncounterRadius 1.0
 
 
-#define StopAtCollision 0
+#define def_StopAtCollision 0
+#define def_StopMinMass 0.0
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details

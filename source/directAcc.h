@@ -42,6 +42,7 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
                         ac.y += __dmul_rn(r3.y, s);
                         ac.z += __dmul_rn(r3.z, s);
 		}
+//printf("%.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", x4i.w, x4i.x, x4i.y, x4i.z, x4j.w, x4j.x, x4j.y, x4j.z);
 	}
 }
 //**************************************
@@ -279,11 +280,18 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
         }
         index[indexj] = -1;
 
+#if def_StopAtCollision == 0
         x4[i].w = mtot;
-        x4[j].w = -1.0e-12;
-#if StopAtCollision
-	x4[i].w = -1.0e-12;
+
+#else
+	if(x4[j].w >= def_StopMinMass && x4[i].w >= def_StopMinMass){
+		x4[i].w = -1.0e-12;
+	}
+        else{
+		x4[i].w = mtot;
+	}
 #endif
+        x4[j].w = -1.0e-12;
         v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
         v4[j].w = 0.0;
 

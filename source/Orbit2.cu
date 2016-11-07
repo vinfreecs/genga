@@ -1329,7 +1329,6 @@ __host__ void Data::stopSimulations(){
 
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
-		NB2S[st] = NB2T;
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
@@ -1401,7 +1400,6 @@ __host__ void Data::stopSimulations(){
 
 				NBS_h[sst] = NBS_h[sst + 1];
 				NsmallS_h[sst] = NsmallS_h[sst + 1];
-				NB2S[sst] = NB2S[sst + 1];
 				NEnergy[sst] = NEnergy[sst + 1];
 			}
 			st -= 1;

@@ -328,9 +328,10 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular){
 }
 
 //This function copies the data from the device to host and calls the printoutput function
-// irregular indicates irregular output intervals, which are read from a calendar file
+//irregular indicates irregular output intervals, which are read from a calendar file
 //irregular = 2 means to print Coordinates at Collision time
 //irregular = 3 means to print the last time step
+//irregular = 4 means Step Error output
 __host__ void Data::CoordinateOutput(int irregular){
 
 	if(Nst > 1 && timeStep < P.deltaT && irregular < 3){
@@ -365,6 +366,10 @@ __host__ void Data::CoordinateOutput(int irregular){
 		if(P.FormatP == 1){
 			if(irregular == 2){
 				sprintf(GSF[st].outputfilename,"OutCollision.dat");
+				GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+			}
+			else if(irregular == 4){
+				sprintf(GSF[st].outputfilename,"OutError.dat");
 				GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 			}
 			else if(Nst == 1 || P.FormatS == 0){
@@ -410,7 +415,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 
-		if(irregular < 3 || timeStep == delta_h[st]){
+		if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
 			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
@@ -704,11 +709,13 @@ __host__ void Data::LastInfo(){
 }
 
 //This function prints details of the Collisions
-__host__ void Data::printCollisions(){
+//stopAtCollision checks if one of the 2 colliding bodies is large enough to resolve the collision externally.
+__host__ int Data::printCollisions(){
   
 	cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
 	FILE *collisionfile;
 	FILE *logfile;
+	int stopAtCollision = 0;
 	for(int nc = 0; nc < Ncoll_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
@@ -733,10 +740,16 @@ __host__ void Data::printCollisions(){
 			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]) % 100 , (int)(Coll_h[nc * 25 + 13]) % 100);
 			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * 25 + 1]) % 100 , (int)(Coll_h[nc * 25 + 13]) % 100);
 		}
+	
+		if(Coll_h[nc * 25 + 2] >= def_StopMinMass && Coll_h[nc * 25 + 14] >= def_StopMinMass){
+			stopAtCollision = 1;			
+		}
+
 		fprintf(collisionfile, "\n");
 		fclose(collisionfile);
 		fclose(logfile);
 	}
+	return stopAtCollision;
 }
 
 //This function prints details of the Encounters
