@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.55
+#define Version 3.56
 
 //Default parameter values
 #define def_TimeStep 6
@@ -86,6 +86,7 @@
 
 #define def_StopAtCollision 0
 #define def_StopMinMass 0.0
+#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision in days
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details

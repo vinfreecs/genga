@@ -99,6 +99,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &t1_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &dtgr_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
+	cudaMalloc((void **) &Coltime_d, sizeof(double));
 	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 > 0
 	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
@@ -1515,6 +1516,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(t1_d);
 	cudaFree(dtgr_d);
 	cudaFree(BSAstop_d);
+	cudaFree(Coltime_d);
 
 	cudaFree(aelimits_d);
 	cudaFree(aecount_d);

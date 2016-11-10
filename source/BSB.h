@@ -39,7 +39,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[MaxColl];
-//	__shared__ double Coltime_s[MaxColl];
+	__shared__ double Coltime_s[MaxColl];
 	__shared__ int N2; 
 	__shared__ int sgnt;
 
@@ -106,7 +106,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	if(idy < MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;
-//		Coltime_s[idy] = 10 * dt;
+		Coltime_s[idy] = 10 * dt;
 	}
 	if(idy < 2 * NN) error_s[idy] = 0.0;
 #if G3 > 0
@@ -426,7 +426,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					error_s[idy] = fmax(errorx, errorv);
 	
 					Ncol_s[0] = 0;
-				//	Coltime_s[0] = 10 * dt;
+					Coltime_s[0] = 10.0 * dt;
 
 				}
 				__syncthreads();
@@ -465,7 +465,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						double delta = 100.0;
 						double enct = 100.0;
 						double colt = 100.0;
-						//double colltime = 0.0;
 						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
 						if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt);
@@ -474,7 +473,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
 							if(Ncol_s[0] >= MaxColl) Ni = MaxColl - 1;
-							//printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %d\n", i, jj + l, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, collisiontime, Ni);
+//							printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", ii, jj + l, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, Ni);
 							if(xt_s[ii].w >= xt_s[jj + l].w){
 								Colpairs_s[Ni].x = ii;
 								Colpairs_s[Ni].y = jj + l;
@@ -483,7 +482,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 								Colpairs_s[Ni].x = jj + l;
 								Colpairs_s[Ni].y = ii;
 							}
-					//		Coltime_s[Ni] = colt;
+							Coltime_s[Ni] = colt;
 
 							// *****************
 							//dont group test particles
@@ -518,18 +517,18 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						}
 					}
 					__syncthreads();
-/*					if(idy == 0) {
-						double Coltime = 10 * dt;
+					if(idy == 0){
+						double Coltime = 10.0 * dt;
 						for(int c = 0; c < min(Ncol_s[0], MaxColl - 1); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+//							int i = Colpairs_s[c].x;
+//							int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
-//printf("Coltime %d %d %g\n", i, j, Coltime);
+//printf("Coltime %d %d %.10g %g %g %g %d\n", i, j, Coltime, t, dt1, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
 					}
-*/					__syncthreads();
-//					if(Coltime_s[0] > 0.99){
+					__syncthreads();
+					if(Coltime_s[0] > 1.0 - def_CollisionPrecision/dt1){
 						if(idy == 0) {
 							for(int c = 0; c < min(Ncol_s[0], MaxColl - 1); ++c){
 								int i = Colpairs_s[c].x;
@@ -537,7 +536,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 									int nc = atomicAdd(Ncoll_d, 1);
 									if(nc >= MaxColl -1) nc = MaxColl -1;
-									collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t - dt)/dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+									collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1 - dt)/dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 #if G3 > 0
 										int iK = Encpairs2_d[start + i].x;
 										int jK = Encpairs2_d[start + j].x;
@@ -551,7 +550,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							if(Ncol_s[0] >= MaxColl - 1) Ncoll_d[0] = MaxColl - 1;
 						}
 						__syncthreads();
-						t += dt1;				
+						t += dt1;
 						if(n >= 8) dt1 *= 0.55;
 						if(n < 7) dt1 *= 1.3;
 						if(sgnt * dt1 > sgnt * dt) dt1 = dt;
@@ -561,12 +560,12 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(idy < N2){
 							x4_s[idy] = xt_s[idy];
 							v4_s[idy] = vt_s[idy];
-//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
+//printf("update A %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
 						}
-//					}
-//					else{
-//						dt1 *= Coltime_s[0];
-//					}
+					}
+					else{
+						dt1 *= Coltime_s[0];
+					}
 					f = 0;
 
 					__syncthreads();

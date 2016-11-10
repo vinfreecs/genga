@@ -1294,10 +1294,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	else{
 		P.MinMass = 0.0;
 	}
+
+	if(def_CollisionPrecision <= 0.0){
+		printf("Error: def_CollisionPrecision not valid! %g\n", def_CollisionPrecision);
+		return 0;
+	}
+	else{
+
 #if def_StopAtCollision == 1
-	P.ci = -1;
+		P.ci = -1;
 #endif
-	return 1;
+		return 1;
+	}
 }
 
 
@@ -1726,6 +1734,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Stop at close Encounters: %d\n", StopAtEncounter);
 			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
 			fprintf(infofile, "Stop collision minimum mass: %d\n", def_StopMinMass);
+			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0

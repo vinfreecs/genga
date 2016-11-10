@@ -26,7 +26,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 	rcritv = fmax(rcritvi, rcritvj);
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
-//if (cl) printf("cl %d %d %d\n", i , j, NconstT);
+//if (cl) printf("cl %d %d %d %d %g %g\n", nn, i - nn, j, NconstT, x4i.x, x4j.x);
 	Encpairsb_d[NconstT * (i - nn) + j] = cl;
 
 	ir = 1.0/sqrt(rsq);
@@ -495,6 +495,8 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 				double rcritvj = rcritv_d[idy + i];
 				if(idx < N)        acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, NconstT, 0);
 				if(idx + 2*N4 < N) acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx +2*N4, NconstT, 0);
+//if(idx + N4 == 1045 && idy + i == 0) printf("acc1 %d %d %.20g %.20g %.20g\n", idx + N4, idy + i, a1_s[idy].x, x4i4.x, x4j.x);
+//if(idx + 2*N4 == 1045 && idy + i == 0) printf("acc2 %d %d %.20g %.20g %.20g\n", idx + 2*N4, idy + i, a2_s[idy].x, x4i4.x, x4j.x);
 			}	
 		}
 	}
@@ -508,13 +510,16 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 		a4_s[idy-Bl_2].z = 0.0;
 
 		__syncthreads();
-
+__syncthreads();
 		for(int i = 0; i < N; i += Bl_2){
 			if(idy-Bl_2 + i < N){
 				double4 x4j = x4_d[idy-Bl_2 + i];
 				double rcritvj = rcritv_d[idy-Bl_2 + i];
 				if(idx + N4 < N)   acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +N4, NconstT, 0);
 				if(idx + 3*N4 < N) acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +3*N4, NconstT, 0);
+//if(idx + N4 == 1045 && idy-Bl_2 + i == 0) printf("acc2 %d %d %.20g %.20g %.20g\n", idx + N4, idy-Bl_2 + i, a2_s[idy-Bl_2].x, x4i2.x, x4j.x);
+//if(idx + 3*N4 == 1045 && idy-Bl_2 + i == 0) printf("acc4 %d %d %.20g %.20g %.20g\n", idx + 3*N4, idy-Bl_2 + i, a4_s[idy-Bl_2].x, x4i4.x, x4j.x);
+
 			}
 		}
 	}
@@ -670,6 +675,7 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 		acck_d[idx + 3*N4].z = __dmul_rn(a4[0].z, dtksq);
 		Encpairs2_d[(idx + 3*N4) * NencMax].x = 0; //NI
 	}
+
 }
 
 //******************************************************
@@ -690,7 +696,7 @@ __global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 *Encp
 			if(cl){
 				if(i != jj + j){
 					int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-//printf("enc %d %d %d\n", i, jj + j, Ni);
+//if(jj + j == 1045 || i == 1045) printf("enc %d %d %d\n", i, jj + j, Ni);
 					if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
 
 					Encpairs2_d[NencMax * i + Ni].y = jj + j;

@@ -379,6 +379,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 					error_s[idy] = fmax(errorx, errorv);
 	
 					Ncol_s[0] = 0;
+					Coltime_s[0] = 10.0 * dt;
 
 				}
 				__syncthreads();
@@ -428,30 +429,46 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 						}
 					}
                                         __syncthreads();
-					if(idy == 0) {
-						for(int c = 0; c < min(Ncol_s[0], MaxColl); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
-							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
-								int nc = atomicAdd(Ncoll_d, 1);
-								if(nc >= MaxColl -1) nc = MaxColl -1;
-								collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + (t - dt)/dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
-							}
+					if(idy == 0){
+						double Coltime = 10.0 * dt;
+						for(int c = 0; c < min(Ncol_s[0], MaxColl - 1); ++c){
+//							int i = Colpairs_s[c].x;
+//							int j = Colpairs_s[c].y;
+							Coltime = fmin(Coltime_s[c], Coltime);
+//printf("Coltime %d %d %d %.10g %g %g %g\n", si, i, j, Coltime, t, dt1, (1.0 - Coltime) * dt1);
 						}
-						if(Ncol_s[0] >= MaxColl - 1) Ncoll_d[0] = MaxColl - 1;
+						Coltime_s[0] = Coltime;
 					}
 					__syncthreads();
-					t += dt1;				
-					if(n >= 8) dt1 *= 0.55;
-					if(n < 7) dt1 *= 1.3;
-					if(sgnt * dt1 > sgnt * dt) dt1 = dt;
-					if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
-					if(sgnt * dt1 < 1.0e-7) dt1 = sgnt * 1.0e-7;
+					if(Coltime_s[0] > 1.0 - def_CollisionPrecision/dt1){
+						if(idy == 0) {
+							for(int c = 0; c < min(Ncol_s[0], MaxColl); ++c){
+								int i = Colpairs_s[c].x;
+								int j = Colpairs_s[c].y;
+								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
+									int nc = atomicAdd(Ncoll_d, 1);
+									if(nc >= MaxColl -1) nc = MaxColl -1;
+									collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + (t - dt)/dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								}
+							}
+							if(Ncol_s[0] >= MaxColl - 1) Ncoll_d[0] = MaxColl - 1;
+						}
+						__syncthreads();
+						t += dt1;				
+						if(n >= 8) dt1 *= 0.55;
+						if(n < 7) dt1 *= 1.3;
+						if(sgnt * dt1 > sgnt * dt) dt1 = dt;
+						if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+						if(sgnt * dt1 < 1.0e-7) dt1 = sgnt * 1.0e-7;
 
-					if(idy < N2){
-						x4_s[idy] = xt_s[idy];
-						v4_s[idy] = vt_s[idy];
-//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
+						if(idy < N2){
+							x4_s[idy] = xt_s[idy];
+							v4_s[idy] = vt_s[idy];
+	//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
+						}
+					}
+					else{
+						dt1 *= Coltime_s[0];
 					}
 					f = 0;
 
