@@ -197,7 +197,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 		volatile int f = 1;
 		__syncthreads();
-		for(int ff = 0; ff < /*1e6*/ 10; ++ff){
+		for(int ff = 0; ff < 1e6; ++ff){
 			__syncthreads();
 			for(int n = 1; n <= 8; ++n){
 				dt2 = dt1 / (2.0 * n);
