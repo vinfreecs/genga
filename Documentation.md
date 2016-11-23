@@ -390,6 +390,7 @@ The parameters for the gas disc can be set in:
 
 # Test particle mode
 The test particle mode can be used to speed up simulations with lots of small particles.
+Particles are considered as test particles, when the mass of the particle is smaller or equal than the value of the def_MinMass argument.
 
  * Test Particle mode = 1: The test particles don't interact with other test particles or massive bodies. They feel the gravitational potential of the massive bodies.
  * Test Particle mode = 2: The test particles don't interact with other test particles. They feel the gravitational potential of the massive bodies and vice versa.
