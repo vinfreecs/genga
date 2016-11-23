@@ -16,6 +16,8 @@ pairs.
 
  ** News: **
 
+ * Version 3.57: Colision Coordinates can be reported more precisly.
+ * Version 3.56: The test particle mode supports semi massive particles
  * Version 3.48: The multi simulation mode can stop simulation at close encounters when 'StopAtEncounter' in the 'define.dat' file is set to 1
  * Version 3.45: The maximum close encounter group size is increased up to 1048576. It can be increased further by changing the 'def_GMax' parameter in the 'define.dat' file. 
  * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximu number of close encounters for each body.  

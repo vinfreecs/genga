@@ -146,13 +146,22 @@ Here it can also be chosen if the gas disc is included or not.
  * def_pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * def_cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
+ * def_tol f: Tolerance in Bulirsh Stoer integrator
+ * def_dtmin f: Minimal time step in Bulirsch Stoer integrator 
+ * def_Nfragments d: Additional array size for debris particles
  * def_MinMass f: Minimal Mass for massive particles in Test particle mode, lighter particles are treated as test particles.
+ * def_MatrixMaxSize f: slice Encounter matrix to reduce memory usage
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
- * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurs (d < StopAtEncounterRadius * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
- * StopAtEncounterRadius f: factor to stop simulations at close encounters in multisimulation mode
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
+ * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurs (d < StopAtEncounterRadius * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
+ * StopAtEncounterRadius f: factor to stop simulations at close encounters in multisimulation mode
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
+ * def_StopAtCollision i: 1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
+ * def_StopMinMass f: when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
+ * def_CollisionPrecision f: Tolerance for Collision time precision. In days. Default is 1.0
+ * def_CollTshift f: Collision output before Collision happens, default is 1.0
+
 
 
 Here i means an integer and f a floating point value. 
@@ -276,12 +285,17 @@ This file contains also information about the number of close encounter pairs an
 If an error occurs during the simulation, then in this File is written the last coordinates-Output and an information about the error. 
 
 ##The collision file: Collisions<name>.dat
-In this file are listed the details of the collisions between particle i and j just before they collide:
+In this file are listed the details of the collisions between particle i and j just after they collide.
+The precision of the collision output can be adjuted with the def_CollisionPrecision argument in the 'define.h' file. A value of 1.0 prints the position at the Bulirsh stoer step just after the collision. A Value of 1.0e7 refines the Bulirsch Stoer steps to 1.0e7 days. This value should not be smaller than def_dtmin.
 
     time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
     .
     .
     .
+
+##the full collitions output file: OutCollison.dat
+This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift planetary radii.
+
 
 ## The ejection file Ejections<name>.dat
 In this file are listed the details of the ejected particles. An ejection happens if the distance of a particle to the central mass is greater than the outer truncation radius (Rcut) value specified in the 'defines.h' file, or smaller than the inner truncation radius (RcutSun) value.
