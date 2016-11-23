@@ -220,15 +220,41 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //Authors: Simon Grimm
 //April 2016
 // ****************************************
-__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, int N){
+__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dt){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	if(id < N){
+		double3 a = acck_d[id];
 		if(x4_d[id].w >= 0.0){
-			v4_d[id].x += acck_d[id].x;
-			v4_d[id].y += acck_d[id].y;
-			v4_d[id].z += acck_d[id].z;
+			v4_d[id].x += a.x;
+			v4_d[id].y += a.y;
+			v4_d[id].z += a.z;
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+		}
+		ab_d[id].x = a.x / dt;
+		ab_d[id].y = a.y / dt;
+		ab_d[id].z = a.z / dt;
+	}
+}
+
+// **************************************
+//This kernel performs the kick for a backup step..
+//It reuses the values from the kick in the original time step.
+
+//Authors: Simon Grimm
+//November 2016
+// ****************************************
+__global__ void kick32C_kernel(double4 *x4_d, double4 *v4_d, double3 *ab_d, int N, double dt){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	if(id < N){
+		double3 a = ab_d[id];
+		if(x4_d[id].w >= 0.0){
+			v4_d[id].x += (a.x * dt);
+			v4_d[id].y += (a.y * dt);
+			v4_d[id].z += (a.z * dt);;
 //printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 		}
 	}
@@ -277,9 +303,9 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 //NI is the number of bodies involved in a close encounter with body i 
 
 //Authors: Simon Grimm
-//August 2016
+//November 2016
 // ****************************************
-__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
+__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -304,9 +330,16 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
 		}
 		__syncthreads();
-		v4_d[id].x +=  __dmul_rn(a.x, dtksq) + acck_d[id].x;
-		v4_d[id].y +=  __dmul_rn(a.y, dtksq) + acck_d[id].y;
-		v4_d[id].z +=  __dmul_rn(a.z, dtksq) + acck_d[id].z;
+		double3 aa;
+		aa.x = __dmul_rn(a.x, dtksq) + acck_d[id].x;
+		aa.y = __dmul_rn(a.y, dtksq) + acck_d[id].y;
+		aa.z = __dmul_rn(a.z, dtksq) + acck_d[id].z;
+
+		ab_d[id] = aa;
+
+		v4_d[id].x += aa.x;
+		v4_d[id].y += aa.y;
+		v4_d[id].z += aa.z;
 //if(id == 25) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
 	}
 }

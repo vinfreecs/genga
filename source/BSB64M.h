@@ -14,7 +14,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass){
+__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, int Nst, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -37,8 +37,8 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__shared__ double3 dv_s[NN][8];
 
 	__shared__ int Ncol_s[1];
-	__shared__ int2 Colpairs_s[MaxColl];
-	__shared__ double Coltime_s[MaxColl];
+	__shared__ int2 Colpairs_s[def_MaxColl];
+	__shared__ double Coltime_s[def_MaxColl];
 	__shared__ int N2; 
 	__shared__ int sgnt;
 
@@ -68,7 +68,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__syncthreads();
 
 	double Msun = Msun_d[sstt];
-	double time = time_d[sstt];
+	double time = time_d[sstt] - dt_d[sstt] / dayUnit;
 	double dt = dt_d[sstt] * FGt;
 	double dtgr = 1.0;
 	dt1 = dt;
@@ -113,7 +113,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
                 a_s[idy + nb*NN].y = 0.0;
                 a_s[idy + nb*NN].z = 0.0;
 	}
-	if(idy < MaxColl){
+	if(idy < def_MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;
 		Coltime_s[idy] = 0.0;
@@ -379,7 +379,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					error_s[idy] = fmax(errorx, errorv);
 	
 					Ncol_s[0] = 0;
-					Coltime_s[0] = 10.0 * dt;
+					Coltime_s[0] = 10.0;
 				}
 	
 				if(idy < 32){
@@ -393,7 +393,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 
-				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < 1.0e-6){
+				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < def_dtmin){
 					if(idy < N2){
 						xt_s[idy].x = dx_s[idy][0].x;
 						xt_s[idy].y = dx_s[idy][0].y;
@@ -416,37 +416,52 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
 						double enct = 0.0;
-				//		double colltime = 0.0;
 						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1 * dtgr, ii, jj + l, &test, Colpairs_s, Coltime_s, Ncol_s[0], 0, enct, writeEncounters, writeEncountersRadius, 0.0);
 						//write Encounters to file
 						if(enct > 0.0){
 							int ne = atomicAdd(NWriteEnc_d, 1);
-							if(ne >= MaxWriteEnc -1) ne = MaxWriteEnc -1;
-							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + (t - dt)/dayUnit, spin_d);
+							if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + t / dayUnit, spin_d);
 						}
 					}
                                         __syncthreads();
 					if(idy == 0){
-						double Coltime = 10.0 * dt;
-						for(int c = 0; c < min(Ncol_s[0], MaxColl - 1); ++c){
+						double Coltime = 10.0;
+						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
-printf("Coltime %d %d %.10g %g %g %g\n", i, j, Coltime, t, dt1, (1.0 - Coltime) * dt1);
+printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
+printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1));
 					}
                                         __syncthreads();
-					if(Coltime_s[0] > 1.0 - def_CollisionPrecision/dt1){
+					if(Coltime_s[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1)){
 						if(idy == 0) {
 							for(int c = 0; c < Ncol_s[0]; ++c){
 								int i = Colpairs_s[c].x;
 								int j = Colpairs_s[c].y;
-								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
-								int nc = atomicAdd(Ncoll_d, 1);
-								if(nc >= MaxColl -1) nc = MaxColl -1;
-									collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + (t - dt)/dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+								if(noColl == 0){
+									if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
+										int nc = atomicAdd(Ncoll_d, 1);
+										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
+										collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+									}
 								}
+								if(Coltime_s[0] < 10.0 && (noColl == 1 || noColl == -1)){
+									for(int cc = 0; cc < min(Ncoll_d[0], def_MaxColl); ++cc){
+										int ci = (int)(Coll_d[cc * 25 + 1]);
+										int cj = (int)(Coll_d[cc * 25 + 13]);
+printf("cc %d %d | %d %d | %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, ci, cj, Ncoll_d[0]);
+										if(ci == Encpairs_d[(si * NmaxM) + i].x && cj == Encpairs_d[(si * NmaxM) + j].x && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+										if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
+printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
+										}
+									}
+									noColl = 2;
+								}
+
 							}
 						}
 
@@ -458,7 +473,7 @@ printf("Coltime %d %d %.10g %g %g %g\n", i, j, Coltime, t, dt1, (1.0 - Coltime) 
 						if(n < 7) dt1 *= 1.3;
 						if(sgnt * dt1 > sgnt *dt) dt1 = dt;
 						if(sgnt * (t+dt1) > sgnt *dt) dt1 = dt - t;
-						if(sgnt * dt1 < 1.0e-7) dt1 = sgnt * 1.0e-7;
+						if(sgnt * dt1 < def_dtmin) dt1 = sgnt * def_dtmin;
 
 						if(idy < N2){
 							x4_s[idy] = xt_s[idy];

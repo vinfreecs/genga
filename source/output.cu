@@ -333,7 +333,6 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular){
 //irregular = 3 means to print the last time step
 //irregular = 4 means Step Error output
 __host__ void Data::CoordinateOutput(int irregular){
-
 	if(Nst > 1 && timeStep < P.deltaT && irregular < 3){
 		int s = 0;
 		for(int st = 0; st < Nst; ++st){
@@ -710,7 +709,7 @@ __host__ void Data::LastInfo(){
 
 //This function prints details of the Collisions
 //stopAtCollision checks if one of the 2 colliding bodies is large enough to resolve the collision externally.
-__host__ int Data::printCollisions(){
+__host__ int Data::printCollisions(double &Coltime){
   
 	cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
 	FILE *collisionfile;
@@ -742,7 +741,8 @@ __host__ int Data::printCollisions(){
 		}
 	
 		if(Coll_h[nc * 25 + 2] >= def_StopMinMass && Coll_h[nc * 25 + 14] >= def_StopMinMass){
-			stopAtCollision = 1;			
+			stopAtCollision = 1;
+			Coltime = min(Coltime, Coll_h[nc * 25]);
 		}
 
 		fprintf(collisionfile, "\n");
@@ -755,11 +755,11 @@ __host__ int Data::printCollisions(){
 //This function prints details of the Encounters
 __host__ int Data::printEncounters(){
  
-	if(NWriteEnc_m[0] >= MaxWriteEnc){
+	if(NWriteEnc_m[0] >= def_MaxWriteEnc){
 		for(int st = 0; st < Nst; ++st){ 
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-			fprintf(GSF[st].logfile, "Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], MaxWriteEnc);
-			printf("Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], MaxWriteEnc);
+			fprintf(GSF[st].logfile, "Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], def_MaxWriteEnc);
+			printf("Error: Too many Encounters to write %d, allowed are %d\n", NWriteEnc_m[0], def_MaxWriteEnc);
 			fclose(GSF[st].logfile);
 		}
 		return 0;

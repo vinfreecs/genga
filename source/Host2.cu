@@ -1295,17 +1295,23 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		P.MinMass = 0.0;
 	}
 
+
+	if(def_StopAtCollision != 0 && Nst > 1){
+		printf("Error: def_StopAtCollision not available in multi simulation mode!\n");
+		return 0;
+	}
+
+	if(def_CollTshift < 1.0){
+		printf("Error: def_CollTshift not valid! %g\n", def_CollTshift);
+		return 0;
+	}
+
 	if(def_CollisionPrecision <= 0.0){
 		printf("Error: def_CollisionPrecision not valid! %g\n", def_CollisionPrecision);
 		return 0;
 	}
-	else{
 
-#if def_StopAtCollision == 1
-		P.ci = -1;
-#endif
-		return 1;
-	}
+	return 1;
 }
 
 
@@ -1731,7 +1737,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
-			fprintf(infofile, "Stop at close Encounters: %d\n", StopAtEncounter);
+			fprintf(infofile, "Stop at close Encounters: %d\n", def_StopAtEncounter);
+			fprintf(infofile, "Stop at close Encounter Radius: %g\n", def_StopAtEncounterRadius);
 			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
 			fprintf(infofile, "Stop collision minimum mass: %d\n", def_StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
@@ -1795,7 +1802,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Device number: %d\n", P.dev);                           // use only argument in simulation 0
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
 			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
-			fprintf(infofile, "MaxColl: %d\n", MaxColl);
+			fprintf(infofile, "MaxColl: %d\n", def_MaxColl);
 			fprintf(infofile, "pc: %g\n", def_pc);
 			fprintf(infofile, "cef: %g\n", def_cef);
 			fprintf(infofile, "Number of bodies: %d\n", N_h[st]);

@@ -510,7 +510,6 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 		a4_s[idy-Bl_2].z = 0.0;
 
 		__syncthreads();
-__syncthreads();
 		for(int i = 0; i < N; i += Bl_2){
 			if(idy-Bl_2 + i < N){
 				double4 x4j = x4_d[idy-Bl_2 + i];

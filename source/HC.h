@@ -30,11 +30,6 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 			Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
 		}
 	}
-	if(E == 3){
-		if(idy == 0 && idx == 0){
-			Nencpairs_d[0] = -1;	//This variable is needed in the Kick_kernel
-		}
-	}
 	__shared__  double a1_s[Bl];
 
 	a1_s[idy] = 0.0;
@@ -116,11 +111,12 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 //It works for the case of less than 65 bodies.
 //Each Kernel is launched with 3 blocks, one for each dimension.
 //
-//E = 1 : perform C Kick.
+//E = 0 : perform C Kick 
+//E = 1 : perform C Kick + reset Nencpairs2
 //E = 2 : perform C Kick + reset Nencpairs
 //
 //Authors: Simon Grimm
-//August 2016
+//November 2016
 //  *****************************************
 template < int Bl2, int E>
 __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, int UseForce){

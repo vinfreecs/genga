@@ -146,7 +146,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, collisiontime);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
-				if(E == 1 && Nenc >= MaxColl) Ni = MaxColl - 1;
+				if(E == 1 && Nenc >= def_MaxColl) Ni = def_MaxColl - 1;
 				if(x4i.w >= x4j.w){
 					encpairs[Ni].x = i;
 					encpairs[Ni].y = j;
@@ -524,7 +524,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
-#if StopAtEncounter > 0 
+#if def_StopAtEncounter > 0 
 			if(enccount == 1){
 				N_d[st] = 0;
 				StopFlag_d[0] = 1;

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.56
+#define Version 3.57
 
 //Default parameter values
 #define def_TimeStep 6
@@ -62,10 +62,11 @@
 
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
-#define MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
-#define MaxWriteEnc 128			//Maximum number of Encounter per time step which can be written to file
+#define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
+#define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
-#define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer 
+#define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
+#define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
 #define def_Nfragments 0		//Additional array size for debris particles
 #define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
 #define def_MatrixMaxSize 16384		//slice Encounter matrix to reduce memory usage
@@ -80,13 +81,14 @@
 #define IgnoreLockFile 1
 
 //stop Simulation at close encounters
-#define StopAtEncounter 0
-#define StopAtEncounterRadius 1.0
+#define def_StopAtEncounter 0
+#define def_StopAtEncounterRadius 1.0
 
-
-#define def_StopAtCollision 0
-#define def_StopMinMass 0.0
-#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision in days
+//Collision Arguments
+#define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
+#define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
+#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
+#define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details

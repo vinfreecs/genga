@@ -49,6 +49,12 @@ public:
 	long long *GridaicountS_h;
 	long long *GridaicountT_h;
 
+	//arrays for backup
+	double4 *x4b_d;
+	double4 *v4b_d;
+	double3 *ab_d;
+	int *indexb_d;
+
 	//arrays for BSA
 	double4 *xt_d;
 	double4 *vt_d;
@@ -138,7 +144,7 @@ public:
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
 	__host__ void GridaeOutput();
-	__host__ int printCollisions();
+	__host__ int printCollisions(double &);
 	__host__ int printEncounters();
 	__host__ int printFragments(int);
 	__host__ int printRotation();
@@ -165,6 +171,8 @@ public:
 	__host__ void firstKick_small();
 	__host__ void firstKick_M(long long);
 
+	__host__ int bStep(int);
+
 	__host__ int step();
 	__host__ int step_16();
 	__host__ int step_32();
@@ -185,12 +193,12 @@ public:
 	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
-	__host__ void BSCall(int, int, double);
-	__host__ void BSsmallCall(int, double);
-	__host__ void BSBMCall(int);
+	__host__ void BSCall(int, double, int);
+	__host__ void BSsmallCall(int, double, int);
+	__host__ void BSBMCall(int, int);
 
-	__host__ void BSACall(int, int, int, int, double, double);
-	__host__ void BSAsmallCall(int, int, int, int, double, double);
+	__host__ void BSACall(int, int, int, int, double, double, int);
+	__host__ void BSAsmallCall(int, int, int, int, double, double, int);
 
 	//gas
 	__host__ void GasAlloc();
