@@ -162,7 +162,7 @@ __host__ int Host::DeviceInfo(){
 
 	for(int i = 0; i < devCount; ++i){
 		cudaGetDeviceProperties(&devProp, i);
-		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels %d\n",  devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory, devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels);
+		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels %d, regsPerBlock %d\n",  devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory, devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels, devProp.regsPerBlock);
 		if(!devProp.canMapHostMemory) {
 			fprintf(masterfile, "Device %d cannot map host memory!\n", i);
 			return 0;
@@ -1740,7 +1740,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Stop at close Encounters: %d\n", def_StopAtEncounter);
 			fprintf(infofile, "Stop at close Encounter Radius: %g\n", def_StopAtEncounterRadius);
 			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
-			fprintf(infofile, "Stop collision minimum mass: %d\n", def_StopMinMass);
+			fprintf(infofile, "Stop collision minimum mass: %g\n", def_StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0

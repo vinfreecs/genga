@@ -394,7 +394,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-//if(id == 573) printf("FGA %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, xold_d[id].x, xold_d[id].y, xold_d[id].z, vold_d[id].x, vold_d[id].y, vold_d[id].z);
+//if(id == 1) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
@@ -408,7 +408,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
-//if(id == 573) printf("FGB %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, xold_d[id].x, xold_d[id].y, xold_d[id].z, vold_d[id].x, vold_d[id].y, vold_d[id].z);
+//if(id == 1) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 #if G3 > 0
 		groupIndex_d[id] = -1;
 #endif

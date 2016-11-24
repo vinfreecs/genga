@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double dt, double Msun, double *U_d, int st, int NT, int NencMax, int *Ncoll_d, double *Coll_d, double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, int writeEncounters, double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int noColl){
+__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -661,7 +661,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, int UseForce, double MinMass, int noColl){
+__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -683,7 +683,6 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 	double3 scalev;
 
 	double errorx, errorv;
-	double test;
 
 	volatile int si = Encpairs2_d[ (st+2) * NT + idx].y;
 	volatile int N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
@@ -736,6 +735,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					a.z = 0.0;
 					for(int ii = 0; ii < Ne; ++ii){
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
+						double test;
 //if(tt == 0 && ff == 0 && n == 1) printf("BS2 %d %d %d %d %d %d %d %d | %d %d %d %.40g %g %g\n", idx, idy, st, idi, index_d[idi], j, N2, Ne, tt, ff, n, xold_d[idi].x, t, dt1);
 						accEnc(xold_d[idi], xold_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
 					}
@@ -773,6 +773,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					a.z = 0.0;
 					for(int ii = 0; ii < Ne; ++ii){
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
+						double test;
 						accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
 					}
 					if(Ne >= 0){
@@ -813,6 +814,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						a.z = 0.0;
 						for(int ii = 0; ii < Ne; ++ii){
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
+							double test;
 							accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
 						}
 						if(Ne >= 0){
@@ -847,6 +849,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						a.z = 0.0;
 						for(int ii = 0; ii < Ne; ++ii){
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
+							double test;
 							accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
 						}
 						if(Ne >= 0){
@@ -882,6 +885,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					a.z = 0.0;
 					for(int ii = 0; ii < Ne; ++ii){
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
+						double test;
 						accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
 					}
 					if(Ne >= 0){
@@ -901,8 +905,8 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						vp_d[idi].y += (dt2 * a.y);
 						vp_d[idi].z += (dt2 * a.z);
 
-//if(idi == 3159) printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d %d %d\n", idi, xp_d[idi].x, xp_d[idi].y, xp_d[idi].z, vp_d[idi].x, vp_d[idi].y, vp_d[idi].z, tt, ff, n);
-//if(idi == 3159) printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d %d %d\n", idi, xt_d[idi].x, xt_d[idi].y, xt_d[idi].z, vt_d[idi].x, vt_d[idi].y, vt_d[idi].z, tt, ff, n);
+//if(idi == 1) printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d %d %d\n", idi, xp_d[idi].x, xp_d[idi].y, xp_d[idi].z, vp_d[idi].x, vp_d[idi].y, vp_d[idi].z, tt, ff, n);
+//if(idi == 1) printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d %d %d\n", idi, xt_d[idi].x, xt_d[idi].y, xt_d[idi].z, vt_d[idi].x, vt_d[idi].y, vt_d[idi].z, tt, ff, n);
 
 						dxj.x = 0.5 * (xt_d[idi].x + xp_d[idi].x);
 						dxj.y = 0.5 * (xt_d[idi].y + xp_d[idi].y);
@@ -914,7 +918,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 
 						dx_d[(n - 1) * NT + idi] = dxj;
 						dv_d[(n - 1) * NT + idi] = dvj;
-
+//if(idi == 1) printf("dxj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z);
 
 						double ddt0 = 0.25 / (n*n);
 						for(int j = n-1; j >= 1; --j){
@@ -923,13 +927,13 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							double t1 = t0 * 0.25 / ((j+1)*(j+1));
 							double t2 = t0 * ddt0;
 
-							dxj.x = (t1 * dxj.x) - (t2 * dx_d[(j - 1) * NT + idi].x);
-							dxj.y = (t1 * dxj.y) - (t2 * dx_d[(j - 1) * NT + idi].y);
-							dxj.z = (t1 * dxj.z) - (t2 * dx_d[(j - 1) * NT + idi].z);
+							dxj.x = __dmul_rn(t1, dxj.x) - __dmul_rn(t2, dx_d[(j - 1) * NT + idi].x);
+							dxj.y = __dmul_rn(t1, dxj.y) - __dmul_rn(t2, dx_d[(j - 1) * NT + idi].y);
+							dxj.z = __dmul_rn(t1, dxj.z) - __dmul_rn(t2, dx_d[(j - 1) * NT + idi].z);
 
-							dvj.x = (t1 * dvj.x) - (t2 * dv_d[(j - 1) * NT + idi].x);
-							dvj.y = (t1 * dvj.y) - (t2 * dv_d[(j - 1) * NT + idi].y);
-							dvj.z = (t1 * dvj.z) - (t2 * dv_d[(j - 1) * NT + idi].z);
+							dvj.x = __dmul_rn(t1, dvj.x) - __dmul_rn(t2, dv_d[(j - 1) * NT + idi].x);
+							dvj.y = __dmul_rn(t1, dvj.y) - __dmul_rn(t2, dv_d[(j - 1) * NT + idi].y);
+							dvj.z = __dmul_rn(t1, dvj.z) - __dmul_rn(t2, dv_d[(j - 1) * NT + idi].z);
 
 
 							dx_d[(j - 1) * NT + idi] = dxj;
@@ -956,8 +960,8 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						errorx = fmax(errorx, dxj.z * dxj.z * scalex.z);
 						errorv = fmax(errorv, dvj.z * dvj.z * scalev.z);
 
-//if(idi == 3159) printf("dx %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z);
-//if(idi == 3159) printf("scale %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z);
+//if(idi == 1) printf("dx %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z);
+//if(idi == 1) printf("scale %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z);
 						errorx = fmax(errorx, errorv);
 //if(idy == 0) printf("error %d %.20g %d %d %d %g %g\n", idi, errorx, n, tt, ff, t, dt1);
 						if(errorx >= def_tol * def_tol){
@@ -1020,7 +1024,6 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						}
 						else dtgr = 1.0;
 						for(int ii = 0; ii < Ne; ++ii){
-					//		double colltime = 0.0;
 							double delta = 100.0;
 							double enct = 100.0;
 							double colt = 100.0;
@@ -1033,7 +1036,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							if(delta < rcrit*rcrit){
 								int Ni = atomicAdd(&Ncol_s[0], 1);
 								if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
-					//printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %d\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, collisiontime, Ni);
+//printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, colt, Ni);
 								if(xt_d[idi].w >= xt_d[j].w){
 									Colpairs_s[Ni].x = idi;
 									Colpairs_s[Ni].y = j;
@@ -1099,6 +1102,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 									if(xt_d[i].w >= 0 && xt_d[j].w >= 0){
 										int nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
+										double test;
 										collide(xt_d, vt_d, i, j, i, j, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, rcritv_d, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 									}
 								}
@@ -1135,7 +1139,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							if(Ne >= 0){
 								xold_d[idi] = xt_d[idi];
 								vold_d[idi] = vt_d[idi];
-//if(idi == 4077) printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d %d\n", idy, idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w, t, dt1, tt, ff, n);
+//if(idi == 1) printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d %d\n", idy, idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w, t, dt1, tt, ff, n);
 							}
 						}
 					}
@@ -1174,7 +1178,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 
 
 template <int E>
-__global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double4 *vA_d, double4 *xB_d, double4 *vB_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, double *dtgr_d, double Msun, int st, int NT, int NencMax, int *BSAstop_d,double *Coltime_d, int n, double MinMass, double dt, int noColl){
+__global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double4 *vA_d, double4 *xB_d, double4 *vB_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, double *dtgr_d, const double Msun, const int st, const int NT, const int NencMax, int *BSAstop_d,double *Coltime_d, const int n, const double MinMass, const double dt, int noColl){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int idx = blockIdx.y;
@@ -1256,7 +1260,7 @@ __global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double
 
 			xB_d[idi] = x4B;
 			vB_d[idi] = v4B;
-//if(idi == 573) printf("xB %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xB_d[idi].x, xB_d[idi].y, xB_d[idi].z, vB_d[idi].x, vB_d[idi].y, vB_d[idi].z, n);
+//if(idi == 1 && E == 0 && n == 1) printf("xB %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xB_d[idi].x, xB_d[idi].y, xB_d[idi].z, vB_d[idi].x, vB_d[idi].y, vB_d[idi].z, n);
 		}		
 	}
 	if(E == 0 /*&& n == 1*/ && id == 0){
@@ -1265,7 +1269,7 @@ __global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double
 	}
 }
 
-__global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double3 *dx_d, double3 *dv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int st, int NT, int n, int f){
+__global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double3 *dx_d, double3 *dv_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int st, const int NT, const int n, const int f){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int idx = blockIdx.y;
 
@@ -1293,8 +1297,8 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 			scalev.y = 1.0 / (v.y * v.y + 1.0e-20);
 			scalev.z = 1.0 / (v.z * v.z + 1.0e-20);
 
-//if(idi == 573) printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xp_d[idi].x, xp_d[idi].y, xp_d[idi].z, vp_d[idi].x, vp_d[idi].y, vp_d[idi].z, n);
-//if(idi == 573) printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xt_d[idi].x, xt_d[idi].y, xt_d[idi].z, vt_d[idi].x, vt_d[idi].y, vt_d[idi].z, n);
+//if(idi == 1) printf("xp %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xp_d[idi].x, xp_d[idi].y, xp_d[idi].z, vp_d[idi].x, vp_d[idi].y, vp_d[idi].z, n);
+//if(idi == 1) printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, xt_d[idi].x, xt_d[idi].y, xt_d[idi].z, vt_d[idi].x, vt_d[idi].y, vt_d[idi].z, n);
 
 
 			dxj.x = 0.5 * (xt_d[idi].x + xp_d[idi].x);
@@ -1309,7 +1313,7 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 			dv_d[(n - 1) * NT + idi].y = dvj.y;
 			dvj.z = 0.5 * (vt_d[idi].z + vp_d[idi].z);
 			dv_d[(n - 1) * NT + idi].z = dvj.z;
-//if(idi == 3534) printf("dxj %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
+//if(idi == 1) printf("dxj %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
 
 			double ddt0 = 0.25 / (n * n);
 			double dj1;
@@ -1321,22 +1325,22 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 				double t2 = t0 * ddt0;
 				
 				dj1 = dx_d[(j - 1) * NT + idi].x;
-				dxj.x = t1 * dxj.x - t2 * dj1;
+				dxj.x = __dmul_rn(t1, dxj.x) - __dmul_rn(t2, dj1);
 				dx_d[(j - 1) * NT + idi].x = dxj.x;
 				dj1 = dx_d[(j - 1) * NT + idi].y;
-				dxj.y = t1 * dxj.y - t2 * dj1;
+				dxj.y = __dmul_rn(t1, dxj.y) - __dmul_rn(t2, dj1);
 				dx_d[(j - 1) * NT + idi].y = dxj.y;
 				dj1 = dx_d[(j - 1) * NT + idi].z;
-				dxj.z = t1 * dxj.z - t2 * dj1;
+				dxj.z = __dmul_rn(t1, dxj.z) - __dmul_rn(t2, dj1);
 				dx_d[(j - 1) * NT + idi].z = dxj.z;
 				dj1 = dv_d[(j - 1) * NT + idi].x;
-				dvj.x = t1 * dvj.x - t2 * dj1;
+				dvj.x = __dmul_rn(t1, dvj.x) - __dmul_rn(t2, dj1);
 				dv_d[(j - 1) * NT + idi].x = dvj.x;
 				dj1 = dv_d[(j - 1) * NT + idi].y;
-				dvj.y = t1 * dvj.y - t2 * dj1;
+				dvj.y = __dmul_rn(t1, dvj.y) - __dmul_rn(t2, dj1);
 				dv_d[(j - 1) * NT + idi].y = dvj.y;
 				dj1 = dv_d[(j - 1) * NT + idi].z;
-				dvj.z = t1 * dvj.z - t2 * dj1;
+				dvj.z = __dmul_rn(t1, dvj.z) - __dmul_rn(t2, dj1);
 				dv_d[(j - 1) * NT + idi].z = dvj.z;
 			}
 			double error = dxj.x * dxj.x * scalex.x;
@@ -1345,8 +1349,8 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 			error = fmax(error, dvj.x * dvj.x * scalev.x);
 			error = fmax(error, dvj.y * dvj.y * scalev.y);
 			error = fmax(error, dvj.z * dvj.z * scalev.z);
-//if(idi == 3534) printf("dx %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
-//if(idi == 3534) printf("scale %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z, n);
+//if(idi == 1) printf("dx %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
+//if(idi == 1) printf("scale %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z, n);
 			if(error >= def_tol * def_tol){
 				//dont accept BS step
 				Encpairs_d[si + 5 * NT].y = 1; //Accept
@@ -1357,7 +1361,7 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 }
 
 
-__global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, double3 *dv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, int st, int NT, int n){
+__global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, double3 *dv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, const int st, const int NT, const int n){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int idx = blockIdx.y;
@@ -1408,7 +1412,7 @@ __global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, dou
 }
 
 
-__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, double dt, double Msun, double *U_d, int st, int NT, int n, int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, int noColl){
+__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, int noColl){
 
 	int idx = blockIdx.y;	
 
@@ -1572,7 +1576,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 
 						xold_d[idi] = xt_d[idi];
 						vold_d[idi] = vt_d[idi];
-//if(idi == 0 || idi == 573) printf("update %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d\n", idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, t1 / dayUnit, dt1 / dayUnit, n);
+//if(idi == 1) printf("update %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d\n", idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, t1 / dayUnit, dt1 / dayUnit, n);
 						dt1_d[idi] = dt1;
 						t1_d[idi] = t1;
 						Encpairs_d[idi + 6 * NT].y = -1;
@@ -1604,7 +1608,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 	}
 }
 
-__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, double dt, int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, int UseForce){
+__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, const int UseForce){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1626,7 +1630,7 @@ __global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, double dt, int N, 
 	}
 }
 
-__host__ void Data::BSACall(int st, int b, int Nm, int si, double t, double FGt, int noColl){
+__host__ void Data::BSACall(const int st, const int b, const int Nm, const int si, const double t, const double FGt, const int noColl){
 
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;
@@ -1660,7 +1664,7 @@ __host__ void Data::BSACall(int st, int b, int Nm, int si, double t, double FGt,
 	}
 }
 
-__host__ void Data::BSAsmallCall(int st, int b, int Nm, int si, double t, double FGt, int noColl){
+__host__ void Data::BSAsmallCall(const int st, const int b, const int Nm, const int si, const double t, const double FGt, const int noColl){
 
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;

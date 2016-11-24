@@ -25,7 +25,7 @@
 //
 // ****************************************
 template<int E>
-__device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, int N, double &time, int writeEncounters, double writeEncountersRadius, double MinMass){
+__device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, const int N, double &time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
 
 //if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.40g %.40g %.40g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 //if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
@@ -204,7 +204,7 @@ __device__ int encounter(double4 x4i, double4 v4i, double4 x4oldi, double4 v4old
 	else return 0;
 }
 template<int E>
-__device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcriti, double rcritj, double rcritvi, double rcritvj, double dt, int i, int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, int writeEncounters, double writeEncountersRadius, double MinMass){
+__device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, const int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
 
 //if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j - N, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 //if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
@@ -382,41 +382,41 @@ __device__ int encounterb(double4 x4i, double4 v4i, double4 x4oldi, double4 v4ol
 	}
 	else return 0;
 }
-__device__ double encounter1(double4 x4i, double4 v4i, double4 x4oldi, double4 v4oldi, double4 x4j, double4 v4j, double4 x4oldj, double4 v4oldj, double rcrit, double dt, int i, int j, double &enct, double &colt){
+__device__ double encounter1(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcrit, const double dt, const int i, const int j, double &enct, double &colt){
 
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
-	double delta = 100.0;
 	if(i != j && (x4i.w > 0.0 || x4j.w > 0.0) && x4i.w >= 0.0 && x4j.w >= 0.0){
 
 		double d0, d1, dd0, dd1;
-		double3 r1, r0;
-		double3 rd0, rd1;
+		double3 r;
+		double3 rd;
 
-		r1.x = x4j.x - x4i.x;
-		r1.y = x4j.y - x4i.y;
-		r1.z = x4j.z - x4i.z;
-		d1 = r1.x*r1.x + r1.y*r1.y+ r1.z*r1.z;
+		r.x = x4j.x - x4i.x;
+		r.y = x4j.y - x4i.y;
+		r.z = x4j.z - x4i.z;
+		d1 = r.x*r.x + r.y*r.y+ r.z*r.z;
 
-		r0.x = x4oldj.x - x4oldi.x;
-		r0.y = x4oldj.y - x4oldi.y;
-		r0.z = x4oldj.z - x4oldi.z;
-		d0 = r0.x*r0.x + r0.y*r0.y+ r0.z*r0.z;
+		rd.x = v4j.x - v4i.x;
+		rd.y = v4j.y - v4i.y;
+		rd.z = v4j.z - v4i.z;
+
+		dd1 = (r.x*rd.x + r.y*rd.y+ r.z*rd.z) * 2.0;
+
+		r.x = x4oldj.x - x4oldi.x;
+		r.y = x4oldj.y - x4oldi.y;
+		r.z = x4oldj.z - x4oldi.z;
+		d0 = r.x*r.x + r.y*r.y+ r.z*r.z;
 			
-		rd0.x = v4oldj.x - v4oldi.x;
-		rd0.y = v4oldj.y - v4oldi.y;
-		rd0.z = v4oldj.z - v4oldi.z;
+		rd.x = v4oldj.x - v4oldi.x;
+		rd.y = v4oldj.y - v4oldi.y;
+		rd.z = v4oldj.z - v4oldi.z;
 
-		rd1.x = v4j.x - v4i.x;
-		rd1.y = v4j.y - v4i.y;
-		rd1.z = v4j.z - v4i.z;
-
-		dd0 = (r0.x*rd0.x + r0.y*rd0.y+ r0.z*rd0.z) * 2.0;
-		dd1 = (r1.x*rd1.x + r1.y*rd1.y+ r1.z*rd1.z) * 2.0;
+		dd0 = (r.x*rd.x + r.y*rd.y+ r.z*rd.z) * 2.0;
 
 		double t1, t2;
 		t1 = 6.0 *(d0-d1); 
-		double a = t1 + 3.0*dt*(dd0+dd1);
-		double b = -t1 - 2.0*dt*(2.0*dd0+ dd1);
+		double a = t1 + 3.0 * dt * (dd0 + dd1);
+		double b = -t1 - 2.0 * dt * (2.0 * dd0 + dd1);
 		double c = dt*dd0;
 
 		double sgnb = 1.0;
@@ -448,13 +448,14 @@ __device__ double encounter1(double4 x4i, double4 v4i, double4 x4oldi, double4 v
 			}
 		}
 //printf("dt %d %d %g %g\n", i, j, t1, t2);
+		double delta = 100.0;
 		if(0 <= t1 && t1 <= 1){
 			double t12 = t1*t1;
 			double tt1 = 1.0-t1;
 			double tt12 = tt1*tt1;
 			double delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*dt*dd0 - t12*tt1*dt*dd1;
 			delta = fmin(delta, delta1);
-enct = t1;
+			enct = t1;
 		}
 		if(0 <= t2 && t2 <= 1){
 			double t22 = t2*t2;
@@ -462,7 +463,7 @@ enct = t1;
 			double tt22 = tt2*tt2;
 			double delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*dt*dd0 - t22*tt2*dt*dd1;
 			delta = fmin(delta, delta2);
-enct = t2;
+			enct = t2;
 		}
 		if(delta < 0) delta = 0.0;
 	
@@ -477,9 +478,10 @@ enct = t2;
 				colt = (rcrit*rcrit - d0) / (d1 - d0);
 			}
 		}
+		return delta;
 
 	}
-	return delta;
+	else return 100.0;
 }
 
 // **************************************
@@ -494,7 +496,7 @@ enct = t2;
 //
 // ****************************************
 template < int Nmax >
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, int si, double FGt, int Nst, double* time_d, int writeEncounters, double writeEncountersRadius, int *StopFlag_d, double MinMass){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int writeEncounters, const double writeEncountersRadius, int *StopFlag_d, const double MinMass){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	int id = idx * blockDim.x + idy;
@@ -561,7 +563,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, int si, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double time, int writeEncounters, double writeEncountersRadius, double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -575,8 +577,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 //printf("%d %d %d\n", ii, jj, id);
 	}
 	__syncthreads();
-	int enccount = 0;
-	
+	int enccount = 0;	
 	if(id < *Nencpairs_d){
 #if G3 == 0
 		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, NULL, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius, MinMass);
@@ -616,7 +617,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 //March  2016
 // ****************************************
 template <int bn, int Bl, int E>
-__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, int NencMax, int *groupIndex_d, int NT, int N){
+__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, int *groupIndex_d, const int NT, const int N){
 
 	int idy = threadIdx.x;
 
@@ -896,7 +897,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 
 
 template <int Bl>
-__global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *NBS_d, int *N_d, int Nst){
+__global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *NBS_d, int *N_d, const int Nst){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -1008,7 +1009,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	}
 }
 
-__global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int *NBS_d, int *N_d, int Nst){
+__global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int *NBS_d, int *N_d, const int Nst){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
