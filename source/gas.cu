@@ -456,7 +456,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			else{
 				Soft = v4.w;
 			}
-			v_kep = sqrt(Msun * ksq / r1 - a_r * r1); 
+			v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
 			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
 			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
@@ -486,7 +486,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 
 			double Mtot = Msun + m;
-			double Etot = 0.5 * vsq - ksq * Mtot / r;
+			double Etot = 0.5 * vsq - def_ksq * Mtot / r;
 			double3 L;
 			L.x = x4.y * v4.z - x4.z * v4.y;
 			L.y = x4.z * v4.x - x4.x * v4.z;
@@ -494,6 +494,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 			double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
 			double esq = 1.0 + 2.0 * Etot * Lsq /(Mtot * Mtot);
+			if(esq < 0.0) esq = 0.0;
 			double isq = 1.0 - L.z * L.z / Lsq;
 			double a = -0.5/Etot;
 
@@ -627,7 +628,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 		if(m == 0.0) m = MgasSmall;
 		if(m < Mgiant && Sigma > 0.0){
 		
-			v_kep = sqrt(Msun * ksq / r1); 
+			v_kep = sqrt(Msun * def_ksq / r1); 
 			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
 			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
@@ -657,16 +658,17 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 
 			double Mtot = Msun + m;
-			double Etot = 0.5 * vsq - ksq * Mtot / r;
+			double Etot = 0.5 * vsq - def_ksq * Mtot / r;
 			double3 L;
 			L.x = x4.y * v4.z - x4.z * v4.y;
 			L.y = x4.z * v4.x - x4.x * v4.z;
 			L.z = x4.x * v4.y - x4.y * v4.x;
 
 			double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
-			double esq = 1.0 + 2.0 * Etot * Lsq /(Mtot * Mtot);
+			double esq = 1.0 + 2.0 * Etot * Lsq / (Mtot * Mtot);
+			if(esq < 0.0) esq = 0.0;
 			double isq = 1.0 - L.z * L.z / Lsq;
-			double a = -0.5/Etot;
+			double a = -0.5 / Etot;
 
 			double r1h2 = r1 * r1 / (h * h);
 			
@@ -699,7 +701,6 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 
 	if(id < N){
 		v4_d[id] = v4;
-	
 		if(x4.w > 0.0){
 			U = 0.5 * x4.w * (v2 - v2B);
 			Energy_d[id] += U;

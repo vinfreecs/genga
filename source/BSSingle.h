@@ -41,8 +41,8 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	volatile int f;
 	double t; t = 0.0;
 
-	const double ksqMsun = ksq * Msun;
-
+	const double ksqMsun = def_ksq * Msun;
+//printf("BSSingle %d\n", id);
 	xt.x = 0.0;
 	xt.y = 0.0;
 	xt.z = 0.0;
@@ -178,7 +178,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 
 					error = fmax(errorx, errorv);	
 
-					if(error <= def_tol * def_tol || sgnt * dt1 < 0.00001){
+					if(error <= def_tol * def_tol || sgnt * dt1 < def_dtmin){
 
 						xt.x = dx[0].x; 
 						xt.y = dx[0].y;
@@ -204,7 +204,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 						if(n < 7) dt1 *= 1.3;
 						if(sgnt * dt1 > sgnt * dt) dt1 = dt;
 						if(sgnt * (t + dt1) > sgnt *dt) dt1 = dt - t;
-						if(sgnt * dt1 < 0.0000001) dt1 = sgnt * 0.0000001;
+						if(sgnt * dt1 < def_dtmin) dt1 = sgnt * def_dtmin;
 							
 						x4 = xt;
 						v4 = vt;

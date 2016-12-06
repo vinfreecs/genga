@@ -200,7 +200,6 @@ __host__ void Host::Halloc(){
 	RcutSun_h = (double*)malloc(Nst*sizeof(double));
 	time_h = (double*)malloc(Nst*sizeof(double));
 	dt_h = (double*)malloc(Nst*sizeof(double));
-	dtksq_h = (double*)malloc(Nst*sizeof(double));
 	delta_h = (long long*)malloc(Nst*sizeof(long long));
 
 	//Initialize parameters with default values
@@ -348,7 +347,6 @@ __host__ void Host::Halloc(){
 		RcutSun_h[st] = def_RcutSun;
 		time_h[st] = 0.0;
 		dt_h[st] = 0.0;
-		dtksq_h[st] = 0.0;
 		delta_h[st] = def_IntegrationSteps;
 
 		NB[st] = N_h[st];
@@ -1347,7 +1345,6 @@ __host__ int Host::Param(int argc, char*argv[]){
 			P.UseTestParticles = 0;
 		}
 		dt_h[st] = idt_h[st] * dayUnit;
-		dtksq_h[st] = dt_h[st] * ksq;
 	}
 	if(P.ei > P.ci && P.ci > 0){
 		P.ei = P.ci;
@@ -1688,7 +1685,6 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &RcutSun_d,Nst*sizeof(double));
 	cudaMalloc((void **) &time_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dt_d,Nst*sizeof(double));
-	cudaMalloc((void **) &dtksq_d,Nst*sizeof(double));
 	cudaMalloc((void **) &delta_d,Nst*sizeof(long long));
 
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1703,7 +1699,6 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(delta_d, delta_h, Nst*sizeof(long long), cudaMemcpyHostToDevice);
 }
 
@@ -2209,7 +2204,6 @@ __host__ int Host::freeHost(){
 	free(RcutSun_h);
 	free(time_h);
 	free(dt_h);
-	free(dtksq_h);
 	free(delta_h);
 	
 	cudaFree(n1_d);
@@ -2225,7 +2219,6 @@ __host__ int Host::freeHost(){
 	cudaFree(RcutSun_d);
 	cudaFree(time_d);
 	cudaFree(dt_d);
-	cudaFree(dtksq_d);
 	cudaFree(delta_d);
 	
 	error = cudaGetLastError();

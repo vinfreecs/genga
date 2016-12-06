@@ -78,7 +78,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 //printf("BS2 %d %d %d %d %d %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne);
 		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
-			double mu = ksq * Msun;
+			double mu = def_ksq * Msun;
 			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
 			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
 			double ir = 1.0/sqrt(rsq);
@@ -104,7 +104,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	}
 
 	__syncthreads();
-	for(int tt = 0; tt < 1000; ++tt){
+	for(int tt = 0; tt < 10000; ++tt){
 		__syncthreads();
 
 		if(idy < N2){
@@ -129,7 +129,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		}
 		__syncthreads();
 		if(Ne >= 0){
-			accEncSun(x4_s[idy], a0, ksq * Msun * dtgr);
+			accEncSun(x4_s[idy], a0, def_ksq * Msun * dtgr);
 		}
 
 		volatile int f = 1;
@@ -168,7 +168,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				}
 				__syncthreads();
 				if(Ne >= 0){
-					accEncSun(xp_s[idy], a, ksq * Msun * dtgr);
+					accEncSun(xp_s[idy], a, def_ksq * Msun * dtgr);
 
 					xt_s[idy].x = x4_s[idy].x + (dt22 * dtgr * vp.x);
 					xt_s[idy].y = x4_s[idy].y + (dt22 * dtgr * vp.y);
@@ -197,7 +197,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					}
 					__syncthreads();
 					if(Ne >= 0){
-						accEncSun(xt_s[idy], a, ksq * Msun * dtgr);
+						accEncSun(xt_s[idy], a, def_ksq * Msun * dtgr);
 
 						xp_s[idy].x += (dt22 * dtgr * vt.x);
 						xp_s[idy].y += (dt22 * dtgr * vt.y);
@@ -222,7 +222,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					}
 					__syncthreads();
 					if(Ne >= 0){
-						accEncSun(xp_s[idy], a, ksq * Msun * dtgr);
+						accEncSun(xp_s[idy], a, def_ksq * Msun * dtgr);
 
 						xt_s[idy].x += (dt22 * dtgr * vp.x);
 						xt_s[idy].y += (dt22 * dtgr * vp.y);
@@ -247,7 +247,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				}
 				__syncthreads();
 				if(Ne >= 0){
-					accEncSun(xt_s[idy], a, ksq * Msun * dtgr);
+					accEncSun(xt_s[idy], a, def_ksq * Msun * dtgr);
 
 					xp_s[idy].x += (dt2 * dtgr * vt.x);
 					xp_s[idy].y += (dt2 * dtgr * vt.y);
@@ -700,7 +700,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 		if(Ne >= 0){
 			if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
 				double c2 = def_cm * def_cm;
-				double mu = ksq * Msun;
+				double mu = def_ksq * Msun;
 				double rsq = xold_d[idi].x * xold_d[idi].x + xold_d[idi].y * xold_d[idi].y + xold_d[idi].z * xold_d[idi].z;
 				double vsq = vold_d[idi].x * vold_d[idi].x + vold_d[idi].y * vold_d[idi].y + vold_d[idi].z * vold_d[idi].z;
 				double ir = 1.0/sqrt(rsq);
@@ -712,7 +712,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 	}
 
 
-	for(int tt = 0; tt < 1000; ++tt){
+	for(int tt = 0; tt < 10000; ++tt){
 		volatile int f = 1;
 		__syncthreads();
 		for(int ff = 0; ff < 1e6; ++ff){
@@ -746,7 +746,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						}
 						else dtgr = 1.0;
 						
-						accEncSun(xold_d[idi], a, ksq * Msun * dtgr);
+						accEncSun(xold_d[idi], a, def_ksq * Msun * dtgr);
 						
 						xp_d[idi].x = xold_d[idi].x + (dt2 * dtgr * vold_d[idi].x);
 						xp_d[idi].y = xold_d[idi].y + (dt2 * dtgr * vold_d[idi].y);
@@ -783,7 +783,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						}
 						else dtgr = 1.0;
 
-						accEncSun(xp_d[idi], a, ksq * Msun * dtgr);
+						accEncSun(xp_d[idi], a, def_ksq * Msun * dtgr);
 						
 						xt_d[idi].x = xold_d[idi].x + (dt22 * dtgr * vp_d[idi].x);
 						xt_d[idi].y = xold_d[idi].y + (dt22 * dtgr * vp_d[idi].y);
@@ -824,7 +824,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							}
 							else dtgr = 1.0;
 
-							accEncSun(xt_d[idi], a, ksq * Msun * dtgr);
+							accEncSun(xt_d[idi], a, def_ksq * Msun * dtgr);
 							
 							xp_d[idi].x += (dt22 * dtgr * vt_d[idi].x);
 							xp_d[idi].y += (dt22 * dtgr * vt_d[idi].y);
@@ -859,7 +859,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							}
 							else dtgr = 1.0;
 
-							accEncSun(xp_d[idi], a, ksq * Msun * dtgr);
+							accEncSun(xp_d[idi], a, def_ksq * Msun * dtgr);
 							
 							xt_d[idi].x += (dt22 * dtgr * vp_d[idi].x);
 							xt_d[idi].y += (dt22 * dtgr * vp_d[idi].y);
@@ -895,7 +895,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						}
 						else dtgr = 1.0;
 
-						accEncSun(xt_d[idi], a, ksq * Msun * dtgr);
+						accEncSun(xt_d[idi], a, def_ksq * Msun * dtgr);
 						
 						xp_d[idi].x += (dt2 * dtgr * vt_d[idi].x);
 						xp_d[idi].y += (dt2 * dtgr * vt_d[idi].y);
@@ -1216,7 +1216,7 @@ __global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double
 				accEnc(xAi, xAj, a, rcritvi, rcritvj, test, idi, j, MinMass);		
 		
 			}	
-			accEncSun(xAi, a, ksq * Msun * dtgr);
+			accEncSun(xAi, a, def_ksq * Msun * dtgr);
 			double4 x4B;
 			double4 v4B;
 
@@ -1592,7 +1592,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 //* */						Encpairs_d[idi].y = -1;
 						x4_d[idi] = xt_d[idi];
 						v4_d[idi] = vt_d[idi];
-//if(id == 0) printf("finished %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, n);
+// printf("finished %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, n);
 					}
 					else{
 //if(id == 0) printf("not finished %d %d %d\n", idx, idi, n);
@@ -1634,7 +1634,7 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;
-	BSA_setdt_kernel <<< (N_h[0] + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N_h[0], ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
+	BSA_setdt_kernel <<< (N_h[0] + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N_h[0], def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
 	BSAstop_h[0] = 0;
 	for(int f = 0; f < 100000; ++f){
 //printf("%d %d %d\n", f, Nb, BSAstop_h[0]);
@@ -1668,7 +1668,7 @@ __host__ void Data::BSAsmallCall(const int st, const int b, const int Nm, const 
 
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;
-	BSA_setdt_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N_h[0] + Nsmall_h[0], ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
+	BSA_setdt_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N_h[0] + Nsmall_h[0], def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
 	for(int f = 0; f < 100000; ++f){
 		for(int n = 1; n <= 8; ++n){
 			if(BSAstop_h[0] == 1) break; 
@@ -1703,7 +1703,7 @@ __global__ void BSACall_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, 
 	int Nb = (N + Nt - 1) / Nt;
 
 	BSA_setdt_kernel <<< Nb, Nt >>> (dt1_d, t1_d, dt, N);
-	for(int f = 0; f < 10000; ++f){
+	for(int f = 0; f < 100000; ++f){
 //printf("f %d\n", f);
 		for(int n = 1; n <= 8; ++n){
 			BSAcc_kernel < 0 > <<< Nb, Nt >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);

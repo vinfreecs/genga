@@ -87,6 +87,7 @@ __host__ void Data::AllocateOrbitt(){
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
+	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 
 	//arrays for backup step
 	cudaMalloc((void **) &x4b_d, NconstT * sizeof(double4));
@@ -158,6 +159,9 @@ __host__ int Data::CMallocateOrbit(){
 
 	cudaHostAlloc((void **)&Ncoll_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&Ncoll_d, (void *)Ncoll_m, 0);
+
+	cudaHostAlloc((void **)&Ntransit_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&Ntransit_d, (void *)Ntransit_m, 0);
 
 	cudaHostAlloc((void **)&NWriteEnc_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&NWriteEnc_d, (void *)NWriteEnc_m, 0);
@@ -343,6 +347,7 @@ __global__ void randomInit_kernel(curandState *random_d, int N){
 __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
+	Ntransit_m[0] = 0;
 	NWriteEnc_m[0] = 0;
 	nFragments_m[0] = 0;
 	for(int i = 0; i < def_GMax; ++i){
@@ -1398,7 +1403,6 @@ __host__ void Data::stopSimulations(){
 				RcutSun_h[sst] = RcutSun_h[sst + 1];
 				time_h[sst] = time_h[sst + 1];
 				dt_h[sst] = dt_h[sst + 1];
-				dtksq_h[sst] = dtksq_h[sst + 1];
 				delta_h[sst] = delta_h[sst + 1];
 
 				U_h[sst] = U_h[sst + 1];
@@ -1429,7 +1433,6 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(dt_d, dt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(dtksq_d, dtksq_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(delta_d, delta_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 
 	cudaMemcpy(U_d, U_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1479,6 +1482,7 @@ __host__ int Data::freeOrbit(){
 	free(Energy0_h);
 	free(LI0_h);
 	cudaFreeHost(Ncoll_m);
+	cudaFreeHost(Ntransit_m);
 	cudaFreeHost(NWriteEnc_m);
 	cudaFreeHost(EjectionFlag_m);
 	cudaFreeHost(nFragments_m);
@@ -1562,6 +1566,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(writeEnc_d);
 	cudaFree(Fragments_d);
 	cudaFree(test_d);
+	cudaFree(Transit_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

@@ -97,7 +97,6 @@ __global__ void com_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double
 				v4_d[idy + i].x += p_s[0].x * iMsun;
 				v4_d[idy + i].y += p_s[0].y * iMsun;
 				v4_d[idy + i].z += p_s[0].z * iMsun;
-
 			}
 			if(m >= 0.0 && f == -1){
 				//Convert to Democratic coordinates

@@ -50,7 +50,6 @@ public:
 	double *RcutSun_h, *RcutSun_d;		//outer truncation radius
 	double *time_h, *time_d;
 	double *dt_h, *dt_d;			//time step in code units
-	double *dtksq_h, *dtksq_d;
 	//Total sizes
 	int NT;
 	int NsmallT;

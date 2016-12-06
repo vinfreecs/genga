@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.57
+#define Version 3.58
 
 //Default parameter values
 #define def_TimeStep 6
@@ -106,7 +106,7 @@
 #define MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
 //Units
-#define ksq 1.0				//Squared Gaussion gravitation constant in current units
+#define def_ksq 1.0			//Squared Gaussion gravitation constant in current units
 #define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
 #define def_AU 149597870700.0		//AU in m
@@ -167,6 +167,8 @@
 //only here for testing
 #define USE_NAF 0
 
+#define def_TTV 0
+#define def_NtransitMax 10
 
 #define USE_RANDOM 1
 
@@ -187,7 +189,7 @@
 
 //#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
 //#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
-#define Asteroid_K 0.01         //Thermal conductivity in W/mK	Veritas
+#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
 
 
 #ifndef STRUCT_H

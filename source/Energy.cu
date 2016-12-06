@@ -102,8 +102,8 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 			__syncthreads();
 
 			if(idy == 0){
-				V_s[0] *= 0.5 * ksq * x4_d[idx].w;
-				V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
+				V_s[0] *= 0.5 * def_ksq * x4_d[idx].w;
+				V_s[0] += PESun(x4_d[idx], def_ksq * Msun, test);
 
 				Energy_d[idx] = V_s[0];
 
@@ -249,9 +249,9 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 
 	__syncthreads();
 	if(idy == 0){
-		V_s[0] *= ksq * x4_d[idx].w;
+		V_s[0] *= def_ksq * x4_d[idx].w;
 
-		V_s[0] += PESun(x4_d[idx], ksq * Msun, test);
+		V_s[0] += PESun(x4_d[idx], def_ksq * Msun, test);
 		double Tsun0 = 0.5 / Msun * ( p_s[0].x * p_s[0].x + p_s[0].y * p_s[0].y + p_s[0].z * p_s[0].z);
 		
 		mtot = Msun + m_s[0] - x4_d[idx].w;

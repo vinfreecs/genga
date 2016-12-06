@@ -43,7 +43,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
                 if(UseForce & 1){
                         // GR part depending on position only (see Saha & Tremaine 1994)
-			double mu = ksq * (Msun + x4.w);
+			double mu = def_ksq * (Msun + x4.w);
                         A = mu/(rsq * def_cm);
                         B = 2.0 * A * A;
                         a3.x -= B * x4.x;
@@ -57,7 +57,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			double c = 10065.3201686;//c in AU / day * 0.0172020989
 			double csq = c * c;
 
-			A = ksq * (Msun + x4.w) * ir;
+			A = def_ksq * (Msun + x4.w) * ir;
 			B = A * ir / csq;
 			eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 		}
@@ -70,7 +70,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			double ir3 = ir * ir * ir;
 			double ir7 = ir3 * ir3 * ir;
 
-			double E = -3.0 * love_d[id].x * ksq * Msun * Msun * R5 / x4.w * ir7;
+			double E = -3.0 * love_d[id].x * def_ksq * Msun * Msun * R5 / x4.w * ir7;
 
 			a3.x += E * x4.x * ir;
 			a3.y += E * x4.y * ir;	
@@ -145,8 +145,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			double love = love_d[id].x;
 			double tau = love_d[id].z;
 
-			volatile double tsun = 3.0 * ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
-			volatile double t = 3.0 * ksq * Msun2 * R5 * ir8 * love / x4.w;
+			volatile double tsun = 3.0 * def_ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
+			volatile double t = 3.0 * def_ksq * Msun2 * R5 * ir8 * love / x4.w;
 
 			Psun = tsun * tausun;
 			P = t * tau;
@@ -321,7 +321,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 			double Msun = Msun_d[st].x;
 			//double dt = dt_d[st];
 			double time = time_d[st] / 365.25;		//time in years
-			double mu = ksq * (Msun + x4i.w);
+			double mu = def_ksq * (Msun + x4i.w);
 
 			double a, e, inc, Omega, w, Theta, E;
 		
@@ -945,12 +945,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
 			double dt = dt_d[st] * Kt;
-			double mu = ksq * (Msun + x4i.w);
+			double mu = def_ksq * (Msun + x4i.w);
 			double m = x4i.w;
 			if(x4i.w == 0.0){
 				m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 				m /= def_Solarmass;						//mass im Solar masses
-				mu = ksq * (Msun + m);
+				mu = def_ksq * (Msun + m);
 			}
 	
 			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
@@ -1247,7 +1247,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 
 		double Msun = Msun_d[st].x;
 		double dt = dt_d[st] * Kt;
-		double mu = ksq * (Msun + x4i.w);
+		double mu = def_ksq * (Msun + x4i.w);
 		double m = x4i.w;
 		double RR = v4i.w * def_AU;					//covert radius in m	
 		double Q = 1.0;
@@ -1255,7 +1255,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 		if(x4i.w == 0.0){
 			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 			m /= def_Solarmass;					//mass im Solar masses
-			mu = ksq * (Msun + m);
+			mu = def_ksq * (Msun + m);
 		}
 		double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
 		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017

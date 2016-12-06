@@ -87,6 +87,7 @@ public:
 	double *Energy0_h, *Energy0_d;
 	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
+	int *Ntransit_m, *Ntransit_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int *EncFlag_d, *EncFlag_m;
 	int CollisionFlag;
@@ -97,6 +98,7 @@ public:
 	int *nFragments_m, *nFragments_d;
 	int *NWriteEnc_m, *NWriteEnc_d;
 	double *test_h, *test_d;
+	int *Transit_d;
 
 	double *coordinateBuffer_h, *coordinateBuffer_d;
 	double *coordinateBufferIrr_d;

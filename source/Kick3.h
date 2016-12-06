@@ -215,48 +215,172 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 
 // **************************************
 //This kernel performs the first kick of the time step, in the case of no close encounters.
-//It reuses the values from the seccond kick in the previous time step.
+//It reuses the values from the second kick in the previous time step.
 
 //Authors: Simon Grimm
-//April 2016
+//November 2016
 // ****************************************
-__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dt){
+__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dtksq){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	if(id < N){
 		double3 a = acck_d[id];
 		if(x4_d[id].w >= 0.0){
-			v4_d[id].x += a.x;
-			v4_d[id].y += a.y;
-			v4_d[id].z += a.z;
+			v4_d[id].x += __dmul_rn(a.x, dtksq);
+			v4_d[id].y += __dmul_rn(a.y, dtksq);
+			v4_d[id].z += __dmul_rn(a.z, dtksq);
 //printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 		}
-		ab_d[id].x = a.x / dt;
-		ab_d[id].y = a.y / dt;
-		ab_d[id].z = a.z / dt;
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
+	}
+}
+// **************************************
+//This kernel performs the first kick of the time step, in the case of no close encounters.
+//It reuses the values from the second kick in the previous time step.
+
+//Authors: Simon Grimm
+//November 2016
+// ****************************************
+__global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	if(id < N){
+		int st = index_d[id] / 100;
+		double dtksqKt = dt_d[st] * Kt * def_ksq;
+
+		double3 a = acck_d[id];
+		if(x4_d[id].w >= 0.0){
+			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
+			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
+			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+		}
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
 	}
 }
 
 // **************************************
-//This kernel performs the kick for a backup step..
+//This kernel performs the kick for a backup step.
 //It reuses the values from the kick in the original time step.
 
 //Authors: Simon Grimm
 //November 2016
 // ****************************************
-__global__ void kick32C_kernel(double4 *x4_d, double4 *v4_d, double3 *ab_d, int N, double dt){
+__global__ void kick32C_kernel(double4 *x4_d, double4 *v4_d, double3 *ab_d, int N, double dtksq){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	if(id < N){
 		double3 a = ab_d[id];
 		if(x4_d[id].w >= 0.0){
-			v4_d[id].x += (a.x * dt);
-			v4_d[id].y += (a.y * dt);
-			v4_d[id].z += (a.z * dt);;
+			v4_d[id].x += __dmul_rn(a.x, dtksq);
+			v4_d[id].y += __dmul_rn(a.y, dtksq);
+			v4_d[id].z += __dmul_rn(a.z, dtksq);
 //printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 		}
+	}
+}
+
+// **************************************
+//This kernel performs the first kick of the time step, in the case of no close encounters.
+//It reuses the values from the second kick in the previous time step.
+//It checks if a transit occurs in the next time step
+
+//Authors: Simon Grimm
+//November 2016
+// ****************************************
+__global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dtksq, double dt, double Msun, int *Ntransit_d, int *Transit_d){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	if(id < N){
+		double3 a = acck_d[id];
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		if(x4i.w >= 0.0){
+			v4_d[id].x += __dmul_rn(a.x, dtksq);
+			v4_d[id].y += __dmul_rn(a.y, dtksq);
+			v4_d[id].z += __dmul_rn(a.z, dtksq);
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+
+
+			//calculate acceleration from the central star
+			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
+			double ir = 1.0 / sqrt(rsq);
+			double ir3 = ir * ir * ir;
+			double s = - def_ksq * Msun * ir3;
+
+			a.x += s * x4i.x;
+			a.y += s * x4i.y;
+			a.z += s * x4i.z;
+
+			double g = x4i.x * v4i.x + x4i.y * v4i.y;
+			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * a.x + x4i.y * a.y;
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+				if(g <= 0.0){
+					int Nt = atomicAdd(Ntransit_d, 1);
+					Transit_d[Nt] = id;
+				}
+			}
+
+		}
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
+	}
+}
+__global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	if(id < N){
+		int st = index_d[id] / 100;
+		double dtksqKt = dt_d[st] * Kt * def_ksq;
+		double dt = dt_d[st];
+		double Msun = Msun_d[st].x;
+		double3 a = acck_d[id];
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		if(x4i.w >= 0.0){
+			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
+			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
+			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+
+
+			//calculate acceleration from the central star
+			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
+			double ir = 1.0 / sqrt(rsq);
+			double ir3 = ir * ir * ir;
+			double s = - def_ksq * Msun * ir3;
+
+			a.x += s * x4i.x;
+			a.y += s * x4i.y;
+			a.z += s * x4i.z;
+
+			double g = x4i.x * v4i.x + x4i.y * v4i.y;
+			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * a.x + x4i.y * a.y;
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+				if(g <= 0.0){
+					int Nt = atomicAdd(Ntransit_d, 1);
+					Transit_d[Nt] = id;
+				}
+			}
+
+		}
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
 	}
 }
 // *******************************************
@@ -298,12 +422,12 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 
 // **************************************
 //This kernel performs the first kick of the time step, in the case of close interactions.
-//It reuses the values from the seccond kick in the previous time step, and adds the terms aij*dt*Kij for all
+//It reuses the values from the second kick in the previous time step, and adds the terms aij*dt*Kij for all
 //the bodies involved in a close encounter.
 //NI is the number of bodies involved in a close encounter with body i 
 
 //Authors: Simon Grimm
-//November 2016
+//December 2016
 // ****************************************
 __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
 
@@ -320,32 +444,106 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		int NI = Encpairs2_d[id * NencMax].x;
 //if(NI > 0) printf("NI %d %d\n", id, NI);
 		double4 x4i = x4_d[id];
-		double rcritvi = rcritv_d[id];
-		__syncthreads();
-		for(int i = 0; i < NI; ++i){
-			int jj = Encpairs2_d[id * NencMax + i].y;
-			double4 x4j = x4_d[jj];
-//printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
-			double rcritvj = rcritv_d[jj];
-			accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+		if(x4i.w >= 0.0){
+			double rcritvi = rcritv_d[id];
+			__syncthreads();
+			for(int i = 0; i < NI; ++i){
+				int jj = Encpairs2_d[id * NencMax + i].y;
+				double4 x4j = x4_d[jj];
+	//printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
+				double rcritvj = rcritv_d[jj];
+				accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+			}
+			__syncthreads();
+			double3 aa;
+			aa.x = __dmul_rn(a.x + acck_d[id].x, dtksq);
+			aa.y = __dmul_rn(a.y + acck_d[id].y, dtksq);
+			aa.z = __dmul_rn(a.z + acck_d[id].z, dtksq);
+
+			ab_d[id] = aa;
+
+			v4_d[id].x += aa.x;
+			v4_d[id].y += aa.y;
+			v4_d[id].z += aa.z;
 		}
-		__syncthreads();
-		double3 aa;
-		aa.x = __dmul_rn(a.x, dtksq) + acck_d[id].x;
-		aa.y = __dmul_rn(a.y, dtksq) + acck_d[id].y;
-		aa.z = __dmul_rn(a.z, dtksq) + acck_d[id].z;
+//if(id == 25) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
+	}
+}
+// **************************************
+//This kernel performs the first kick of the time step, in the case of close interactions.
+//It reuses the values from the second kick in the previous time step, and adds the terms aij*dt*Kij for all
+//the bodies involved in a close encounter.
+//NI is the number of bodies involved in a close encounter with body i 
+//It checks if a transit occurs in the next time step
 
-		ab_d[id] = aa;
+//Authors: Simon Grimm
+//December 2016
+// ****************************************
+__global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, const int N, const int NencMax, double t, double dt, double Msun, int *Ntransit_d, int *Transit_d){
 
-		v4_d[id].x += aa.x;
-		v4_d[id].y += aa.y;
-		v4_d[id].z += aa.z;
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;	
+
+	double3 a;
+
+	a.x = 0.0;
+	a.y = 0.0;
+	a.z = 0.0;
+
+	if(id < N){
+		int NI = Encpairs2_d[id * NencMax].x;
+//if(NI > 0) printf("NI %d %d\n", id, NI);
+		double4 x4i = x4_d[id];
+		if(x4i.w >= 0.0){
+			double4 v4i = v4_d[id];
+			double rcritvi = rcritv_d[id];
+			__syncthreads();
+			for(int i = 0; i < NI; ++i){
+				int jj = Encpairs2_d[id * NencMax + i].y;
+				double4 x4j = x4_d[jj];
+	//printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
+				double rcritvj = rcritv_d[jj];
+				accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+			}
+			__syncthreads();
+			double3 aa;
+			aa.x = a.x + acck_d[id].x;
+			aa.y = a.y + acck_d[id].y;
+			aa.z = a.z + acck_d[id].z;
+
+			ab_d[id] = aa;
+
+			v4_d[id].x += __dmul_rn(aa.x, dtksq);
+			v4_d[id].y += __dmul_rn(aa.y, dtksq);
+			v4_d[id].z += __dmul_rn(aa.z, dtksq);
+
+			//calculate acceleration from the central star
+			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
+			double ir = 1.0 / sqrt(rsq);
+			double ir3 = ir * ir * ir;
+			double s = - def_ksq * Msun * ir3;
+
+			aa.x += s * x4i.x;
+			aa.y += s * x4i.y;
+			aa.z += s * x4i.z;
+
+			double g = x4i.x * v4i.x + x4i.y * v4i.y;
+			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * aa.x + x4i.y * aa.y;
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+				if(g <= 0.0){
+					int Nt = atomicAdd(Ntransit_d, 1);
+					Transit_d[Nt] = id;
+				}
+			}
+		}
 //if(id == 25) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
 	}
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case NB = 16. NB is the next bigger number of N
+//This kernel performs the second kick of the time step, in the case NB = 16. NB is the next bigger number of N
 //which is a power of two.
 //It calculates the acceleration between all bodies with respect to the changeover function K.
 //It also calculates all accelerations from bodies not beeing in a close encounter and store it in accK_d. This values will then be used 
@@ -455,9 +653,9 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //printf("Kick %d %g %g %g\n", idx, ab1[0].x, ab1[0].x * dtksq, v4_d[idx].x);
 		}
 		if(E <= 1){
-			acck_d[idx].x += __dmul_rn(ab1[16].x, dtksq);
-			acck_d[idx].y += __dmul_rn(ab1[16].y, dtksq);
-			acck_d[idx].z += __dmul_rn(ab1[16].z, dtksq);
+			acck_d[idx].x += ab1[16].x;
+			acck_d[idx].y += ab1[16].y;
+			acck_d[idx].z += ab1[16].z;
 		}
 	}
 	if(E <= 2){
@@ -476,7 +674,7 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step, in the case 32 <= NB < 128. NB is the next bigger number of N
+//This kernel performs the second kick of the time step, in the case 32 <= NB < 128. NB is the next bigger number of N
 //which is a power of two.
 //It calculates the acceleration between all bodies with respect to the changeover function K.
 //It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
@@ -617,9 +815,9 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[idx].z += __dmul_rn(a1[0].z, dtksq);
 		}
 		if(E <= 1){
-			acck_d[idx].x += __dmul_rn(b1[0].x, dtksq);
-			acck_d[idx].y += __dmul_rn(b1[0].y, dtksq);
-			acck_d[idx].z += __dmul_rn(b1[0].z, dtksq);
+			acck_d[idx].x += b1[0].x;
+			acck_d[idx].y += b1[0].y;
+			acck_d[idx].z += b1[0].z;
 		}
 	}
 
@@ -638,7 +836,7 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	}
 }
 // **************************************
-//This kernel performs the seccond kick of the time step for test particles
+//This kernel performs the second kick of the time step for test particles
 //It calculates the acceleration between all bodies with respect to the changeover function K.
 //It also calculates all accelerations from bodies not beeing in a close encounter. This values will then be used 
 //it the next time step.
@@ -700,9 +898,9 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //if(id == 25) printf("K %d %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z);
 		}
 		if(E <= 1){
-			acck_d[id].x += __dmul_rn(b.x, dtksq);
-			acck_d[id].y += __dmul_rn(b.y, dtksq);
-			acck_d[id].z += __dmul_rn(b.z, dtksq);
+			acck_d[id].x += b.x;
+			acck_d[id].y += b.y;
+			acck_d[id].z += b.z;
 		}
 		if(E <= 2){
 			Encpairs2_d[NencMax * id].x = NencpairsI;
@@ -719,7 +917,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 }
 
 // **************************************
-//This kernel performs the seccond kick of the time step.
+//This kernel performs the second kick of the time step.
 //It calculates the acceleration between all bodies with respect to the changeover function K.
 //It also calculates all accelerations from bodies not beeing in a close encounter and store it in accK_d. This values will then be used 
 //it the next time step.
@@ -735,7 +933,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dtksq_d, double Kt, int *index_d, int NT, double *test_d){
+__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
@@ -761,7 +959,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		x4_s[idy] = x4_d[id];
 		//rcrit_s[idy] = rcrit_d[id];
 		rcritv_s[idy] = rcritv_d[id];
-		dtksqKt = dtksq_d[st_s[idy]] * Kt;
+		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
 	}
 	else{
 		st_s[idy] = -idy-1;
@@ -866,10 +1064,180 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[id].z += __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
 		}
 		if(E <= 1){
-			acck_d[id].x = __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
-			acck_d[id].y = __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
-			acck_d[id].z = __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
+			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
+			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
+			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
 		}
+	}
+}
+template <int Bl, int Bl2, int Nmax, int E>
+__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * Bl2 + idy - Nmax;
+
+	__shared__ volatile double3 a_s[Bl + Nmax];
+	__shared__ volatile double3 b_s[Bl + Nmax];
+	__shared__ double4 x4_s[Bl + Nmax];
+	//__shared__ double rcrit_s[Bl + Nmax];
+	__shared__ double rcritv_s[Bl + Nmax];
+	__shared__ int st_s[Bl + Nmax];
+
+	a_s[idy].x = 0.0;
+	a_s[idy].y = 0.0;
+	a_s[idy].z = 0.0;
+	b_s[idy].x = 0.0;
+	b_s[idy].y = 0.0;
+	b_s[idy].z = 0.0;
+
+	double dtksqKt = 0.0;
+	double dt = 0.0;
+	double4 v4i;
+	double Msun = 0.0;
+
+	if(id < NT && id >= 0){
+		st_s[idy] = index_d[id] / 100;
+		x4_s[idy] = x4_d[id];
+		v4i = v4_d[id];
+		//rcrit_s[idy] = rcrit_d[id];
+		rcritv_s[idy] = rcritv_d[id];
+		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
+		dt = dt_d[st_s[idy]];
+		Msun = Msun_d[st_s[idy]].x;
+	}
+	else{
+		st_s[idy] = -idy-1;
+		x4_s[idy].x = 0.0; 
+		x4_s[idy].y = 0.0;
+		x4_s[idy].z = 0.0;
+		x4_s[idy].w = 0.0;
+		//rcrit_s[idy] = 0.0;
+		rcritv_s[idy] = 0.0;
+	}
+	//halo
+	if(idy < Nmax){
+		a_s[idy + Bl].x = 0.0;
+		a_s[idy + Bl].y = 0.0;
+		a_s[idy + Bl].z = 0.0;
+		b_s[idy + Bl].x = 0.0;
+		b_s[idy + Bl].y = 0.0;
+		b_s[idy + Bl].z = 0.0;	
+		//right
+		if(id + Bl < NT){
+			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			x4_s[idy + Bl] = x4_d[id + Bl];
+			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
+			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
+		}
+		else{
+			st_s[idy + Bl] = -idy-Bl-1;
+			x4_s[idy + Bl].x = 0.0;
+			x4_s[idy + Bl].y = 0.0;
+			x4_s[idy + Bl].z = 0.0;
+			x4_s[idy + Bl].w = 0.0;
+			//rcrit_s[idy + Bl] = 0.0;
+			rcritv_s[idy + Bl] = 0.0;
+		}
+	}
+
+	volatile double a;
+	volatile double b;
+	volatile double rx, ry, rz;
+	volatile double rsq, ir, ir3;
+	volatile double rcritv, rcritv2;
+	volatile double y, yy, K;
+	volatile double si, sj;
+
+	int2 ij;
+	
+	for(volatile int j = Nmax - 1; j > 0; --j){
+		__syncthreads();
+		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w >= 0.0 && x4_s[idy + j].w >= 0.0){
+			rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
+			rcritv2 = rcritv * rcritv;
+			rx = x4_s[idy + j].x - x4_s[idy].x;
+			ry = x4_s[idy + j].y - x4_s[idy].y;
+			rz = x4_s[idy + j].z - x4_s[idy].z;
+			rsq = rx * rx + ry * ry + rz * rz;
+			ir = 1.0 / sqrt(rsq);
+			ir3 = ir * ir * ir;
+			if(E <= 2){
+				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){  //prechecker
+					if(idy >= Nmax){
+						int Ne = atomicAdd(Nencpairs_d, 1);
+						atomicAdd(Nencpairs_d + st_s[idy] + 1, 1);
+						ij.x = id;
+						ij.y = id + j;	
+						Encpairs_d[Ne] = ij;
+					}
+				}
+			}
+
+			if(rsq >= rcritv2){
+				si = x4_s[idy + j].w * ir3;
+				sj = x4_s[idy].w * ir3;
+			}
+			else{
+				if(rsq <= 0.01 * rcritv2){
+					si = 0.0;
+					sj = 0.0;
+				}
+				else{
+					y = (rsq * ir - 0.1 * rcritv) / (0.9 * rcritv);
+					yy = y * y;
+					K = ir3 * yy / (2.0 * yy - 2.0 * y + 1.0);
+					si = K * x4_s[idy + j].w;
+					sj = K * x4_s[idy].w;
+				}
+			}
+			a_s[idy].x += __dmul_rn(rx, si);
+			a_s[idy].y += __dmul_rn(ry, si);
+			a_s[idy].z += __dmul_rn(rz, si);
+
+			b_s[idy + j].x += __dmul_rn(-rx, sj);
+			b_s[idy + j].y += __dmul_rn(-ry, sj);
+			b_s[idy + j].z += __dmul_rn(-rz, sj);
+
+		}
+	}
+	__syncthreads();
+	if(id < NT && id >= 0 && idy >= Nmax){
+		if(E >= 1){
+			v4_d[id].x += __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
+			v4_d[id].y += __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
+			v4_d[id].z += __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
+		}
+		if(E <= 1){
+			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
+			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
+			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
+		}
+
+		//calculate acceleration from the central star
+		double rsq = x4_s[idy].x*x4_s[idy].x + x4_s[idy].y*x4_s[idy].y + x4_s[idy].z*x4_s[idy].z + 1.0e-30;
+		double ir = 1.0 / sqrt(rsq);
+		double ir3 = ir * ir * ir;
+		double s = - def_ksq * Msun * ir3;
+		double3 a;
+		a.x = a_s[idy].x + b_s[idy].x;
+		a.y = a_s[idy].y + b_s[idy].y;
+		a.z = a_s[idy].z + b_s[idy].z;
+
+		a.x += s * x4_s[idy].x;
+		a.y += s * x4_s[idy].y;
+		a.z += s * x4_s[idy].z;
+
+		double g = x4_s[idy].x * v4i.x + x4_s[idy].y * v4i.y;
+		double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4_s[idy].x * a.x + x4_s[idy].y * a.y;
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, dt);
+
+		if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+			if(g <= 0.0){
+				int Nt = atomicAdd(Ntransit_d, 1);
+				Transit_d[Nt] = id;
+			}
+		}
+
 	}
 }
 #endif

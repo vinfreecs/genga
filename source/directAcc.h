@@ -31,17 +31,47 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 			ir = 1.0/sqrt(rsq);
 			ir3 = ir * ir * ir;
 			if(rsq <= 0.01 * rcritv2){
-				s = x4j.w * ir3 * ksq;
+				s = x4j.w * ir3 * def_ksq;
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
-				s = ir3 * ksq * (1.0 - yy / (2.0*yy - 2.0*y + 1.0)) * x4j.w;
+				s = ir3 * def_ksq * (1.0 - yy / (2.0*yy - 2.0*y + 1.0)) * x4j.w;
 			}
-                        ac.x += __dmul_rn(r3.x, s);
-                        ac.y += __dmul_rn(r3.y, s);
-                        ac.z += __dmul_rn(r3.z, s);
+			ac.x += __dmul_rn(r3.x, s);
+			ac.y += __dmul_rn(r3.y, s);
+			ac.z += __dmul_rn(r3.z, s);
 		}
+//printf("%.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", x4i.w, x4i.x, x4i.y, x4i.z, x4j.w, x4j.x, x4j.y, x4j.z);
+	}
+}
+//**************************************
+//This function computes the term a = mj/rij^3.
+//
+//Authors: Simon Grimm
+//December 2016
+// ****************************************
+__device__ void accEncFull(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double MinMass){
+	if(x4i.w >= 0.0 && x4j.w >= MinMass && i != j){
+
+		double3 r3;
+		double rsq;
+		double ir, ir3;
+		double s;
+
+		r3.x = x4j.x - x4i.x;
+		r3.y = x4j.y - x4i.y;
+		r3.z = x4j.z - x4i.z;
+
+		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z + 1.0e-30;
+
+		ir = 1.0 / sqrt(rsq);
+		ir3 = ir * ir * ir;
+		s = x4j.w * ir3 * def_ksq;
+
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
 //printf("%.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", x4i.w, x4i.x, x4i.y, x4i.z, x4j.w, x4j.x, x4j.y, x4j.z);
 	}
 }
@@ -69,7 +99,7 @@ __device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &t
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir * ir * ir;
 
-		s = ir3 * ksq * (1.0 - K) * x4j.w;
+		s = ir3 * def_ksq * (1.0 - K) * x4j.w;
 
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
@@ -132,12 +162,12 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 #if G3 == 2
 		if(Kold < 1.0) Kold = 0.0;
 #endif
-		s = (K - Kold) * x4j.w * ir3 * ksq;
+		s = (K - Kold) * x4j.w * ir3 * def_ksq;
 
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
-/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g %.20g correct %g %g %g\n", time, i, j, s, Kold, K, ac.x, Kold * x4j.w * ir3 * ksq, Kold * x4j.w * ir3 * ksq * r3.x, K * x4j.w * ir3 * ksq * r3.x);
+/*if(s != 0.0)*/ printf("%.20g %d %d %.20g %.20g %.20g %.20g correct %g %g %g\n", time, i, j, s, Kold, K, ac.x, Kold * x4j.w * ir3 * def_ksq, Kold * x4j.w * ir3 * def_ksq * r3.x, K * x4j.w * ir3 * def_ksq * r3.x);
 	}
 }
 // ***********************************************
@@ -162,7 +192,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir * ir * ir;
 
-		s = K * x4j.w * ir3 * ksq; 
+		s = K * x4j.w * ir3 * def_ksq; 
 		ac.x += __dmul_rn(r3.x, s);
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
@@ -230,7 +260,7 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 	double rsq = rij.x * rij.x + rij.y * rij.y + rij.z * rij.z + 1.0e-30;
 	double vsq = vij.x * vij.x + vij.y * vij.y + vij.z * vij.z + 1.0e-30;
 
-	*U_d += 0.5 * mimj / mtot * vsq - mimj * ksq / sqrt(rsq);
+	*U_d += 0.5 * mimj / mtot * vsq - mimj * def_ksq / sqrt(rsq);
 
 	x4[i].x = (x4[i].x * x4[i].w + x4[j].x * x4[j].w) / mtot;
 	x4[i].y = (x4[i].y * x4[i].w + x4[j].y * x4[j].w) / mtot;

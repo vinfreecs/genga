@@ -316,7 +316,7 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 		}
 		if(ia <= 0 || ok == 0){
 //	printf("%g %d %d", ia, i, ii);
-			//fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
+			//fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, si, id);
 			BSSinglestep(x4i, v4i, Msun, dt, test, id);
 		}
 		else{
@@ -363,7 +363,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
 			PFlag_d[0] = 1;
 			double dtt = -x4oldi.y / v4oldi.y;
-			fgfull(x4oldi, v4oldi, dtt, ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index, 0);
+			fgfull(x4oldi, v4oldi, dtt, def_ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index, 0);
 //			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
 			xold_d[id] = x4oldi;
 			vold_d[id] = v4oldi;
@@ -394,7 +394,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-//if(id == 1) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//if(id == 2064) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
@@ -402,13 +402,13 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4i, v4i, dt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
-		fgfull(x4i, v4i, dt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
-//		BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
+		//fastfg(x4i, v4i, dt, def_ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+		fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+		//BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
-//if(id == 1) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//if(id == 2064) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 #if G3 > 0
 		groupIndex_d[id] = -1;
 #endif
@@ -448,8 +448,8 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
-		//fastfg(x4i, v4i, dt * FGt, ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
-		fgfull(x4i, v4i, dt * FGt, ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+		//fastfg(x4i, v4i, dt * FGt, def_ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
 		//BSSinglestep(x4i, v4i, Msun, dt * FGt, test, test); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;

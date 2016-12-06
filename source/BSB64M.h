@@ -87,7 +87,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //printf("BSB %d %d %d %.40g %.40g %.40g %.40g %.40g %.40g\n", sstt, idy, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z);
 		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
-			double mu = ksq * Msun;
+			double mu = def_ksq * Msun;
 			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
 			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
 			double ir = 1.0/sqrt(rsq);
@@ -122,7 +122,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	if(idy < NN) error_s[idy] = 0.0;
 	__syncthreads();
 
-	for(int tt = 0; tt < 1000; ++ tt){
+	for(int tt = 0; tt < 10000; ++ tt){
 	__syncthreads();
 
 		if(idy < N2){
@@ -173,7 +173,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				__syncthreads();
 
 				if(idy < N2){
-					accEncSun(x4_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
+					accEncSun(x4_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 				}
 
 				if(idy < NN){
@@ -216,7 +216,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 				if(idy < NN){
-					accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
+					accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
 					xt_s[idy].x = x4_s[idy].x + dt22 * dtgr * vp_s[idy].x;
 					xt_s[idy].y = x4_s[idy].y + dt22 * dtgr * vp_s[idy].y;
@@ -260,7 +260,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 
 					if(idy < N2){
-						accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
+						accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
 						xp_s[idy].x += dt22 * dtgr * vt_s[idy].x;
 						xp_s[idy].y += dt22 * dtgr * vt_s[idy].y;
@@ -300,7 +300,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					__syncthreads();
 
 					if(idy < N2){
-						accEncSun(xp_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
+						accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
 						xt_s[idy].x += dt22 * dtgr * vp_s[idy].x;
 						xt_s[idy].y += dt22 * dtgr * vp_s[idy].y;
@@ -340,7 +340,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				}
 				__syncthreads();
 				if(idy < N2){
-					accEncSun(xt_s[idy], a_s[idy * nb], ksq * Msun * dtgr);
+					accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
 					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + xp_s[idy].x + dt2 * dtgr * vt_s[idy].x);
 					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + xp_s[idy].y + dt2 * dtgr * vt_s[idy].y);
