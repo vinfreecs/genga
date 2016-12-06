@@ -103,7 +103,7 @@ __host__ int Data::firstoutput(){
 			double skip;
 			double Et;
 			char Ets[160];
-			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
+			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 			fscanf (GSF[st].Energyfile, "%lf",&Et);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);

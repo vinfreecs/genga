@@ -603,7 +603,7 @@ __host__ int Data::readic(int st){
 	else{
 	//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
+		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 		double Et = atof(Ets);
 		double time = 0.0;
 		double aecount = 0.0;

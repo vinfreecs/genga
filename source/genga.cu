@@ -251,8 +251,10 @@ int main(int argc, char*argv[]){
 			return 0;
 		}
 	}
+	D.time_h[0] = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
 	if(D.P.Usegas == 2){
 		er = D.readGasFile();
+		er = D.readGasFile2(D.time_h[0] / 365.25);
 		if(er == 0){
 			return 0;
 		}

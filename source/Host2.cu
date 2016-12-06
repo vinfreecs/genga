@@ -1463,7 +1463,7 @@ __host__ int Host::icSize(int st){
 	double m;
 	int index;
 	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-	sprintf(Ets, "%.16g", (P.tRestart * idt_h[st]) / 365.25 + ict_h[st]);
+	sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 	double Et = atof(Ets);
 	FILE *infile;
 	infile = fopen(GSF[st].inputfilename, "r");
@@ -2166,7 +2166,7 @@ __host__ int Host::readGasFile2(double time){
 			}
 		}
 		if(t > time){
-		printf("Gas Data line %d %g\n", j * nr, t);
+		printf("Gas Data line %d t0 %g t1 %g \n", j * nr, t0, t1);
 			break;
 		}
 		if(er <= 0){

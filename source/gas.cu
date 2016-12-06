@@ -619,7 +619,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 		Sigma *= 1.49598*1.49598/1.98892*1.0e-7;
 		h = ((h1 - h0) * tt + h0) * r1;
 
-//if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
+//if(id < 100) printf("%d %g %g %g %g %g\n", id, r1, Sigma, h, GasData1.x, GasData0.x);
 
 		zh = x4.z / h;
 		double G_alpha = 1.0;
