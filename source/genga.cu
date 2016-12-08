@@ -463,6 +463,10 @@ int main(int argc, char*argv[]){
 	D.printLastTime();
 	D.LastInfo();
 
+#if def_TTV == 1
+	D.printTransits();
+#endif
+
 	//free all the memory on the Host and on the Device
 	er = D.freeOrbit();
 	if(er == 0) return 0;

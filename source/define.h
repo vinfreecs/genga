@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.58
+#define Version 3.59
 
 //Default parameter values
 #define def_TimeStep 6
@@ -169,6 +169,8 @@
 
 #define def_TTV 0
 #define def_NtransitMax 10
+#define def_NtransitTimeMax 10
+#define def_TransitTol 1.0e-12
 
 #define USE_RANDOM 1
 
@@ -244,7 +246,7 @@ struct GSFiles{
 	char encounterfilename[128];
 	char fragmentfilename[128];
 	char X[128];
-	int informat[25];
+	int informat[30];
 	char path[128];
 };
 

@@ -255,7 +255,7 @@ __host__ void Host::Halloc(){
 	 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
 
 	for(int st = 0; st < Nst; ++st){
-		for(int i = 0; i < 25; ++i){
+		for(int i = 0; i < 30; ++i){
 			GSF[st].informat[i] = 0;
 		}
 
@@ -327,6 +327,24 @@ __host__ void Host::Halloc(){
 			else if(strcmp(ff + f * 5, "tau") == 0){
 				GSF[st].informat[f] = 22;
 			}
+			else if(strcmp(ff + f * 5, "a") == 0){
+				GSF[st].informat[f] = 23;
+			}
+			else if(strcmp(ff + f * 5, "e") == 0){
+				GSF[st].informat[f] = 24;
+			}
+			else if(strcmp(ff + f * 5, "inc") == 0){
+				GSF[st].informat[f] = 25;
+			}
+			else if(strcmp(ff + f * 5, "O") == 0){
+				GSF[st].informat[f] = 26;
+			}
+			else if(strcmp(ff + f * 5, "w") == 0){
+				GSF[st].informat[f] = 27;
+			}
+			else if(strcmp(ff + f * 5, "M") == 0){
+				GSF[st].informat[f] = 28;
+			}
 		}	
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
@@ -356,7 +374,6 @@ __host__ void Host::Halloc(){
 		rho[st] = def_rho;
 		sprintf(GSF[st].X, def_Name);
 		sprintf(GSF[st].inputfilename, def_InputFile);
-
 	}
 	
 	//Read the paths for the individual simulations
@@ -594,33 +611,41 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
-			for(int i = 0; i < 25; ++i){
+			for(int i = 0; i < 30; ++i){
 				GSF[st].informat[i] = 0;
 			}
 			//Read input file Format
 			int f;
-			for(f = -1; f < 25; ++f){
+			int cartesian = 0;
+			int keplerian = 0;
+			for(f = -1; f < 30; ++f){
 				er = fscanf (paramfile, "%s", sp);
 				if(strcmp(sp, "x") == 0){
 					GSF[st].informat[f] = 1;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "y") == 0){
 					GSF[st].informat[f] = 2;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "z") == 0){
 					GSF[st].informat[f] = 3;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "m") == 0){
 					GSF[st].informat[f] = 4;
 				}
 				else if(strcmp(sp, "vx") == 0){
 					GSF[st].informat[f] = 5;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "vy") == 0){
 					GSF[st].informat[f] = 6;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "vz") == 0){
 					GSF[st].informat[f] = 7;
+					cartesian = 1;
 				}
 				else if(strcmp(sp, "r") == 0){
 					GSF[st].informat[f] = 8;
@@ -667,6 +692,30 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				else if(strcmp(sp, "tau") == 0){
 					GSF[st].informat[f] = 22;
 				}
+				else if(strcmp(sp, "a") == 0){
+					GSF[st].informat[f] = 23;
+					keplerian = 1;
+				}
+				else if(strcmp(sp, "e") == 0){
+					GSF[st].informat[f] = 24;
+					keplerian = 1;
+				}
+				else if(strcmp(sp, "inc") == 0){
+					GSF[st].informat[f] = 25;
+					keplerian = 1;
+				}
+				else if(strcmp(sp, "O") == 0){
+					GSF[st].informat[f] = 26;
+					keplerian = 1;
+				}
+				else if(strcmp(sp, "w") == 0){
+					GSF[st].informat[f] = 27;
+					keplerian = 1;
+				}
+				else if(strcmp(sp, "M") == 0){
+					GSF[st].informat[f] = 28;
+					keplerian = 1;
+				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
 				}
@@ -685,6 +734,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Input file format is not valid, '>>' not found! Maybe the spaces in << ... >> have been forgotten\n");
 				return 0;
 
+			}
+			if(cartesian == 1 && keplerian == 1){
+				printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
+				return 0;
+				
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1444,7 +1498,7 @@ __host__ int Host::icSize(int st){
 
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
-	for(int f = 0; f < 25; ++f){
+	for(int f = 0; f < 30; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
 
@@ -1767,7 +1821,7 @@ __host__ void Host::Info(){
 #endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
-			for(int f = 0; f < 22; ++f){
+			for(int f = 0; f < 30; ++f){
 				if(GSF[st].informat[f] == 1) fprintf(infofile, "x ");
 				else if(GSF[st].informat[f] == 2) fprintf(infofile, "y ");
 				else if(GSF[st].informat[f] == 3) fprintf(infofile, "z ");
@@ -1790,6 +1844,12 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 20) fprintf(infofile, "k2 ");
 				else if(GSF[st].informat[f] == 21) fprintf(infofile, "k2f ");
 				else if(GSF[st].informat[f] == 22) fprintf(infofile, "tau ");
+				else if(GSF[st].informat[f] == 23) fprintf(infofile, "a ");
+				else if(GSF[st].informat[f] == 24) fprintf(infofile, "e ");
+				else if(GSF[st].informat[f] == 25) fprintf(infofile, "inc ");
+				else if(GSF[st].informat[f] == 26) fprintf(infofile, "O ");
+				else if(GSF[st].informat[f] == 27) fprintf(infofile, "w ");
+				else if(GSF[st].informat[f] == 28) fprintf(infofile, "M ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -2166,7 +2226,7 @@ __host__ int Host::readGasFile2(double time){
 			}
 		}
 		if(t > time){
-		printf("Gas Data line %d t0 %g t1 %g \n", j * nr, t0, t1);
+		printf("Gas Data line %d t0 %.20g t1 %.20g \n", j * nr, t0, t1);
 			break;
 		}
 		if(er <= 0){

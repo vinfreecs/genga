@@ -4,7 +4,7 @@
 #include <cuda.h>
 
 
-void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w, double &Theta, double &E){
+void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w, double &Theta, double &E, double &M){
 
 	double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
 	double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
@@ -98,7 +98,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
 	//Mean Anomaly
-	double M = E - e * sin(E);
+	M = E - e * sin(E);
 
 	if(e >= 1){
 		E = acosh((e + t) / (1.0 + e * t));
@@ -145,7 +145,7 @@ int main(int argc, char*argv[]){
 
 	double3 x, v, spin;
 	double xOld;
-	double m, r, a, e, inc, Omega, w, Theta, E;
+	double m, r, a, e, inc, Omega, w, Theta, E, M;
 	double s, t;
 	int index;
 
@@ -196,7 +196,7 @@ printf("%d\n", NN);
 				break;
 			}
 			aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E);
-			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, m, r);
+			fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
 		}
 		fclose(outputfile);
 		fclose(inputfile);

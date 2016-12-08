@@ -87,7 +87,6 @@ public:
 	double *Energy0_h, *Energy0_d;
 	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
-	int *Ntransit_m, *Ntransit_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int *EncFlag_d, *EncFlag_m;
 	int CollisionFlag;
@@ -98,8 +97,19 @@ public:
 	int *nFragments_m, *nFragments_d;
 	int *NWriteEnc_m, *NWriteEnc_d;
 	double *test_h, *test_d;
-	int *Transit_d;
 
+	//TTV
+	double4 *elementsA_h, *elementsA_d;
+	double4 *elementsB_h, *elementsB_d;
+	double4 *elementsAOld_h, *elementsAOld_d;
+	double4 *elementsBOld_h, *elementsBOld_d;
+	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
+	int *NtransitsT_h, *NtransitsT_d;	//Total number of detected transits
+	int *Transit_d;				//contains indexes of transiting objects per time step
+	int *TransitI_h, *TransitI_d;	//contains the total indices of the transiting objects
+	double *TransitTime_h, *TransitTime_d;	//contains the total transit times
+
+	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
 	double *coordinateBufferIrr_d;
 	int *timestepBuffer;
@@ -123,6 +133,7 @@ public:
 	__host__ int copyGridae();
 	__host__ int init();
 	__host__ int ic();
+	__host__ void KepToCart(double4 &, double4 &, double);
 	__host__ void HelioToDemo(double4 *, double4 *, double, int);
 	__host__ void DemoToHelio(double4 *, double4 *, double, int);
 	__host__ int remove();
@@ -150,6 +161,7 @@ public:
 	__host__ int printEncounters();
 	__host__ int printFragments(int);
 	__host__ int printRotation();
+	__host__ int printTransits();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int);

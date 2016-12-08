@@ -295,7 +295,7 @@ __global__ void kick32C_kernel(double4 *x4_d, double4 *v4_d, double3 *ab_d, int 
 //Authors: Simon Grimm
 //November 2016
 // ****************************************
-__global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dtksq, double dt, double Msun, int *Ntransit_d, int *Transit_d){
+__global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dtksq, double dt, double Msun, double Rsun, int *Ntransit_d, int *Transit_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -322,9 +322,13 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 
 			double g = x4i.x * v4i.x + x4i.y * v4i.y;
 			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * a.x + x4i.y * a.y;
-printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+			double rsky = sqrt(x4i.x * x4i.x + x4i.y * x4i.y);
+			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
+			double R = Rsun + v4i.w;
 
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt, rsky, R, R + v * dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < dt && rsky < R + v * dt){
 				if(g <= 0.0){
 					int Nt = atomicAdd(Ntransit_d, 1);
 					Transit_d[Nt] = id;
@@ -346,6 +350,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 		double dt = dt_d[st];
 		double Msun = Msun_d[st].x;
+		double Rsun = Msun_d[st].y;
 		double3 a = acck_d[id];
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
@@ -368,9 +373,14 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 
 			double g = x4i.x * v4i.x + x4i.y * v4i.y;
 			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * a.x + x4i.y * a.y;
-printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+			double rsky = sqrt(x4i.x * x4i.x + x4i.y * x4i.y);
+			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
+			double R = Rsun + v4i.w;
 
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt, rsky, R, R + v * dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < dt && rsky < R + v * dt){
+
 				if(g <= 0.0){
 					int Nt = atomicAdd(Ntransit_d, 1);
 					Transit_d[Nt] = id;
@@ -479,7 +489,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 //Authors: Simon Grimm
 //December 2016
 // ****************************************
-__global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, const int N, const int NencMax, double t, double dt, double Msun, int *Ntransit_d, int *Transit_d){
+__global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, const int N, const int NencMax, double t, double dt, double Msun, double Rsun, int *Ntransit_d, int *Transit_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -529,9 +539,13 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 
 			double g = x4i.x * v4i.x + x4i.y * v4i.y;
 			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * aa.x + x4i.y * aa.y;
-printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt);
+			double rsky = sqrt(x4i.x * x4i.x + x4i.y * x4i.y);
+			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
+			double R = Rsun + v4i.w;
 
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, dt, rsky, R, R + v * dt);
+
+			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < dt && rsky < R + v * dt){
 				if(g <= 0.0){
 					int Nt = atomicAdd(Ntransit_d, 1);
 					Transit_d[Nt] = id;
@@ -1094,6 +1108,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	double dt = 0.0;
 	double4 v4i;
 	double Msun = 0.0;
+	double Rsun = 0.0;
 
 	if(id < NT && id >= 0){
 		st_s[idy] = index_d[id] / 100;
@@ -1104,6 +1119,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
 		dt = dt_d[st_s[idy]];
 		Msun = Msun_d[st_s[idy]].x;
+		Rsun = Msun_d[st_s[idy]].y;
 	}
 	else{
 		st_s[idy] = -idy-1;
@@ -1229,9 +1245,13 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 
 		double g = x4_s[idy].x * v4i.x + x4_s[idy].y * v4i.y;
 		double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4_s[idy].x * a.x + x4_s[idy].y * a.y;
-printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, dt);
+		double rsky = sqrt(x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y);
+		double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
+		double R = Rsun + v4i.w;
 
-		if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) > 1.0e-9 && fabs(g / gd) < dt){
+printf("TTV %d g %g gd %g g/gd %.20g %.20g %.20g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, dt, rsky, R, R + v * dt);
+
+		if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < dt && rsky < R + v * dt){
 			if(g <= 0.0){
 				int Nt = atomicAdd(Ntransit_d, 1);
 				Transit_d[Nt] = id;

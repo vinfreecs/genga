@@ -290,22 +290,27 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 		int doConversion = 0;
 		for(int i = 0; i < nelements; ++i){
 			if(setElements_c[i] == 3){
+				//a
 				doConversion = 1;
 				break;
 			}
 			if(setElements_c[i] == 4){
+				//e
 				doConversion = 1;
 				break;
 			}
 			if(setElements_c[i] == 5){
+				//i
 				doConversion = 1;
 				break;
 			}
 			if(setElements_c[i] == 6){
+				//N
 				doConversion = 1;
 				break;
 			}
 			if(setElements_c[i] == 7){
+				//w
 				doConversion = 1;
 				break;
 			}

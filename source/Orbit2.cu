@@ -37,6 +37,20 @@ __host__ void Data::AllocateOrbitt(){
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
+	TransitTime_h = (double*)malloc(def_NtransitTimeMax * NconstT * sizeof(double));
+	TransitI_h = (int*)malloc(def_NtransitTimeMax * NconstT * sizeof(int));
+	NtransitsT_h = (int*)malloc(sizeof(int));
+#if def_TTV == 1
+	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsAOld_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsBOld_h = (double4*)malloc(NconstT * sizeof(double4));
+#else
+	elementsA_h = NULL;
+	elementsB_h = NULL;
+	elementsAOld_h = NULL;
+	elementsBOld_h = NULL;
+#endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
 
@@ -87,7 +101,22 @@ __host__ void Data::AllocateOrbitt(){
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
+
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
+	cudaMalloc((void **) &TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double));
+	cudaMalloc((void **) &TransitI_d, def_NtransitTimeMax * NconstT * sizeof(int));
+	cudaMalloc((void **) &NtransitsT_d, sizeof(int));
+#if def_TTV == 1
+	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
+#else
+	elementsA_d = NULL;
+	elementsB_d = NULL;
+	elementsAOld_d = NULL;
+	elementsBOld_d = NULL;
+#endif
 
 	//arrays for backup step
 	cudaMalloc((void **) &x4b_d, NconstT * sizeof(double4));
@@ -348,6 +377,7 @@ __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
 	Ntransit_m[0] = 0;
+	NtransitsT_h[0] = 0;
 	NWriteEnc_m[0] = 0;
 	nFragments_m[0] = 0;
 	for(int i = 0; i < def_GMax; ++i){
@@ -360,19 +390,13 @@ __host__ int Data::init(){
 		x4_h[i].x = 1.0;
 		x4_h[i].y = 0.0;
 		x4_h[i].z = 0.0; 
+		x4_h[i].w = -1.0e-12;
 		v4_h[i].x = 0.0;
 		v4_h[i].y = 0.0;
 		v4_h[i].z = 0.0;
-		x4_h[i].w = -1.0e-12;
 		v4_h[i].w = 0.0;
-		xold_h[i].x = x4_h[i].x;
-		xold_h[i].y = x4_h[i].y;
-		xold_h[i].z = x4_h[i].z;
-		xold_h[i].w = -1.0e-12;
-		vold_h[i].x = v4_h[i].x;
-		vold_h[i].y = v4_h[i].y;
-		vold_h[i].z = v4_h[i].z;
-		vold_h[i].w = 0.0;
+		xold_h[i] = x4_h[i];
+		vold_h[i] = v4_h[i];
 		test_h[i] = -1.0;
 		spin_h[i].x = 0.0;
 		spin_h[i].y = 0.0;
@@ -388,6 +412,18 @@ __host__ int Data::init(){
 		enccount_h[i] = 0;
 		aecountT_h[i] = 0;
 		enccountT_h[i] = 0;
+#if def_TTV == 1
+		elementsA_h[i].x = 0.0;
+		elementsA_h[i].y = 0.0;
+		elementsA_h[i].z = 0.0;
+		elementsA_h[i].w = -1.0e-12;
+		elementsB_h[i].x = 0.0;
+		elementsB_h[i].y = 0.0;
+		elementsB_h[i].z = 0.0;
+		elementsB_h[i].w = 0.0;
+		elementsAOld_h[i] = elementsA_h[i];
+		elementsBOld_h[i] = elementsB_h[i];
+#endif
 	}
 	for(int st = 0; st < Nst; ++st){
 		EjectionFlag_m[st + 1] = 0;
@@ -500,6 +536,13 @@ __host__ int Data::ic(){
 	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
 
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(NtransitsT_d,  NtransitsT_h, sizeof(int), cudaMemcpyHostToDevice);
+#if def_TTV == 1
+	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsAOld_d, elementsAOld_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsBOld_d, elementsBOld_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+#endif
 
 	cudaError_t error;
 
@@ -552,8 +595,9 @@ __host__ int Data::readic(int st){
 			love = love_h[i + NBS];
 			index = index_h[i + NBS];
 			aelimits = aelimits_h[i + NBS];
+			int keplerian = 0;
 
-			for(int f = 0; f < 25; ++f){
+			for(int f = 0; f < 30; ++f){
 				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);
 				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);
 				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);
@@ -579,6 +623,15 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
 				else if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
 				else if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
+				else if (GSF[st].informat[f] == 23) {fscanf (infile, "%lf",&x.x); keplerian = 1;}
+				else if (GSF[st].informat[f] == 24) {fscanf (infile, "%lf",&x.y); keplerian = 1;}
+				else if (GSF[st].informat[f] == 25) {fscanf (infile, "%lf",&x.z); keplerian = 1;}
+				else if (GSF[st].informat[f] == 26) {fscanf (infile, "%lf",&v.x); keplerian = 1;}
+				else if (GSF[st].informat[f] == 27) {fscanf (infile, "%lf",&v.y); keplerian = 1;}
+				else if (GSF[st].informat[f] == 28) {fscanf (infile, "%lf",&v.z); keplerian = 1;}
+			}
+			if(keplerian == 1){
+				KepToCart(x, v, Msun_h[st].x);
 			}
 			if(index < 0) index *= -1;
 			if(v.w == 0){
@@ -667,7 +720,7 @@ __host__ int Data::readic(int st){
 				int i = ii;
 				double skip = 0.0;
 				int eri = 1;
-				for(int f = 0; f < 22; ++f){
+				for(int f = 0; f < 30; ++f){
 					if(GSF[st].informat[f] == 13){
 						eri = fscanf (OrigInfile, "%d",&i);
 					}
@@ -736,6 +789,61 @@ __host__ int Data::readic(int st){
 	return ii;
 } 
 
+
+// *************************************
+//This function converts Keplerian Elements into Cartesian Coordinates
+__host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
+
+	double a = x.x;
+	double e = x.y;
+	double inc = x.z;
+	double Omega = v.x;
+	double w = v.y;
+	double M = v.z;
+
+	double mu = def_ksq * (Msun + x.w);
+	
+	//Eccentric Anomaly
+	double E = M + e * 0.5;
+	double Eold = E;
+	for(int j = 0; j < 32; ++j){
+		E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
+		if(fabs(E - Eold) < 1.0e-15) break;
+		Eold = E;
+	}
+
+	double cw = cos(w);
+	double sw = sin(w);
+	double cOmega = cos(Omega);
+	double sOmega = sin(Omega);
+	double ci = cos(inc);
+	double si = sin(inc);
+
+	double Px = cw * cOmega - sw * ci * sOmega;
+	double Py = cw * sOmega + sw * ci * cOmega;
+	double Pz = sw * si;
+
+	double Qx = -sw * cOmega - cw * ci * sOmega;
+	double Qy = -sw * sOmega + cw * ci * cOmega;
+	double Qz = cw * si;
+
+	double cE = cos(E);
+	double sE = sin(E);
+	double t1 = a * (cE - e);
+	double t2 = a * sqrt(1.0 - e * e) * sE;
+
+
+	x.x =  t1 * Px + t2 * Qx;
+	x.y =  t1 * Py + t2 * Qy;
+	x.z =  t1 * Pz + t2 * Qz;
+
+	double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+	t1 = -sE;
+	t2 = sqrt(1.0 - e * e) * cE;
+	v.x = t0 * (t1 * Px + t2 * Qx);
+	v.y = t0 * (t1 * Py + t2 * Qy);
+	v.z = t0 * (t1 * Pz + t2 * Qz);
+}
 
 // **************************************
 //This function converts heliocentric coordinares to democratic coordinates.
@@ -1061,43 +1169,6 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 
 // **************************************
-//This kernel removes ghost-masses from the test particles and decreases the number of bodies.
-//It also removes bodies wich a semi major axis bigger than Rcut.
-//It runs with only one thread ond the GPU, to avoid unnecesary data copies
-// Authors: Simon Grimm, Joachim Stadel
-//March 2014
-// ****************************************3
-__global__ void removesmall_kernel(int *Nsmall_d, int NsmallS, int st, double *nafx_d, double *nafy_d, int nafn, int naficN){
-
-	int NOldsmall;
-	volatile int Nsmall= Nsmall_d[st];
-	int f = 1;
-	int fc = 0;
-
-	while(f == 1 || fc < 100){
-		NOldsmall = Nsmall;
-		f = 0;
-		++fc;
-		for(int j = 0; j < Nsmall; ++j){
-			//remove ghost bodies and rearrange arrays
-				
-			for(int i = 0; i < nafn; ++i){
-				nafx_d[(j + NsmallS + naficN) * nafn + i] = nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
-				nafy_d[(j + NsmallS + naficN) * nafn + i] = nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i];
-				nafx_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
-				nafy_d[(Nsmall-1 + NsmallS + naficN) * nafn + i] = 0.0;
-			}
-
-			Nsmall -= 1;
-		}
-		if(NOldsmall != Nsmall) f = 1;
-	}
-	Nsmall_d[st] = Nsmall;
-}
-
-
-
-// **************************************
 //This function prints out data of ejected bodies
 //It sets the masses of ejecte bodies to zero, this are then later removed
 //It Updates the lost Energy term U
@@ -1181,8 +1252,8 @@ __host__ void Data::Ejection(){
 					}
 				}
 				if(c < 0){
-					if(Nst == 1) fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
-					else fprintf(ejectfile, "%g %d %g %g %g %g %g %g %g %g %g %g %g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					if(Nst == 1) fprintf(ejectfile, "%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					else fprintf(ejectfile, "%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
 					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st].x, i, U_d + st, LI_d + st, vcom_d + st, N_h[st], Nsmall_h[st]);
 				}
@@ -1203,10 +1274,8 @@ __host__ int Data::remove(){
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
 		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
-	//	removesmall_kernel <<< 1, 1>>> (Nsmall_d, NsmallS_h[st], st, naf.x_d, naf.y_d, naf.n, naf.icN);
 #else
 		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NULL, NULL, 0);
-	//	removesmall_kernel <<< 1, 1>>> (Nsmall_d, NsmallS_h[st], st, NULL, NULL, 0, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1472,6 +1541,14 @@ __host__ int Data::freeOrbit(){
 	free(NBuffer);
 	free(NBufferIrr);
 
+	free(TransitTime_h);
+	free(TransitI_h);
+	free(NtransitsT_h);
+	free(elementsA_h);
+	free(elementsB_h);
+	free(elementsAOld_h);
+	free(elementsBOld_h);
+
 	free(vcom_h);
 
 	free(groupIterate_h);
@@ -1566,7 +1643,15 @@ __host__ int Data::freeOrbit(){
 	cudaFree(writeEnc_d);
 	cudaFree(Fragments_d);
 	cudaFree(test_d);
+
 	cudaFree(Transit_d);
+	cudaFree(TransitTime_d);
+	cudaFree(TransitI_d);
+	cudaFree(NtransitsT_d);
+	cudaFree(elementsA_d);
+	cudaFree(elementsB_d);
+	cudaFree(elementsAOld_d);
+	cudaFree(elementsBOld_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

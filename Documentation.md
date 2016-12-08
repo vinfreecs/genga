@@ -58,7 +58,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The input file format:
 
     The possible arguments are listed below, some are optional, the order can be changed. The input file format arguments in the param.dat file must be placed between '<< ' and ' >>' and separated with a space.  
-
+    Cartesian corrdinates can not be mixed with Keplerian elements.
 
     * x = x-coordinate in AU (heliocentric)
     * y = y-coordinate in AU (heliocentric)
@@ -67,6 +67,12 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * vx = x-velocity in AU/day * 0.0172020989 (heliocentric)
     * vy = y-velocity in AU/day * 0.0172020989 (heliocentric)
     * vz = z-velocity in AU/day * 0.0172020989 (heliocentric)
+    * a = semi-major axis in AU
+    * e = eccentricity
+    * inc = inclination in radians
+    * O = (Omega) longitude of the ascending node in radians
+    * w = (omega) argument of periapsis in radians
+    * M = mean anomaly in radians
     * rho = density in g/cm^3; optional, the default value can be specified below.
     * r = physical radius in AU; optional, if r is not given or the radius is equal to zero, then the program uses the density to calculate the radius. Note that you have many ways to input the radius or density. Look at the input file section.
     * Sx = x-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
