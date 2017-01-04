@@ -241,8 +241,10 @@ __host__ void Host::Halloc(){
 
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
-	sprintf(P.setElementsfilename, "%s", "-");
 	P.setElements = 0;
+	sprintf(P.setElementsfilename, "%s", "-");
+	P.UseTransits = 0;
+	sprintf(P.Transitsfilename, "%s", "-");
 	sprintf(P.Gasfilename, "%s", "-");
 
 	char format[50];
@@ -483,6 +485,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	
 				if(er <= 0){
 					printf("Error: Irregular output calendar is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "TTV file name =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", &P.Transitsfilename);
+	
+				if(er <= 0){
+					printf("Error: TTV filename is not valid!\n");
 					return 0;
 				}
 			}
@@ -1330,6 +1347,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(strcmp(P.IrregularOutputsfilename, "-") != 0){
 		P.IrregularOutputs = 1;
 	}
+	if(strcmp(P.Transitsfilename, "-") != 0){
+		P.UseTransits = 1;
+	}
 	if(strcmp(P.setElementsfilename, "-") != 0){
 		P.setElements = 1;
 	}
@@ -1804,6 +1824,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Coordinate output buffer: %d\n", P.Buffer);				// use only argument in simulation 0
 			fprintf(infofile, "Use Irregular outputs: %d\n", P.IrregularOutputs);			// use only argument in simulation 0
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
+			fprintf(infofile, "Use Transits: %d\n", P.UseTransits);					// use only argument in simulation 0
+			fprintf(infofile, "TTV file name: %s\n", P.Transitsfilename);				// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
 			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
@@ -1927,7 +1949,6 @@ __host__ void Host::Tsizes(){
 
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
-		NT = NB[0];
 		NB2T = (long long int)(NconstT) * (long long int)(NconstT);
 		if(P.UseTestParticles > 0){
 			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NconstT);
@@ -1976,6 +1997,77 @@ __host__ int Host::readIrregularOutputs(){
 		}
 	}
 	NIrrOutputs = n;
+
+	return 1;
+}
+
+// **************************************
+// This function reads the transit times and stores them in TransitData
+// Authors: Simon Grimm
+// December 2016
+// ******************************************
+__host__ int Host::readTransits(){
+
+	FILE *Transitfile;
+	Transitfile = fopen(P.Transitsfilename, "r");
+	if(Transitfile == NULL){
+		printf("Error: TTV file not found: %s\n", P.Transitsfilename);		
+		fprintf(masterfile, "Error: TTV file not found: %s\n", P.Transitsfilename);		
+		return 0;
+	}
+	
+	//determine the lengh of the file
+	double t, t1, t2;
+	int er;
+	int n = 0;
+	for(int i = 0; i < 1000000; ++i){
+		er = fscanf(Transitfile, "%lf", &t);
+		er = fscanf(Transitfile, "%lf", &t1);
+		er = fscanf(Transitfile, "%lf", &t2);
+		if(er <= 0){
+			n = i;
+			break;
+		}
+	}
+	fclose(Transitfile);
+	Transitfile = fopen(P.Transitsfilename, "r");
+	TransitMaxError = 0.0;
+
+	TransitData = (double3*)malloc(n * sizeof(double3));
+	for(int i = 0; i < NconstT; ++i){
+  		NtransitsT_h[i] = 0;
+  		NtransitsTObs_h[i] = 0;
+	
+	}
+	for(int i = 0; i < def_NtransitTimeMax * NconstT; ++i){
+		TransitTimeObs_h[i].x = 0.0;
+		TransitTimeObs_h[i].y = 1.0;
+	}
+
+	for(int i = 0; i < n; ++i){
+		er = fscanf(Transitfile, "%lf", &TransitData[i].x);	//planet index
+		er = fscanf(Transitfile, "%lf", &TransitData[i].y);	//time
+		er = fscanf(Transitfile, "%lf", &TransitData[i].z);	//error
+		TransitMaxError = fmax(TransitMaxError, TransitData[i].z);
+
+
+		int ii = TransitData[i].x;
+
+		TransitTimeObs_h[ii * def_NtransitTimeMax + NtransitsTObs_h[ii]].x = TransitData[i].y;
+		TransitTimeObs_h[ii * def_NtransitTimeMax + NtransitsTObs_h[ii]].y = TransitData[i].z;
+  		++NtransitsTObs_h[ii];
+
+
+		if(er <= 0){
+			n = i;
+			break;
+		}
+	}
+	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
+	cudaMemcpy(NtransitsT_d, NtransitsT_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemset(TransitTime_d, 0, def_NtransitTimeMax * NconstT * sizeof(double));
+	NTransitData = n;
 
 	return 1;
 }

@@ -218,6 +218,8 @@ struct Parameter{
 	int UseForce;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
+	int UseTransits;
+	char Transitsfilename[128];
 	int setElements;
 	char setElementsfilename[128];
 	char Gasfilename[128];

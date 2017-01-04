@@ -627,7 +627,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					}
 					f = 0;
 
-					syncthreads();
+					__syncthreads();
 					break;
 				}
 			} //end of n loop
@@ -718,7 +718,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 		for(int ff = 0; ff < 1e6; ++ff){
 			for(int n = 1; n <= 8; ++n){
 				if(idy == 0) stop_s[0] = 1;
-				syncthreads();
+				__syncthreads();
 				dt2 = dt1 / (2.0 * n);
 				dt22 = dt2 * 2.0;
 

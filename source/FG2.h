@@ -394,11 +394,12 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-//if(id == 2064) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//if(id == 0) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g g %.20g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
-
+//volatile double gold = x4i.x * v4i.x + x4i.y * v4i.y;
+//__syncthreads();
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
@@ -406,9 +407,11 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
 		//BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
 		__syncthreads();
+//volatile double g = x4i.x * v4i.x + x4i.y * v4i.y;
+//printf("FG g %.20g %.20g\n", gold, g);
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
-//if(id == 2064) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//if(id == 0) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g g %.20g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 #if G3 > 0
 		groupIndex_d[id] = -1;
 #endif

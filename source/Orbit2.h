@@ -21,8 +21,8 @@ public:
 
 	double4 *x4_h, *x4_d;
 	double4 *v4_h, *v4_d;
-	double4 *xold_h, *xold_d;
-	double4 *vold_h, *vold_d;
+	double4 *xold_d;
+	double4 *vold_d;
 	int *index_h, *index_d;
 	double3 *spin_h, *spin_d;
 	double3 *love_h, *love_d;
@@ -101,14 +101,14 @@ public:
 	//TTV
 	double4 *elementsA_h, *elementsA_d;
 	double4 *elementsB_h, *elementsB_d;
-	double4 *elementsAOld_h, *elementsAOld_d;
-	double4 *elementsBOld_h, *elementsBOld_d;
+	double4 *elementsAOld_d;
+	double4 *elementsBOld_d;
+	double2 *elementsP_d;
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
-	int *NtransitsT_h, *NtransitsT_d;	//Total number of detected transits
-	int *Transit_d;				//contains indexes of transiting objects per time step
-	int *TransitI_h, *TransitI_d;	//contains the total indices of the transiting objects
-	double *TransitTime_h, *TransitTime_d;	//contains the total transit times
-
+	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
+	__host__ void modifyElementsCall();
+	__host__ void BSTTVCall(int);
+	
 	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
 	double *coordinateBufferIrr_d;

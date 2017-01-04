@@ -10,6 +10,10 @@
 #include "Host2.h"
 #include "Orbit2.h"
 
+#if def_TTV > 0
+	#include "TTVStep.h"
+#endif
+
 int main(int argc, char*argv[]){
 
 	cudaError_t error;
@@ -136,6 +140,12 @@ int main(int argc, char*argv[]){
 
 	if(D.P.UseTestParticles == 2) D.P.MinMass = 0.0;
 	cudaDeviceSynchronize();
+	error = cudaGetLastError();
+	if(error != 0){
+		fprintf(D.masterfile, "Start1 error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("Start1 error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 	printf("Compute initial Energy\n");
 
 	er = D.firstEnergy();
@@ -172,8 +182,8 @@ int main(int argc, char*argv[]){
 	else printf("Start integration with %d simulations\n", D.Nst);
 	error = cudaGetLastError();
 	if(error != 0){
-		fprintf(D.masterfile, "Start error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("Start error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(D.masterfile, "Start2 error = %d = %s\n",error, cudaGetErrorString(error));
+        	printf("Start2 error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -183,6 +193,17 @@ int main(int argc, char*argv[]){
 	int NAFstep = 0;
 	D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 	++NAFstep;
+#endif
+
+#if def_TTV == 1
+	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int));
+#endif
+#if def_TTV == 2
+	SetTTVP <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
+for(int ittv = 0; ittv < 12; ++ittv){
+printf("*********** TTV Step ***********\n");
+	if(ittv > 0) D.modifyElementsCall();
+	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int));
 #endif
 
 	if(D.Nst > 1){
@@ -245,6 +266,22 @@ int main(int argc, char*argv[]){
 			++D.irrTimeStep;
 		}
 	}
+	D.TransitDataStep = 0;
+	if(D.P.UseTransits == 1){
+		er = D.readTransits();
+		if(er == 0){
+			return 0;
+		}
+		//skip transit times which are before the simulation starts
+		double starttime = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
+		for(int i = 0; i < D.NTransitData; ++i){
+			if(D.TransitData[i].y + D.TransitMaxError >= starttime){
+				break;
+			}
+			++D.TransitDataStep;
+		}
+printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
+	}
 	if(D.P.setElements == 1){
 		er = D.readSetElements();
 		if(er == 0){
@@ -259,7 +296,6 @@ int main(int argc, char*argv[]){
 			return 0;
 		}
 	}
-
 
 
 	int bufferCount = 1;
@@ -363,7 +399,7 @@ int main(int argc, char*argv[]){
 			// print irregular outputs
 			if(D.P.IrregularOutputs == 1 && D.irrTimeStep < D.NIrrOutputs && D.time_h[0] >= D.IrrOutputs[D.irrTimeStep]){
 
-				int ni = 1;
+				int ni = 1; //multiple outputs per time step
 				for(int i = 0; i < ni; ++i){
 					double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
 					D.IrregularStep(dTau);
@@ -422,6 +458,41 @@ int main(int argc, char*argv[]){
 					if(ni + D.irrTimeStep - 1 > D.NIrrOutputs) break;
 				}
 			}
+#if def_TTV == 2
+			// calculate transit times
+			if(D.P.UseTransits == 1 && D.TransitDataStep < D.NTransitData && D.time_h[0] >= D.TransitData[D.TransitDataStep].y - D.TransitMaxError){
+
+				int ni = 1;
+				//count number of transits per time step
+				for(int i = 0; i < ni; ++i){
+					if(D.time_h[0] > D.TransitData[D.TransitDataStep + i].y - D.TransitMaxError){
+						D.Transit_h[ni - 1] = (int)(D.TransitData[D.TransitDataStep + i].x);
+						++ni;
+					}
+
+					if(ni + D.TransitDataStep - 1 >= D.NTransitData) break;
+				}
+printf("Do TTV check %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
+				if(ni - 1 > 0){
+					cudaMemcpy(D.Transit_d, D.Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
+					D.BSTTVCall(ni - 1);
+				}
+				ni = 1;
+				//update TransitDataStep
+				for(int i = 0; i < ni; ++i){
+
+					//D.step();
+					if(D.time_h[0] >= D.TransitData[D.TransitDataStep].y + D.TransitMaxError){
+						++D.TransitDataStep;
+						++ni;
+printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
+					}
+				
+
+					if(ni + D.TransitDataStep - 1 >= D.NTransitData) break;
+				}
+			}
+#endif
 
 			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
 				++bufferCount;
@@ -443,6 +514,8 @@ int main(int argc, char*argv[]){
 
 #endif
 	} // end of time step loop
+
+
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
 		if(bufferCountIrr > 1){
@@ -458,14 +531,20 @@ int main(int argc, char*argv[]){
 #if poincareFlag == 1
 	fclose(D.poincarefile);
 #endif
+#if def_TTV > 0
+//#if def_TTV == 1
+	D.printTransits();
+
+#endif
+#if def_TTV == 2
+	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NT, D.Nst);
+	}//end of TTV loop
+#endif
 
 	//print last informations
 	D.printLastTime();
 	D.LastInfo();
-
-#if def_TTV == 1
-	D.printTransits();
-#endif
 
 	//free all the memory on the Host and on the Device
 	er = D.freeOrbit();

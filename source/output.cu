@@ -868,17 +868,19 @@ __host__ int Data::printRotation(){
 }
 //This function prints the transit times
 __host__ int Data::printTransits(){
-	cudaMemcpy(NtransitsT_h, NtransitsT_d, sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpy(TransitI_h, TransitI_d, NtransitsT_h[0] * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpy(TransitTime_h, TransitTime_d, NtransitsT_h[0] * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(NtransitsT_h, NtransitsT_d, NconstT * sizeof(int), cudaMemcpyDeviceToHost);
+
+	cudaMemcpy(TransitTime_h, TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 
 
 	FILE *Transitfile;
 	Transitfile = fopen("Transits.dat", "a");
 
 printf("NtransitsT: %d\n", NtransitsT_h[0]);
-	for(int i = 0; i < NtransitsT_h[0]; ++i){
-		fprintf(Transitfile, "%d %.20g\n", TransitI_h[i], TransitTime_h[i]);
+	for(int i = 0; i < NconstT; ++i){
+		for(int j = 0; j < NtransitsT_h[i]; ++j){
+			fprintf(Transitfile, "%d %.20g\n", i, TransitTime_h[i * def_NtransitTimeMax + j]);
+		}
 	}
 
 	fclose(Transitfile);

@@ -13,8 +13,6 @@ __host__ void Data::AllocateOrbitt(){
 	rcrit_h = (double*)malloc(NconstT * sizeof(double));
 	x4_h = (double4*)malloc(NconstT * sizeof(double4));
 	v4_h = (double4*)malloc(NconstT * sizeof(double4));
-	xold_h = (double4*)malloc(NconstT * sizeof(double4));
-	vold_h = (double4*)malloc(NconstT * sizeof(double4));
 	index_h = (int*)malloc(NconstT * sizeof(int));
 	spin_h = (double3*)malloc(NconstT * sizeof(double3));
 	love_h = (double3*)malloc(NconstT * sizeof(double3));
@@ -37,19 +35,17 @@ __host__ void Data::AllocateOrbitt(){
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
+	Transit_h = (int*)malloc(def_NtransitMax * sizeof(int));
 	TransitTime_h = (double*)malloc(def_NtransitTimeMax * NconstT * sizeof(double));
-	TransitI_h = (int*)malloc(def_NtransitTimeMax * NconstT * sizeof(int));
-	NtransitsT_h = (int*)malloc(sizeof(int));
-#if def_TTV == 1
+	TransitTimeObs_h = (double2*)malloc(def_NtransitTimeMax * NconstT * sizeof(double2));
+	NtransitsT_h = (int*)malloc(NconstT * sizeof(int));
+	NtransitsTObs_h = (int*)malloc(NconstT * sizeof(int));
+#if def_TTV == 2
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
-	elementsAOld_h = (double4*)malloc(NconstT * sizeof(double4));
-	elementsBOld_h = (double4*)malloc(NconstT * sizeof(double4));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
-	elementsAOld_h = NULL;
-	elementsBOld_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -104,18 +100,21 @@ __host__ void Data::AllocateOrbitt(){
 
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 	cudaMalloc((void **) &TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double));
-	cudaMalloc((void **) &TransitI_d, def_NtransitTimeMax * NconstT * sizeof(int));
-	cudaMalloc((void **) &NtransitsT_d, sizeof(int));
-#if def_TTV == 1
+	cudaMalloc((void **) &TransitTimeObs_d, def_NtransitTimeMax * NconstT * sizeof(double2));
+	cudaMalloc((void **) &NtransitsT_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &NtransitsTObs_d, NconstT * sizeof(int));
+#if def_TTV == 2
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double2));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
 	elementsAOld_d = NULL;
 	elementsBOld_d = NULL;
+	elementsP_d = NULL;
 #endif
 
 	//arrays for backup step
@@ -139,10 +138,10 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &Coltime_d, sizeof(double));
 	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 > 0
-	cudaMalloc((void **) &K_d, NT * NT * sizeof(double));
-	cudaMalloc((void **) &Kold_d, NT * NT * sizeof(double));
+	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
+	cudaMalloc((void **) &Kold_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &groupIndex_d, NconstT*sizeof(int));
-	cudaMalloc((void **) &StopTime_d, NT * NT * sizeof(double4));
+	cudaMalloc((void **) &StopTime_d, NconstT * NconstT * sizeof(double4));
 	cudaMalloc((void **) &x4G3_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &v4G3_d, NconstT * sizeof(double4));
 #else
@@ -377,7 +376,6 @@ __host__ int Data::init(){
 
 	Ncoll_m[0] = 0;
 	Ntransit_m[0] = 0;
-	NtransitsT_h[0] = 0;
 	NWriteEnc_m[0] = 0;
 	nFragments_m[0] = 0;
 	for(int i = 0; i < def_GMax; ++i){
@@ -395,8 +393,6 @@ __host__ int Data::init(){
 		v4_h[i].y = 0.0;
 		v4_h[i].z = 0.0;
 		v4_h[i].w = 0.0;
-		xold_h[i] = x4_h[i];
-		vold_h[i] = v4_h[i];
 		test_h[i] = -1.0;
 		spin_h[i].x = 0.0;
 		spin_h[i].y = 0.0;
@@ -412,7 +408,7 @@ __host__ int Data::init(){
 		enccount_h[i] = 0;
 		aecountT_h[i] = 0;
 		enccountT_h[i] = 0;
-#if def_TTV == 1
+#if def_TTV == 2
 		elementsA_h[i].x = 0.0;
 		elementsA_h[i].y = 0.0;
 		elementsA_h[i].z = 0.0;
@@ -421,8 +417,6 @@ __host__ int Data::init(){
 		elementsB_h[i].y = 0.0;
 		elementsB_h[i].z = 0.0;
 		elementsB_h[i].w = 0.0;
-		elementsAOld_h[i] = elementsA_h[i];
-		elementsBOld_h[i] = elementsB_h[i];
 #endif
 	}
 	for(int st = 0; st < Nst; ++st){
@@ -536,12 +530,11 @@ __host__ int Data::ic(){
 	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
 
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(NtransitsT_d,  NtransitsT_h, sizeof(int), cudaMemcpyHostToDevice);
-#if def_TTV == 1
+#if def_TTV == 2
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(elementsAOld_d, elementsAOld_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(elementsBOld_d, elementsBOld_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsAOld_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 #endif
 
 	cudaError_t error;
@@ -623,14 +616,40 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
 				else if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
 				else if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
-				else if (GSF[st].informat[f] == 23) {fscanf (infile, "%lf",&x.x); keplerian = 1;}
-				else if (GSF[st].informat[f] == 24) {fscanf (infile, "%lf",&x.y); keplerian = 1;}
-				else if (GSF[st].informat[f] == 25) {fscanf (infile, "%lf",&x.z); keplerian = 1;}
-				else if (GSF[st].informat[f] == 26) {fscanf (infile, "%lf",&v.x); keplerian = 1;}
-				else if (GSF[st].informat[f] == 27) {fscanf (infile, "%lf",&v.y); keplerian = 1;}
-				else if (GSF[st].informat[f] == 28) {fscanf (infile, "%lf",&v.z); keplerian = 1;}
+				else if (GSF[st].informat[f] == 23){
+					fscanf (infile, "%lf",&x.x);
+					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 24){
+					fscanf (infile, "%lf",&x.y);
+					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 25){
+					fscanf (infile, "%lf",&x.z);
+					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 26){
+					fscanf (infile, "%lf",&v.x);
+					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 27){
+					fscanf (infile, "%lf",&v.y);
+					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 28){
+					fscanf (infile, "%lf",&v.z);
+					keplerian = 1;
+				}
 			}
+#if def_TTV == 2
+			double4 elementsA;
+			double4 elementsB;
+#endif
 			if(keplerian == 1){
+#if def_TTV == 2
+				elementsA = x;
+				elementsB = v;
+#endif	
 				KepToCart(x, v, Msun_h[st].x);
 			}
 			if(index < 0) index *= -1;
@@ -649,11 +668,19 @@ __host__ int Data::readic(int st){
 			if(Nst == 1) index_h[ii + NBSN] = index;
 			else index_h[ii + NBSN] = index % 100 + 100*st;
 			aelimits_h[ii + NBSN] = aelimits;
+#if def_TTV == 2
+			elementsA_h[ii + NBSN] = elementsA;
+			elementsB_h[ii + NBSN] = elementsB;
+#endif
 			++ii;
 			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles > 0) ++iismall;
 		}
 	}
 	else{
+#if def_TTV > 0
+	printf("ERROR: restart not possible for TTV\n");
+	return 0;
+#endif
 	//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
 		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
@@ -1522,8 +1549,6 @@ __host__ int Data::freeOrbit(){
 	
 	free(x4_h);
 	free(v4_h);
-	free(xold_h);
-	free(vold_h);
 	free(index_h);
 	free(spin_h);
 	free(love_h);
@@ -1541,13 +1566,13 @@ __host__ int Data::freeOrbit(){
 	free(NBuffer);
 	free(NBufferIrr);
 
+	free(Transit_h);
 	free(TransitTime_h);
-	free(TransitI_h);
+	free(TransitTimeObs_h);
 	free(NtransitsT_h);
+	free(NtransitsTObs_h);
 	free(elementsA_h);
 	free(elementsB_h);
-	free(elementsAOld_h);
-	free(elementsBOld_h);
 
 	free(vcom_h);
 
@@ -1646,12 +1671,14 @@ __host__ int Data::freeOrbit(){
 
 	cudaFree(Transit_d);
 	cudaFree(TransitTime_d);
-	cudaFree(TransitI_d);
+	cudaFree(TransitTimeObs_d);
 	cudaFree(NtransitsT_d);
+	cudaFree(NtransitsTObs_d);
 	cudaFree(elementsA_d);
 	cudaFree(elementsB_d);
 	cudaFree(elementsAOld_d);
 	cudaFree(elementsBOld_d);
+	cudaFree(elementsP_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

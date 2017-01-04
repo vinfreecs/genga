@@ -90,7 +90,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * \- = skip this column, optional
 
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.
- * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies.
+ * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies; 2: Small bodies only affect large bodies.
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
  * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)

@@ -242,6 +242,12 @@ __global__ void GLPositions(double4 *x4_d, double4 *positions, double4 *colors, 
 		color.z = 1.0;
 		color.w = 1.0;
 	}
+	if(x.w < 0.0){
+		color.x = 0.0;
+		color.y = 0.0;
+		color.z = 0.0;
+		color.w = 0.0;
+	}
 
 	if(id < N + Nsmall){
 		positions[id] = x;
