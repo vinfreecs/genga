@@ -300,7 +300,7 @@ The precision of the collision output can be adjuted with the def_CollisionPreci
     .
 
 ##The full collision output file: OutCollison.dat
-This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift planetary radii.
+This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift times the planetary radii.
 
 
 ## The ejection file Ejections<name>.dat

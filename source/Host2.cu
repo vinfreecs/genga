@@ -2063,6 +2063,17 @@ __host__ int Host::readTransits(){
 			break;
 		}
 	}
+	for(int st = 1; st < Nst; ++st){
+		for(int i = 0; i < N_h[0]; ++i){
+			//assume that all sub simulations are of equal size
+			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
+			for(int j = 0; j < NtransitsTObs_h[i]; ++j){
+				 TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + j] = TransitTimeObs_h[i * def_NtransitTimeMax + j];
+			}
+		}
+	}
+	
+
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsT_d, NtransitsT_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);

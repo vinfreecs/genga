@@ -35,11 +35,19 @@ __host__ void Data::AllocateOrbitt(){
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
+#if def_TTV > 0
 	Transit_h = (int*)malloc(def_NtransitMax * sizeof(int));
 	TransitTime_h = (double*)malloc(def_NtransitTimeMax * NconstT * sizeof(double));
 	TransitTimeObs_h = (double2*)malloc(def_NtransitTimeMax * NconstT * sizeof(double2));
 	NtransitsT_h = (int*)malloc(NconstT * sizeof(int));
 	NtransitsTObs_h = (int*)malloc(NconstT * sizeof(int));
+#else
+	Transit_h = NULL;
+	TransitTime_h = NULL;
+	TransitTimeObs_h = NULL;
+	NtransitsT_h = NULL;
+	NtransitsTObs_h = NULL;
+#endif
 #if def_TTV == 2
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
@@ -97,12 +105,19 @@ __host__ void Data::AllocateOrbitt(){
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
-
+#if def_TTV > 0
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 	cudaMalloc((void **) &TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double));
 	cudaMalloc((void **) &TransitTimeObs_d, def_NtransitTimeMax * NconstT * sizeof(double2));
 	cudaMalloc((void **) &NtransitsT_d, NconstT * sizeof(int));
 	cudaMalloc((void **) &NtransitsTObs_d, NconstT * sizeof(int));
+#else
+	Transit_d = NULL;
+	TransitTime_d = NULL;
+	TransitTimeObs_d = NULL;
+	NtransitsT_d = NULL;
+	NtransitsTObs_d = NULL;
+#endif
 #if def_TTV == 2
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
