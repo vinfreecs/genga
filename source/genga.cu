@@ -534,7 +534,7 @@ printf("Do TTV update %.10g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 			// print time information //
 			// this should be the last thing to print, because it is used to restart at the last possible timestep
 			if((D.P.ci > 0 && D.timeStep % D.P.ci == 0) || interrupt == 1){
-				if(D.bufferCount >= D.P.Buffer || interrupt == 1){
+				if(D.bufferCount >= D.P.Buffer || D.P.Buffer == 1 || interrupt == 1){
 					D.printTime();
 					fflush(D.masterfile);
 					D.bufferCount = 0;
