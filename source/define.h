@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.59
+#define Version 3.60
 
 //Default parameter values
 #define def_TimeStep 6
@@ -48,6 +48,7 @@
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
+#define def_G_Sigma_10 2000		 //surface density at 1AU
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
@@ -97,7 +98,6 @@
 #define Gasnr_p 150
 #define Gasnz_p 51
 #define h_1 0.03358 //scale height at 1AU for c = 1km/s*
-#define Sigma_10 2000*1.49598*1.49598/1.98892*1.0e-7 //surface density at 1AU
 #define Mgiant  1.0E-4
 #define M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
 #define Mass_pl  0.502E-14 /* corresponding to 10^19g */
@@ -169,7 +169,7 @@
 
 #define def_TTV 0
 #define def_NtransitMax 10
-#define def_NtransitTimeMax 10
+#define def_NtransitTimeMax 100		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
 
 #define USE_RANDOM 1
@@ -209,6 +209,7 @@ struct Parameter{
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc
+	double G_Sigma_10;		//Gas Sigma_10
 	int UseaeGrid;			
 	int FormatS;			//Output file structure
 	int FormatT;			
@@ -220,6 +221,7 @@ struct Parameter{
 	char IrregularOutputsfilename[128];
 	int UseTransits;
 	char Transitsfilename[128];
+	int TransitSteps;
 	int setElements;
 	char setElementsfilename[128];
 	char Gasfilename[128];

@@ -35,17 +35,29 @@ __host__ void Data::AllocateOrbitt(){
 	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
+#if def_TTV > 0
 	Transit_h = (int*)malloc(def_NtransitMax * sizeof(int));
 	TransitTime_h = (double*)malloc(def_NtransitTimeMax * NconstT * sizeof(double));
 	TransitTimeObs_h = (double2*)malloc(def_NtransitTimeMax * NconstT * sizeof(double2));
-	NtransitsT_h = (int*)malloc(NconstT * sizeof(int));
+	NtransitsT_h = (int2*)malloc(NconstT * sizeof(int2));
 	NtransitsTObs_h = (int*)malloc(NconstT * sizeof(int));
-#if def_TTV == 2
+#else
+	Transit_h = NULL;
+	TransitTime_h = NULL;
+	TransitTimeObs_h = NULL;
+	NtransitsT_h = NULL;
+	NtransitsTObs_h = NULL;
+#endif
+#if def_TTV > 0
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsLA_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsLB_h = (double4*)malloc(NconstT * sizeof(double4));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
+	elementsLA_h = NULL;
+	elementsLB_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -97,23 +109,34 @@ __host__ void Data::AllocateOrbitt(){
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
-
+#if def_TTV > 0
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 	cudaMalloc((void **) &TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double));
 	cudaMalloc((void **) &TransitTimeObs_d, def_NtransitTimeMax * NconstT * sizeof(double2));
-	cudaMalloc((void **) &NtransitsT_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &NtransitsT_d, NconstT * sizeof(int2));
 	cudaMalloc((void **) &NtransitsTObs_d, NconstT * sizeof(int));
-#if def_TTV == 2
+#else
+	Transit_d = NULL;
+	TransitTime_d = NULL;
+	TransitTimeObs_d = NULL;
+	NtransitsT_d = NULL;
+	NtransitsTObs_d = NULL;
+#endif
+#if def_TTV > 0
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double2));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
 	elementsAOld_d = NULL;
 	elementsBOld_d = NULL;
+	elementsLA_d = NULL;
+	elementsLB_d = NULL;
 	elementsP_d = NULL;
 #endif
 
@@ -408,7 +431,7 @@ __host__ int Data::init(){
 		enccount_h[i] = 0;
 		aecountT_h[i] = 0;
 		enccountT_h[i] = 0;
-#if def_TTV == 2
+#if def_TTV > 0
 		elementsA_h[i].x = 0.0;
 		elementsA_h[i].y = 0.0;
 		elementsA_h[i].z = 0.0;
@@ -417,6 +440,14 @@ __host__ int Data::init(){
 		elementsB_h[i].y = 0.0;
 		elementsB_h[i].z = 0.0;
 		elementsB_h[i].w = 0.0;
+		elementsLA_h[i].x = 0.0;
+		elementsLA_h[i].y = 0.0;
+		elementsLA_h[i].z = 0.0;
+		elementsLA_h[i].w = 0.0;
+		elementsLB_h[i].x = 0.0;
+		elementsLB_h[i].y = 0.0;
+		elementsLB_h[i].z = 0.0;
+		elementsLB_h[i].w = 0.0;
 #endif
 	}
 	for(int st = 0; st < Nst; ++st){
@@ -530,11 +561,13 @@ __host__ int Data::ic(){
 	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
 
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
-#if def_TTV == 2
+#if def_TTV > 0
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsLA_d, elementsLA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsLB_d, elementsLB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 #endif
 
 	cudaError_t error;
@@ -641,12 +674,12 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 				}
 			}
-#if def_TTV == 2
+#if def_TTV > 0
 			double4 elementsA;
 			double4 elementsB;
 #endif
 			if(keplerian == 1){
-#if def_TTV == 2
+#if def_TTV > 0
 				elementsA = x;
 				elementsB = v;
 #endif	
@@ -668,7 +701,7 @@ __host__ int Data::readic(int st){
 			if(Nst == 1) index_h[ii + NBSN] = index;
 			else index_h[ii + NBSN] = index % 100 + 100*st;
 			aelimits_h[ii + NBSN] = aelimits;
-#if def_TTV == 2
+#if def_TTV > 0
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
 #endif
@@ -1573,6 +1606,8 @@ __host__ int Data::freeOrbit(){
 	free(NtransitsTObs_h);
 	free(elementsA_h);
 	free(elementsB_h);
+	free(elementsLA_h);
+	free(elementsLB_h);
 
 	free(vcom_h);
 
@@ -1678,6 +1713,8 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsB_d);
 	cudaFree(elementsAOld_d);
 	cudaFree(elementsBOld_d);
+	cudaFree(elementsLA_d);
+	cudaFree(elementsLB_d);
 	cudaFree(elementsP_d);
 	
 	error = cudaGetLastError();

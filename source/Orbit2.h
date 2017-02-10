@@ -103,6 +103,8 @@ public:
 	double4 *elementsB_h, *elementsB_d;
 	double4 *elementsAOld_d;
 	double4 *elementsBOld_d;
+	double4 *elementsLA_h, *elementsLA_d;
+	double4 *elementsLB_h, *elementsLB_d;
 	double2 *elementsP_d;
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
@@ -164,7 +166,7 @@ public:
 	__host__ int printTransits();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
-	__host__ void CoordinateToBuffer(int, int);
+	__host__ void CoordinateToBuffer(int, int, double);
 
 	//Energy
 	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int, int);
@@ -216,7 +218,7 @@ public:
 
 	//gas
 	__host__ void GasAlloc();
-	__host__ void GasDisk(double *, double *, double *, double, int);
+	__host__ void GasDisk(double *, double *, double *, double, int, double);
 	__host__ int setGasDisk();
 	__host__ int freeGas();
 	__host__ void gasEnergyCall(int, double *, double *, double *, cudaStream_t, int, int, int);

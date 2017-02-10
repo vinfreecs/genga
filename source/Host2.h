@@ -18,6 +18,7 @@ public:
 
 	int Nst;				//Number of simulations
 	int NconstT;
+	int MTFlag;
 
 	int devCount;
 	int runtimeVersion;
@@ -63,7 +64,10 @@ public:
 	int *NBS_h, *NBS_d;			//starting point in memory of individual simulations
 
 	//data for irregular outputs
+	int bufferCount;
+	int bufferCountIrr;
 	int irrTimeStep;
+	int irrTimeStepOut;
 	int NIrrOutputs;
 	double *IrrOutputs;
 	
@@ -72,7 +76,7 @@ public:
 	int NTransitData;
 	double3 *TransitData;
 	double TransitMaxError;
-	int *NtransitsT_h, *NtransitsT_d;			//Total number of computed transits per planet
+	int2 *NtransitsT_h, *NtransitsT_d;			//Total number of computed transits per planet, old number
 	int *NtransitsTObs_h, *NtransitsTObs_d;			//Total number of observed transits per planet
 	double2 *TransitTimeObs_h, *TransitTimeObs_d;		//contains all observed transit times
 	double *TransitTime_h, *TransitTime_d;			//contains all computed transit times

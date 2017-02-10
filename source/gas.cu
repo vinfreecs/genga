@@ -33,14 +33,14 @@ __host__ void Data::GasAlloc(){
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, int G_alpha){
+__host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, int G_alpha, double G_Sigma_10){
 
 	double dr1 = 0.1;
 	double dr2 = 0.5;
 
 	double drg, h, Sigma, zh, rg, zg;
 
-	double Sigma10 = Sigma_10;
+	double Sigma10 = G_Sigma_10;
 //	double rin, ro;
 //	if(uniform != 1){
 //		rin = 0.1 + dTime/(2.0 * M_PI * dTau_diss); // time scale for the inner edge to move 1AU
@@ -207,7 +207,7 @@ __device__ double ERFUNC(double zz){
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, int G_alpha){
+__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, int G_alpha, double G_Sigma_10){
 
 	int ip = blockIdx.x * blockDim.x + threadIdx.x; // r
 	int jp = blockIdx.y * blockDim.y + threadIdx.y; // z
@@ -225,7 +225,7 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 		rp = 0.1 + dr1 * ip;
 
 		h = h_1 * rp * pow(rp, 0.25);
-                double Sigma = Sigma_10 * pow(rp, -G_alpha);
+		double Sigma = G_Sigma_10 * pow(rp, -G_alpha);
 //		if(uniform != 1){
 //			ro = rp + 0.5 * dr1; // radius of the outer cel boundary
 //			if(rin > rp + 0.5 * dr1){
@@ -301,7 +301,7 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 
 __host__ int Data::setGasDisk(){
 	cudaError_t error;
-	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha);
+	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10);
 
 	cudaMemcpy(Gas_rg_d, Gas_rg_h, Gasnr_g * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Gas_zg_d, Gas_zg_h, Gasnr_g * Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
@@ -310,7 +310,7 @@ __host__ int Data::setGasDisk(){
 	dim3 NTGasTabel(32, 1, 1);
 	dim3 NBGasTabel((Gasnr_p + 31) / 32, Gasnz_p, 1);
 
-	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha);
+	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha, P.G_Sigma_10);
 
 	cudaDeviceSynchronize();
 	error = cudaGetLastError();
@@ -326,7 +326,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, int Nst, double Ct){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, double G_Sigma_10, int Nst, double Ct){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -388,8 +388,8 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 		h = h_1 * r1 * pow(r1, 0.25);
 
-                Sigma = Sigma_10 / r1;
-                if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
+		Sigma = G_Sigma_10 / r1;
+		if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
 
 		Sigma *= depfac;
 //if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
@@ -520,9 +520,9 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 	double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 	//Kick
-        v4.x += a_x * dt;
-        v4.y += a_y * dt;
-        v4.z += a_z * dt;
+	v4.x += a_x * dt;
+	v4.y += a_y * dt;
+	v4.z += a_z * dt;
 
 	double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 	__syncthreads();
@@ -692,9 +692,9 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 
 	double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 	//Kick
-        v4.x += a_x * dt;
-        v4.y += a_y * dt;
-        v4.z += a_z * dt;
+	v4.x += a_x * dt;
+	v4.y += a_y * dt;
+	v4.z += a_z * dt;
 
 	double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 	__syncthreads();
@@ -757,11 +757,11 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 	if(idy == 0){
 		U_d[0] += U_s[0];
 	}
-        for(int i = 0; i < N ;i += blockDim.x){
+	for(int i = 0; i < N ;i += blockDim.x){
 		if(idy + i < N){
-                	Energy_d[idy + i] = 0.0;
+			Energy_d[idy + i] = 0.0;
 		}
-        }
+	}
 
 }
 
@@ -817,13 +817,13 @@ __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, dou
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
 	int nt = min(32, NB[0]);
-	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, Nst, Ct);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct);
 }
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
 	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d);

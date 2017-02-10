@@ -111,6 +111,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The name for the aeCount grid
  * use gas disk: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
  * The dissipation time for the gas disc in years
+ * The gas surface density at 1 AU Sigma_10 in g / cm^3
  * The power law exponent for the gas disc, alpha 
  * use additional force, which is specified in the file force.h See [here](#markdown-additional-forces) for more details
  * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
@@ -284,6 +285,7 @@ This file contains information about the number of particles and the energy. At 
 
 ## The Execution time file: time<name>.dat
 This file contains the execution time spent for the corresponding Coordinate Output interval, in seconds. The last line contains the total execution time in seconds.
+The first columns indicates the time step. This last entry in this file is used for the automated restart (restart timestep = -1).
 
 ##The information file: info<name>.dat
 This file contains general information about the used parameters and hardware.
@@ -300,7 +302,7 @@ The precision of the collision output can be adjuted with the def_CollisionPreci
     .
 
 ##The full collision output file: OutCollison.dat
-This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift planetary radii.
+This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift times the planetary radii.
 
 
 ## The ejection file Ejections<name>.dat
@@ -357,8 +359,14 @@ A simulation can be restarted from each coordinate output file, by using the -R 
 Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files are not deleted and the new data is added at the end of these files. But the coordinate output files are OVERWRITTEN with the new data. By restarting a simulation the values of E0 and the inner Energy are read out from the original run and used again.
 One can also use a coordinate output file to start a new simulation run with totally different parameters by using the Output file as a new initial condition file. the Input file Format should then be of the form << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
 
-When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file the IgnoreLockFile Flag in the define.h file can be set t
-o 1.
+When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file the IgnoreLockFile Flag in the define.h file can be set to 1.
+
+With the restart time -1, GENGA searches automatically for the last output and restarts directly from there. To determine the last output, the last entry in the time-file is used.
+
+
+# Interrupting a simulation #
+
+GENGA can be interrupted with the SIGINT signal (Ctrl-C). In this case, GENGA completes the current time step and writes one additional output. With the restart time step -1, GENGA will continue the integration starting from this output. The SIGINT signal can also be sent to GENGA when using a queuing system (e.g. SLURM).
 
 # aeLimits #
 The aeLimits values amin, amax, emin and emax are limits for the semi major axis and eccentricity for an individual particle. The values can be set in the initial condition file. If the corresponding particle spends time in the given area in a-e space, then a counter is increased.
@@ -385,7 +393,6 @@ The parameters for the gas disc can be set in:
     * Gasnr_p: Number of cells in r direction for particle grid
     * Gasnz_p: Number of cells in z direction for particle grid
     * h_1: scale height at 1AU for c = 1km/s
-    * Sigma_10: surface density at 1AU
     * Mgiant: Maximum mass for gas drag
     * M_Enhance: factor for enhancement
     * Mass_pl: factor for enhancement

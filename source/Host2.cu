@@ -5,28 +5,28 @@
 //April 2014
 // *******************************
 __host__ Host::Host(long long Restart){
-
-        sprintf(masterfilename, "%s", "master.out");
-
+	
+	sprintf(masterfilename, "%s", "master.out");
+	
 	FILE *lockfile;
- 	char lockfilename[64];
-        sprintf(lockfilename, "%s", "lock.dat");
-
+	char lockfilename[64];
+	sprintf(lockfilename, "%s", "lock.dat");
+	
 	Lock = 0;
 	
 	if(Restart == 0LL){
 		lockfile = fopen(lockfilename, "r");
-
+		
 		if(lockfile == NULL){
 			lockfile = fopen(lockfilename, "w");
 			fprintf(lockfile, "%d\n", 0);
 			fclose(lockfile);
-        	}
+		}
 		else{
 			Lock = 1;
 			fclose(lockfile);
 		}
-
+		
 	}
 	else{
 		lockfile = fopen(lockfilename, "r");
@@ -34,63 +34,60 @@ __host__ Host::Host(long long Restart){
 			lockfile = fopen(lockfilename, "w");
 			fprintf(lockfile, "%lld\n", Restart);
 			fclose(lockfile);
-        	}
+		}
 		else{
 			long long R;
 			fscanf(lockfile, "%lld", &R);
 			fclose(lockfile);
-
+			
 			if(R == Restart) Lock = 1;
-
+			
 			lockfile = fopen(lockfilename, "w");
 			fprintf(lockfile, "%lld\n", Restart);
 			fclose(lockfile);
-
+			
 		}
 	}
-
-#if IgnoreLockFile == 1
-        Lock = 0;
-#endif
-        if(Lock == 0){
-                if(Restart == 0LL){
-                        masterfile = fopen(masterfilename, "w");
-                }
-                else{
-                        masterfile = fopen(masterfilename, "a");
-                }
-        }
-        else{
-                masterfile = fopen(masterfilename, "a");
-        }
-
-
-
-
-        sprintf(pathfilename, "");
-
-        Nst = 1;
-        devCount = 0;
-        runtimeVersion = 0;
-        driverVersion = 0;
-
-        NT = 0;
-        NsmallT = 0;
-        NB2T = 0;
-	NBNencT = 0;
-        NEnergyT = 0;
-
 	
+	#if IgnoreLockFile == 1
+	Lock = 0;
+	#endif
+	if(Lock == 0){
+		if(Restart == 0LL){
+			masterfile = fopen(masterfilename, "w");
+		}
+		else{
+			masterfile = fopen(masterfilename, "a");
+		}
+	}
+	else{
+		masterfile = fopen(masterfilename, "a");
+	}
+	
+	
+	pathfilename[0] = 0; // = ""
+	
+	Nst = 1;
+	devCount = 0;
+	runtimeVersion = 0;
+	driverVersion = 0;
+	
+	NT = 0;
+	NsmallT = 0;
+	NB2T = 0;
+	NBNencT = 0;
+	NEnergyT = 0;
 }
 
 
 // ************************************************
 //This function determines the number of simulations by reading the pathfile specified in the -M console argument
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Authors: Simon Grimm
+//January 2017
 // ************************************************
 __host__ int Host::NSimulations(int argc, char*argv[]){
-
+	
+	MTFlag = 0;
 	for(int i = 1; i < argc; i += 2){
 		if(strcmp(argv[i], "-M") == 0){
 			char t[160];
@@ -111,13 +108,17 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 			fclose(pathfile);
 			if(Np > 1) Nst = Np;
 		}
+		if(strcmp(argv[i], "-MT") == 0){
+			Nst = atoi(argv[i + 1]);
+			MTFlag = 1;
+		}
 	}
-	if(Nst == 0){
+	if(Nst <= 0){
 		printf("Error: No Simulations!\n");
 		fprintf(masterfile, "Error: No Simulations!\n");
 		return 0;
 	}
-
+	
 	return Nst;
 }
 
@@ -127,7 +128,7 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 //March 2014
 // **********************************************
 __host__ int Host::DeviceInfo(){
-
+	
 	cudaError_t error;
 	cudaGetDeviceCount(&devCount);
 	if(devCount == 0){
@@ -135,14 +136,14 @@ __host__ int Host::DeviceInfo(){
 		printf("Error: No valid cuda device!\n");
 		return 0;
 	}
-
+	
 	error = cudaGetLastError();
 	fprintf(masterfile,"initial error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error > 0){
 		printf("initial error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
-
+	
 	cudaSetDeviceFlags(cudaDeviceMapHost);
 	error = cudaGetLastError();
 	fprintf(masterfile,"set Flags error = %d = %s\n",error, cudaGetErrorString(error));
@@ -150,16 +151,16 @@ __host__ int Host::DeviceInfo(){
 		printf("set Flags error = %d = %s\n",error, cudaGetErrorString(error));	
 		return 0;
 	}
-
+	
 	cudaDeviceProp devProp;
-
+	
 	cudaRuntimeGetVersion(&runtimeVersion);
 	cudaDriverGetVersion(&driverVersion);
-
+	
 	fprintf(masterfile, "There are %d CUDA devices.\n", devCount);
 	fprintf(masterfile, "Runtime Version: %d\n", runtimeVersion);
 	fprintf(masterfile, "Driver Version: %d\n", driverVersion);
-
+	
 	for(int i = 0; i < devCount; ++i){
 		cudaGetDeviceProperties(&devProp, i);
 		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels %d, regsPerBlock %d\n",  devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory, devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels, devProp.regsPerBlock);
@@ -183,7 +184,7 @@ __host__ void Host::Halloc(){
 	N2 = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int*)malloc(Nst*sizeof(int));
 	rho = (double*)malloc(Nst*sizeof(double));	
-
+	
 	P.dev = 0;
 	GSF = (struct GSFiles*)malloc(Nst*sizeof(struct GSFiles));
 	
@@ -201,7 +202,7 @@ __host__ void Host::Halloc(){
 	time_h = (double*)malloc(Nst*sizeof(double));
 	dt_h = (double*)malloc(Nst*sizeof(double));
 	delta_h = (long long*)malloc(Nst*sizeof(long long));
-
+	
 	//Initialize parameters with default values
 	P.ei = def_EnergyOutputInterval;
 	P.ci = def_CoordinatesOutputInterval;
@@ -228,41 +229,42 @@ __host__ void Host::Halloc(){
 	P.UseForce = def_UseForce;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
+	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
 	P.WriteEncounters = def_WriteEncounters;
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
-        P.NAFvars = def_NAFvars;
-        P.NAFn0 = def_NAFn0;
-        P.NAFnfreqs = def_NAFnfreqs;
+	P.NAFvars = def_NAFvars;
+	P.NAFn0 = def_NAFn0;
+	P.NAFnfreqs = def_NAFnfreqs;
 	P.NAFformat = def_NAFformat;
 	P.NAFinterval = def_NAFinterval;
-
+	
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	P.setElements = 0;
 	sprintf(P.setElementsfilename, "%s", "-");
 	P.UseTransits = 0;
+	P.TransitSteps = 1;
 	sprintf(P.Transitsfilename, "%s", "-");
 	sprintf(P.Gasfilename, "%s", "-");
-
+	
 	char format[50];
 	sprintf(format, def_InputFileFormat);
-
+	
 	char ff[5 * 30];
 	int er = sscanf(format, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-	 &ff[0 * 5], &ff[1 * 5], &ff[2 * 5], &ff[3 * 5],&ff[4 * 5], &ff[5 * 5], &ff[6 * 5], &ff[7 * 5], &ff[8 * 5],
-	 &ff[9 * 5], &ff[10 * 5], &ff[11 * 5], &ff[12 * 5], &ff[13 * 5], &ff[14 * 5], &ff[15 * 5], &ff[16 * 5], 
-	 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
-
+			&ff[0 * 5], &ff[1 * 5], &ff[2 * 5], &ff[3 * 5],&ff[4 * 5], &ff[5 * 5], &ff[6 * 5], &ff[7 * 5], &ff[8 * 5],
+		 &ff[9 * 5], &ff[10 * 5], &ff[11 * 5], &ff[12 * 5], &ff[13 * 5], &ff[14 * 5], &ff[15 * 5], &ff[16 * 5], 
+		 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
+	
 	for(int st = 0; st < Nst; ++st){
 		for(int i = 0; i < 30; ++i){
 			GSF[st].informat[i] = 0;
 		}
-
+		
 		for(int f = -1; f < er; ++f){
-
 			if(strcmp(ff + f * 5, "x") == 0){
 				GSF[st].informat[f] = 1;
 			}
@@ -368,7 +370,7 @@ __host__ void Host::Halloc(){
 		time_h[st] = 0.0;
 		dt_h[st] = 0.0;
 		delta_h[st] = def_IntegrationSteps;
-
+		
 		NB[st] = N_h[st];
 		N4[st] = N_h[st]/4;
 		N2[st] = N_h[st]/2;
@@ -380,16 +382,22 @@ __host__ void Host::Halloc(){
 	
 	//Read the paths for the individual simulations
 	if(Nst > 1){
-		pathfile = fopen(pathfilename, "r");
-		for(int st = 0; st < Nst; ++st){
-			char t[160];
-			fscanf(pathfile, "%s", t);
-			sprintf(GSF[st].path, "%s/", t);
+		if(MTFlag == 0){
+			pathfile = fopen(pathfilename, "r");
+			for(int st = 0; st < Nst; ++st){
+				char t[160];
+				fscanf(pathfile, "%s", t);
+				sprintf(GSF[st].path, "%s/", t);
+			}
+			fclose(pathfile);
 		}
-		fclose(pathfile);
+		else{
+			for(int st = 0; st < Nst; ++st){
+				GSF[st].path[0] = 0; // = ""
+			}
+		}
 	}
-	else sprintf(GSF[0].path, "");
-
+	else GSF[0].path[0] = 0; // = ""
 };
 
 
@@ -401,10 +409,10 @@ __host__ void Host::Halloc(){
 //Mai 2015
 // ***********************************************
 __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
-
+	
 	char sp[160];
 	int er;
-
+	
 	for(int j = 0; j < 50; ++j){
 		int c;
 		for(int i = 0; i < 50; ++i){
@@ -417,7 +425,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 		}
 		if(c == EOF) break;
-
+		
 		if(strcmp(sp, "Time step in days =") == 0){
 			er = fscanf (paramfile, "%lf", &idt_h[st]);
 			if(er <= 0){
@@ -451,7 +459,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Coordinates output interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.ci);
-	
+				
 				if(er <= 0 || P.ci < -1){
 					printf("Error: Coordinates outut interval is not valid!\n");
 					return 0;
@@ -467,7 +475,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Number of outputs per interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.nci);
-	
+				
 				if(er <= 0 || P.nci <= 0 || (P.nci > P.ci && P.ci > 0)){
 					printf("Error: Number of outputs per interval is not valid!\n");
 					return 0;
@@ -482,7 +490,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Irregular output calendar =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", &P.IrregularOutputsfilename);
-	
+				
 				if(er <= 0){
 					printf("Error: Irregular output calendar is not valid!\n");
 					return 0;
@@ -497,7 +505,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "TTV file name =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", &P.Transitsfilename);
-	
+				
 				if(er <= 0){
 					printf("Error: TTV filename is not valid!\n");
 					return 0;
@@ -509,9 +517,24 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "TTV steps =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.TransitSteps);
+				
+				if(er <= 0){
+					printf("Error: TTV Steps is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Integration steps =") == 0){
 			er = fscanf (paramfile, "%lld", &delta_h[st]);
-	
+			
 			if(er <= 0 || delta_h[st] <= 0){
 				printf("Error: Inegration steps are not valid!\n");
 				return 0;
@@ -521,9 +544,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else P.deltaT = max(P.deltaT, delta_h[st]);
 		}
 		else if(strcmp(sp, "Central Mass =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Msun_h[st].x);
-
+			
 			if(er <= 0){
 				printf("Error: Central mass is not valid!\n");
 				return 0;
@@ -531,9 +554,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star Radius =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Msun_h[st].y);
-
+			
 			if(er <= 0){
 				printf("Error: Star Raius is not valid!\n");
 				return 0;
@@ -541,9 +564,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star Love Number =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Msun_h[st].z);
-
+			
 			if(er <= 0){
 				printf("Error: Star Love Number is not valid!\n");
 				return 0;
@@ -551,9 +574,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star fluid Love Number =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Msun_h[st].w);
-
+			
 			if(er <= 0){
 				printf("Error: Star fluid Love Number is not valid!\n");
 				return 0;
@@ -561,9 +584,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star spin_x =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Spinsun_h[st].x);
-
+			
 			if(er <= 0){
 				printf("Error: Star spin_x is not valid!\n");
 				return 0;
@@ -571,9 +594,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star spin_y =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Spinsun_h[st].y);
-
+			
 			if(er <= 0){
 				printf("Error: Star spin_y is not valid!\n");
 				return 0;
@@ -581,9 +604,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star spin_z =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Spinsun_h[st].z);
-
+			
 			if(er <= 0){
 				printf("Error: Star spin_z is not valid!\n");
 				return 0;
@@ -591,9 +614,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Star tau =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &Spinsun_h[st].w);
-
+			
 			if(er <= 0){
 				printf("Error: Star tau is not valid!\n");
 				return 0;
@@ -602,7 +625,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "n1 =") == 0){
 			er = fscanf (paramfile, "%lf", &n1_h[st]);
-
+			
 			if(er <= 0){
 				printf("Error: n1 is not valid!\n");
 				return 0;
@@ -610,7 +633,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "n2 =") == 0){
-
+			
 			er = fscanf (paramfile, "%lf", &n2_h[st]);
 			if(er <= 0){
 				printf("Error: n2 is not valid!\n");
@@ -620,7 +643,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Input file =") == 0){
 			er = fscanf (paramfile, "%s", &GSF[st].inputfilename);
-
+			
 			if(er <= 0){
 				printf("Error: Input file name is not valid!\n");
 				return 0;
@@ -750,7 +773,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(f >=22){
 				printf("Error: Input file format is not valid, '>>' not found! Maybe the spaces in << ... >> have been forgotten\n");
 				return 0;
-
+				
 			}
 			if(cartesian == 1 && keplerian == 1){
 				printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
@@ -759,7 +782,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
-
+		
 		else if(strcmp(sp, "Default rho =") == 0){
 			er = fscanf (paramfile, "%lf", &rho[st]);
 			if(er <= 0 ){
@@ -785,7 +808,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Restart timestep =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%lld", &P.tRestart);
-				if(er <= 0 || P.tRestart < 0){
+				if(er <= 0 || P.tRestart < -1){
 					printf("Error: Restart time step not valid\n");
 					return 0;
 				}
@@ -991,7 +1014,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "aeGrid name =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", &Gridae.X);
-
+				
 				if(er <= 0){
 					printf("Error: Grid name is not valid!\n");
 					return 0;
@@ -1038,7 +1061,23 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Gas alpha value is not valid!\n");
 					return 0;
 				}
-
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Gas Sigma_10 =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.G_Sigma_10);
+				P.G_Sigma_10 *= 1.49598*1.49598/1.98892*1.0e-7;
+				if(er <= 0 || P.G_Sigma_10 < 0){
+					printf("Error: Gas Sigma_10 value is not valid!\n");
+					return 0;
+				}
+				
 			}
 			else{
 				int t;
@@ -1067,7 +1106,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: FormatS value is not valid!\n");
 					return 0;
 				}
-
+				
 			}
 			else{
 				int t;
@@ -1082,7 +1121,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: FormatT value is not valid!\n");
 					return 0;
 				}
-
+				
 			}
 			else{
 				int t;
@@ -1097,7 +1136,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: FormatP value is not valid!\n");
 					return 0;
 				}
-
+				
 			}
 			else{
 				int t;
@@ -1112,7 +1151,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Report Encounters value is not valid!\n");
 					return 0;
 				}
-
+				
 			}
 			else{
 				int t;
@@ -1127,7 +1166,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Report Encounters Radius value is not valid!\n");
 					return 0;
 				}
-
+				
 			}
 			else{
 				double t;
@@ -1143,7 +1182,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					return 0;
 				}
 				if(P.Buffer < 1) P.Buffer = 1;
-
+				
 			}
 			else{
 				int t;
@@ -1154,7 +1193,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Set Elements file name =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", &P.setElementsfilename);
-	
+				
 				if(er <= 0){
 					printf("Error: Set Elements file name = is not valid!\n");
 					return 0;
@@ -1169,7 +1208,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Gas file name =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", &P.Gasfilename);
-	
+				
 				if(er <= 0){
 					printf("Error: Gas file name = is not valid!\n");
 					return 0;
@@ -1184,7 +1223,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "NAF variables =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFvars);
-	
+				
 				if(er <= 0){
 					printf("Error: NAF variables = is not valid!\n");
 					return 0;
@@ -1199,7 +1238,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "NAF size =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFn0);
-	
+				
 				if(er <= 0){
 					printf("Error: NAF size = is not valid!\n");
 					return 0;
@@ -1214,7 +1253,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "NAF nfreqs =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFnfreqs);
-	
+				
 				if(er <= 0){
 					printf("Error: NAF nfreqs = is not valid!\n");
 					return 0;
@@ -1229,7 +1268,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "NAF format =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFformat);
-	
+				
 				if(er <= 0){
 					printf("Error: NAF format = is not valid!\n");
 					return 0;
@@ -1244,7 +1283,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "NAF interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NAFinterval);
-	
+				
 				if(er <= 0 || P.NAFinterval <= 0){
 					printf("Error: NAF interval = is not valid!\n");
 					return 0;
@@ -1276,20 +1315,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			return 0;
 		}
 	}
-
-
-
+	
+	
+	
 	if(st == 0){
-
+		
 		Gridae.deltaa = (Gridae.amax - Gridae.amin) / ((float)(Gridae.Na));
 		Gridae.deltae = (Gridae.emax - Gridae.emin) / ((float)(Gridae.Ne));
 		Gridae.deltai = (Gridae.imax - Gridae.imin) / ((float)(Gridae.Ni));
-
+		
 	}
-
+	
 	//Read console input arguments
 	for(int i = 1; i < argc; i += 2){
-
+		
 		if(strcmp(argv[i], "-dt") == 0){
 			idt_h[st] = atof(argv[i + 1]);
 		}
@@ -1320,6 +1359,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(argv[i], "-R") == 0){
 			P.tRestart = atol(argv[i + 1]);
+			if(P.tRestart < -1){
+				printf("Error: Restart time step not valid\n");
+				return 0;
+			}
 		}
 		else if(strcmp(argv[i], "-TP") == 0){
 			P.UseTestParticles = atoi(argv[i + 1]);
@@ -1338,6 +1381,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-t") == 0){
 			ict_h[st] = atof(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-MT") == 0){
+			Nst = atoi(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;
@@ -1349,6 +1395,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 	if(strcmp(P.Transitsfilename, "-") != 0){
 		P.UseTransits = 1;
+		#if def_TTV == 0
+		printf("Error: TTV file not allowed for def_TTV = 0!\n");
+		return 0;
+		
+		#endif
 	}
 	if(strcmp(P.setElementsfilename, "-") != 0){
 		P.setElements = 1;
@@ -1366,23 +1417,23 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	else{
 		P.MinMass = 0.0;
 	}
-
-
+	
+	
 	if(def_StopAtCollision != 0 && Nst > 1){
 		printf("Error: def_StopAtCollision not available in multi simulation mode!\n");
 		return 0;
 	}
-
+	
 	if(def_CollTshift < 1.0){
 		printf("Error: def_CollTshift not valid! %g\n", def_CollTshift);
 		return 0;
 	}
-
+	
 	if(def_CollisionPrecision <= 0.0){
 		printf("Error: def_CollisionPrecision not valid! %g\n", def_CollisionPrecision);
 		return 0;
 	}
-
+	
 	return 1;
 }
 
@@ -1390,13 +1441,13 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 // ************************************************
 //This function calls the function readparam
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Authors: Simon Grimm
+//January 2017
 // *********************************************3
 __host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
 	char paramfilename[160];
-
+	
 	// Read parameters from param file //
 	for(int st = 0; st < Nst; ++st){
 		sprintf(paramfilename, "%s%s", GSF[st].path, "param.dat");
@@ -1411,7 +1462,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		er = readparam(paramfile, st, argc, argv);
 		if(er == 0) return 0;
 		fclose(paramfile);
-
+		
 		if(Nst > 1){
 			char tname[160];
 			sprintf(tname, "%s%s", GSF[st].path, GSF[st].inputfilename);
@@ -1425,7 +1476,41 @@ __host__ int Host::Param(int argc, char*argv[]){
 		printf("**** Energy output interval decreased equal to coordinate output interval ****\n");
 		fprintf(masterfile, "**** Energy output interval decreased equal to coordinate output interval ****\n");
 	}
-
+	//if Restart == -1, find last printed output
+	if(P.tRestart == -1){
+		FILE *timefile;
+		char timefilename[160];
+		sprintf(timefilename, "%stime%s.dat", GSF[0].path, GSF[0].X);
+		int er = 0;
+		timefile = fopen(timefilename, "r");
+		
+		if(timefile == NULL){
+			printf("Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
+			fprintf(masterfile, "Warninf: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
+			P.tRestart = 0;
+		}
+		else{
+			long long ts = 0LL;
+			double time = 0.0;
+			
+			for(int i = 0; i < 1e8; ++i){
+				er = fscanf (timefile, "%lld",&ts);
+				er = fscanf (timefile, "%lf",&time);
+				if(er < 0){
+					P.tRestart = ts;
+					break;
+				}
+			}
+			fclose(timefile);
+			if(P.tRestart < 0){
+				printf("Error: restore last time step failed\n");
+				fprintf(masterfile, "Error: restore last time step failed\n");
+				return 0;
+			}
+		}
+	}
+	
+	
 	for(int st = 0; st < Nst; ++st){
 		dtiMsun_h[st] = dt_h[st] / Msun_h[st].x;
 		//restart -> inputfilename
@@ -1468,9 +1553,9 @@ __host__ int Host::Param(int argc, char*argv[]){
 				fclose(GSF[st].fragmentfile);  
 			}
 		}
-
+		
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-
+		
 		if(P.tRestart > 0) fprintf(GSF[st].logfile, "\n\n\n************** Restart Simulation at time step %lld *******************\n", P.tRestart);
 		fclose(GSF[st].logfile);
 	}
@@ -1515,20 +1600,20 @@ __host__ int Host::icict(int Nformat, int st){
 //April 2014
 // *********************************************
 __host__ int Host::icSize(int st){
-
+	
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
 	for(int f = 0; f < 30; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
-
+	
 	//Determine the simulation start time
 	double time = 0.0;
 	if(ict_h[st] > 0.0) time = ict_h[st];
-
+	
 	int er = icict(Nformat, st);
 	if(er == 0) return 0;
-
+	
 	if(P.tRestart > 0 && P.FormatP == 1) Nformat = 21; //This is the number of rows in the coordinate output files 
 	char t[500];
 	er = 1;
@@ -1557,7 +1642,7 @@ __host__ int Host::icSize(int st){
 	}
 	for(int i = 0; i < 1000000000; ++i){
 		for(int f = 0; f < Nformat; ++f){
-
+			
 			if(P.tRestart == 0 || P.FormatP == 0){
 				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&m);
 				else er = fscanf(infile, "%s", t);
@@ -1572,10 +1657,10 @@ __host__ int Host::icSize(int st){
 				er1 = 0;
 				break;
 			}
-
+			
 		}
 		if(P.FormatT == 1 && time > Et) break;
-
+		
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
 			if(P.FormatP == 1){ // All particles in one time file
@@ -1603,7 +1688,7 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
-
+	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
 		int NNNsmall = 0;
@@ -1625,7 +1710,7 @@ __host__ int Host::icSize(int st){
 				}
 			}
 			if(eri < 0) break;
-
+			
 			int NMAX = 0;
 			er1 = 1;
 			char infilename[160];
@@ -1633,7 +1718,7 @@ __host__ int Host::icSize(int st){
 			infile = fopen(infilename, "r");
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
-
+				
 				for(int f = 0; f < Nformat; ++f){
 					if(f == 0) er = fscanf (infile, "%lf",&time);
 					else if(f == 1)	er = fscanf (infile, "%d",&index);
@@ -1647,7 +1732,7 @@ __host__ int Host::icSize(int st){
 					}
 				}
 				if(time > Et) break;
-			
+				
 				if(er1 == 1){
 					if(Nst == 1 || P.FormatS == 0){
 						if(Et == time){
@@ -1671,41 +1756,41 @@ __host__ int Host::icSize(int st){
 		NN = NNN;
 		Nsmall_h[st] = NNNsmall;
 	}
-
 	
-
+	
+	
 	if(P.UseTestParticles == 0){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
 	}
 	NN = min(NN, 262144);
 	N_h[st] = NN;
-
+	
 	if(Nst == 0){
 		P.NencMax = min(P.NencMax, N_h[0] + Nsmall_h[0]);
 	}
-
+	
 	if(Nst > 1 && NN > NmaxM){
 		fprintf(masterfile,"Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
 		printf("Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
 		return 0;
 	}
-
+	
 	return 1;
 }
 
 // ************************************************
 //This function calls the function icSize and sets the size parameters
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Authors: Simon Grimm
+//January 2017
 // ***********************************************3
 __host__ int Host::size(){
 	for(int st = 0; st < Nst; ++st){
 		//Determine the size of the simulations
 		int er = icSize(st);
-
+		
 		if(er == 0) return 0;
-
+		
 		NB[st] = 16;
 		if( N_h[st] > 16) NB[st] = 32;
 		if( N_h[st] > 32) NB[st] = 64;
@@ -1721,20 +1806,30 @@ __host__ int Host::size(){
 		if( N_h[st] > 32768) NB[st] = 65536;
 		if( N_h[st] > 65536) NB[st] = 131072;
 		if( N_h[st] > 131072) NB[st] = 262144;
-
-
+		
+		
 		N4[st] = N_h[st];
 		if(N4[st] %4 == 3) N4[st] +=1;
 		if(N4[st] %4 == 2) N4[st] +=2;
 		if(N4[st] %4 == 1) N4[st] +=3;
 		N4[st] /= 4;
-
+		
 		N2[st] = N_h[st];
 		if(N2[st] % 2 == 1) N2[st] +=1;
 		N2[st] /= 2;
-
+		
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		fclose(GSF[st].logfile);
+		if(MTFlag == 1){
+			for(int sst = 1; sst < Nst; ++sst){
+				N_h[sst] = N_h[0];
+				Nsmall_h[sst] = Nsmall_h[0];
+				NB[sst] = NB[0];
+				N2[sst] = N2[0];
+				N4[sst] = N4[0];
+			}
+			break;
+		}
 	}
 	return 1;
 }
@@ -1760,7 +1855,7 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &time_d,Nst*sizeof(double));
 	cudaMalloc((void **) &dt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &delta_d,Nst*sizeof(long long));
-
+	
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
@@ -1779,18 +1874,18 @@ __host__ void Host::Calloc(){
 //************************************************
 //This function prints the parametes on screen and into the infofiles
 //Authors: Simon Grimm
-//September 2016
+//January 2017
 //**************************************************
 __host__ void Host::Info(){
 	FILE *infofile;
-
+	
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		if(P.dev > devCount){
 			P.dev = P.dev % devCount;
 			fprintf(GSF[st].logfile,"selected device not allowed; changed to %d", P.dev);
 		}
-
+		
 		for(int i = 0; i < 2; ++i){
 			if(i == 1){
 				infofile = stdout;
@@ -1837,10 +1932,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Star tau: %g\n", Spinsun_h[st].w);
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
-#if G3 > 0
+			#if G3 > 0
 			fprintf(infofile, "G3Limit: %g\n", G3Limit);
 			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
-#endif
+			#endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
 			for(int f = 0; f < 30; ++f){
@@ -1906,6 +2001,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
+			fprintf(infofile, "Gas Sigma_10: %d\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
@@ -1920,12 +2016,13 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}
 		fclose(GSF[st].logfile);
+		if(MTFlag == 1) break;
 	}
 }
 
 
 // **************************************
-//This function determines the start points of the individual simulations
+//This function determines the starting points of the individual simulations
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ******************************************
@@ -1933,9 +2030,9 @@ __host__ void Host::Tsizes(){
 	NBS_h = (int*)malloc(Nst*sizeof(int));
 	NsmallS_h = (int*)malloc(Nst*sizeof(int));
 	NEnergy = (int*)malloc(Nst*sizeof(int));
-
+	
 	cudaMalloc((void **) &NBS_d, Nst*sizeof(int));
-
+	
 	for(int st = 0; st < Nst; ++st){
 		NBS_h[st] = NT;
 		NsmallS_h[st] = NsmallT;
@@ -1946,7 +2043,7 @@ __host__ void Host::Tsizes(){
 		NEnergyT += max(NB[st], 8);
 	}
 	NBNencT = NB2T;
-
+	
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
 		NB2T = (long long int)(NconstT) * (long long int)(NconstT);
@@ -1964,7 +2061,7 @@ __host__ void Host::Tsizes(){
 // June 2015
 // ******************************************
 __host__ int Host::readIrregularOutputs(){
-
+	
 	FILE *Irrfile;
 	Irrfile = fopen(P.IrregularOutputsfilename, "r");
 	if(Irrfile == NULL){
@@ -1986,7 +2083,7 @@ __host__ int Host::readIrregularOutputs(){
 	}
 	fclose(Irrfile);
 	Irrfile = fopen(P.IrregularOutputsfilename, "r");
-
+	
 	IrrOutputs = (double*)malloc(n * sizeof(double));
 	for(int i = 0; i < n; ++i){
 		er = fscanf(Irrfile, "%lf", &IrrOutputs[i]);
@@ -1997,7 +2094,7 @@ __host__ int Host::readIrregularOutputs(){
 		}
 	}
 	NIrrOutputs = n;
-
+	
 	return 1;
 }
 
@@ -2007,7 +2104,7 @@ __host__ int Host::readIrregularOutputs(){
 // December 2016
 // ******************************************
 __host__ int Host::readTransits(){
-
+	
 	FILE *Transitfile;
 	Transitfile = fopen(P.Transitsfilename, "r");
 	if(Transitfile == NULL){
@@ -2017,58 +2114,113 @@ __host__ int Host::readTransits(){
 	}
 	
 	//determine the lengh of the file
-	double t, t1, t2;
+	int t;
+	double t1, t2;
 	int er;
 	int n = 0;
+	//read header: Epoch and Period
 	for(int i = 0; i < 1000000; ++i){
-		er = fscanf(Transitfile, "%lf", &t);
+		er = fscanf(Transitfile, "%d", &t);
 		er = fscanf(Transitfile, "%lf", &t1);
 		er = fscanf(Transitfile, "%lf", &t2);
+		//printf("file %d %d %g %g %g\n", i, er, t, t1, t2); 
 		if(er <= 0){
-			n = i;
+			n += i;
 			break;
 		}
 	}
+	//read *
+	char skip[160];
+	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", &skip);
+	//read Transit times
+	for(int i = 0; i < 1000000; ++i){
+		er = fscanf(Transitfile, "%d", &t);
+		er = fscanf(Transitfile, "%lf", &t1);
+		er = fscanf(Transitfile, "%lf", &t2);
+		//printf("file %d %d %d %g %g\n", i, er, t, t1, t2); 
+		if(er <= 0){
+			n += i;
+			break;
+		}
+	}
+	++n;
 	fclose(Transitfile);
 	Transitfile = fopen(P.Transitsfilename, "r");
 	TransitMaxError = 0.0;
-
+	
 	TransitData = (double3*)malloc(n * sizeof(double3));
 	for(int i = 0; i < NconstT; ++i){
-  		NtransitsT_h[i] = 0;
-  		NtransitsTObs_h[i] = 0;
-	
+		NtransitsTObs_h[i] = 1;
+		
 	}
 	for(int i = 0; i < def_NtransitTimeMax * NconstT; ++i){
 		TransitTimeObs_h[i].x = 0.0;
 		TransitTimeObs_h[i].y = 1.0;
 	}
-
+	//read header: Epoch and Period
 	for(int i = 0; i < n; ++i){
-		er = fscanf(Transitfile, "%lf", &TransitData[i].x);	//planet index
-		er = fscanf(Transitfile, "%lf", &TransitData[i].y);	//time
-		er = fscanf(Transitfile, "%lf", &TransitData[i].z);	//error
-		TransitMaxError = fmax(TransitMaxError, TransitData[i].z);
-
-
-		int ii = TransitData[i].x;
-
-		TransitTimeObs_h[ii * def_NtransitTimeMax + NtransitsTObs_h[ii]].x = TransitData[i].y;
-		TransitTimeObs_h[ii * def_NtransitTimeMax + NtransitsTObs_h[ii]].y = TransitData[i].z;
-  		++NtransitsTObs_h[ii];
-
-
+		int index;
+		double T0, P;
+		er = fscanf(Transitfile, "%d", &index);
+		er = fscanf(Transitfile, "%lf", &T0);
+		er = fscanf(Transitfile, "%lf", &P);
+		printf("file %d %d %d %g %g\n", i, er, index, T0, P); 
+		if(er <= 0){
+			n += i;
+			break;
+		}
+		TransitTimeObs_h[index * def_NtransitTimeMax + 0].x = P;
+		TransitTimeObs_h[index * def_NtransitTimeMax + 0].y = T0;
+	}
+	//read *
+	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", &skip);
+	
+	for(int i = 0; i < n; ++i){
+		int index;
+		double T, error;
+		er = fscanf(Transitfile, "%d", &index);
+		er = fscanf(Transitfile, "%lf", &T);
+		er = fscanf(Transitfile, "%lf", &error);
+		
 		if(er <= 0){
 			n = i;
 			break;
 		}
+		
+		TransitData[i].x = (double)(index);
+		TransitData[i].y = T;
+		TransitData[i].z = error;
+		TransitMaxError = fmax(TransitMaxError, error);
+		
+		double T0 = TransitTimeObs_h[index * def_NtransitTimeMax].x;
+		double P = TransitTimeObs_h[index * def_NtransitTimeMax].y;
+		int Epoch = (int)((T - T0 + 0.5 * P) / P);
+		printf(" %d %g %g %g %d\n", index, T, T0, P, Epoch);
+		TransitTimeObs_h[index * def_NtransitTimeMax + NtransitsTObs_h[index]].x = T; //time
+		TransitTimeObs_h[index * def_NtransitTimeMax + NtransitsTObs_h[index]].y = error; //error
+		++NtransitsTObs_h[index];
+		
 	}
+	for(int st = 1; st < Nst; ++st){
+		for(int i = 0; i < N_h[0]; ++i){
+			//assume that all sub simulations are of equal size
+			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
+			for(int j = 0; j < NtransitsTObs_h[i]; ++j){
+				TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + j] = TransitTimeObs_h[i * def_NtransitTimeMax + j];
+			}
+		}
+	}
+	
+	
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
-	cudaMemcpy(NtransitsT_d, NtransitsT_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemset(TransitTime_d, 0, def_NtransitTimeMax * NconstT * sizeof(double));
 	NTransitData = n;
-
+	
 	return 1;
 }
 // **************************************
@@ -2077,7 +2229,7 @@ __host__ int Host::readTransits(){
 // June 2015
 // ******************************************
 __host__ int Host::readSetElements(){
-
+	
 	FILE *Efile;
 	Efile = fopen(P.setElementsfilename, "r");
 	if(Efile == NULL){
@@ -2085,25 +2237,25 @@ __host__ int Host::readSetElements(){
 		fprintf(masterfile, "Error: Set Elements file not found: %s\n", P.setElementsfilename);		
 		return 0;
 	}
-
+	
 	int Elements[12];
 	for(int i = 0; i < 12; ++i){
 		Elements[i] = 0;
 	}
-
-
+	
+	
 	//read the number of planets
 	int nbodies = 1;
 	int er = fscanf(Efile, "%d", &nbodies);
 	if(er <= 0) return 0;
-
+	
 	int nelements = 0;
 	char sp[16];
 	fgets(sp, 2, Efile);
 	//determine the specified elements
 	for(int i = 0; i < 12; ++i){
 		int c = fgetc(Efile);
-
+		
 		if(c == 't'){
 			Elements[i] = 1;
 			printf("t ");
@@ -2158,7 +2310,7 @@ __host__ int Host::readSetElements(){
 			printf("\n");
 			break;
 		}
-
+		
 		fgets(sp, 2, Efile);
 	}
 	er = 0;
@@ -2191,14 +2343,14 @@ __host__ int Host::readSetElements(){
 		}
 	}
 	fclose(Efile);
-printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelements, ncolumns);
-
+	printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelements, ncolumns);
+	
 	constantCopy3(Elements, nelements, nbodies, nlines, ncolumns);
 	//allocate memory
 	setElementsData_h = (double*)malloc(ncolumns * nlines * sizeof(double));	
 	cudaMalloc((void **) &setElementsData_d, ncolumns * nlines * sizeof(double));
 	Efile = fopen(P.setElementsfilename, "r");
-
+	
 	//skip header
 	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
@@ -2211,7 +2363,7 @@ printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelement
 		}
 	}
 	cudaMemcpy(setElementsData_d, setElementsData_h, ncolumns * nlines * sizeof(double), cudaMemcpyHostToDevice);
-
+	
 	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
 	cudaMemset(setElementsLine_d, 0, sizeof(int));
 	return 1;
@@ -2223,7 +2375,7 @@ printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelement
 // July 2016
 // ******************************************
 __host__ int Host::readGasFile(){
-
+	
 	FILE *Efile;
 	Efile = fopen(P.Gasfilename, "r");
 	if(Efile == NULL){
@@ -2240,7 +2392,7 @@ __host__ int Host::readGasFile(){
 	er = fscanf(Efile, "%lf", &r0);
 	er = fscanf(Efile, "%lf", &Sigma0);
 	er = fscanf(Efile, "%lf", &h0);
-
+	
 	//determine the number of values in r
 	int nr;
 	for(nr = 1; nr < 10000; ++nr){
@@ -2255,15 +2407,15 @@ __host__ int Host::readGasFile(){
 			return 0;
 		}
 	}
-printf("nr %d\n", nr);
-
+	printf("nr %d\n", nr);
+	
 	fclose(Efile);
-
+	
 	//allocate memory
 	GasData_h = (double4*)malloc(nr *  sizeof(double4));	//2 time steps and 2 values
 	cudaMalloc((void **) &GasData_d, nr * sizeof(double4));
 	Efile = fopen(P.Gasfilename, "r");
-
+	
 	double skip;
 	//read data0
 	for(int i = 0; i < nr; ++i){
@@ -2293,7 +2445,7 @@ printf("nr %d\n", nr);
 // July 2016
 // ******************************************
 __host__ int Host::readGasFile2(double time){
-
+	
 	FILE *Efile;
 	Efile = fopen(P.Gasfilename, "r");
 	int nr = GasDatanr;
@@ -2318,7 +2470,7 @@ __host__ int Host::readGasFile2(double time){
 			}
 		}
 		if(t > time){
-		printf("Gas Data line %d t0 %.20g t1 %.20g \n", j * nr, t0, t1);
+			printf("Gas Data line %d t0 %.20g t1 %.20g \n", j * nr, t0, t1);
 			break;
 		}
 		if(er <= 0){
@@ -2326,7 +2478,7 @@ __host__ int Host::readGasFile2(double time){
 			return 0;
 		}
 	}
-
+	
 	fclose(Efile);
 	cudaMemcpy(GasData_d, GasData_h, nr * sizeof(double4), cudaMemcpyHostToDevice);
 	GasDatatime.x = t0;
@@ -2380,6 +2532,6 @@ __host__ int Host::freeHost(){
 		return 0;
 	}
 	return 1;
-
+	
 	
 }

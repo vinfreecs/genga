@@ -148,18 +148,20 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 	}
 	__syncthreads();
 
-	for (int i = 0; i < N; i += blockDim.x){
-		if(x4_d[idy + i].w >= 0.0 && idy + i < N){
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
 			double m = x4_d[idy + i].w;
-			m_s[idy] += m;
-			V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
-			T_s[idy] += 0.5 * m * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
-			p_s[idy].x += m * v4_d[idy + i].x;
-			p_s[idy].y += m * v4_d[idy + i].y;
-			p_s[idy].z += m * v4_d[idy + i].z;
-			s_s[idy].x += m * x4_d[idy + i].x;
-			s_s[idy].y += m * x4_d[idy + i].y;
-			s_s[idy].z += m * x4_d[idy + i].z;
+			if(m >= 0.0){
+				m_s[idy] += m;
+				V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
+				T_s[idy] += 0.5 * m * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+				p_s[idy].x += m * v4_d[idy + i].x;
+				p_s[idy].y += m * v4_d[idy + i].y;
+				p_s[idy].z += m * v4_d[idy + i].z;
+				s_s[idy].x += m * x4_d[idy + i].x;
+				s_s[idy].y += m * x4_d[idy + i].y;
+				s_s[idy].z += m * x4_d[idy + i].z;
+			}
 		}
 	}
 
@@ -312,8 +314,10 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 	
 	__syncthreads();
 	for (int i = 0; i < N; i += blockDim.x){
-		if(x4_d[idy + i].w > 0 && idy + i < N){
-			T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+		if(idy + i < N){
+			if(x4_d[idy + i].w > 0 && idy + i < N){
+				T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+			}
 		}
 	}
 	

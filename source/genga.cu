@@ -9,12 +9,26 @@
 
 #include "Host2.h"
 #include "Orbit2.h"
+#include "signal.h"
 
 #if def_TTV > 0
 	#include "TTVStep.h"
 #endif
 
+volatile sig_atomic_t interrupted = 0;
+
+void catch_signal(int sig){
+	interrupted = 1;
+}
+
+
 int main(int argc, char*argv[]){
+
+
+	//Register signal handler
+	int interrupt = 0;
+	signal(SIGINT, catch_signal);	//Ctrl C
+
 
 	cudaError_t error;
 
@@ -38,13 +52,13 @@ int main(int argc, char*argv[]){
 
 
 	if(RRestart == 0){
-       		printf("Start GENGA\n");
-        	fprintf(H.masterfile,"Start GENGA\n");
+		printf("Start GENGA\n");
+		fprintf(H.masterfile,"Start GENGA\n");
 	}
 	if(RRestart == 1){
-       		printf("Restart GENGA\n");
+		printf("Restart GENGA\n");
 		fprintf(H.masterfile,"\n \n **************************************** \n \n");
-        	fprintf(H.masterfile,"Restart GENGA\n");
+		fprintf(H.masterfile,"Restart GENGA\n");
 	}
 
 #if SERIAL_GROUPING > 0
@@ -81,7 +95,7 @@ int main(int argc, char*argv[]){
 	cudaDeviceSynchronize();
 
 	//Allocate memory for parameters on the device:
-        H.Calloc();
+	H.Calloc();
 	H.Info();
 
 	//Determine the start points of the individual simulations
@@ -96,11 +110,11 @@ int main(int argc, char*argv[]){
 	er = D.CMallocateOrbit();
 	if(er == 0) return 0;
 
-        //Allocate aeGride
+	//Allocate aeGride
 	D.constantCopy2();
 	if(D.P.UseaeGrid == 1){
-        	er = D.GridaeAlloc();
-        	if(er == 0) return 0;
+		er = D.GridaeAlloc();
+		if(er == 0) return 0;
 	}
 	if(D.P.Usegas == 1){
 		D.GasAlloc();
@@ -143,7 +157,7 @@ int main(int argc, char*argv[]){
 	error = cudaGetLastError();
 	if(error != 0){
 		fprintf(D.masterfile, "Start1 error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("Start1 error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("Start1 error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 	printf("Compute initial Energy\n");
@@ -183,7 +197,7 @@ int main(int argc, char*argv[]){
 	error = cudaGetLastError();
 	if(error != 0){
 		fprintf(D.masterfile, "Start2 error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("Start2 error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("Start2 error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -196,14 +210,17 @@ int main(int argc, char*argv[]){
 #endif
 
 #if def_TTV == 1
-	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int));
+	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
 #endif
-#if def_TTV == 2
+//#if def_TTV == 2
+#if def_TTV > 0
 	SetTTVP <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
-for(int ittv = 0; ittv < 12; ++ittv){
+	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
+
+for(int ittv = 0; ittv < D.P.TransitSteps; ++ittv){
 printf("*********** TTV Step ***********\n");
 	if(ittv > 0) D.modifyElementsCall();
-	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int));
+	SetTTVNt <<< (D.NconstT + 511) / 512, 512 >>> (D.NtransitsT_d, D.NconstT);
 #endif
 
 	if(D.Nst > 1){
@@ -237,7 +254,7 @@ printf("*********** TTV Step ***********\n");
 	error = cudaGetLastError();
 	if(error != 0){
 		fprintf(D.masterfile, "first kick error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("first kick error = %d = %s\n", error, cudaGetErrorString(error));
+		printf("first kick error = %d = %s\n", error, cudaGetErrorString(error));
 		return 0;
 	}
 	else{
@@ -252,18 +269,20 @@ printf("*********** TTV Step ***********\n");
 #endif
 
 	D.irrTimeStep = 0;
+	D.irrTimeStepOut = 0;
 	if(D.P.IrregularOutputs == 1){
 		er = D.readIrregularOutputs();
 		if(er == 0){
 			return 0;
 		}
 		//skip Irregular output times which are before the simulation starts
-		double starttime = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
+		double starttime = (D.P.tRestart) * D.idt_h[0] + D.ict_h[0] * 365.25;
 		for(int i = 0; i < D.NIrrOutputs; ++i){
 			if(D.IrrOutputs[i] >= starttime){
 				break;
 			}
 			++D.irrTimeStep;
+			++D.irrTimeStepOut;
 		}
 	}
 	D.TransitDataStep = 0;
@@ -298,8 +317,8 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 	}
 
 
-	int bufferCount = 1;
-	int bufferCountIrr = 1;
+	D.bufferCount = 0;
+	D.bufferCountIrr = 0;
 	D.MultiSim = 0;
 	if(D.Nst > 1) D.MultiSim = 1;
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
@@ -311,6 +330,11 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 			 return 0;
 		}
 
+		if(interrupted == 1){
+			printf("GENGA is interrupted by SIGINT signal at time step %lld\n", D.timeStep);
+			fprintf(H.masterfile, "GENGA is interrupted by SIGINT signal at time step %lld\n", D.timeStep);
+			interrupt = 1;
+		}
 			cudaDeviceSynchronize();
 			//Check for too many encounters
 			if(D.EncFlag_m[0] > 0){
@@ -333,8 +357,8 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 				return 0;
 			}
 			//Print Energy and log information//
-			if(D.P.ei > 0 && D.timeStep % D.P.ei == 0){
-				if(bufferCount >= D.P.Buffer){
+			if((D.P.ei > 0 && D.timeStep % D.P.ei == 0) || interrupt == 1){
+				if(D.bufferCount + 1 >= D.P.Buffer || interrupt == 1){
 					D.EnergyOutput();
 				}
 			}
@@ -344,6 +368,7 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 					D.copyGridae();
 				}
 			}
+			//update Gas Disk
 			if(D.P.Usegas == 2 && D.time_h[0] / 365.25 > D.GasDatatime.y){
 				er = D.readGasFile2(D.time_h[0] / 365.25);
 				if(er == 0){
@@ -353,28 +378,30 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 			//Print Output//
-			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
+			if((D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)) || interrupt == 1){
 				if(D.P.Buffer == 1){
 					D.CoordinateOutput(0);
 				}
-				else if(bufferCount >= D.P.Buffer){
+				else if(D.bufferCount + 1 >= D.P.Buffer || interrupt == 1){
 					//write out buffer
-					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					D.timestepBuffer[D.bufferCount] = D.timeStep;
 					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+						D.NBuffer[D.Nst * (D.bufferCount) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (D.bufferCount) + st].y = D.Nsmall_h[st];
 					}
-					D.CoordinateToBuffer(bufferCount - 1, 0);
+					D.CoordinateToBuffer(D.bufferCount, 0, 0.0);
+					++D.bufferCount;	
 					D.CoordinateOutputBuffer(0);
 				}
 				else{
 					//store in buffer
-					D.timestepBuffer[bufferCount - 1] = D.timeStep;
+					D.timestepBuffer[D.bufferCount] = D.timeStep;
 					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
+						D.NBuffer[D.Nst * (D.bufferCount) + st].x = D.N_h[st];
+						D.NBuffer[D.Nst * (D.bufferCount) + st].y = D.Nsmall_h[st];
 					}
-					D.CoordinateToBuffer(bufferCount - 1, 0);
+					D.CoordinateToBuffer(D.bufferCount, 0, 0.0);
+					++D.bufferCount;	
 				}
 				if(D.P.UseaeGrid == 1){
 					D.GridaeOutput();
@@ -388,15 +415,12 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 				}
 #endif
 			}
-			// print time information //
-			if(D.P.ci > 0 && D.timeStep % D.P.ci == 0){
-				if(bufferCount >= D.P.Buffer){
-					D.printTime();
-					fflush(D.masterfile);
-				}
-			}
 
-			// print irregular outputs
+			//print irregular outputs
+			if(interrupt == 1 && D.P.Buffer > 1){
+				//write out buffer
+				D.CoordinateOutputBuffer(1);
+			}
 			if(D.P.IrregularOutputs == 1 && D.irrTimeStep < D.NIrrOutputs && D.time_h[0] >= D.IrrOutputs[D.irrTimeStep]){
 
 				int ni = 1; //multiple outputs per time step
@@ -415,24 +439,28 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 					if(D.P.Buffer == 1){
 						D.CoordinateOutput(1);
 					}
-					else if(bufferCountIrr >= D.P.Buffer){
+					else if(D.bufferCountIrr + 1 >= D.P.Buffer){
 						//write out buffer
-						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						D.timestepBufferIrr[D.bufferCountIrr] = D.timeStep;
 						for(int st = 0; st < D.Nst; ++st){
-							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
-							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].x = D.N_h[st];
+							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].y = D.Nsmall_h[st];
 						}
-						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+						D.CoordinateToBuffer(D.bufferCountIrr, 1, dTau);
+						++D.bufferCountIrr;
 						D.CoordinateOutputBuffer(1);
+						D.bufferCountIrr = 0;
+						D.irrTimeStepOut += D.P.Buffer;
 					}
 					else{
 						//store in buffer
-						D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
+						D.timestepBufferIrr[D.bufferCountIrr] = D.timeStep;
 						for(int st = 0; st < D.Nst; ++st){
-							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
-							D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
+							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].x = D.N_h[st];
+							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].y = D.Nsmall_h[st];
 						}
-						D.CoordinateToBuffer(bufferCountIrr - 1, 1);
+						D.CoordinateToBuffer(D.bufferCountIrr, 1, dTau);
+						++D.bufferCountIrr;
 					}
 
 					D.IrregularStep(-dTau);
@@ -446,10 +474,6 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 					D.step();
 					D.SymplecticP(1);
 
-					++bufferCountIrr;
-					if(bufferCountIrr > D.P.Buffer){
-						bufferCountIrr = 1;
-					}
 					++D.irrTimeStep;
 				
 					dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
@@ -458,6 +482,7 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 					if(ni + D.irrTimeStep - 1 > D.NIrrOutputs) break;
 				}
 			}
+
 #if def_TTV == 2
 			// calculate transit times
 			if(D.P.UseTransits == 1 && D.TransitDataStep < D.NTransitData && D.time_h[0] >= D.TransitData[D.TransitDataStep].y - D.TransitMaxError){
@@ -472,7 +497,7 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 
 					if(ni + D.TransitDataStep - 1 >= D.NTransitData) break;
 				}
-printf("Do TTV check %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
+printf("Do TTV check %.10g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
 				if(ni - 1 > 0){
 					cudaMemcpy(D.Transit_d, D.Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
 					D.BSTTVCall(ni - 1);
@@ -485,7 +510,7 @@ printf("Do TTV check %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 					if(D.time_h[0] >= D.TransitData[D.TransitDataStep].y + D.TransitMaxError){
 						++D.TransitDataStep;
 						++ni;
-printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
+printf("Do TTV update %.10g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
 					}
 				
 
@@ -494,12 +519,6 @@ printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 			}
 #endif
 
-			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
-				++bufferCount;
-			}
-			if(bufferCount > D.P.Buffer){
-				bufferCount = 1;
-			}
 #if USE_NAF == 1
 			//compute the x and y arrays for the naf algorithm
 			if(D.timeStep % D.P.NAFinterval == 0){
@@ -511,20 +530,35 @@ printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 					NAFstep = 0;
 				}
 			}
-
 #endif
+			// print time information //
+			// this should be the last thing to print, because it is used to restart at the last possible timestep
+			if((D.P.ci > 0 && D.timeStep % D.P.ci == 0) || interrupt == 1){
+				if(D.bufferCount >= D.P.Buffer || interrupt == 1){
+					D.printTime();
+					fflush(D.masterfile);
+					D.bufferCount = 0;
+				}
+			}
+			if(interrupt == 1){
+				printf("GENGA is terminated by SIGINT signal at time step %lld\n", D.timeStep);
+				fprintf(H.masterfile, "GENGA is terminated by SIGINT signal at time step %lld\n", D.timeStep);
+				cudaDeviceSynchronize();
+				return 0;
+			}
+
 	} // end of time step loop
 
 
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
-		if(bufferCountIrr > 1){
-			D.P.Buffer = bufferCountIrr - 1;
+		if(D.bufferCountIrr > 1){
+			D.P.Buffer = D.bufferCountIrr - 1;
 			D.CoordinateOutputBuffer(1);
 		}
 	}
-	if(bufferCount > 1){
-		D.P.Buffer = bufferCount - 1;
+	if(D.bufferCount > 1){
+		D.P.Buffer = D.bufferCount - 1;
 		D.CoordinateOutputBuffer(0);
 	}
 
@@ -533,12 +567,20 @@ printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 #endif
 #if def_TTV > 0
 //#if def_TTV == 1
-	D.printTransits();
+	er = D.printTransits();
+	if(er <= 0) return 0;
 
 #endif
-#if def_TTV == 2
+
+#if def_TTV ==1
 	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NT, D.Nst);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst);
+	}//end of TTV loop
+#endif
+
+#if def_TTV ==2
+	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst);
 	}//end of TTV loop
 #endif
 
@@ -569,7 +611,7 @@ printf("Do TTV update %g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);
 	er = D.freeHost();
 	if(er == 0) return 0;
 
-        printf("GENGA terminated successfully\n");
+	printf("GENGA terminated successfully\n");
 	fprintf(H.masterfile, "GENGA terminated successfully\n");
 
 	return 0; 

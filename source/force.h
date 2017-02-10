@@ -1329,7 +1329,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 				if(e3.y < 0.0) w = 2.0 * M_PI - w;
 			}
 			
-			//circular, inclindes orbit
+			//circular, inclinded orbit
 			if(e < 1.0e-10 && inc > 1.0e-11){
 				w = 0.0;
 			}

@@ -16,6 +16,9 @@ pairs.
 
  ** News: **
 
+ * Version 3.60: Ctrl-C signal is recognized to write the current output and stop the simulation.
+ * Version 3.60: Restart time step -1 is introduced, to continue at the last output.
+ * Version 3.60: Moved gas surface density to param.dat file.
  * Version 3.57: Colision Coordinates can be reported more precisly.
  * Version 3.56: The test particle mode supports semi massive particles
  * Version 3.48: The multi simulation mode can stop simulation at close encounters when 'StopAtEncounter' in the 'define.dat' file is set to 1

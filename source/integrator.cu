@@ -114,30 +114,19 @@ __host__ void  Data::IrregularStep(double dTau){
 //March 2016
 // **************************************3
 template <int Bl>
-__global__ void initial_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, double *K_d, double *Kold_d, double4 *StopTime_d, int *groupIndex_d, int NB, int NencMax){
+__global__ void initial_kernel(double *K_d, double *Kold_d, double4 *StopTime_d, int *groupIndex_d, int NB){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	for(int i = 0; i < NB; i += Bl){
-#if G3 > 0
 		K_d[(idy +i)* NB + idx] = 1.0;
 		Kold_d[(idy +i)* NB + idx] = 1.0;
 		StopTime_d[(idy +i)* NB + idx].x = -1.0;
 		StopTime_d[(idy +i)* NB + idx].y = -1.0;
 		StopTime_d[(idy +i)* NB + idx].z = -1.0;
 		StopTime_d[(idy +i)* NB + idx].w = -1.0;
-#endif
-		if(idx < NencMax){
-			Encpairs_d[(idy + i) * NencMax + idx].x = -1;
-			Encpairs_d[(idy + i) * NencMax + idx].y = -1;
-
-			Encpairs2_d[(idy + i) * NencMax + idx].x = -1;
-			Encpairs2_d[(idy + i) * NencMax + idx].y = -1;	
-		}
 		if(idx == 0){
-#if G3 > 0
 			groupIndex_d[idy + i] = -1;
-#endif
 		}
 	}
 }
@@ -638,7 +627,8 @@ __host__ void Data::BSBMCall(int si, int noColl){
 
 #if def_TTV == 2
 __host__ void Data::BSTTVCall(int n){
-	BSTTVStep_kernel < 4, 4 > <<< n, 16 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d);
+//	BSTTVStep_kernel < 4, 4 > <<< n * Nst, 16 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, n);
+	BSTTVStep_kernel < 8, 8 > <<< n * Nst, 64 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, n);
 }
 #endif
 
@@ -678,16 +668,16 @@ printf("Backup step %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0]
 			cudaDeviceSynchronize();
 			cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);	
 			Coltime = Coll_h[0];
-			if(Coltime == ColtimeOld){
+			if(Coltime >= ColtimeOld){
 printf("Revert time step\n");
 				Coltime = -idt_h[0] / 365.25;
 				IrregularStep(-1.0);
 printf("Backup step3 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0], (Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]);
 				bStep(-1);
 				cudaDeviceSynchronize();
-	                        cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
+				cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
 				Coltime = Coll_h[0];
-				if(Coltime == ColtimeOld){
+				if(Coltime >= ColtimeOld){
 					printf("Error: Collision time could not be reconstructed. Maybe def_CollTshift is too large.\n");
 				}
 
@@ -700,8 +690,7 @@ printf("Backup step2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0
 			bStep(2);
 		}
 		cudaDeviceSynchronize();
-
-		time_h[0] = time_h[0] - dt_h[0] / dayUnit + Coltime * 365.25;
+		time_h[0] = Coltime * 365.25;
 		CoordinateOutput(2);
 		Ncoll_m[0] = 0;
 
@@ -861,7 +850,8 @@ __host__ int Data::step_16(){
 	else kick32BTTV_kernel <<<1, 16 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0], Msun_h[0].x, Msun_h[0].y, Ntransit_d, Transit_d);
 	cudaDeviceSynchronize();
 	if(Ntransit_m[0] > 0){
-		BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d);
+	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
+		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
 		Ntransit_m[0] = 0;
 	}
  #endif
@@ -1817,7 +1807,8 @@ __host__ int Data::step_M(){
 	else kick32BMTTV_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, a_d, ab_d, index_d, NT, dt_d, Kt[SIn - 1], Msun_d, Ntransit_d, Transit_d);
 	cudaDeviceSynchronize();
 	if(Ntransit_m[0] > 0){
-		BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d);
+	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
+		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
 		Ntransit_m[0] = 0;
 	}
 #endif
