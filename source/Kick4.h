@@ -38,6 +38,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	ac.x += __dmul_rn(r3ij.x, s);
 	ac.y += __dmul_rn(r3ij.y, s);
 	ac.z += __dmul_rn(r3ij.z, s);
+//printf("%d %d %.20g %.20g %.20g\n", i, j, __dmul_rn(r3ij.x, s), __dmul_rn(r3ij.y, s), __dmul_rn(r3ij.z, s));
 }
 
 // **************************************
@@ -848,12 +849,15 @@ __global__ void accsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 				acck_d[idx].x = a1[0 + blockDim.x * itx].x;
 				acck_d[idx].y = a1[0 + blockDim.x * itx].y;
 				acck_d[idx].z = a1[0 + blockDim.x * itx].z;
+//printf("a %d %d %.20g %.20g %.20g\n", E, idx, a1[0 + blockDim.x * itx].x, a1[0 + blockDim.x * itx].y, a1[0 + blockDim.x * itx].z);
 			}
 			if(E == 2){
-				acck_d[idx].x = -a1[0 + blockDim.x * itx].x;
-				acck_d[idx].y = -a1[0 + blockDim.x * itx].y;
-				acck_d[idx].z = -a1[0 + blockDim.x * itx].z;
+				acck_d[idx].x += a1[0 + blockDim.x * itx].x;
+				acck_d[idx].y += a1[0 + blockDim.x * itx].y;
+				acck_d[idx].z += a1[0 + blockDim.x * itx].z;
+//printf("a %d %d %.20g %.20g %.20g\n", E, idx, a1[0 + blockDim.x * itx].x, a1[0 + blockDim.x * itx].y, a1[0 + blockDim.x * itx].z);
 			}
+//printf("aa %d %d %.20g %.20g %.20g\n", E, idx, acck_d[idx].x, acck_d[idx].y, acck_d[idx].z);
 			if(E == 1) Encpairs2_d[idx * NencMax].x = 0; //NI
 		}
 	}

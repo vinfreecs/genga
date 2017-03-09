@@ -126,7 +126,7 @@ public:
 	cudaError_t error;
 
 	__host__ Data(long long);
-
+	__host__ int timeStepLoop(int);
 	__host__ void AllocateOrbitt();
 	__host__ int CMallocateOrbit();
 	__host__ int GridaeAlloc();

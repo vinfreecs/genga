@@ -26,7 +26,6 @@ int main(int argc, char*argv[]){
 
 
 	//Register signal handler
-	int interrupt = 0;
 	signal(SIGINT, catch_signal);	//Ctrl C
 
 
@@ -321,234 +320,17 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 	D.bufferCountIrr = 0;
 	D.MultiSim = 0;
 	if(D.Nst > 1) D.MultiSim = 1;
+	D.interrupt = 0;
+
+	// ************************************************************************
+	// start time step loop here
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
-		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
-		cudaMemcpy(D.time_d, D.time_h, sizeof(double), cudaMemcpyHostToDevice);
-		
-		int er = D.step();
+		er = D.timeStepLoop(interrupted);
 		if(er == 0){
-			 return 0;
+			return 0;
 		}
-
-		if(interrupted == 1){
-			printf("GENGA is interrupted by SIGINT signal at time step %lld\n", D.timeStep);
-			fprintf(H.masterfile, "GENGA is interrupted by SIGINT signal at time step %lld\n", D.timeStep);
-			interrupt = 1;
-		}
-			cudaDeviceSynchronize();
-			//Check for too many encounters
-			if(D.EncFlag_m[0] > 0){
-				printf("Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
-				fprintf(D.masterfile, "Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
-				return 0;
-			}
-
-			//Check for too big groups//
-			if(D.Nst == 1){
-				er = D.MaxGroups();
-				if(er == 0) return 0;
-			}
-	
-			error = cudaGetLastError();
-			if(error != 0){
-				printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
-				fprintf(D.masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
-				D.CoordinateOutput(4);
-				return 0;
-			}
-			//Print Energy and log information//
-			if((D.P.ei > 0 && D.timeStep % D.P.ei == 0) || interrupt == 1){
-				if(D.bufferCount + 1 >= D.P.Buffer || interrupt == 1){
-					D.EnergyOutput();
-				}
-			}
-
-			if(H.P.UseaeGrid == 1){ 
-				if(D.timeStep % 10000 == 0){
-					D.copyGridae();
-				}
-			}
-			//update Gas Disk
-			if(D.P.Usegas == 2 && D.time_h[0] / 365.25 > D.GasDatatime.y){
-				er = D.readGasFile2(D.time_h[0] / 365.25);
-				if(er == 0){
-					return 0;
-				}
-			}
-
-//test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
-			//Print Output//
-			if((D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)) || interrupt == 1){
-				if(D.P.Buffer == 1){
-					D.CoordinateOutput(0);
-				}
-				else if(D.bufferCount + 1 >= D.P.Buffer || interrupt == 1){
-					//write out buffer
-					D.timestepBuffer[D.bufferCount] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (D.bufferCount) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (D.bufferCount) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(D.bufferCount, 0, 0.0);
-					++D.bufferCount;	
-					D.CoordinateOutputBuffer(0);
-				}
-				else{
-					//store in buffer
-					D.timestepBuffer[D.bufferCount] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (D.bufferCount) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (D.bufferCount) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(D.bufferCount, 0, 0.0);
-					++D.bufferCount;	
-				}
-				if(D.P.UseaeGrid == 1){
-					D.GridaeOutput();
-				}
-#if poincareFlag == 1
-				if((D.timeStep - 1) % D.P.ci == D.P.ci - D.P.nci){
-					fclose(D.poincarefile);
-					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, D.timeStep);
-					//Erase old Poincare files
-					D.poincarefile = fopen(D.poincarefilename, "w");
-				}
-#endif
-			}
-
-			//print irregular outputs
-			if(interrupt == 1 && D.P.Buffer > 1){
-				//write out buffer
-				D.CoordinateOutputBuffer(1);
-			}
-			if(D.P.IrregularOutputs == 1 && D.irrTimeStep < D.NIrrOutputs && D.time_h[0] >= D.IrrOutputs[D.irrTimeStep]){
-
-				int ni = 1; //multiple outputs per time step
-				for(int i = 0; i < ni; ++i){
-					double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
-					D.IrregularStep(dTau);
-					for(int st = 0; st < D.Nst; ++st){
-						D.time_h[st] += dTau * D.idt_h[st];
-					}
-					if(D.Nst > 1){
-						cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
-					}
-
-					D.step();
-
-					if(D.P.Buffer == 1){
-						D.CoordinateOutput(1);
-					}
-					else if(D.bufferCountIrr + 1 >= D.P.Buffer){
-						//write out buffer
-						D.timestepBufferIrr[D.bufferCountIrr] = D.timeStep;
-						for(int st = 0; st < D.Nst; ++st){
-							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].x = D.N_h[st];
-							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].y = D.Nsmall_h[st];
-						}
-						D.CoordinateToBuffer(D.bufferCountIrr, 1, dTau);
-						++D.bufferCountIrr;
-						D.CoordinateOutputBuffer(1);
-						D.bufferCountIrr = 0;
-						D.irrTimeStepOut += D.P.Buffer;
-					}
-					else{
-						//store in buffer
-						D.timestepBufferIrr[D.bufferCountIrr] = D.timeStep;
-						for(int st = 0; st < D.Nst; ++st){
-							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].x = D.N_h[st];
-							D.NBufferIrr[D.Nst * (D.bufferCountIrr) + st].y = D.Nsmall_h[st];
-						}
-						D.CoordinateToBuffer(D.bufferCountIrr, 1, dTau);
-						++D.bufferCountIrr;
-					}
-
-					D.IrregularStep(-dTau);
-					for(int st = 0; st < D.Nst; ++st){
-						D.time_h[st] -= dTau * D.idt_h[st];
-					}
-					if(D.Nst > 1){
-						cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
-					}
-
-					D.step();
-					D.SymplecticP(1);
-
-					++D.irrTimeStep;
-				
-					dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
-					if(dTau <= 0) ++ni;
-
-					if(ni + D.irrTimeStep - 1 > D.NIrrOutputs) break;
-				}
-			}
-
-#if def_TTV == 2
-			// calculate transit times
-			if(D.P.UseTransits == 1 && D.TransitDataStep < D.NTransitData && D.time_h[0] >= D.TransitData[D.TransitDataStep].y - D.TransitMaxError){
-
-				int ni = 1;
-				//count number of transits per time step
-				for(int i = 0; i < ni; ++i){
-					if(D.time_h[0] > D.TransitData[D.TransitDataStep + i].y - D.TransitMaxError){
-						D.Transit_h[ni - 1] = (int)(D.TransitData[D.TransitDataStep + i].x);
-						++ni;
-					}
-
-					if(ni + D.TransitDataStep - 1 >= D.NTransitData) break;
-				}
-printf("Do TTV check %.10g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
-				if(ni - 1 > 0){
-					cudaMemcpy(D.Transit_d, D.Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
-					D.BSTTVCall(ni - 1);
-				}
-				ni = 1;
-				//update TransitDataStep
-				for(int i = 0; i < ni; ++i){
-
-					//D.step();
-					if(D.time_h[0] >= D.TransitData[D.TransitDataStep].y + D.TransitMaxError){
-						++D.TransitDataStep;
-						++ni;
-printf("Do TTV update %.10g %d %d\n", D.time_h[0], ni - 1, D.TransitDataStep);	
-					}
-				
-
-					if(ni + D.TransitDataStep - 1 >= D.NTransitData) break;
-				}
-			}
-#endif
-
-#if USE_NAF == 1
-			//compute the x and y arrays for the naf algorithm
-			if(D.timeStep % D.P.NAFinterval == 0){
-				D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
-				++NAFstep;
-				if(NAFstep % D.P.NAFn0 == 0){
-					er = D.naf.nafCall(D.NT, D.N_h, D.N_d, D.Nsmall_h, D.Nsmall_d, D.Nst, D.GSF, D.time_h, D.time_d, D.idt_h, D.P.NAFformat, D.P.NAFinterval, D.index_h, D.index_d, D.NBS_h);
-					if(er == 0) return 0;
-					NAFstep = 0;
-				}
-			}
-#endif
-			// print time information //
-			// this should be the last thing to print, because it is used to restart at the last possible timestep
-			if((D.P.ci > 0 && D.timeStep % D.P.ci == 0) || interrupt == 1){
-				if(D.bufferCount >= D.P.Buffer || D.P.Buffer == 1 || interrupt == 1){
-					D.printTime();
-					fflush(D.masterfile);
-					D.bufferCount = 0;
-				}
-			}
-			if(interrupt == 1){
-				printf("GENGA is terminated by SIGINT signal at time step %lld\n", D.timeStep);
-				fprintf(H.masterfile, "GENGA is terminated by SIGINT signal at time step %lld\n", D.timeStep);
-				cudaDeviceSynchronize();
-				return 0;
-			}
-
 	} // end of time step loop
-
+	// ***********************************************************************
 
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){

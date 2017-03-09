@@ -210,6 +210,7 @@ __host__ void Host::Halloc(){
 	P.Buffer = def_Buffer;
 	P.deltaT = def_IntegrationSteps;
 	P.UseTestParticles = def_UseTestParticles;
+	P.MinMass = def_MinMass;
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
 	P.NencMax = def_NencMax;
@@ -405,15 +406,15 @@ __host__ void Host::Halloc(){
 //This function reads the parameters from param.dat and the console input arguments.
 //Return 1 by sucess and 0 by an error.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//Mai 2015
+//Authors: Simon Grimm
+//March 2017
 // ***********************************************
 __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	
 	char sp[160];
 	int er;
 	
-	for(int j = 0; j < 50; ++j){
+	for(int j = 0; j < 60; ++j){ //loop around all lines in the param.dat file
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -802,6 +803,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else{
 				long long t;
 				er = fscanf (paramfile, "%lld", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Particle Minimum Mass =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.MinMass);
+				if(er <= 0 || P.MinMass < 0){
+					printf("Error: Particle Minimum Mass not valid\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1411,10 +1426,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error: dTau_diss value is not valid!\n");
 		return 0;
 	}
-	if(P.UseTestParticles > 0){
-		P.MinMass = def_MinMass;
-	}
-	else{
+	if(P.UseTestParticles == 0){
 		P.MinMass = 0.0;
 	}
 	
@@ -1981,7 +1993,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
-			fprintf(infofile, "MinMass: %g\n", def_MinMass);
+			fprintf(infofile, "Particle Minimum Mass : %g\n", P.MinMass);			// use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
 			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0

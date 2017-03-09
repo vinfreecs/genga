@@ -915,6 +915,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			acck_d[id].x += b.x;
 			acck_d[id].y += b.y;
 			acck_d[id].z += b.z;
+//printf("aa %d %d %.20g %.20g %.20g\n", E, id, acck_d[id].x, acck_d[id].y, acck_d[id].z);
 		}
 		if(E <= 2){
 			Encpairs2_d[NencMax * id].x = NencpairsI;

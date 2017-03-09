@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.61: MinMass moved to param.dat file.
  * Version 3.60: Ctrl-C signal is recognized to write the current output and stop the simulation.
  * Version 3.60: Restart time step -1 is introduced, to continue at the last output.
  * Version 3.60: Moved gas surface density to param.dat file.

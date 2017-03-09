@@ -28,6 +28,243 @@ double *Kt;		//time factor for Kick steps
 int EjectionFlag2 = 0;
 
 // *****************************************************
+// This function calls all necessary sub steps for comuting 
+// one time step.
+// Authors: Simon Grimm
+// March 2017
+// ****************************************************
+__host__ int Data::timeStepLoop(int interrupted){
+	time_h[0] = timeStep * idt_h[0] + ict_h[0] * 365.25;
+	cudaMemcpy(time_d, time_h, sizeof(double), cudaMemcpyHostToDevice);
+	
+	int er = step();
+	if(er == 0){
+		 return 0;
+	}
+
+	if(interrupted == 1){
+		printf("GENGA is interrupted by SIGINT signal at time step %lld\n", timeStep);
+		fprintf(masterfile, "GENGA is interrupted by SIGINT signal at time step %lld\n", timeStep);
+		interrupt = 1;
+	}
+	cudaDeviceSynchronize();
+	//Check for too many encounters
+	if(EncFlag_m[0] > 0){
+		printf("Error: more encounters than allowed. %d %d\n", EncFlag_m[0], P.NencMax);
+		fprintf(masterfile, "Error: more encounters than allowed. %d %d\n", EncFlag_m[0], P.NencMax);
+		return 0;
+	}
+
+	//Check for too big groups//
+	if(Nst == 1){
+		er = MaxGroups();
+		if(er == 0) return 0;
+	}
+
+	error = cudaGetLastError();
+	if(error != 0){
+		printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+		fprintf(masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+		CoordinateOutput(4);
+		return 0;
+	}
+	//Print Energy and log information//
+	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1){
+		if(bufferCount + 1 >= P.Buffer || interrupt == 1){
+			EnergyOutput();
+		}
+	}
+
+	if(P.UseaeGrid == 1){ 
+		if(timeStep % 10000 == 0){
+			copyGridae();
+		}
+	}
+	//update Gas Disk
+	if(P.Usegas == 2 && time_h[0] / 365.25 > GasDatatime.y){
+		er = readGasFile2(time_h[0] / 365.25);
+		if(er == 0){
+			return 0;
+		}
+	}
+
+//test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
+	//Print Output//
+	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt == 1){
+		if(P.Buffer == 1){
+			CoordinateOutput(0);
+		}
+		else if(bufferCount + 1 >= P.Buffer || interrupt == 1){
+			//write out buffer
+			timestepBuffer[bufferCount] = timeStep;
+			for(int st = 0; st < Nst; ++st){
+				NBuffer[Nst * (bufferCount) + st].x = N_h[st];
+				NBuffer[Nst * (bufferCount) + st].y = Nsmall_h[st];
+			}
+			CoordinateToBuffer(bufferCount, 0, 0.0);
+			++bufferCount;	
+			CoordinateOutputBuffer(0);
+		}
+		else{
+			//store in buffer
+			timestepBuffer[bufferCount] = timeStep;
+			for(int st = 0; st < Nst; ++st){
+				NBuffer[Nst * (bufferCount) + st].x = N_h[st];
+				NBuffer[Nst * (bufferCount) + st].y = Nsmall_h[st];
+			}
+			CoordinateToBuffer(bufferCount, 0, 0.0);
+			++bufferCount;	
+		}
+		if(P.UseaeGrid == 1){
+			GridaeOutput();
+		}
+#if poincareFlag == 1
+		if((timeStep - 1) % P.ci == P.ci - P.nci){
+			fclose(poincarefile);
+			sprintf(poincarefilename, "%sPoincare%s_%.12ld.dat", GSF[0].path, GSF[0].X, timeStep);
+			//Erase old Poincare files
+			poincarefile = fopen(poincarefilename, "w");
+		}
+#endif
+	}
+
+	//print irregular outputs
+	if(interrupt == 1 && P.Buffer > 1){
+		//write out buffer
+		CoordinateOutputBuffer(1);
+	}
+	if(P.IrregularOutputs == 1 && irrTimeStep < NIrrOutputs && time_h[0] >= IrrOutputs[irrTimeStep]){
+
+		int ni = 1; //multiple outputs per time step
+		for(int i = 0; i < ni; ++i){
+			double dTau = -(time_h[0] - IrrOutputs[irrTimeStep]) / idt_h[0];
+			IrregularStep(dTau);
+			for(int st = 0; st < Nst; ++st){
+				time_h[st] += dTau * idt_h[st];
+			}
+			if(Nst > 1){
+				cudaMemcpy(time_d, time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+			}
+
+			step();
+
+			if(P.Buffer == 1){
+				CoordinateOutput(1);
+			}
+			else if(bufferCountIrr + 1 >= P.Buffer){
+				//write out buffer
+				timestepBufferIrr[bufferCountIrr] = timeStep;
+				for(int st = 0; st < Nst; ++st){
+					NBufferIrr[Nst * (bufferCountIrr) + st].x = N_h[st];
+					NBufferIrr[Nst * (bufferCountIrr) + st].y = Nsmall_h[st];
+				}
+				CoordinateToBuffer(bufferCountIrr, 1, dTau);
+				++bufferCountIrr;
+				CoordinateOutputBuffer(1);
+				bufferCountIrr = 0;
+				irrTimeStepOut += P.Buffer;
+			}
+			else{
+				//store in buffer
+				timestepBufferIrr[bufferCountIrr] = timeStep;
+				for(int st = 0; st < Nst; ++st){
+					NBufferIrr[Nst * (bufferCountIrr) + st].x = N_h[st];
+					NBufferIrr[Nst * (bufferCountIrr) + st].y = Nsmall_h[st];
+				}
+				CoordinateToBuffer(bufferCountIrr, 1, dTau);
+				++bufferCountIrr;
+			}
+
+			IrregularStep(-dTau);
+			for(int st = 0; st < Nst; ++st){
+				time_h[st] -= dTau * idt_h[st];
+			}
+			if(Nst > 1){
+				cudaMemcpy(time_d, time_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
+			}
+
+			step();
+			SymplecticP(1);
+
+			++irrTimeStep;
+		
+			dTau = -(time_h[0] - IrrOutputs[irrTimeStep]) / idt_h[0];
+			if(dTau <= 0) ++ni;
+
+			if(ni + irrTimeStep - 1 > NIrrOutputs) break;
+		}
+	}
+
+#if def_TTV == 2
+	// calculate transit times
+	if(P.UseTransits == 1 && TransitDataStep < NTransitData && time_h[0] >= TransitData[TransitDataStep].y - TransitMaxError){
+
+		int ni = 1;
+		//count number of transits per time step
+		for(int i = 0; i < ni; ++i){
+			if(time_h[0] > TransitData[TransitDataStep + i].y - TransitMaxError){
+				Transit_h[ni - 1] = (int)(TransitData[TransitDataStep + i].x);
+				++ni;
+			}
+
+			if(ni + TransitDataStep - 1 >= NTransitData) break;
+		}
+printf("Do TTV check %.10g %d %d\n", Dime_h[0], ni - 1, TransitDataStep);	
+		if(ni - 1 > 0){
+			cudaMemcpy(Transit_d, Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
+			BSTTVCall(ni - 1);
+		}
+		ni = 1;
+		//update TransitDataStep
+		for(int i = 0; i < ni; ++i){
+
+			//step();
+			if(time_h[0] >= TransitData[D.TransitDataStep].y + TransitMaxError){
+				++TransitDataStep;
+				++ni;
+printf("Do TTV update %.10g %d %d\n", time_h[0], ni - 1, TransitDataStep);	
+			}
+		
+
+			if(ni + TransitDataStep - 1 >= NTransitData) break;
+		}
+	}
+#endif
+#if USE_NAF == 1
+	//compute the x and y arrays for the naf algorithm
+	if(timeStep % P.NAFinterval == 0){
+		naf.getnafvarsCall(x4_d, v4_d, index_d, NBS_d, vcom_d, test_d, P.NAFvars, naf.x_d, naf.y_d, Msun_d, Msun_h[0].x, NT, Nst, naf.n, NAFstep, NB[0], N_h[0], Nsmall_h[0], P.UseTestParticles);
+		++NAFstep;
+		if(NAFstep % P.NAFn0 == 0){
+			er = naf.nafCall(NT, N_h, N_d, Nsmall_h, Nsmall_d, Nst, GSF, time_h, time_d, idt_h, P.NAFformat, P.NAFinterval, index_h, index_d, NBS_h);
+			if(er == 0) return 0;
+			NAFstep = 0;
+		}
+	}
+#endif
+	// print time information //
+	// this should be the last thing to print, because it is used to restart at the last possible timestep
+	if((P.ci > 0 && timeStep % P.ci == 0) || interrupt == 1){
+		if(bufferCount >= P.Buffer || P.Buffer == 1 || interrupt == 1){
+			printTime();
+			fflush(masterfile);
+			bufferCount = 0;
+		}
+	}
+	if(interrupt == 1){
+		printf("GENGA is terminated by SIGINT signal at time step %lld\n", timeStep);
+		fprintf(masterfile, "GENGA is terminated by SIGINT signal at time step %lld\n", timeStep);
+		cudaDeviceSynchronize();
+		return 0;
+	}
+
+
+	return 1;
+
+}
+
+
+// *****************************************************
 // This function set the time factors fot the symplectic integrator for a given order
 // The first time it must be called with E = 0, afterwards with E = 1
 // Authors: Simon Grimm

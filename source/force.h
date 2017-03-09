@@ -41,19 +41,39 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 		double A, B;
 
-                if(UseForce & 1){
-                        // GR part depending on position only (see Saha & Tremaine 1994)
-			double mu = def_ksq * (Msun + x4.w);
-                        A = mu/(rsq * def_cm);
-                        B = 2.0 * A * A;
-                        a3.x -= B * x4.x;
-                        a3.y -= B * x4.y;
-                        a3.z -= B * x4.z;
-                }
-/*
-		double eta;
 		if(UseForce & 1){
+			// GR symplectic
+			// GR part depending on position only (see Saha & Tremaine 1994)
+			double mu = def_ksq * (Msun + x4.w);
+			A = mu/(rsq * def_cm);
+			B = 2.0 * A * A;
+			a3.x -= B * x4.x;
+			a3.y -= B * x4.y;
+			a3.z -= B * x4.z;
+		}
+/*
+		if(UseForce >> 7 & 1){
+			// GR force
 			// GR  see Fabrycky 2010 equation 2
+			double csq = def_cm * def_cm;
+
+			A = def_ksq * (Msun + x4.w) * ir;
+			B = A * ir / csq;
+			double eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
+			double vsq = (v4.x * v4.x + v4.y * v4.y + v4.z * v4.z);
+			double rd = (x4.x * v4.x + x4.y * v4.y + x4.z * v4.z) * ir; 
+
+			double C = 2.0 * (2.0 - eta) * rd;
+			double D = (1.0 + 3.0 * eta) * vsq - 1.5 * eta * rd * rd - 2.0 * (2.0 + eta) * A;
+			a3.x += B * (C * v4.x - D * x4.x * ir); 	
+			a3.y += B * (C * v4.y - D * x4.y * ir);
+			a3.z += B * (C * v4.z - D * x4.z * ir);
+		}
+
+		double eta;
+		if(UseForce >> 8 & 1){
+			// GR  see Fabrycky 2010 equation 2
+			//first part of implicit function
 			double c = 10065.3201686;//c in AU / day * 0.0172020989
 			double csq = c * c;
 
@@ -61,6 +81,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			B = A * ir / csq;
 			eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 		}
+
 */
 /*
 		if(UseForce >> 1 & 1){
@@ -189,7 +210,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		// **********************************************************
 
 
-		if(UseForce >> 1 & 1 || UseForce & 1){
+		if(UseForce >> 1 & 1 || UseForce >> 8 & 1){
 			double3 a3t, a3told;
 			double4 v4t = v4;
 			a3told.x = 0.0;
@@ -201,7 +222,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 				a3t.x = 0.0;
 				a3t.y = 0.0;
 				a3t.z = 0.0;
-	/*			if(UseForce & 1){
+	/*
+				if(UseForce >> 8 & 1){
 					// GR  see Fabrycky 2010 equation 2
 					double vsq = (v4t.x * v4t.x + v4t.y * v4t.y + v4t.z * v4t.z);
 					double rd = (x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z) * ir; 

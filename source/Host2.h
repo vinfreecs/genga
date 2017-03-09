@@ -25,6 +25,7 @@ public:
 	int driverVersion;
 
 	int MultiSim;
+	int interrupt;				//signal handling
 
 	int *NB;				//number of bodies increased to integer block size
 	int *N4;				//number of bodies divided by 4

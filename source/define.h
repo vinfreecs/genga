@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.60
+#define Version 3.61
 
 //Default parameter values
 #define def_TimeStep 6
@@ -27,6 +27,7 @@
 #define def_InputFileFormat "<< t i m r x y z vx vy vz >>"
 #define def_rho 2.0
 #define def_UseTestParticles 0			//0 or 1
+#define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
 #define def_RestartTimeStep 0
 #define def_MinimumNumberOfBodies 0
 #define def_Rcut 50.0
@@ -69,7 +70,6 @@
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
 #define def_Nfragments 0		//Additional array size for debris particles
-#define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
 #define def_MatrixMaxSize 16384		//slice Encounter matrix to reduce memory usage
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty

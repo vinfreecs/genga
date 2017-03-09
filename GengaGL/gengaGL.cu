@@ -19,15 +19,13 @@
 #include <GL/freeglut.h>
 #include <cuda.h>
 #include <cuda_gl_interop.h>
+#include "signal.h"
 //#include "glext.h"
 GLuint positionsVBO;
 GLuint colorsVBO;
 struct cudaGraphicsResource* positionsVBO_CUDA;
 struct cudaGraphicsResource* colorsVBO_CUDA;
-static int bufferCount = 1;
-static int bufferCountIrr = 1;
 static long long ts = 1;
-static int CollisionFlag = 1;
 static GLdouble anglex = 0.0; //angle to rotate system around z axis
 static GLdouble angley = 0.0; //angle to rotate z axis
 static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
@@ -48,169 +46,14 @@ double *MLimits_d;
 #include "BS.h"
 //#include "BSA.h"
 */
+volatile sig_atomic_t interrupted = 0;
 
-int loop(Data D, double &time){
-		D.timeStep = ts;
-		D.CollisionFlag = CollisionFlag;
-		D.time_h[0] = D.timeStep * D.idt_h[0] + D.ict_h[0] * 365.25;
-		cudaMemcpy(D.time_d, D.time_h, sizeof(double), cudaMemcpyHostToDevice);
-		time = D.time_h[0] / 365.25;
-		int er;
-		cudaError_t error;
-		D.step();
-			cudaDeviceSynchronize();
-			//Check for too many encounters
-			if(D.EncFlag_m[0] > 0){
-				printf("Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
-				fprintf(D.masterfile, "Error: more encounters than allowed. %d %d\n", D.EncFlag_m[0], D.P.NencMax);
-				return 0;
-			}
-			//Check for too big groups//
-			if(D.Nst == 1){
-				er = D.MaxGroups();
-				if(er == 0) return 0;
-			}
-
-			error = cudaGetLastError();
-			if(error != 0){
-				printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
-				fprintf(D.masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), D.timeStep);
-				return 0;
-			}
-			//Print Energy and log information//
-			if(D.timeStep % D.P.ei == 0){
-				if(bufferCount >= D.P.Buffer){
-					D.EnergyOutput();
-				}
-			}
-
-			if(D.P.UseaeGrid == 1){ 
-				if(D.timeStep % 10000 == 0){
-					D.copyGridae();
-				}
-			}
-//test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
-			//Print Output//
-			if(D.P.ci > 0 && ((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci)){
-				if(D.P.Buffer == 1){
-					D.CoordinateOutput(0);
-				}
-				else if(bufferCount >= D.P.Buffer){
-					//write out buffer
-					D.timestepBuffer[bufferCount - 1] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(bufferCount - 1, 0);
-					D.CoordinateOutputBuffer(0);
-				}
-				else{
-				//store in buffer
-					D.timestepBuffer[bufferCount - 1] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].x = D.N_h[st];
-						D.NBuffer[D.Nst * (bufferCount - 1) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(bufferCount - 1, 0);
-				}
-				if(D.P.UseaeGrid == 1){
-					D.GridaeOutput();
-				}
-#if poincareFlag == 1
-				if((D.timeStep - 1) % D.P.ci == D.P.ci - D.P.nci){
-					fclose(D.poincarefile);
-					sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, D.timeStep);
-					//Erase old Poincare files
-					D.poincarefile = fopen(D.poincarefilename, "w");
-				}
-#endif
-			}
-			// print time information //
-			if(D.P.ci > 0 && D.timeStep % D.P.ci == 0){
-				if(bufferCount >= D.P.Buffer){
-					D.printTime();
-					fflush(D.masterfile);
-				}
-			}
-			// print irregular outputs
-			if(D.P.IrregularOutputs == 1 && D.irrTimeStep < D.NIrrOutputs && D.time_h[0] >= D.IrrOutputs[D.irrTimeStep]){
-
-			int ni = 1;
-			for(int i = 0; i < ni; ++i){
-				double dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
-
-				D.IrregularStep(dTau);
-				for(int st = 0; st < D.Nst; ++st){
-					D.time_h[st] += dTau * D.idt_h[st];
-				}
-				if(D.Nst > 1){
-					cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
-				}
-
-				D.step();
-
-				if(D.P.Buffer == 1){
-					D.CoordinateOutput(1);
-				}
-				else if(bufferCountIrr >= D.P.Buffer){
-					//write out buffer
-					D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
-						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(bufferCountIrr - 1, 1);
-					D.CoordinateOutputBuffer(1);
-				}
-				else{
-				//store in buffer
-					D.timestepBufferIrr[bufferCountIrr - 1] = D.timeStep;
-					for(int st = 0; st < D.Nst; ++st){
-						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].x = D.N_h[st];
-						D.NBufferIrr[D.Nst * (bufferCountIrr - 1) + st].y = D.Nsmall_h[st];
-					}
-					D.CoordinateToBuffer(bufferCountIrr - 1, 1);
-				}
-	
-				D.IrregularStep(-dTau);
-				for(int st = 0; st < D.Nst; ++st){
-					D.time_h[st] -= dTau * D.idt_h[st];
-				}
-				if(D.Nst > 1){
-					cudaMemcpy(D.time_d, D.time_h, D.Nst * sizeof(double), cudaMemcpyHostToDevice);
-				}
-	
-				D.step();
-				D.SymplecticP(1);
-	
-				++bufferCountIrr;
-				if(bufferCountIrr > D.P.Buffer){
-					bufferCountIrr = 1;
-				}
-				++D.irrTimeStep;
-	
-				dTau = -(D.time_h[0] - D.IrrOutputs[D.irrTimeStep]) / D.idt_h[0];
-				if(dTau <= 0) ++ni;
-	
-				if(ni + D.irrTimeStep - 1 > D.NIrrOutputs) break;
-				}
-			}
-
-			if((D.timeStep - 1) % D.P.ci >= D.P.ci - D.P.nci){
-				++bufferCount;
-			}
-			if(bufferCount > D.P.Buffer){
-				bufferCount = 1;
-			}
-			CollisionFlag = D.CollisionFlag;
-
-			++ts;
-			return 1;
+void catch_signal(int sig){
+	interrupted = 1;
 }
 
 
-__global__ void GLPositions(double4 *x4_d, double4 *positions, double4 *colors, int N, int Nsmall, double *MLimits_d){
+__global__ void GLPositions(double4 *x4_d, double4 *positions, double4 *colors, int N, int Nsmall, double *MLimits_d, double MinMass){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -230,13 +73,13 @@ __global__ void GLPositions(double4 *x4_d, double4 *positions, double4 *colors, 
 //	x.w /= MLimits_d[0];
 
 	double4 color;
-	if(x.w > 0.0){
+	if(x.w > MinMass){
 		color.x = 1.0;
 		color.y = mscale;
 		color.z = 0.0;
 		color.w = 1.0;
 	}
-	if(x.w == 0.0){
+	else{
 		color.x = 1.0;
 		color.y = 1.0;
 		color.z = 1.0;
@@ -348,9 +191,13 @@ void display(){
 
 
 	double time;
+	time = D.time_h[0] / 365.25;
 	if(stop == 0){
 		for(int i = 0; i < 1; ++i){
-			int er = loop(D, time);
+			D.timeStep = ts;
+			int er = D.timeStepLoop(interrupted);
+			time = D.time_h[0] / 365.25;
+			++ts;
 		}
 	}
 	if(D.N_h[0] + D.Nsmall_h[0] != nold){
@@ -361,7 +208,7 @@ void display(){
 	int nb = (D.N_h[0] + D.Nsmall_h[0] + 255) / 256; 
 
 	//Fill the position array from the CUDA arrays
-	GLPositions <<< nb, 256 >>> (D.x4_d, positions, colors, D.N_h[0], D.Nsmall_h[0], MLimits_d);
+	GLPositions <<< nb, 256 >>> (D.x4_d, positions, colors, D.N_h[0], D.Nsmall_h[0], MLimits_d, D.P.MinMass);
 	cudaDeviceSynchronize();
 	// Unmap buffer object
 	cudaGraphicsUnmapResources(1, &positionsVBO_CUDA, 0);
@@ -503,6 +350,14 @@ void mouse_move (int x, int y){
 void keyPressed (unsigned char key, int x, int y){
 	if (key == 'r') pointsize *= 0.95;
 	if (key == 't') pointsize /= 0.95;
+	if (key == 'p'){
+		if(stop == 0) stop = 1;
+		else stop = 0;
+	}
+	if (key == ' '){
+		if(stop == 0) stop = 1;
+		else stop = 0;
+	}
 }
 
 

@@ -91,6 +91,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
 
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.
  * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies; 2: Small bodies only affect large bodies.
+ * Particle minimum Mass:  Minimal Mass for massive particles in Test particle mode, lighter particles are treated as test particles.
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
  * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
@@ -156,7 +157,6 @@ Here it can also be chosen if the gas disc is included or not.
  * def_tol f: Tolerance in Bulirsh Stoer integrator
  * def_dtmin f: Minimal time step in Bulirsch Stoer integrator 
  * def_Nfragments d: Additional array size for debris particles
- * def_MinMass f: Minimal Mass for massive particles in Test particle mode, lighter particles are treated as test particles.
  * def_MatrixMaxSize f: slice Encounter matrix to reduce memory usage
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.

@@ -14,14 +14,14 @@
 //July 2016
 //*****************************************
 template <int Bl, int E>
-__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t, int UseForce){
+__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t, int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	if(E == 1){
 		if(idy == 0 && idx == 0){
-			Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
+			Nencpairs2_d[0] = 0;		//this variable is needed in the Encounter kernel
 	}
 	if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
 	}
@@ -30,7 +30,7 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 			Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
 		}
 	}
-	__shared__  double a1_s[Bl];
+	__shared__ double a1_s[Bl];
 
 	a1_s[idy] = 0.0;
 
@@ -53,13 +53,13 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 	}
 	__syncthreads();
 
-        if(Bl >= 512){
-                if(idy < 256){
-                        a1_s[idy] += a1_s[idy + 256];
+	if(Bl >= 512){
+		if(idy < 256){
+			a1_s[idy] += a1_s[idy + 256];
 
-                }
-        }
-        __syncthreads();
+		}
+	}
+	__syncthreads();
 
 	if(Bl >= 256){
 		if(idy < 128){
@@ -76,21 +76,21 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 	}
 	__syncthreads();
 
-        if(idy < 32){
-                volatile double *a = a1_s;
-                a[idy] += a[idy + 32];
-                a[idy] += a[idy + 16];
-                a[idy] += a[idy + 8];
-                a[idy] += a[idy + 4];
-                a[idy] += a[idy + 2];
-                a[idy] += a[idy + 1];
-        }
+	if(idy < 32){
+		volatile double *a = a1_s;
+		a[idy] += a[idy + 32];
+		a[idy] += a[idy + 16];
+		a[idy] += a[idy + 8];
+		a[idy] += a[idy + 4];
+		a[idy] += a[idy + 2];
+		a[idy] += a[idy + 1];
+	}
 	__syncthreads();
 	for(int i = 0; i < N; i += Bl){
 		if(idy + i < N){
-			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dti2Msun);
-			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dti2Msun);
-			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dti2Msun);
+			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dtiMsun);
+			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dtiMsun);
+			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dtiMsun);
 			if(UseForce & 1){
 				double c2 = def_cm * def_cm;
 				double4 v4 = v4_d[idy + i];
@@ -119,16 +119,16 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 //November 2016
 //  *****************************************
 template < int Bl2, int E>
-__global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dti2Msun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, int UseForce){
+__global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
-        if(E == 1){
-                if(idy == 0 && idx == 0){
-                        Nencpairs2_d[0] = 0;      //this variable is needed in the Encounter kernel
-                }
-                if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
-        }
+	if(E == 1){
+		if(idy == 0 && idx == 0){
+			Nencpairs2_d[0] = 0;		//this variable is needed in the Encounter kernel
+		}
+		if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
+	}
 	if(E == 2){
 		if(idy == 0 && idx == 0){
 			Nencpairs_d[0] = 0;		//This variable is needed in the Kick_kernel
@@ -169,9 +169,9 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 
 	__syncthreads();
 	if(idy < N){
-		if(idx == 0) x4_d[idy].x += a1_s[0] * dti2Msun;
-		if(idx == 1) x4_d[idy].y += a1_s[0] * dti2Msun;
-		if(idx == 2) x4_d[idy].z += a1_s[0] * dti2Msun;
+		if(idx == 0) x4_d[idy].x += a1_s[0] * dtiMsun;
+		if(idx == 1) x4_d[idy].y += a1_s[0] * dtiMsun;
+		if(idx == 2) x4_d[idy].z += a1_s[0] * dtiMsun;
 			if(UseForce & 1){
 				double c2 = def_cm * def_cm;
 				double4 v4 = v4_d[idy];
@@ -199,17 +199,17 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double *dti2Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double *dtiMsun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax;
 	__shared__ volatile double3 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
-	volatile double dti2Msun;
+	volatile double dtiMsun;
 	volatile double dt;
 	if(E == 1){
 		if(id >= 0 && id < Nst + 1){
-			Nencpairs2_d[id] = 0;           //This variable is needed in the Encounter_kernel
+			Nencpairs2_d[id] = 0;		//This variable is needed in the Encounter_kernel
 		}
 		if(id >= 0 && id < def_GMax){
 			Nenc_d[id] = 0;
@@ -227,7 +227,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
-		dti2Msun = dti2Msun_d[st_s[idy]] * Ct;
+		dtiMsun = dtiMsun_d[st_s[idy]] * Ct;
 		dt = dt_d[st_s[idy]] * Ct;
 	}
 	else{
@@ -235,7 +235,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 		p_s[idy].x = 0.0;
 		p_s[idy].y = 0.0;
 		p_s[idy].z = 0.0;
-		dti2Msun = 0.0;
+		dtiMsun = 0.0;
 		dt = 0.0;
 	}
 	//halo
@@ -304,7 +304,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 
 	if(Nmax >= 8){
 		__syncthreads();
-		f = ((st_s[idy] - st_s[idy + 4]) == 0);            //one if sti == stj, zero else
+		f = ((st_s[idy] - st_s[idy + 4]) == 0);		//one if sti == stj, zero else
 		px = (p_s[idy + 4].x) * f;
 		py = (p_s[idy + 4].y) * f;
 		pz = (p_s[idy + 4].z) * f;
@@ -318,7 +318,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 
 	__syncthreads();
 
-	f = ((st_s[idy] - st_s[idy + 2]) == 0);            //one if sti == stj, zero else
+	f = ((st_s[idy] - st_s[idy + 2]) == 0);			//one if sti == stj, zero else
 	px = (p_s[idy + 2].x) * f;
 	py = (p_s[idy + 2].y) * f;
 	pz = (p_s[idy + 2].z) * f;
@@ -331,7 +331,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 
 	__syncthreads();
 
-	f = ((st_s[idy] - st_s[idy + 1]) == 0);            //one if sti == stj, zero else
+	f = ((st_s[idy] - st_s[idy + 1]) == 0);			//one if sti == stj, zero else
 	px = (p_s[idy + 1].x) * f;
 	py = (p_s[idy + 1].y) * f;
 	pz = (p_s[idy + 1].z) * f;
@@ -419,18 +419,18 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 	}
 
 	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0){
-		x4_d[id].x += p_s[idy].x * dti2Msun;
-		x4_d[id].y += p_s[idy].y * dti2Msun;
-		x4_d[id].z += p_s[idy].z * dti2Msun;
-                if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
-                        double c2 = def_cm * def_cm;
+		x4_d[id].x += p_s[idy].x * dtiMsun;
+		x4_d[id].y += p_s[idy].y * dtiMsun;
+		x4_d[id].z += p_s[idy].z * dtiMsun;
+		if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];
-                        double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-                        double vcdt = 2.0*vsq/c2 * dt;
-                        x4_d[id].x -= v4.x * vcdt;
-                        x4_d[id].y -= v4.y * vcdt;
-                        x4_d[id].z -= v4.z * vcdt;
-                }
+			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+			double vcdt = 2.0*vsq/c2 * dt;
+			x4_d[id].x -= v4.x * vcdt;
+			x4_d[id].y -= v4.y * vcdt;
+			x4_d[id].z -= v4.z * vcdt;
+ 		}
 	}
 
 }
