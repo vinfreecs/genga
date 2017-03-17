@@ -19,7 +19,7 @@ public:
 	int Nst;				//Number of simulations
 	int NconstT;
 	int MTFlag;
-
+	int ForceFlag;
 	int devCount;
 	int runtimeVersion;
 	int driverVersion;

@@ -8,6 +8,7 @@
 #include "BSB64M.h"
 #include "ComEnergy.h"
 #include "force.h"
+#include "forceYarkovskyOld.h"
 #include "Kick4.h"
 #include "BSA.h"
 #if def_TTV > 0
@@ -1095,12 +1096,15 @@ __host__ int Data::step_16(){
 #else
 	kick32B_kernel <<< 1, 16 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 16 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1133,11 +1137,14 @@ __host__ int Data::step_16(){
 		if(si < SIn - 1){
 			kick16b_kernel < 40, 2> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, P.NencMax, time_h[0], N_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
-				//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 16 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1145,11 +1152,14 @@ __host__ int Data::step_16(){
 	EjectionFlag2 = 0;
 	kick16b_kernel < 40, 1> <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, P.NencMax, time_h[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 16 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
-		//if(P.UseForce == 2) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 16 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 16 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 16 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 32 > <<< 1, 16 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1177,11 +1187,15 @@ __host__ int Data::step_32(){
 #else
 	kick32B_kernel <<<1, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 1, 32 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 32 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1214,20 +1228,28 @@ __host__ int Data::step_32(){
 		if(si < SIn - 1){
 			kick32b_kernel<32, 64, 2> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, NconstT, P.NencMax, time_h[0], N_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 32 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
 	}
 	kick32b_kernel<32, 64, 1> <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, NconstT, P.NencMax, time_h[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 32 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 32 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 32 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 32 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 64 > <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1253,11 +1275,15 @@ __host__ int Data::step_64(){
 #else
 	kick32B_kernel <<<2, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 1, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 64 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1289,20 +1315,28 @@ __host__ int Data::step_64(){
 		if(si < SIn - 1){
 			kick32b_kernel<64, 64, 2 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, NconstT, P.NencMax, time_h[0], N_h[0]);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 64 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
 	}
 	kick32b_kernel<64, 64, 1 > <<< N_h[0] , 64 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, test_d, NconstT, P.NencMax, time_h[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 64 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 64 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 64 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 64 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 64 > <<< 1, 64 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1329,11 +1363,15 @@ __host__ int Data::step_128(){
 #else
 	kick32B_kernel <<<4, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 1, 128 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1373,10 +1411,14 @@ __host__ int Data::step_128(){
 				kick32Ab_kernel <<< 4, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 			}
 			else kick32B_kernel <<< 4, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1391,10 +1433,14 @@ __host__ int Data::step_128(){
 			 kick32Ab_kernel <<< 4, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	}
 	else kick32B_kernel <<< 4, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 128 > <<< 1, 128 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1420,11 +1466,15 @@ __host__ int Data::step_256(){
 #else
 	kick32B_kernel <<<8, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1]) * def_ksq;
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 1, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x,  test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1465,10 +1515,14 @@ __host__ int Data::step_256(){
 				kick32Ab_kernel <<< 8, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 			}
 			else kick32B_kernel <<< 8, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1483,10 +1537,14 @@ __host__ int Data::step_256(){
 		kick32Ab_kernel <<< 8, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	}
 	else kick32B_kernel <<< 8, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 1, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 1, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 1, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 1, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1511,11 +1569,15 @@ __host__ int Data::step_512(){
 #else
 	kick32B_kernel <<<16, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 2, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 2, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1554,10 +1616,14 @@ __host__ int Data::step_512(){
 			if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
 
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 2, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1571,10 +1637,14 @@ __host__ int Data::step_512(){
 #endif
 	if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 2, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 2, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 2, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 2, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 
@@ -1599,11 +1669,15 @@ __host__ int Data::step_1024(){
 #else
 	kick32B_kernel <<<32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 4, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 4, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1641,10 +1715,14 @@ __host__ int Data::step_1024(){
 #endif
 			if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 4, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1657,10 +1735,14 @@ __host__ int Data::step_1024(){
 #endif
 	if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 4, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 4, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 4, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 4, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1685,11 +1767,15 @@ __host__ int Data::step_2048(){
 #else
 	kick32B_kernel <<<64, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< 8, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 8, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1727,10 +1813,14 @@ __host__ int Data::step_2048(){
 #endif
 			if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 8, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1744,10 +1834,14 @@ __host__ int Data::step_2048(){
 #endif
 	if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< 8, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< 8, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< 8, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< 8, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1773,11 +1867,15 @@ __host__ int Data::step_largeN(){
 #else
 	kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 	if(P.setElements > 0) setElements <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1818,10 +1916,14 @@ __host__ int Data::step_largeN(){
 			else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[si] * def_ksq);
 
 
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst);
 				com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 			}
 		}
@@ -1838,10 +1940,14 @@ __host__ int Data::step_largeN(){
 	if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0], P.NencMax, time_h[0]);
 	else kick32B_kernel <<< (NB[0] + 31) / 32, 32 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst);
 		com_kernel < 256 > <<< 1, 256 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -1860,7 +1966,7 @@ __host__ int Data::step_small(){
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0], 0);
 	if(Nencpairs_h[0] > 0 || EjectionFlag2 > 0) kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Encpairs2_d, test_d, N_h[0] + Nsmall_h[0], P.NencMax, time_h[0]);
 	else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, ab_d, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-	if(P.Usegas > 0 || P.UseForce > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 0){
 		com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 	if(P.setElements > 0) setElements <<< 1, 16 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
 		if(P.Usegas == 1){
@@ -1871,11 +1977,11 @@ __host__ int Data::step_small(){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseForce > 0){
-			force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-			if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
-			if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
-		}
+		if(P.UseForce > 0) force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
 		com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 	}
 	EjectionFlag2 = 0;
@@ -1959,7 +2065,7 @@ if(P.UseForce == 32){
 				if(Nencpairs_h[0] > 0) kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Encpairs2_d, test_d, N_h[0] + Nsmall_h[0], P.NencMax, time_h[0]);
 				else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, ab_d, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[si] * def_ksq);
 			}
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 				if(P.Usegas == 1){
 					GasAccCall(time_d, dt_d, Kt[si]);
@@ -1969,11 +2075,12 @@ if(P.UseForce == 32){
 					//GasAccCall(time_d, dt_d, Kt[si]);
 					GasAccCall2_small(time_d, dt_d, Kt[si]);
 				}
-				if(P.UseForce > 0){
-					force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-					if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
-					if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
-				}
+				if(P.UseForce > 0) force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst);
+				
 				com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 			}
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2010,7 +2117,7 @@ if(P.UseForce == 32){
 		else kick32B_kernel <<< (N_h[0] + Nsmall_h[0] + 127)/128, 128 >>> (x4_d, v4_d, a_d, ab_d, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 	}
 
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
 		if(P.Usegas == 1){
 			GasAccCall(time_d, dt_d, Kt[SIn - 1]);
@@ -2020,11 +2127,12 @@ if(P.UseForce == 32){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseForce > 0){
-			force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
-			if(P.UseForce == 32) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
-			if(P.UseForce == 32) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
-		}
+		if(P.UseForce > 0) force <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst);
+		
 		com_kernel < 512 > <<< 1, 512 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
 	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2049,10 +2157,14 @@ __host__ int Data::step_M(){
 		Ntransit_m[0] = 0;
 	}
 #endif
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 	}
 	EjectionFlag2 = 0;
@@ -2084,20 +2196,28 @@ __host__ int Data::step_M(){
 		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, dtiMsun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce);
 		if(si < SIn - 1){
 			KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[si], index_d, NT, test_d);
-			if(P.Usegas > 0 || P.UseForce > 0){
+			if(ForceFlag > 0){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
 				if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, NT, Nst, P.UseForce);
+				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst);
+				if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst);
+				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst);
+				if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst);
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 			}
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 		}
 	}
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, test_d);
-	if(P.Usegas > 0 || P.UseForce > 0){
+	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce);
+		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst);
+		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1);
 	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);

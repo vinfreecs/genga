@@ -114,7 +114,9 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The dissipation time for the gas disc in years
  * The gas surface density at 1 AU Sigma_10 in g / cm^3
  * The power law exponent for the gas disc, alpha 
- * use additional force, which is specified in the file force.h See [here](#markdown-additional-forces) for more details
+ * use additional force, which is specified in the file force.h. See [here](#markdown-header-additional-forces) for more details.
+ * Use Yarkovsky. 0: No Yarkovsky effect, 1: Yarkovsky effect (dv/dt), 2: Yarkovsky effect (da/dt) See [here](#markdown-header-Yarkovsky-Effect) for more details.
+ * Use Poynting-Robertson. 0: No PR drag, 1: PR drag (dv/dt), 2: PR drag (da/dt, de/dt) See [here](#markdown-header-Poynting-Robertson-drag) for more details.
  * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
@@ -450,3 +452,33 @@ Implemented are the following forces:
  * Rotational Forces: binary number 4
 
 For example 'Use force = 5' will use GR and Rotational forces, 'Use force = 2' will only use Tidal forces.
+
+# Yarkovsky Effect #
+
+The Yarkovsky effect is implemented with two different schemes: 
+ * The first one is according to VOKROUHLICKY, MILANI, AND CHESLEY 2000 (Yarkovsky Effect on Small Near-Earth Asteroids: Mathematical
+Formulation and Examples) and VOKROUHLICKYY & FARINELLA 1999 (THE YARKOVSKY SEASONAL EFFECT ON ASTEROIDAL FRAGMENTS : A NONLINEARIZED THEORY
+FOR SPHERICAL BODIES). This scheme computes the Yarkovsky effect and performs a velocity kick.
+ * The second scheme is according to Vokroulicky Milani Chesley 2000 (Yarkovsky Effect on Small Near-Earth Asteroids: Mathematical
+Formulation and Examples). This scheme computes the drift rate da/dt and updates the Keplerian elements.
+
+The Yarkovsky effect can be enabled by setting 'Use Yarkovsky = 1' or 'Use Yarkovsky = 2' in the param.dat' file.
+
+The following parameters are relevant for the Yarkovsky effect and can be set in the 'define.h' file:
+ * Asteroid_eps: Emissivity factor
+ * Asteroid_S: Solar Constant at 1 AU in W /m^2
+ * Asteroid_rho: density of the body in kg/m^3
+ * Asteroid_C: Specific Heat Capacity in J/kg/K
+ * Asteroid_A: Bond albedo
+ * Asteroid_K: Thermal conductivity in W/m/K
+
+
+# Poynting Robertson drag #
+The Yarkovsky effect is implemented with two different schemes, both according to BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System). 
+ * The first scheme computes the Yarkovsky effect and performs a velocity kick.
+ * The second  scheme computes the drift rates da/dt and de/dt updates the Keplerian elements.
+
+The Poynting-Robertson drag effect can be enabled by setting 'Use Poynting-Robertson = 1' or 'Use Poynting-Robertson = 2' in the param.dat' file.
+
+The following parameters are relevant for the Poynting-Robertson drag and can be set in the 'define.h' file:
+ * Asteroid_Q: radiation pressure coefficient

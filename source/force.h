@@ -943,7 +943,16 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 }
 #endif
 
+// ***************************************************************
+// This kernel computes the seasonal and diurnal Yarkovsky effect.
+// it computes the yarkovsky acceleration and performs a velocity kick
 
+// See VOKROUHLICKY, MILANI, AND CHESLEY 2000
+// See Appendix B from VOKROUHLICKYY & FARINELLA 1999
+
+// March 2017
+// Authors: Simon Grimm, Matthias Meier
+// *****************************************************************
 __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
 
 	int idy = threadIdx.x;
@@ -962,9 +971,6 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 		if(x4i.w >= 0.0){
 
 			//material constants
-			double eps = 0.95;		//Emissivity
-			double sigma = 5.670373e-8;	//Stefan Boltzmann constant J m^-2 s^-1 K^-4
-			double S = 1367.0;		//Solar Constant at 1 AU in W /m^2
 
 			double Gamma = sqrt(Asteroid_K * Asteroid_rho * Asteroid_C);	//surface thermal intertia 
 			double RR = v4i.w * def_AU;		//covert radius in m 
@@ -1106,12 +1112,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0); 						//in 1 / s
 
 			double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-			double F = S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+			double F = Asteroid_S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 
-			double Ts4 = (1.0 - Asteroid_A) * F / (eps * sigma);
+			double Ts4 = (1.0 - Asteroid_A) * F / (Asteroid_eps * def_sigma);
 			double Ts = sqrt(sqrt(Ts4));
 
-			double t1 = Gamma / (eps * sigma * Ts * Ts * Ts);
+			double t1 = Gamma / (Asteroid_eps * def_sigma * Ts * Ts * Ts);
 			double t2 = (1.0 - Asteroid_A) * 3.0 * F / (9.0 * Asteroid_rho * RR * def_c);
 
 			double s2 = sqrt(2.0);
@@ -1122,6 +1128,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			a3.z = 0.0;
 
 			//Diurnal 
+			// See VOKROUHLICKY, MILANI, AND CHESLEY 2000
 			{
 			double ilD = sqrt(Asteroid_rho * Asteroid_C * omega / Asteroid_K);
 			double ThetaD = t1 * sqrt(omega);
@@ -1157,6 +1164,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			}
 			
 			//seasonal
+			//See Appendix B from VOKROUHLICKYY & FARINELLA 1999
 			{
 			double ilS = sqrt(Asteroid_rho * Asteroid_C * n / Asteroid_K);
 			double ThetaS = t1 * sqrt(n);
@@ -1256,7 +1264,15 @@ __device__ void alpha(double e){
 
 */
 
+// ***************************************************************
+// This kernel computes the Poynting-Robertson drag.
+// it computes the PR drag drit rates da/dt and de/de and modifies the Keplerian elements
 
+// BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
+
+// March 2017
+// Authors: Simon Grimm, Matthias Meier
+// *****************************************************************
 __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
 
 	int idy = threadIdx.x;
@@ -1277,7 +1293,6 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 		double mu = def_ksq * (Msun + x4i.w);
 		double m = x4i.w;
 		double RR = v4i.w * def_AU;					//covert radius in m	
-		double Q = 1.0;
 
 		if(x4i.w == 0.0){
 			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
@@ -1388,10 +1403,11 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 //printf("K1 %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 
 			//modify elements
+			//BURNS, LAMY, AND SOTER, 1979 equation 47 and 48
 			double tt1 = 1.0 - e * e;
 			double tt2 = sqrt(tt1);
-			double dadt = -(eta * ia) * Q * (2.0 + 3.0 * e * e) / (tt1 * tt2);
-			double dedt = -2.5 * (eta * ia * ia) * Q * e / tt2;
+			double dadt = -(eta * ia) * Asteroid_Q * (2.0 + 3.0 * e * e) / (tt1 * tt2);
+			double dedt = -2.5 * (eta * ia * ia) * Asteroid_Q * e / tt2;
 
 			a += dadt * dt;
 			e += dedt * dt;
@@ -1436,6 +1452,57 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
 		}
+//printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+	}	
+}
+// ***************************************************************
+// This kernel computes the Poynting-Robertson drag.
+// it computes the PR drag  acceleration and performs a velocity kick
+
+// BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
+
+// March 2017
+// Authors: Simon Grimm, Matthias Meier
+// *****************************************************************
+__global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	//Compute the Kepler Elements
+	int st = 0;
+
+	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+
+	if(id < N && x4_d[id].w >= 0.0){
+
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+
+		double dt = dt_d[st] * Kt;
+		double RR = v4i.w * def_AU;					//covert radius in m	
+
+		double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
+
+		//BURNS, LAMY, AND SOTER, 1979 equation 2
+
+		double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
+		double ir = 1.0 / sqrt(rsq);
+		double rd = (x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z) * ir; 
+
+
+		double t1 = eta * def_cm * ir * ir * Asteroid_Q;
+		double t2 = (1.0 - rd / def_cm);
+
+
+		v4i.x += (t1 * (t2 * x4i.x * ir - v4i.x / def_cm)) * dt;
+		v4i.y += (t1 * (t2 * x4i.y * ir - v4i.y / def_cm)) * dt;
+		v4i.z += (t1 * (t2 * x4i.z * ir - v4i.z / def_cm)) * dt;
+
+
+		x4_d[id] = x4i;
+		v4_d[id] = v4i;
 //printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 	}	
 }

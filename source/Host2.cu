@@ -228,6 +228,8 @@ __host__ void Host::Halloc(){
 	sprintf(Gridae.X, def_aeGridName);
 	P.Usegas = def_Usegas;
 	P.UseForce = def_UseForce;
+	P.UseYarkovsky = def_UseYarkovsky;
+	P.UsePR = def_UsePR;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
@@ -1114,6 +1116,34 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use Yarkovsky =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseYarkovsky);
+				if(er <= 0){
+					printf("Error: Use Yarkovsky value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use Poynting-Robertson =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UsePR);
+				if(er <= 0){
+					printf("Error: Use Poynting-Robertson value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "FormatS =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.FormatS);
@@ -1444,6 +1474,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(def_CollisionPrecision <= 0.0){
 		printf("Error: def_CollisionPrecision not valid! %g\n", def_CollisionPrecision);
 		return 0;
+	}
+
+
+	ForceFlag = 0;
+	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0){
+		ForceFlag = 1;
 	}
 	
 	return 1;
@@ -2015,6 +2051,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %d\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
+			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
+			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0
@@ -2024,6 +2062,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
 			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
+			fprintf(infofile, "Asteroid radiation pressure coefficient Q: %g\n", Asteroid_Q);
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

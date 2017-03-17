@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.61
+#define Version 3.62
 
 //Default parameter values
 #define def_TimeStep 6
@@ -47,6 +47,8 @@
 #define def_aeGridName "A"
 #define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
+#define def_UseYarkovsky 0
+#define def_UsePR 0
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
 #define def_G_Sigma_10 2000		 //surface density at 1AU
@@ -105,7 +107,7 @@
 
 #define MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
-//Units
+//Units and constants
 #define def_ksq 1.0			//Squared Gaussion gravitation constant in current units
 #define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
@@ -113,6 +115,7 @@
 #define def_Solarmass 1.98855e30	//solar mass in Kg
 #define def_c 299792458.0		//speed of light in m/s
 #define def_cm 10065.3201686		//speed of light in AU / day * 0.0172020989	
+#define def_sigma 5.670373e-8		//Stefan Boltzmann constant J m^-2 s^-1 K^-4
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
@@ -179,20 +182,26 @@
 #endif
 
 //values for Asteroids in force function
-//#define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
-#define Asteroid_rho 2250.0	//density of body in kg/m^3	Veritas
+#define Asteroid_eps 0.95	//Emissivity
+#define Asteroid_S 1367.0	//Solar Constant at 1 AU in W /m^2
 
-//#define Asteroid_C 680.0	//Specific Heat Capacity in J/kgK Hebe
-#define Asteroid_C 500.0	//Specific Heat Capacity in J/kgK Veritas
 
-//#define Asteroid_A 0.2	//Bond albedo			Hebe
-#define Asteroid_A 0.069	//Bond albedo			Veritas
+#define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
+//#define Asteroid_rho 2250.0	//density of body in kg/m^3	Veritas
+
+#define Asteroid_C 680.0	//Specific Heat Capacity in J/kgK Hebe
+//#define Asteroid_C 500.0	//Specific Heat Capacity in J/kgK Veritas
+
+#define Asteroid_A 0.2		//Bond albedo			Hebe
+//#define Asteroid_A 0.069	//Bond albedo			Veritas
 	
 
-//#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
+#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
 //#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
-#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
+//#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
 
+
+#define Asteroid_Q 1.0		//radiation pressure coefficient, 1 pure absortion
 
 #ifndef STRUCT_H
 #define STRUCT_H
@@ -217,6 +226,8 @@ struct Parameter{
 	int Buffer;
 	int Usegas;
 	int UseForce;
+	int UseYarkovsky;
+	int UsePR;			//Poynting Robertson drag
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 	int UseTransits;

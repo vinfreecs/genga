@@ -1,0 +1,5 @@
+#!/bin/bash
+#SBATCH -J gengatest
+#SBATCH -n 1 --gres gpu:1 -p tasna -A gpu
+#SBATCH --time 100-0
+srun genga
