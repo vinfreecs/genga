@@ -229,6 +229,7 @@ __host__ void Host::Halloc(){
 	P.Usegas = def_Usegas;
 	P.UseForce = def_UseForce;
 	P.UseYarkovsky = def_UseYarkovsky;
+	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.UsePR = def_UsePR;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
@@ -263,7 +264,7 @@ __host__ void Host::Halloc(){
 		 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
 	
 	for(int st = 0; st < Nst; ++st){
-		for(int i = 0; i < 30; ++i){
+		for(int i = 0; i < 40; ++i){
 			GSF[st].informat[i] = 0;
 		}
 		
@@ -351,6 +352,30 @@ __host__ void Host::Halloc(){
 			}
 			else if(strcmp(ff + f * 5, "M") == 0){
 				GSF[st].informat[f] = 28;
+			}
+			else if(strcmp(ff + f * 5, "aL") == 0){		//tunig lengths for mcmc step
+				GSF[st].informat[f] = 29;
+			}
+			else if(strcmp(ff + f * 5, "eL") == 0){
+				GSF[st].informat[f] = 30;
+			}
+			else if(strcmp(ff + f * 5, "incL") == 0){
+				GSF[st].informat[f] = 31;
+			}
+			else if(strcmp(ff + f * 5, "mL") == 0){
+				GSF[st].informat[f] = 32;
+			}
+			else if(strcmp(ff + f * 5, "OL") == 0){
+				GSF[st].informat[f] = 33;
+			}
+			else if(strcmp(ff + f * 5, "wL") == 0){
+				GSF[st].informat[f] = 34;
+			}
+			else if(strcmp(ff + f * 5, "ML") == 0){
+				GSF[st].informat[f] = 35;
+			}
+			else if(strcmp(ff + f * 5, "rL") == 0){
+				GSF[st].informat[f] = 36;
 			}
 		}	
 		n1_h[st] = def_n1;
@@ -654,7 +679,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
-			for(int i = 0; i < 30; ++i){
+			for(int i = 0; i < 40; ++i){
 				GSF[st].informat[i] = 0;
 			}
 			//Read input file Format
@@ -758,6 +783,30 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				else if(strcmp(sp, "M") == 0){
 					GSF[st].informat[f] = 28;
 					keplerian = 1;
+				}
+				else if(strcmp(sp, "aL") == 0){
+					GSF[st].informat[f] = 29;
+				}
+				else if(strcmp(sp, "eL") == 0){
+					GSF[st].informat[f] = 30;
+				}
+				else if(strcmp(sp, "incL") == 0){
+					GSF[st].informat[f] = 31;
+				}
+				else if(strcmp(sp, "mL") == 0){
+					GSF[st].informat[f] = 32;
+				}
+				else if(strcmp(sp, "OL") == 0){
+					GSF[st].informat[f] = 33;
+				}
+				else if(strcmp(sp, "wL") == 0){
+					GSF[st].informat[f] = 34;
+				}
+				else if(strcmp(sp, "ML") == 0){
+					GSF[st].informat[f] = 35;
+				}
+				else if(strcmp(sp, "rL") == 0){
+					GSF[st].informat[f] = 36;
 				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
@@ -1121,6 +1170,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%d", &P.UseYarkovsky);
 				if(er <= 0){
 					printf("Error: Use Yarkovsky value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use Small Collisions =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseSmallCollisions);
+				if(er <= 0){
+					printf("Error: Use Small Collisions value is not valid!\n");
 					return 0;
 				}
 			}
@@ -1596,7 +1659,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 				GSF[st].encounterfile = fopen(GSF[st].encounterfilename, "w");
 				fclose(GSF[st].encounterfile);  
 			}
-			if(P.UseForce == 32){
+			if(P.UseSmallCollisions > 0){
 				GSF[st].fragmentfile = fopen(GSF[st].fragmentfilename, "w");
 				fclose(GSF[st].fragmentfile);  
 			}
@@ -1651,7 +1714,7 @@ __host__ int Host::icSize(int st){
 	
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
-	for(int f = 0; f < 30; ++f){
+	for(int f = 0; f < 40; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
 	
@@ -1986,7 +2049,7 @@ __host__ void Host::Info(){
 			#endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
-			for(int f = 0; f < 30; ++f){
+			for(int f = 0; f < 40; ++f){
 				if(GSF[st].informat[f] == 1) fprintf(infofile, "x ");
 				else if(GSF[st].informat[f] == 2) fprintf(infofile, "y ");
 				else if(GSF[st].informat[f] == 3) fprintf(infofile, "z ");
@@ -2015,6 +2078,14 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 26) fprintf(infofile, "O ");
 				else if(GSF[st].informat[f] == 27) fprintf(infofile, "w ");
 				else if(GSF[st].informat[f] == 28) fprintf(infofile, "M ");
+				else if(GSF[st].informat[f] == 29) fprintf(infofile, "aL ");
+				else if(GSF[st].informat[f] == 30) fprintf(infofile, "eL ");
+				else if(GSF[st].informat[f] == 31) fprintf(infofile, "incL ");
+				else if(GSF[st].informat[f] == 32) fprintf(infofile, "mL ");
+				else if(GSF[st].informat[f] == 33) fprintf(infofile, "OL ");
+				else if(GSF[st].informat[f] == 34) fprintf(infofile, "wL ");
+				else if(GSF[st].informat[f] == 35) fprintf(infofile, "ML ");
+				else if(GSF[st].informat[f] == 36) fprintf(infofile, "rL ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -2053,6 +2124,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
+			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0
@@ -2063,6 +2135,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
 			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
 			fprintf(infofile, "Asteroid radiation pressure coefficient Q: %g\n", Asteroid_Q);
+			fprintf(infofile, "Asteroid collisional velocity V: %g\n", Asteroid_V);
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}
@@ -2152,9 +2225,9 @@ __host__ int Host::readIrregularOutputs(){
 // **************************************
 // This function reads the transit times and stores them in TransitData
 // Authors: Simon Grimm
-// December 2016
+// April 2017
 // ******************************************
-__host__ int Host::readTransits(){
+__host__ int Host::readTransits(double4 *elementsA_h){
 	
 	FILE *Transitfile;
 	Transitfile = fopen(P.Transitsfilename, "r");
@@ -2163,7 +2236,6 @@ __host__ int Host::readTransits(){
 		fprintf(masterfile, "Error: TTV file not found: %s\n", P.Transitsfilename);		
 		return 0;
 	}
-	
 	//determine the lengh of the file
 	int t;
 	double t1, t2;
@@ -2203,7 +2275,7 @@ __host__ int Host::readTransits(){
 	
 	TransitData = (double3*)malloc(n * sizeof(double3));
 	for(int i = 0; i < NconstT; ++i){
-		NtransitsTObs_h[i] = 1;
+		NtransitsTObs_h[i] = 0;
 		
 	}
 	for(int i = 0; i < def_NtransitTimeMax * NconstT; ++i){
@@ -2217,7 +2289,7 @@ __host__ int Host::readTransits(){
 		er = fscanf(Transitfile, "%d", &index);
 		er = fscanf(Transitfile, "%lf", &T0);
 		er = fscanf(Transitfile, "%lf", &P);
-		printf("file %d %d %d %g %g\n", i, er, index, T0, P); 
+//printf("file %d %d %d %g %g\n", i, er, index, T0, P); 
 		if(er <= 0){
 			n += i;
 			break;
@@ -2248,14 +2320,19 @@ __host__ int Host::readTransits(){
 		TransitMaxError = fmax(TransitMaxError, error);
 		
 		double T0 = TransitTimeObs_h[index * def_NtransitTimeMax].x;
+
+//		double a = elementsA_h[index].x;
+//		double P = 2.0 * M_PI * sqrt(a * a * a / Msun_h[0].x) / dayUnit; //Period
+
 		double P = TransitTimeObs_h[index * def_NtransitTimeMax].y;
 		int Epoch = (int)((T - T0 + 0.5 * P) / P);
-		printf(" %d %g %g %g %d\n", index, T, T0, P, Epoch);
-		TransitTimeObs_h[index * def_NtransitTimeMax + NtransitsTObs_h[index]].x = T; //time
-		TransitTimeObs_h[index * def_NtransitTimeMax + NtransitsTObs_h[index]].y = error; //error
-		++NtransitsTObs_h[index];
+//printf(" %d %g %g %g %g %d\n", index, T, T0, 0.0, P, Epoch);
+		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x = T; //time
+		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].y = error; //error
+		NtransitsTObs_h[index] = max(NtransitsTObs_h[index], Epoch);
 		
 	}
+	fclose(Transitfile);
 	for(int st = 1; st < Nst; ++st){
 		for(int i = 0; i < N_h[0]; ++i){
 			//assume that all sub simulations are of equal size
@@ -2265,16 +2342,6 @@ __host__ int Host::readTransits(){
 			}
 		}
 	}
-	for(int st = 1; st < Nst; ++st){
-		for(int i = 0; i < N_h[0]; ++i){
-			//assume that all sub simulations are of equal size
-			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
-			for(int j = 0; j < NtransitsTObs_h[i]; ++j){
-				 TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + j] = TransitTimeObs_h[i * def_NtransitTimeMax + j];
-			}
-		}
-	}
-	
 
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
@@ -2341,9 +2408,9 @@ __host__ int Host::readSetElements(){
 			printf("i ");
 			++nelements;
 		}
-		else if(c == 'N'){
+		else if(c == 'O'){
 			Elements[i] = 6;
-			printf("N ");
+			printf("O ");
 			++nelements;
 		}
 		else if(c == 'w'){

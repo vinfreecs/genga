@@ -105,7 +105,7 @@ public:
 	double4 *elementsBOld_d;
 	double4 *elementsLA_h, *elementsLA_d;
 	double4 *elementsLB_h, *elementsLB_d;
-	double2 *elementsP_d;
+	double4 *elementsP_h, *elementsP_d;			//probability, random number, acceptance count, global tunig factor
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall();
@@ -164,6 +164,7 @@ public:
 	__host__ int printFragments(int);
 	__host__ int printRotation();
 	__host__ int printTransits();
+	__host__ void printMCMC();
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int, double);

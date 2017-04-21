@@ -115,8 +115,10 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The gas surface density at 1 AU Sigma_10 in g / cm^3
  * The power law exponent for the gas disc, alpha 
  * use additional force, which is specified in the file force.h. See [here](#markdown-header-additional-forces) for more details.
- * Use Yarkovsky. 0: No Yarkovsky effect, 1: Yarkovsky effect (dv/dt), 2: Yarkovsky effect (da/dt) See [here](#markdown-header-Yarkovsky-Effect) for more details.
- * Use Poynting-Robertson. 0: No PR drag, 1: PR drag (dv/dt), 2: PR drag (da/dt, de/dt) See [here](#markdown-header-Poynting-Robertson-drag) for more details.
+ * Use Yarkovsky. 0: No Yarkovsky effect, 1: Yarkovsky effect (dv/dt), 2: Yarkovsky effect (da/dt) See [here](#markdown-header-yarkovsky-effect) for more details.
+ * Use Poynting-Robertson. 0: No PR drag, 1: PR drag (dv/dt), 2: PR drag (da/dt, de/dt) See [here](#markdown-header-poynting-robertson-drag) for more details.
+ * Use Small Collisions. 0: no effect, 1: Fragmentation and rotation rate reset model for test particles.
+ * Set Elements file name: '-': no file, 'name':  name of the file containg the data table for Keplerian elements. See [here](#markdown-header-set-elements-function) for more details. 
  * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
@@ -170,6 +172,13 @@ Here it can also be chosen if the gas disc is included or not.
  * def_StopMinMass f: when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
  * def_CollisionPrecision f: Tolerance for Collision time precision. In days. Default is 1.0
  * def_CollTshift f: Collision output before Collision happens, default is 1.0
+ * Asteroid_eps f: Emissivity factor
+ * Asteroid_S f: Solar Constant at 1 AU in W /m^2
+ * Asteroid_rho f: Density of body in kg/m^3
+ * Asteroid_C f: Specific Heat Capacity in J/kgK
+ * Asteroid_A f: Bond albedo
+ * Asteroid_K f: Thermal conductivity in W/mK
+ * Asteroid_Q f: Radiation pressure coefficient
 
 
 
@@ -345,6 +354,26 @@ The file contains the following informations (see [here](#markdown-header-the-po
 
 The crossing events are written consecutively the the file. After each coordinate output interval another file is created to reduce the file sizes.
 
+##The Fragments<name>.dat file##
+This file is only written with using 'UseSmallCollisions = 1' in the 'param.dat' file (only working for test particles).
+It contains information about fragmentation and rotation reset events.
+
+    time index m r x y z vx vy vz Sx Sy Sz event 
+    .
+    .
+    .
+    .
+
+the 'event' indicates the following:
+ * 0: rotation rate reset 
+ * -1: Collision, the particle is destroyed, and it is replaced with fragments (listed in the next lines with event=1 or event=2 of this file)
+ * 1: A new fragment particle. The original body is the last body in this file with event = -1.
+ * 2: A new fragment particle. The original body is the last body in this file with event = -1. This body is too small and it is directly removed from the simulation.
+
+Each new created fragment gets a new index number.
+This file permits to recronstruct the collision and fragmentation history of every particle.
+
+
 ##The master file: master.out
 The master file contains information about the used hardware and simulation progress. If an error occurs then the master file contains more details about that. 
 
@@ -482,3 +511,37 @@ The Poynting-Robertson drag effect can be enabled by setting 'Use Poynting-Rober
 
 The following parameters are relevant for the Poynting-Robertson drag and can be set in the 'define.h' file:
  * Asteroid_Q: radiation pressure coefficient
+
+# Set Elements function #
+This option can be used to modiy the orbital parameters of a body according to a precomputed data table. To enable this option, the file name must be set with the 
+'Set Elements file name' parameter in the 'param.dat' file. The structure of the data file must be the following:
+
+
+    numer of bodies to modify, 't', element to modify
+    time, body 1 element 1, body 2 element 1, ..., body 1 element 2, body 2 element 2, ...
+    .
+    .
+    .
+ * The number of bodies 'n', indicates how many bodies will be modified. They are the first 'n' massive bodies in the initial condition file
+ * time is the time of the elements in years
+ * elements can be:
+    * a, semi-major axis in AU
+    * e, eccentricity
+    * i, inclination in radians
+    * O, (Omega) longitude of the ascending node in radians 
+    * w, (omega) argument of periapsis in radians
+    * T, epoch time in days
+    * m, mass in Earth masses
+    * r, radius in cm
+
+An example data file to modiy the mass and radius of a body looks like this:
+
+    1 t m r
+    0.0000000000000000 0.10000000001999999 412630952.56160003
+    2.2000000476840000 0.10000546643490001 412634212.92830002
+    5.3680003681180004 0.10001333851890000 412642830.73379999
+    9.9299211920929995 0.10002467524580000 412655240.51260000
+    .
+    .
+    .
+  

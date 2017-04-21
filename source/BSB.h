@@ -534,7 +534,11 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 								int i = Colpairs_s[c].x;
 								int j = Colpairs_s[c].y;
 								if(noColl == 0){
+#if def_NoCollTP == 0
 									if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
+#else
+									if(xt_s[i].w > MinMass && xt_s[j].w > MinMass){
+#endif
 										int nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
 											collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);

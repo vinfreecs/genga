@@ -207,7 +207,7 @@ int main(int argc, char*argv[]){
 	D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
 	++NAFstep;
 #endif
-
+	int ittv = 0;
 #if def_TTV == 1
 	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
 #endif
@@ -216,10 +216,14 @@ int main(int argc, char*argv[]){
 	SetTTVP <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
 	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
 
-for(int ittv = 0; ittv < D.P.TransitSteps; ++ittv){
-printf("*********** TTV Step ***********\n");
-	if(ittv > 0) D.modifyElementsCall();
-	SetTTVNt <<< (D.NconstT + 511) / 512, 512 >>> (D.NtransitsT_d, D.NconstT);
+for(ittv = 0; ittv < D.P.TransitSteps; ++ittv){
+cudaDeviceSynchronize();
+printf("*********** TTV Step %d ***********\n", ittv);
+	if(ittv % 100 == 0) SetTTVPRate <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
+	if(ittv > 0){
+		D.modifyElementsCall();
+		cudaMemcpy(D.elementsA_h, D.elementsA_d, sizeof(double4) * D.NconstT, cudaMemcpyDeviceToHost);
+	}
 #endif
 
 	if(D.Nst > 1){
@@ -257,11 +261,13 @@ printf("*********** TTV Step ***********\n");
 		return 0;
 	}
 	else{
-		printf("first kick OK\n");
+		if(ittv == 0) printf("first kick OK\n");
 	}
+
 	//Print first informations about close encounter pairs
-	D.firstInfo();
+	if(ittv == 0) D.firstInfo();
 	D.setStartTime();
+
 #if poincareFlag == 1
 	sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, 0);
 	D.poincarefile = fopen(D.poincarefilename, "w");
@@ -286,7 +292,7 @@ printf("*********** TTV Step ***********\n");
 	}
 	D.TransitDataStep = 0;
 	if(D.P.UseTransits == 1){
-		er = D.readTransits();
+		er = D.readTransits(D.elementsA_h);
 		if(er == 0){
 			return 0;
 		}
@@ -298,7 +304,7 @@ printf("*********** TTV Step ***********\n");
 			}
 			++D.TransitDataStep;
 		}
-printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
+
 	}
 	if(D.P.setElements == 1){
 		er = D.readSetElements();
@@ -321,7 +327,6 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 	D.MultiSim = 0;
 	if(D.Nst > 1) D.MultiSim = 1;
 	D.interrupt = 0;
-
 	// ************************************************************************
 	// start time step loop here
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
@@ -331,7 +336,6 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 		}
 	} // end of time step loop
 	// ***********************************************************************
-
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
 		if(D.bufferCountIrr > 1){
@@ -354,15 +358,10 @@ printf("Transit %d %d %g\n", D.NTransitData, D.TransitDataStep, starttime);
 
 #endif
 
-#if def_TTV ==1
+#if def_TTV > 0
 	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst);
-	}//end of TTV loop
-#endif
-
-#if def_TTV ==2
-	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst, ittv);
+	D.printMCMC();
 	}//end of TTV loop
 #endif
 

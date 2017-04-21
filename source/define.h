@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.62
+#define Version 3.63
 
 //Default parameter values
 #define def_TimeStep 6
@@ -48,6 +48,7 @@
 #define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
 #define def_UseYarkovsky 0
+#define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_UsePR 0
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
@@ -92,6 +93,8 @@
 #define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
 #define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
+
+#define def_NoCollTP 0			// not ready yet (//0: Collide all bodies, 1: No Collisions with test particles)
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
@@ -172,7 +175,7 @@
 
 #define def_TTV 0
 #define def_NtransitMax 10
-#define def_NtransitTimeMax 100		//Maximum number of transit times per object
+#define def_NtransitTimeMax 400		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
 
 #define USE_RANDOM 1
@@ -203,6 +206,8 @@
 
 #define Asteroid_Q 1.0		//radiation pressure coefficient, 1 pure absortion
 
+#define Asteroid_V 5000.0	//Collisional velocity in m/s 
+
 #ifndef STRUCT_H
 #define STRUCT_H
 
@@ -227,6 +232,7 @@ struct Parameter{
 	int Usegas;
 	int UseForce;
 	int UseYarkovsky;
+	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int UsePR;			//Poynting Robertson drag
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
@@ -261,7 +267,7 @@ struct GSFiles{
 	char encounterfilename[128];
 	char fragmentfilename[128];
 	char X[128];
-	int informat[30];
+	int informat[40];
 	char path[128];
 };
 

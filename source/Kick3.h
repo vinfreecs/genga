@@ -326,7 +326,7 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 			double R = Rsun + v4i.w;
 
-printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+//if(id == 0) printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 
 			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
 				if(g <= 0.0){
@@ -377,7 +377,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 			double R = Rsun + v4i.w;
 
-printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 
 			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
 
@@ -543,7 +543,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 			double R = Rsun + v4i.w;
 
-printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 
 			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
 				if(g <= 0.0){
@@ -1250,7 +1250,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 		double R = Rsun + v4i.w;
 
-printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, dt, rsky, R, R + v * dt);
+//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, dt, rsky, R, R + v * dt);
 
 		if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
 			if(g <= 0.0){

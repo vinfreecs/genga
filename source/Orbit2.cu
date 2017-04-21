@@ -53,11 +53,13 @@ __host__ void Data::AllocateOrbitt(){
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
 	elementsLA_h = NULL;
 	elementsLB_h = NULL;
+	elementsP_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -129,7 +131,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double2));
+	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
@@ -448,6 +450,13 @@ __host__ int Data::init(){
 		elementsLB_h[i].y = 0.0;
 		elementsLB_h[i].z = 0.0;
 		elementsLB_h[i].w = 0.0;
+
+		if(i < Nst){
+			elementsP_h[i].x = 1.0e300;		//initial value for sum
+			elementsP_h[i].y = 0.0;		//contains later a random number
+			elementsP_h[i].z = 35.0;		//acceptance count
+			elementsP_h[i].w = 1.0;		//tunig factor according to acceptance rate
+		}
 #endif
 	}
 	for(int st = 0; st < Nst; ++st){
@@ -622,8 +631,14 @@ __host__ int Data::readic(int st){
 			index = index_h[i + NBS];
 			aelimits = aelimits_h[i + NBS];
 			int keplerian = 0;
+#if def_TTV > 0
+			double4 elementsA = elementsA_h[i + NBS];
+			double4 elementsB = elementsB_h[i + NBS];
+			double4 elementsLA = elementsLA_h[i + NBS];
+			double4 elementsLB = elementsLB_h[i + NBS];
+#endif
 
-			for(int f = 0; f < 30; ++f){
+			for(int f = 0; f < 40; ++f){
 				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);
 				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);
 				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);
@@ -673,11 +688,26 @@ __host__ int Data::readic(int st){
 					fscanf (infile, "%lf",&v.z);
 					keplerian = 1;
 				}
-			}
 #if def_TTV > 0
-			double4 elementsA;
-			double4 elementsB;
+				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&elementsLA.x);
+				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&elementsLA.y);
+				else if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&elementsLA.z);
+				else if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&elementsLA.w);
+				else if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&elementsLB.x);
+				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&elementsLB.y);
+				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&elementsLB.z);
+				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&elementsLB.w);
+#else
+				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
 #endif
+			}
 			if(keplerian == 1){
 #if def_TTV > 0
 				elementsA = x;
@@ -704,6 +734,8 @@ __host__ int Data::readic(int st){
 #if def_TTV > 0
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
+			elementsLA_h[ii + NBSN] = elementsLA;
+			elementsLB_h[ii + NBSN] = elementsLB;
 #endif
 			++ii;
 			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles > 0) ++iismall;
@@ -780,7 +812,7 @@ __host__ int Data::readic(int st){
 				int i = ii;
 				double skip = 0.0;
 				int eri = 1;
-				for(int f = 0; f < 30; ++f){
+				for(int f = 0; f < 40; ++f){
 					if(GSF[st].informat[f] == 13){
 						eri = fscanf (OrigInfile, "%d",&i);
 					}

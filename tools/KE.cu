@@ -13,6 +13,7 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	double ia = 2.0 * ir - vsq / mu;
 
 	a = 1.0 / ia;
+
 	//inclination
 	double3 h3;
 	double h2, h, t;
@@ -187,7 +188,7 @@ printf("%s\n", inputfilename);
 		FILE *outputfile;
 		outputfile = fopen(outputfilename, "w");
 		index = -1;
-		x.x = 0.0;
+		x.x = 1.0e300;
 		if(useCollfile == 0){
 			for(int i = 0; i < N; ++i){
 				xOld = x.x;

@@ -133,8 +133,8 @@ __host__ int Data::firstoutput(){
 				}				
 			}		
 			if(er <= 0){
-				fprintf(masterfile, "Error: In Simulation %s: Restart time step not valid\n", GSF[st].path);
-				printf("Error: In Simulation %s: Restart time step not valid\n", GSF[st].path);
+				fprintf(masterfile, "Error: In Simulation %s: Restart time step not valid %g %g\n", GSF[st].path, atof(Ets), Et);
+				printf("Error: In Simulation %s: Restart time step not valid %g %g\n", GSF[st].path, atof(Ets), Et);
 				return 0;
 			}
 
@@ -200,7 +200,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 	}
 }
 
-//this fucntion prints the first close encounter information to the info file
+//this function prints the first close encounter information to the info file
 __host__ void Data::firstInfo(){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, (Nst + 1) * sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
@@ -878,20 +878,16 @@ __host__ int Data::printRotation(){
 }
 //This function prints the transit times
 __host__ int Data::printTransits(){
-	cudaMemcpy(NtransitsT_h, NtransitsT_d, NconstT * sizeof(int2), cudaMemcpyDeviceToHost);
-
 	cudaMemcpy(TransitTime_h, TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
-
 
 	FILE *Transitfile;
 	Transitfile = fopen("Transits.dat", "a");
 
 	for(int i = 0; i < NconstT; ++i){
-printf("NtransitsT: %d %d\n", i, NtransitsT_h[i].x);
-		for(int j = 0; j < NtransitsT_h[i].x; ++j){
-			fprintf(Transitfile, "%d %.20g\n", i, TransitTime_h[i * def_NtransitTimeMax + j]);
-			if(NtransitsT_h[i].x >= def_NtransitTimeMax -1){
-				printf("Error: more transits than def_NtransitTimeMax for object %d: %d\n", i, NtransitsT_h[i].x);
+		for(int Epoch = 0; Epoch < NtransitsTObs_h[i]; ++Epoch){
+			fprintf(Transitfile, "%d %d %.20g\n", i, Epoch, TransitTime_h[i * def_NtransitTimeMax + Epoch]);
+			if(NtransitsTObs_h[i] >= def_NtransitTimeMax -1){
+				printf("Error: more transits than def_NtransitTimeMax for object %d: %d %d\n", i, NtransitsTObs_h[i], def_NtransitTimeMax);
 				return 0;
 			}
 		}
@@ -899,5 +895,26 @@ printf("NtransitsT: %d %d\n", i, NtransitsT_h[i].x);
 
 	fclose(Transitfile);
 	return 1;
+}
+
+__host__ void Data::printMCMC(){
+	FILE *MCMCfile;
+	MCMCfile = fopen("MCMC.dat", "a");
+
+	cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsLA_h, elementsLA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsLB_h, elementsLB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsP_h, elementsP_d, Nst * sizeof(double4), cudaMemcpyDeviceToHost);
+
+	for(int id = 0; id < NconstT; ++id){
+
+		int si = id / 100;
+		if(elementsP_h[si].y > 0){
+			double f = elementsP_h[si].w;
+			fprintf(MCMCfile, "%d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g\n", id, elementsA_h[id].w, elementsB_h[id].w, elementsA_h[id].x, elementsA_h[id].y, elementsA_h[id].z, elementsB_h[id].x, elementsB_h[id].y, elementsB_h[id].z, f * elementsLA_h[id].w, f * elementsLB_h[id].w, f * elementsLA_h[id].x, f * elementsLA_h[id].y, f * elementsLA_h[id].z, f * elementsLB_h[id].x, f * elementsLB_h[id].y, f * elementsLB_h[id].z, elementsP_h[si].x, f);
+		}
+	}
+	fclose(MCMCfile);
 }
 

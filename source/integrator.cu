@@ -210,7 +210,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 
 			if(ni + TransitDataStep - 1 >= NTransitData) break;
 		}
-printf("Do TTV check %.10g %d %d\n", Dime_h[0], ni - 1, TransitDataStep);	
+printf("Do TTV check %.10g %d %d\n", time_h[0], ni - 1, TransitDataStep);	
 		if(ni - 1 > 0){
 			cudaMemcpy(Transit_d, Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
 			BSTTVCall(ni - 1);
@@ -220,7 +220,7 @@ printf("Do TTV check %.10g %d %d\n", Dime_h[0], ni - 1, TransitDataStep);
 		for(int i = 0; i < ni; ++i){
 
 			//step();
-			if(time_h[0] >= TransitData[D.TransitDataStep].y + TransitMaxError){
+			if(time_h[0] >= TransitData[TransitDataStep].y + TransitMaxError){
 				++TransitDataStep;
 				++ni;
 printf("Do TTV update %.10g %d %d\n", time_h[0], ni - 1, TransitDataStep);	
@@ -865,8 +865,8 @@ __host__ void Data::BSBMCall(int si, int noColl){
 
 #if def_TTV == 2
 __host__ void Data::BSTTVCall(int n){
-//	BSTTVStep_kernel < 4, 4 > <<< n * Nst, 16 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, n);
-	BSTTVStep_kernel < 8, 8 > <<< n * Nst, 64 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, n);
+//	BSTTVStep_kernel < 4, 4 > <<< n * Nst, 16 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, n);
+	BSTTVStep_kernel < 8, 8 > <<< n * Nst, 64 >>> (x4b_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, n);
 }
 #endif
 
@@ -1088,8 +1088,8 @@ __host__ int Data::step_16(){
 	else kick32BTTV_kernel <<<1, 16 >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0], Msun_h[0].x, Msun_h[0].y, Ntransit_d, Transit_d);
 	cudaDeviceSynchronize();
 	if(Ntransit_m[0] > 0){
-	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
-		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
+	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, Ntransit_m[0]);
+		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, Ntransit_m[0]);
 		Ntransit_m[0] = 0;
 	}
  #endif
@@ -2010,21 +2010,21 @@ __host__ int Data::step_small(){
 			int col = CollisionCall();
 			if(col == 0) return 0;
 		}
-if(P.UseForce == 32){
-	fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex, x4_h, v4_h, spin_h, index_h);
-	if(nFragments_m[0] > 0){
-		int er = printFragments(nFragments_m[0]);
-		if(er == 0) return 0;
-		er = RemoveCall();
-		if(er == 0) return 0;
-	}
+		if(P.UseSmallCollisions == 1){
+			fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex, x4_h, v4_h, spin_h, index_h);
+			if(nFragments_m[0] > 0){
+				int er = printFragments(nFragments_m[0]);
+				if(er == 0) return 0;
+				er = RemoveCall();
+				if(er == 0) return 0;
+			}
 
-	rotationCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, Fragments_d, time_h[0], nFragments_m, nFragments_d);
-	if(nFragments_m[0] > 0){
-		int er = printRotation();
-		if(er == 0) return 0;
-	}
-}
+			rotationCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, Fragments_d, time_h[0], nFragments_m, nFragments_d);
+			if(nFragments_m[0] > 0){
+				int er = printRotation();
+				if(er == 0) return 0;
+			}
+		}
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
@@ -2152,8 +2152,8 @@ __host__ int Data::step_M(){
 	else kick32BMTTV_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, a_d, ab_d, index_d, NT, dt_d, Kt[SIn - 1], Msun_d, Ntransit_d, Transit_d);
 	cudaDeviceSynchronize();
 	if(Ntransit_m[0] > 0){
-	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
-		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
+	//	BSTTVStep_kernel < 4, 4 > <<< Ntransit_m[0], 16 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, Ntransit_m[0]);
+		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, TransitTimeObs_d, Ntransit_m[0]);
 		Ntransit_m[0] = 0;
 	}
 #endif

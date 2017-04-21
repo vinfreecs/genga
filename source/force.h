@@ -157,7 +157,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			ir8 = ir5 * ir3;
 		}
 		if(UseForce >> 1 & 1){
-			//Tidal Force see Bolmont et al 2015 equation 15
+			//Tidal Force see Bolmont et al 2015 equation 5
 			double Msun2 = Msun * Msun;
 			double lovesun = Msun_d[st].z;
 			double tausun = Spinsun_d[st].w;
@@ -277,9 +277,8 @@ __constant__ int setElements_c[12];
 // This function copies the setElements parameters to constant memor. This functions must be in
 // the same file as the use of the constant memory
 //
-//Authors: Simon Grimm
 //June 2015
-//
+//Authors: Simon Grimm
 //***************************************/
 __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines, int ncolumns){
 	int setElementsNumbers[4] = {nelements, nbodies, nlines, ncolumns};	
@@ -287,7 +286,14 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
         cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
-
+// ***************************************************************
+// This kernel converts the heliocentric coordinates into Keplerian elemtnts,
+// modifies the Keplerian elements according to the setElementsData_d data and
+// converts back to heliocentric coordinates.
+//
+// March 2017
+// Authors: Simon Grimm
+// *****************************************************************
 __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double4 *Msun_d, double *dt_d, double *time_d, int N, int Nst){
 
 	int idy = threadIdx.x;
@@ -327,12 +333,17 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				break;
 			}
 			if(setElements_c[i] == 6){
-				//N
+				//O
 				doConversion = 1;
 				break;
 			}
 			if(setElements_c[i] == 7){
 				//w
+				doConversion = 1;
+				break;
+			}
+			if(setElements_c[i] == 10){
+				//T
 				doConversion = 1;
 				break;
 			}
@@ -607,6 +618,14 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 
 #if USE_RANDOM == 1
+// ***************************************************************
+// This kernel calulates the probability of a collisional induced
+// rotation reset. 
+// Fragmentation events are reportend in the Fragments_d array.
+//
+// March 2017
+// Authors: Simon Grimm, Matthias Meier
+// *****************************************************************
 __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int st, double *Fragments_d, double time, int *nFragments_d){
 
 	int N = N_d[st];
@@ -634,9 +653,6 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 				M /= def_Solarmass;								//mass im Solar masses
 			}
 
-			double V = 5000.0;		//collisional velocity in m / s
-
-
 			//compute rotation vector from spin vector
 			double iI = 5.0 / (2.0 * M * v4.w * v4.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			double3 omega3;
@@ -648,8 +664,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0);					//in 1 / s
 
 			//compute probability of rotation reset
-			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * V);
-//double p = 1.0e-1 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
+			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * Asteroid_V);
 			double p = 1.0e-18 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
 			p = p * 3600.0 * 24.0 * dt / dayUnit;					//probability per time step
 			double rd = curand_uniform(&random);
@@ -701,7 +716,14 @@ printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 		random_d[id] = random;
 	}
 }
-
+// ***************************************************************
+// This kernel calulates the probability of Asteroid Collisions
+// generates fragment kernels. 
+// Fragmentation events are reportend in the Fragments_d array.
+//
+// March 2017
+// Authors: Simon Grimm, Matthias Meier
+// *****************************************************************
 __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
 	int N = N_d[st];
 
@@ -729,11 +751,9 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			}
 
 			double p = 1.0 / (2.0e7 * sqrt(RR));	//probability per year per body
-//double p = 1.0 / (2.0e4 * sqrt(RR));	//probability per year per body
 			p = p / 365.25 * dt / dayUnit;  	//probability per time step per body
 			double rd = curand_uniform(&random);
 			volatile int accept = -2;
-//if(index_d[id] > 23000) printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
 			if(rd < p) {
 				accept = atomicMax(&nFragments_d[0], 0);
 printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
@@ -842,7 +862,6 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 					}
 				}
 				//rescale the velocity
-//printf("%g\n", vscaleT);
 				for(int i = 0; i < ii; ++i){
 					
 					double vx = v4_d[i + N + Nsmall].x / vscaleT;
