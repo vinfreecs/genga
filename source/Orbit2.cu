@@ -53,13 +53,21 @@ __host__ void Data::AllocateOrbitt(){
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsCA_h = (int4*)malloc(NconstT * sizeof(int4));
+	elementsCB_h = (int4*)malloc(NconstT * sizeof(int4));
+	elementsC_h = (int2*)malloc((Nst + MCMC_NT) * sizeof(int2));
 	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
+	elementsSA_h = (double*)malloc(Nst * sizeof(double));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
 	elementsLA_h = NULL;
 	elementsLB_h = NULL;
+	elementsCA_h = NULL;
+	elementsCB_h = NULL;
+	elementsC_h = NULL;
 	elementsP_h = NULL;
+	elementsSA_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -131,7 +139,11 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsCA_d, NconstT * sizeof(int4));
+	cudaMalloc((void **) &elementsCB_d, NconstT * sizeof(int4));
+	cudaMalloc((void **) &elementsC_d, (Nst + MCMC_NT) * sizeof(int2));
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
+	cudaMalloc((void **) &elementsSA_d, Nst * sizeof(double));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
@@ -139,7 +151,11 @@ __host__ void Data::AllocateOrbitt(){
 	elementsBOld_d = NULL;
 	elementsLA_d = NULL;
 	elementsLB_d = NULL;
+	elementsCA_d = NULL;
+	elementsCB_d = NULL;
+	elementsC_d = NULL;
 	elementsP_d = NULL;
+	elementsSA_d = NULL;
 #endif
 
 	//arrays for backup step
@@ -450,12 +466,28 @@ __host__ int Data::init(){
 		elementsLB_h[i].y = 0.0;
 		elementsLB_h[i].z = 0.0;
 		elementsLB_h[i].w = 0.0;
+		elementsCA_h[i].x = 0;
+		elementsCA_h[i].y = 0;
+		elementsCA_h[i].z = 0;
+		elementsCA_h[i].w = 0;
+		elementsCB_h[i].x = 0;
+		elementsCB_h[i].y = 0;
+		elementsCB_h[i].z = 0;
+		elementsCB_h[i].w = 0;
+
 
 		if(i < Nst){
 			elementsP_h[i].x = 1.0e300;		//initial value for sum
 			elementsP_h[i].y = 0.0;		//contains later a random number
 			elementsP_h[i].z = 35.0;		//acceptance count
 			elementsP_h[i].w = 1.0;		//tunig factor according to acceptance rate
+		}
+		if(i < Nst){
+			elementsSA_h[i] = 1.0;
+		}
+		if(i < Nst + MCMC_NT){
+			elementsC_h[i].x = 0;
+			elementsC_h[i].y = 0;
 		}
 #endif
 	}
@@ -577,6 +609,10 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLA_d, elementsLA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLB_d, elementsLB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsCA_d, elementsCA_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsCB_d, elementsCB_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsC_d, elementsC_h, sizeof(int2) * (Nst + MCMC_NT), cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsSA_d, elementsSA_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
 #endif
 
 	cudaError_t error;
@@ -609,8 +645,14 @@ __host__ int Data::readic(int st){
 
 	double AU = def_AU * 100.0; // in cm
 	double Solarmass = def_Solarmass * 1000.0; //in g
-
+#if def_TTVR == 0
 	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
+#else
+	if(st == 0){
+		MCMCRestartFile = fopen("MCMCR.dat", "r");
+	}
+	infile = MCMCRestartFile;
+#endif
 
 	int ii = 0;
 	int iismall = 0;
@@ -622,7 +664,7 @@ __host__ int Data::readic(int st){
 	double3 love;
 	int index;
 	float4 aelimits;
-	if(P.tRestart == 0){
+	if(P.tRestart == 0 || def_TTV > 0){
 		for(int i = 0; i < N + Nsmall; ++i){
 			x = x4_h[i + NBS];
 			v = v4_h[i + NBS];
@@ -636,6 +678,7 @@ __host__ int Data::readic(int st){
 			double4 elementsB = elementsB_h[i + NBS];
 			double4 elementsLA = elementsLA_h[i + NBS];
 			double4 elementsLB = elementsLB_h[i + NBS];
+			double elementsSA = elementsSA_h[st];
 #endif
 
 			for(int f = 0; f < 40; ++f){
@@ -697,6 +740,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&elementsLB.y);
 				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&elementsLB.z);
 				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&elementsLB.w);
+				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&elementsSA);
 #else
 				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
@@ -706,8 +750,10 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
 #endif
 			}
+			if(dayUnit == 1) x.w *= def_Kg;
 			if(keplerian == 1){
 #if def_TTV > 0
 				elementsA = x;
@@ -736,15 +782,19 @@ __host__ int Data::readic(int st){
 			elementsB_h[ii + NBSN] = elementsB;
 			elementsLA_h[ii + NBSN] = elementsLA;
 			elementsLB_h[ii + NBSN] = elementsLB;
+			int iT = st / (Nst / MCMC_NT);			//index of temperature in parallel tempering
+			 
+			elementsSA_h[st] = elementsSA * pow(sqrt(2.0), iT);
 #endif
 			++ii;
 			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles > 0) ++iismall;
 		}
 	}
 	else{
-#if def_TTV > 0
-	printf("ERROR: restart not possible for TTV\n");
+#if def_TTV > 1
+	printf("Restart for TTV not possible\n");
 	return 0;
+
 #endif
 	//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
@@ -877,7 +927,13 @@ __host__ int Data::readic(int st){
 			fclose(OrigInfile);
 		}
 	}
-	if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
+#if def_TTVR == 0
+	if(P.FormatP == 1 || P.tRestart == 0 && def_TTVR == 0) fclose(infile);
+#else
+	if(st == Nst - 1){
+		fclose(infile);
+	}
+#endif
 	return ii;
 } 
 
@@ -949,10 +1005,11 @@ __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N
 	
 	for(int i = 0; i < N; ++i){
 		if(x4_h[i].w > 0.0){
-			mtot += x4_h[i].w;
-			vcom.x += x4_h[i].w * v4_h[i].x;
-			vcom.y += x4_h[i].w * v4_h[i].y;
-			vcom.z += x4_h[i].w * v4_h[i].z;
+			double m = x4_h[i].w;
+			mtot += m;
+			vcom.x += m * v4_h[i].x;
+			vcom.y += m * v4_h[i].y;
+			vcom.z += m * v4_h[i].z;
 		}
 	}
 	mtot += Msun;
@@ -1559,7 +1616,6 @@ __host__ void Data::stopSimulations(){
 				Spinsun_h[sst] = Spinsun_h[sst + 1];
 				idt_h[sst] = idt_h[sst + 1];
 				ict_h[sst] = ict_h[sst + 1];
-				dtiMsun_h[sst] = dtiMsun_h[sst + 1];
 				Rcut_h[sst] = Rcut_h[sst + 1];
 				RcutSun_h[sst] = RcutSun_h[sst + 1];
 				time_h[sst] = time_h[sst + 1];
@@ -1589,7 +1645,6 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -1640,6 +1695,11 @@ __host__ int Data::freeOrbit(){
 	free(elementsB_h);
 	free(elementsLA_h);
 	free(elementsLB_h);
+	free(elementsCA_h);
+	free(elementsCB_h);
+	free(elementsC_h);
+	free(elementsP_h);
+	free(elementsSA_h);
 
 	free(vcom_h);
 
@@ -1747,7 +1807,11 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsBOld_d);
 	cudaFree(elementsLA_d);
 	cudaFree(elementsLB_d);
+	cudaFree(elementsCA_d);
+	cudaFree(elementsCB_d);
+	cudaFree(elementsC_d);
 	cudaFree(elementsP_d);
+	cudaFree(elementsSA_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

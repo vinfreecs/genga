@@ -114,6 +114,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 
 			}
 		}
+//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
@@ -230,7 +231,7 @@ __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			v4_d[id].x += __dmul_rn(a.x, dtksq);
 			v4_d[id].y += __dmul_rn(a.y, dtksq);
 			v4_d[id].z += __dmul_rn(a.z, dtksq);
-//printf("KickB %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//printf("KickB %d %.16e %.16e %.16e %.16e %.16e %.16e\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
 		}
 		ab_d[id].x = a.x;
 		ab_d[id].y = a.y;
@@ -244,11 +245,11 @@ __global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //Authors: Simon Grimm
 //November 2016
 // ****************************************
-__global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt){
+__global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-	if(id < N){
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	if(id < N + Nstart){
 		int st = index_d[id] / 100;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 
@@ -307,8 +308,7 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			v4_d[id].x += __dmul_rn(a.x, dtksq);
 			v4_d[id].y += __dmul_rn(a.y, dtksq);
 			v4_d[id].z += __dmul_rn(a.z, dtksq);
-//printf("KickB %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
-
+//printf("KickB %d %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a.x, a.y, a.z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
 
 			//calculate acceleration from the central star
 			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
@@ -328,10 +328,22 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 
 //if(id == 0) printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
-				if(g <= 0.0){
-					int Nt = atomicAdd(Ntransit_d, 1);
-					Transit_d[Nt] = id;
+			if(dt > 0){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g <= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
+				}
+			}
+			else{
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g >= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
 				}
 			}
 
@@ -341,11 +353,11 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 		ab_d[id].z = a.z;
 	}
 }
-__global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d){
+__global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-	if(id < N){
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	if(id < N + Nstart){
 		int st = index_d[id] / 100;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 		double dt = dt_d[st];
@@ -358,8 +370,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
 			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
 			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
-//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
-
+//printf("KickB %d %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a.x, a.y, a.z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
 
 			//calculate acceleration from the central star
 			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
@@ -378,12 +389,23 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 			double R = Rsun + v4i.w;
 
 //printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+			if(dt > 0){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
-
-				if(g <= 0.0){
-					int Nt = atomicAdd(Ntransit_d, 1);
-					Transit_d[Nt] = id;
+					if(g <= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
+				}
+			}
+			else{
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g >= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
 				}
 			}
 
@@ -544,11 +566,22 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			double R = Rsun + v4i.w;
 
 //printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
-
-			if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
-				if(g <= 0.0){
-					int Nt = atomicAdd(Ntransit_d, 1);
-					Transit_d[Nt] = id;
+			if(dt > 0){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g <= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
+				}
+			}
+			else{
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g >= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
 				}
 			}
 		}
@@ -659,12 +692,10 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	__syncthreads();
 
 	if(idy == 0){
-
 		if(E >= 1){
 			v4_d[idx].x += __dmul_rn(ab1[0].x, dtksq);
 			v4_d[idx].y += __dmul_rn(ab1[0].y, dtksq);
 			v4_d[idx].z += __dmul_rn(ab1[0].z, dtksq);
-//printf("Kick %d %g %g %g\n", idx, ab1[0].x, ab1[0].x * dtksq, v4_d[idx].x);
 		}
 		if(E <= 1){
 			acck_d[idx].x += ab1[16].x;
@@ -938,6 +969,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //it the next time step.
 //It performs also a precheck for close encouter candidates. This pairs are stored in the array Encpairs_d.
 //The number of close encounter candidates is stored in Nencpairs_d.
+//NT is the total number of bodies, Nstart is the starting index
 //
 //E = 0: Precheck + acck. used in initial step
 //E = 1: Kick + Precheck + acck. used in main steps
@@ -948,10 +980,10 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d){
+__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * Bl2 + idy - Nmax;
+	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
 
 	__shared__ volatile double3 a_s[Bl + Nmax];
 	__shared__ volatile double3 b_s[Bl + Nmax];
@@ -969,7 +1001,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 
 	double dtksqKt = 0.0;
 
-	if(id < NT && id >= 0){
+	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
 		//rcrit_s[idy] = rcrit_d[id];
@@ -994,7 +1026,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		b_s[idy + Bl].y = 0.0;
 		b_s[idy + Bl].z = 0.0;	
 		//right
-		if(id + Bl < NT){
+		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			x4_s[idy + Bl] = x4_d[id + Bl];
 			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
@@ -1072,7 +1104,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		}
 	}
 	__syncthreads();
-	if(id < NT && id >= 0 && idy >= Nmax){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax){
 		if(E >= 1){
 			v4_d[id].x += __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
 			v4_d[id].y += __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
@@ -1082,14 +1114,15 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
 			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
 			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
+//printf("acc %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, acck_d[id].x, acck_d[id].y, acck_d[id].z);
 		}
 	}
 }
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d){
+__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * Bl2 + idy - Nmax;
+	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
 
 	__shared__ volatile double3 a_s[Bl + Nmax];
 	__shared__ volatile double3 b_s[Bl + Nmax];
@@ -1111,7 +1144,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	double Msun = 0.0;
 	double Rsun = 0.0;
 
-	if(id < NT && id >= 0){
+	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
 		v4i = v4_d[id];
@@ -1140,7 +1173,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		b_s[idy + Bl].y = 0.0;
 		b_s[idy + Bl].z = 0.0;	
 		//right
-		if(id + Bl < NT){
+		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			x4_s[idy + Bl] = x4_d[id + Bl];
 			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
@@ -1218,7 +1251,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		}
 	}
 	__syncthreads();
-	if(id < NT && id >= 0 && idy >= Nmax){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax){
 		if(E >= 1){
 			v4_d[id].x += __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
 			v4_d[id].y += __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
@@ -1250,12 +1283,23 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 		double R = Rsun + v4i.w;
 
-//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, dt, rsky, R, R + v * dt);
-
-		if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * dt && rsky < R + v * dt){
-			if(g <= 0.0){
-				int Nt = atomicAdd(Ntransit_d, 1);
-				Transit_d[Nt] = id;
+//printf("TTVA %d g %g gd %g g/gd %.20g x %.20g y %.20g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, dt, rsky, R, R + v * dt);
+		if(dt > 0){
+			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(g <= 0.0){
+					int Nt = atomicAdd(Ntransit_d, 1);
+					Nt = min(Nt, def_NtransitMax - 1);
+					Transit_d[Nt] = id;
+				}
+			}
+		}
+		else{
+			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(g >= 0.0){
+					int Nt = atomicAdd(Ntransit_d, 1);
+					Nt = min(Nt, def_NtransitMax - 1);
+					Transit_d[Nt] = id;
+				}
 			}
 		}
 

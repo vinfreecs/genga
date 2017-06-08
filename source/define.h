@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.63
+#define Version 3.64
 
 //Default parameter values
 #define def_TimeStep 6
@@ -174,9 +174,17 @@
 #define USE_NAF 0
 
 #define def_TTV 0
-#define def_NtransitMax 10
-#define def_NtransitTimeMax 400		//Maximum number of transit times per object
+#define def_TTVR 0
+#define def_NtransitMax 2000
+#define def_NtransitTimeMax 800		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
+#define MCMC_BLOCK 3			//0 update all elements per mcmc step
+					//1 update only one set of Keplerian elements but all planets per mcmc step
+					//2 update only one set of Keplerian elements and only 1 planet per mcmc step
+					//3 affine invariant ensemble walkers
+
+#define MCMC_NE 5 			//2: a M; 3: a M m; 5: a M m e w; 7: a m M e w inc Omega,; 8: + r
+#define MCMC_NT 1			//number of temperature levels in parallel tempering
 
 #define USE_RANDOM 1
 
@@ -239,6 +247,8 @@ struct Parameter{
 	int UseTransits;
 	char Transitsfilename[128];
 	int TransitSteps;
+	int PrintTransits;
+	int mcmcNE;
 	int setElements;
 	char setElementsfilename[128];
 	char Gasfilename[128];

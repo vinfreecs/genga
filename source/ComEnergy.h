@@ -116,16 +116,16 @@ __global__ void com_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double
 // October  2015
 // ***********************************************************
 template <int Bl, int Bl2, int Nmax >
-__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double4 *Msun_d, int *index_d, int *NBS_d, int NT, double *test_d, int ff){
+__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double4 *Msun_d, int *index_d, int *NBS_d, int NT, double *test_d, int ff, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * Bl2 + idy - Nmax;
+	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
 	__shared__ volatile double4 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
 	volatile double Msun;
 	int NBS;
 
-	if(id < NT && id >= 0){
+	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / 100;
 		volatile double m = x4_d[id].w;
 		p_s[idy].x = m * v4_d[id].x;
@@ -148,7 +148,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	//halo
 	if(idy < Nmax / 2){
 		//right
-		if(id + Bl < NT){
+		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			volatile double m = x4_d[id + Bl].w;
 			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
@@ -353,19 +353,19 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 
 	double iMsun = 1.0 / Msun;
 	//now the sum is complete
-	if(id == NBS && NBS >= 0 && idy >= Nmax && idy < Bl - Nmax / 2){
+	if(id == NBS && NBS >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2){
 		if(ff == 0){
 			vcom_d[st_s[idy]].x = p_s[idy].x;
 			vcom_d[st_s[idy]].y = p_s[idy].y;
 			vcom_d[st_s[idy]].z = p_s[idy].z;
 		}
 	}
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == 1){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == 1){
 		v4_d[id].x += p_s[idy].x * iMsun;
 		v4_d[id].y += p_s[idy].y * iMsun;
 		v4_d[id].z += p_s[idy].z * iMsun;
 	}
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == -1){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0 && ff == -1){
 		double iMsunp = 1.0 / (Msun + p_s[idy].w);
 		v4_d[id].x -= p_s[idy].x * iMsunp;
 		v4_d[id].y -= p_s[idy].y * iMsunp;

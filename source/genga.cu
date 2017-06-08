@@ -211,21 +211,69 @@ int main(int argc, char*argv[]){
 #if def_TTV == 1
 	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
 #endif
-//#if def_TTV == 2
+	D.Nstart = 0;
+#if MCMC_BLOCK == 3		
+	if(D.Nst > 1) D.NT /= 2;
+#endif
 #if def_TTV > 0
-	SetTTVP <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
+	SetTTVP <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.elementsSA_d, D.Nst);
 	cudaMemset(D.NtransitsT_d, 0, D.NconstT * sizeof(int2));
 
 for(ittv = 0; ittv < D.P.TransitSteps; ++ittv){
-cudaDeviceSynchronize();
-printf("*********** TTV Step %d ***********\n", ittv);
-	if(ittv % 100 == 0) SetTTVPRate <<< (Nst + 255) / 256, 256 >>> (D.elementsP_d, D.Nst);
-	if(ittv > 0){
-		D.modifyElementsCall();
-		cudaMemcpy(D.elementsA_h, D.elementsA_d, sizeof(double4) * D.NconstT, cudaMemcpyDeviceToHost);
-	}
+	D.time_h[0] = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
+	cudaMemset(D.Nencpairs_d, 0, (D.Nst + 1) * sizeof(int));
+	cudaDeviceSynchronize();
+#if MCMC_BLOCK == 3		
+	if (D.Nst > 1) D.Nstart = (ittv % 2) * D.NT;
+if(ittv % 2 == 1) printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
+#else
+printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 #endif
+	if(ittv > 0){
 
+#if MCMC_BLOCK == 0
+		int L = 10;
+		if(Nst / MCMC_NT > 1) L = 1;
+		if(ittv % L == 0){
+			SetTTVPRate <<< (MCMC_NT + 255) / 256, 256 >>> (D.elementsP_d, D.elementsC_d, D.elementsSA_d, D.Nst, L);
+		}
+#endif
+#if MCMC_BLOCK == 1
+		int L =D.P.mcmcNE * 10;
+		if(Nst / MCMC_NT > 1) L = D.P.mcmcNE;
+		if(ittv % L == 0){
+			SetTTVPRate2 <<< (D.NT + 255) / 256, 256 >>> (D.elementsSA_d, D.elementsLA_d, D.elementsLB_d, D.elementsCA_d, D.elementsCB_d, D.NT, D.N_h[0], Nst, L, ittv, D.P.mcmcNE);
+			cudaMemset(D.elementsCA_d, 0, D.NconstT * sizeof(int4));
+			cudaMemset(D.elementsCB_d, 0, D.NconstT * sizeof(int4));
+		}
+#endif
+#if MCMC_BLOCK == 2
+		int L = D.N_h[0] * D.P.mcmcNE * 10;
+		if(Nst / MCMC_NT > 1) L = D.N_h[0] * D.P.mcmcNE;
+		if(ittv % L == 0){
+			SetTTVPRate2 <<< (D.NT + 255) / 256, 256 >>> (D.elementsSA_d, D.elementsLA_d, D.elementsLB_d, D.elementsCA_d, D.elementsCB_d, D.NT, D.N_h[0], Nst, L, ittv, D.P.mcmcNE);
+			cudaMemset(D.elementsCA_d, 0, D.NconstT * sizeof(int4));
+			cudaMemset(D.elementsCB_d, 0, D.NconstT * sizeof(int4));
+		}
+#endif
+#if MCMC_BLOCK < 3
+		setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsC_d, D.Nst, D.N_h[0], D.Nstart, MCMC_BLOCK);
+if(ittv > 30) TSwap_kernel <<<1, 1 >>> (D.random_d, D.elementsP_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsSA_d, D.N_h[0], D.Nst);
+		D.modifyElementsCall(ittv, MCMC_BLOCK);
+		HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+#endif
+	}
+
+#if MCMC_BLOCK == 3
+	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsC_d, D.Nst, D.N_h[0], D.Nstart, 3);
+		
+	if(ittv <= 1) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
+	else D.modifyElementsCall(ittv, 3);
+	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+#else
+	cudaMemcpy(D.elementsA_h, D.elementsA_d, sizeof(double4) * D.NconstT, cudaMemcpyDeviceToHost);
+#endif
+#endif
 	if(D.Nst > 1){
 		D.firstKick_M(0);
 	}
@@ -312,7 +360,6 @@ printf("*********** TTV Step %d ***********\n", ittv);
 			return 0;
 		}
 	}
-	D.time_h[0] = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
 	if(D.P.Usegas == 2){
 		er = D.readGasFile();
 		er = D.readGasFile2(D.time_h[0] / 365.25);
@@ -332,6 +379,9 @@ printf("*********** TTV Step %d ***********\n", ittv);
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
 		er = D.timeStepLoop(interrupted);
 		if(er == 0){
+#if def_TTV > 0
+			D.printMCMC(1);
+#endif
 			return 0;
 		}
 	} // end of time step loop
@@ -351,18 +401,29 @@ printf("*********** TTV Step %d ***********\n", ittv);
 #if poincareFlag == 1
 	fclose(D.poincarefile);
 #endif
-#if def_TTV > 0
-//#if def_TTV == 1
-	er = D.printTransits();
-	if(er <= 0) return 0;
-
-#endif
 
 #if def_TTV > 0
-	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsP_d, D.NtransitsT_d, D.NT, D.Nst, ittv);
-	D.printMCMC();
+	cudaMemcpy(D.NtransitsT_h, D.NtransitsT_d, D.NconstT * sizeof(int2), cudaMemcpyDeviceToHost);
+	for(int i = 0; i < D.NT; ++i){
+		if(D.NtransitsT_h[i].x > def_NtransitTimeMax){
+			printf("Error: more transits than def_NtransitTimeMax for object %d: %d %d\n", i, D.NtransitsT_h[i].x, def_NtransitTimeMax);
+			return 0;
+		} 
+	}
+
+
+	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT, ittv, D.Nstart);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
+
+
+	D.printMCMC(0);
+	if(D.P.PrintTransits == 1){
+		er = D.printTransits();
+		if(er <= 0) return 0;
+	}
+
 	}//end of TTV loop
+	D.printMCMC(1);
 #endif
 
 	//print last informations

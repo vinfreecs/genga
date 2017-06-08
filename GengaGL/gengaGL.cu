@@ -229,7 +229,6 @@ void display(){
 	glColorPointer(4, GL_DOUBLE, 32, 0);
 
 
-//glPointSize(1.5);
 glPointSize(pointsize);
 
 	glDrawArrays(GL_POINTS, 0, D.N_h[0] + D.Nsmall_h[0]);
@@ -238,6 +237,7 @@ glPointSize(pointsize);
 //glDisableClientState(GL_POINT_SIZE_ARRAY_OES);
 
 	anglex += omegax;
+glPointSize(1.0);
 
 	//Draw Axis in scale
 	glColor3d(0, 100, 0);

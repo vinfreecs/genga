@@ -9,12 +9,12 @@
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
-	if(id < N){
+	if(id < N + Nstart){
 	
 		int st = 0;
 		int index = index_d[id];
@@ -74,7 +74,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		if(UseForce >> 8 & 1){
 			// GR  see Fabrycky 2010 equation 2
 			//first part of implicit function
-			double c = 10065.3201686;//c in AU / day * 0.0172020989
+			double c = 10065.3201686;//c in AU / day * dayUnit
 			double csq = c * c;
 
 			A = def_ksq * (Msun + x4.w) * ir;
@@ -972,14 +972,14 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	int st = 0;
 
-	if(id < N){
+	if(id < N + Nstart){
 
 		if(Nst > 1) st = index_d[id] / 100;	//st is the sub simulation index
 
@@ -1292,17 +1292,17 @@ __device__ void alpha(double e){
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst){
+__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	//Compute the Kepler Elements
 	int st = 0;
 
-	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;	//st is the sub simulation index
 
-	if(id < N && x4_d[id].w >= 0.0){
+	if(id < N + Nstart && x4_d[id].w >= 0.0){
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
@@ -1483,17 +1483,17 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst){
+__global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	//Compute the Kepler Elements
 	int st = 0;
 
-	if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;	//st is the sub simulation index
 
-	if(id < N && x4_d[id].w >= 0.0){
+	if(id < N + Nstart && x4_d[id].w >= 0.0){
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];

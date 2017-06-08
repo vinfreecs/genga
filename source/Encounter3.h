@@ -193,7 +193,7 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 				if(t > 0.0 && t < 1.0){
 					time = t;
 //printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
-//					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
+//					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2) / dayUnit) / 365.25;
 				}
 			}
 		}
@@ -372,7 +372,7 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 				if(t > 0.0 && t < 1.0){
 					time = t;
 //printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
-/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2)/0.01720209895) / 365.25;
+/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2) / dayUnit) / 365.25;
 */				}
 			}
 		}
@@ -498,8 +498,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 template < int Nmax >
 __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int writeEncounters, const double writeEncountersRadius, int *StopFlag_d, const double MinMass){
 	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int id = idx * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy;
 
 	int ii = 0;
 	int jj = 0;

@@ -196,7 +196,6 @@ __host__ void Host::Halloc(){
 	Spinsun_h = (double4*)malloc(Nst*sizeof(double4));
 	idt_h = (double*)malloc(Nst*sizeof(double));
 	ict_h = (double*)malloc(Nst*sizeof(double));
-	dtiMsun_h = (double*)malloc(Nst*sizeof(double));
 	Rcut_h = (double*)malloc(Nst*sizeof(double));
 	RcutSun_h = (double*)malloc(Nst*sizeof(double));
 	time_h = (double*)malloc(Nst*sizeof(double));
@@ -252,6 +251,8 @@ __host__ void Host::Halloc(){
 	P.UseTransits = 0;
 	P.TransitSteps = 1;
 	sprintf(P.Transitsfilename, "%s", "-");
+	P.PrintTransits = 0;
+	P.mcmcNE = MCMC_NE;
 	sprintf(P.Gasfilename, "%s", "-");
 	
 	char format[50];
@@ -377,6 +378,9 @@ __host__ void Host::Halloc(){
 			else if(strcmp(ff + f * 5, "rL") == 0){
 				GSF[st].informat[f] = 36;
 			}
+			else if(strcmp(ff + f * 5, "saT") == 0){
+				GSF[st].informat[f] = 37;
+			}
 		}	
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
@@ -392,7 +396,6 @@ __host__ void Host::Halloc(){
 		Spinsun_h[st].w = 0.0;
 		idt_h[st] = def_TimeStep;
 		ict_h[st] = 0.0;
-		dtiMsun_h[st] = 0.0;		
 		Rcut_h[st] = def_Rcut;
 		RcutSun_h[st] = def_RcutSun;
 		time_h[st] = 0.0;
@@ -441,7 +444,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 	
-	for(int j = 0; j < 60; ++j){ //loop around all lines in the param.dat file
+	for(int j = 0; j < 70; ++j){ //loop around all lines in the param.dat file
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -551,6 +554,36 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 				if(er <= 0){
 					printf("Error: TTV Steps is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Print Transits =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.PrintTransits);
+				
+				if(er <= 0){
+					printf("Error: Print Transits is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "MCMC NE =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.mcmcNE);
+				
+				if(er <= 0){
+					printf("Error: MCMC NE is not valid!\n");
 					return 0;
 				}
 			}
@@ -807,6 +840,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 				else if(strcmp(sp, "rL") == 0){
 					GSF[st].informat[f] = 36;
+				}
+				else if(strcmp(sp, "saT") == 0){
+					GSF[st].informat[f] = 37;
 				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
@@ -1571,6 +1607,9 @@ __host__ int Host::Param(int argc, char*argv[]){
 		}
 		int er;
 		er = readparam(paramfile, st, argc, argv);
+		if(dayUnit == 1){
+			Msun_h[st].x *= def_Kg;	//convert to mercuy units
+		}
 		if(er == 0) return 0;
 		fclose(paramfile);
 		
@@ -1597,7 +1636,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		
 		if(timefile == NULL){
 			printf("Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
-			fprintf(masterfile, "Warninf: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
+			fprintf(masterfile, "Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
 			P.tRestart = 0;
 		}
 		else{
@@ -1623,7 +1662,6 @@ __host__ int Host::Param(int argc, char*argv[]){
 	
 	
 	for(int st = 0; st < Nst; ++st){
-		dtiMsun_h[st] = dt_h[st] / Msun_h[st].x;
 		//restart -> inputfilename
 		if(P.tRestart > 0 && P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
@@ -1960,7 +1998,6 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &Spinsun_d,Nst*sizeof(double4));
 	cudaMalloc((void **) &idt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &ict_d,Nst*sizeof(double));
-	cudaMalloc((void **) &dtiMsun_d,Nst*sizeof(double));
 	cudaMalloc((void **) &Rcut_d,Nst*sizeof(double));
 	cudaMalloc((void **) &RcutSun_d,Nst*sizeof(double));
 	cudaMalloc((void **) &time_d,Nst*sizeof(double));
@@ -1974,7 +2011,6 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(dtiMsun_d, dtiMsun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(RcutSun_d, RcutSun_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(time_d, time_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -2032,6 +2068,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Use Transits: %d\n", P.UseTransits);					// use only argument in simulation 0
 			fprintf(infofile, "TTV file name: %s\n", P.Transitsfilename);				// use only argument in simulation 0
+			fprintf(infofile, "Print Transits name: %d\n", P.PrintTransits);			// use only argument in simulation 0
+			fprintf(infofile, "MCMC NE: %d\n", P.mcmcNE);						// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
 			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
@@ -2086,6 +2124,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 34) fprintf(infofile, "wL ");
 				else if(GSF[st].informat[f] == 35) fprintf(infofile, "ML ");
 				else if(GSF[st].informat[f] == 36) fprintf(infofile, "rL ");
+				else if(GSF[st].informat[f] == 37) fprintf(infofile, "saT ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -2287,15 +2326,15 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		int index;
 		double T0, P;
 		er = fscanf(Transitfile, "%d", &index);
-		er = fscanf(Transitfile, "%lf", &T0);
 		er = fscanf(Transitfile, "%lf", &P);
+		er = fscanf(Transitfile, "%lf", &T0);
 //printf("file %d %d %d %g %g\n", i, er, index, T0, P); 
 		if(er <= 0){
 			n += i;
 			break;
 		}
-		TransitTimeObs_h[index * def_NtransitTimeMax + 0].x = P;
-		TransitTimeObs_h[index * def_NtransitTimeMax + 0].y = T0;
+		TransitTimeObs_h[index * def_NtransitTimeMax + 0].x = T0;
+		TransitTimeObs_h[index * def_NtransitTimeMax + 0].y = P;
 	}
 	//read *
 	er = fscanf(Transitfile, "%s", &skip);
@@ -2321,30 +2360,54 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		
 		double T0 = TransitTimeObs_h[index * def_NtransitTimeMax].x;
 
-//		double a = elementsA_h[index].x;
-//		double P = 2.0 * M_PI * sqrt(a * a * a / Msun_h[0].x) / dayUnit; //Period
-
 		double P = TransitTimeObs_h[index * def_NtransitTimeMax].y;
 		int Epoch = (int)((T - T0 + 0.5 * P) / P);
-//printf(" %d %g %g %g %g %d\n", index, T, T0, 0.0, P, Epoch);
+
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x = T; //time
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].y = error; //error
 		NtransitsTObs_h[index] = max(NtransitsTObs_h[index], Epoch);
 		
 	}
 	fclose(Transitfile);
+	//compute starting Epoch
+	cudaMemcpy(NtransitsT_h, NtransitsT_d, NconstT * sizeof(int2), cudaMemcpyDeviceToHost);
+	for(int i = 0; i < N_h[0]; ++i){
+		double TOld = 0.0;
+		int EpochOld = 0;
+		for(int Epoch = 0; Epoch < NtransitsTObs_h[i]; ++Epoch){
+			double T = TransitTimeObs_h[i * def_NtransitTimeMax + Epoch + 1].x;
+			double time = ict_h[0] * 365.25;
+//printf("%d %d %.20g %.20g\n", i, Epoch, T, time);
+			if(T > time){
+				double EE = ((time - TOld) / ( T - TOld) * (Epoch - EpochOld) + EpochOld);
+				int E = (int)(ceil(EE));
+				NtransitsT_h[i].x = E;
+//printf("Epoch %.10g %.10g %.10g %d %d %g %d\n", time, T, TOld, Epoch, EpochOld, E, (int)(ceil(E)));
+				break;
+			}
+			if(T > 0){
+				TOld = T;
+				EpochOld = Epoch;
+			}
+		}
+	}
+
+
+	//copy first sub-sumulation to all the others
 	for(int st = 1; st < Nst; ++st){
 		for(int i = 0; i < N_h[0]; ++i){
 			//assume that all sub simulations are of equal size
 			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
-			for(int j = 0; j < NtransitsTObs_h[i]; ++j){
-				TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + j] = TransitTimeObs_h[i * def_NtransitTimeMax + j];
+			NtransitsT_h[i + st * N_h[0]] = NtransitsT_h[i];
+			for(int Epoch = 0; Epoch <= NtransitsTObs_h[i] + 1; ++Epoch){
+				TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + Epoch] = TransitTimeObs_h[i * def_NtransitTimeMax + Epoch];
 			}
 		}
 	}
 
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(NtransitsT_d, NtransitsT_h, NconstT * sizeof(int2), cudaMemcpyHostToDevice);
 	cudaMemset(TransitTime_d, 0, def_NtransitTimeMax * NconstT * sizeof(double));
 	NTransitData = n;
 	
@@ -2630,7 +2693,6 @@ __host__ int Host::freeHost(){
 	free(Spinsun_h);
 	free(idt_h);
 	free(ict_h);
-	free(dtiMsun_h);
 	free(Rcut_h);
 	free(RcutSun_h);
 	free(time_h);
@@ -2645,7 +2707,6 @@ __host__ int Host::freeHost(){
 	cudaFree(Spinsun_d);
 	cudaFree(idt_d);
 	cudaFree(ict_d);
-	cudaFree(dtiMsun_d);
 	cudaFree(Rcut_d);
 	cudaFree(RcutSun_d);
 	cudaFree(time_d);

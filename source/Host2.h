@@ -47,13 +47,13 @@ public:
 	double4 *Spinsun_h, *Spinsun_d;		//Spin of the star x, y, z and time lag
 	double *idt_h, *idt_d;			//initial time step 
 	double *ict_h, *ict_d;			//initial time
-	double *dtiMsun_h, *dtiMsun_d;		//dt/Msun
 	double *Rcut_h, *Rcut_d;		//inner truncation radius
 	double *RcutSun_h, *RcutSun_d;		//outer truncation radius
 	double *time_h, *time_d;
 	double *dt_h, *dt_d;			//time step in code units
 	//Total sizes
 	int NT;
+	int Nstart;
 	int NsmallT;
 	long long int NB2T;
 	int NBNencT;

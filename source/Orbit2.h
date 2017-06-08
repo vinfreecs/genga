@@ -103,13 +103,18 @@ public:
 	double4 *elementsB_h, *elementsB_d;
 	double4 *elementsAOld_d;
 	double4 *elementsBOld_d;
-	double4 *elementsLA_h, *elementsLA_d;
-	double4 *elementsLB_h, *elementsLB_d;
-	double4 *elementsP_h, *elementsP_d;			//probability, random number, acceptance count, global tunig factor
+	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
+	double4 *elementsLB_h, *elementsLB_d;			
+	int4 *elementsCA_h, *elementsCA_d;			//counts
+	int4 *elementsCB_h, *elementsCB_d;
+	int2 *elementsC_h, *elementsC_d;			//current count, total count
+	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
+	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
-	__host__ void modifyElementsCall();
+	__host__ void modifyElementsCall(int, int);
 	__host__ void BSTTVCall(int);
+	FILE *MCMCRestartFile;
 	
 	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
@@ -164,7 +169,7 @@ public:
 	__host__ int printFragments(int);
 	__host__ int printRotation();
 	__host__ int printTransits();
-	__host__ void printMCMC();
+	__host__ void printMCMC(int);
 	__host__ int firstEnergy();
 	__host__ void EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int, double);

@@ -98,7 +98,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		x4_s[idy].x = 0.0;
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
-		x4_s[idy].w = 0.0;
+		x4_s[idy].w = -1.0e-12;
                 v4_s[idy].x = 0.0;
                 v4_s[idy].y = 0.0;
                 v4_s[idy].z = 0.0;

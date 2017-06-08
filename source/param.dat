@@ -54,5 +54,7 @@ FormatT = 0
 FormatP = 1
 TTV file name = -
 TTV steps = 1
+Print Transits = 0
+MCMC NE = 0
 Report Encounters = 0
 Report Encounters Radius = 3

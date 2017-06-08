@@ -166,12 +166,14 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 		a[idy] += a[idy + 2];
 		a[idy] += a[idy + 1];
 	}
-
 	__syncthreads();
 	if(idy < N){
 		if(idx == 0) x4_d[idy].x += a1_s[0] * dtiMsun;
 		if(idx == 1) x4_d[idy].y += a1_s[0] * dtiMsun;
 		if(idx == 2) x4_d[idy].z += a1_s[0] * dtiMsun;
+//if(idx == 0) printf("HCx %d %.20e %.20e %.20e\n", idy, x4_d[idy].x, a1_s[0], dtiMsun);
+//if(idx == 1) printf("HCy %d %.20e %.20e %.20e\n", idy, x4_d[idy].y, a1_s[0], dtiMsun);
+//if(idx == 2) printf("HCz %d %.20e %.20e %.20e\n", idy, x4_d[idy].z, a1_s[0], dtiMsun);
 			if(UseForce & 1){
 				double c2 = def_cm * def_cm;
 				double4 v4 = v4_d[idy];
@@ -199,36 +201,36 @@ __global__ void HC32_kernel(double4 *x4_d, double4 *v4_d, const double dt, const
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double *dtiMsun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double4 *Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * Bl2 + idy - Nmax;
+	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
 	__shared__ volatile double3 p_s[Bl + Nmax / 2];
 	__shared__ int st_s[Bl + Nmax / 2];
 	volatile double dtiMsun;
 	volatile double dt;
 	if(E == 1){
-		if(id >= 0 && id < Nst + 1){
-			Nencpairs2_d[id] = 0;		//This variable is needed in the Encounter_kernel
+		if(id >= Nstart && id < Nst + 1 + Nstart){
+			Nencpairs2_d[id - Nstart] = 0;		//This variable is needed in the Encounter_kernel
 		}
-		if(id >= 0 && id < def_GMax){
-			Nenc_d[id] = 0;
+		if(id >= Nstart && id < def_GMax + Nstart){
+			Nenc_d[id - Nstart] = 0;
 		}
 	}
 		
 	if(E == 2){
-		if(id >= 0 && id < Nst + 1){
-			Nencpairs_d[id] = 0;		//This variable is needed in the Kick_kernel
+		if(id >= Nstart && id < Nst + 1 + Nstart){
+			Nencpairs_d[id - Nstart] = 0;		//This variable is needed in the Kick_kernel
 		}
 	}
-	if(id < NT && id >= 0){
+	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / 100;
 		volatile double m = x4_d[id].w;
 		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
 		p_s[idy].z = m * v4_d[id].z;
-		dtiMsun = dtiMsun_d[st_s[idy]] * Ct;
 		dt = dt_d[st_s[idy]] * Ct;
+		dtiMsun = dt / Msun_d[st_s[idy]].x;
 	}
 	else{
 		st_s[idy] = -idy-1;
@@ -241,7 +243,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 	//halo
 	if(idy < Nmax / 2){
 		//right
-		if(id + Bl < NT){
+		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			volatile double m = x4_d[id + Bl].w;
 			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
@@ -418,10 +420,13 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 		__syncthreads();
 	}
 
-	if(id < NT && id >= 0 && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0){
 		x4_d[id].x += p_s[idy].x * dtiMsun;
 		x4_d[id].y += p_s[idy].y * dtiMsun;
 		x4_d[id].z += p_s[idy].z * dtiMsun;
+//printf("HCx %d %.20e %.20e %.20e\n", id, x4_d[id].x, p_s[idy].x, dtiMsun);
+//printf("HCy %d %.20e %.20e %.20e\n", id, x4_d[id].y, p_s[idy].y, dtiMsun);
+//printf("HCz %d %.20e %.20e %.20e\n", id, x4_d[id].z, p_s[idy].z, dtiMsun);
 		if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];

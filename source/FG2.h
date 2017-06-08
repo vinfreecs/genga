@@ -60,7 +60,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 	if(x4i.w >= 0.0){
 
 		double f,g,fd,gd;                               /* Gauss's f, g, fdot and gdot */
-		double rsq,vsq,ir;
+		volatile double rsq,vsq,ir;
 		double u;                                       /* r v cos(phi) */
 		double ia;                                      //inverse of a
 		volatile double ria;
@@ -90,9 +90,9 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 		* Evaluate some orbital quantites.
 		*/
 
-		rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z;
-		vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z;
-		u =  x4i.x*v4i.x + x4i.y*v4i.y + x4i.z*v4i.z;
+		rsq = __dmul_rn(x4i.x,x4i.x) + __dmul_rn(x4i.y,x4i.y) + __dmul_rn(x4i.z,x4i.z);
+		vsq = __dmul_rn(v4i.x,v4i.x) + __dmul_rn(v4i.y,v4i.y) + __dmul_rn(v4i.z,v4i.z);
+		u =  __dmul_rn(x4i.x,v4i.x) + __dmul_rn(x4i.y,v4i.y) + __dmul_rn(x4i.z,v4i.z);
 		ir = 1.0/sqrt(rsq);
 		ia = 2.0*ir-vsq/mu;
 
@@ -189,7 +189,6 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 				g = dt + (s-dec)*ien;
 				fd = air_*iwp*s*en;
 				gd = 1.0 - iwp*t1;
-
 				t.x = f*x4i.x+g*v4i.x;
 				t.y = f*x4i.y+g*v4i.y;
 				t.z = f*x4i.z+g*v4i.z;
@@ -394,12 +393,10 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-//if(id == 0) printf("FGA %d %.40g %.40g %.40g %.40g %.40g %.40g g %.20g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 		a_d[id].x = 0.0;
 		a_d[id].y = 0.0;
 		a_d[id].z = 0.0;
-//volatile double gold = x4i.x * v4i.x + x4i.y * v4i.y;
-//__syncthreads();
 		double test;
 		float4 aelimits = aelimits_d[id];
 		int index = index_d[id];
@@ -407,11 +404,9 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
 		//BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
 		__syncthreads();
-//volatile double g = x4i.x * v4i.x + x4i.y * v4i.y;
-//printf("FG g %.20g %.20g\n", gold, g);
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
-//if(id == 0) printf("FGB %d %.40g %.40g %.40g %.40g %.40g %.40g g %.20g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//if(id == 0) printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 #if G3 > 0
 		groupIndex_d[id] = -1;
 #endif
@@ -429,20 +424,21 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //July 2016
 //
 // *****************************************
-__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si, int UseForce){
+__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si, int UseForce, int Nstart){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	int st = index_d[id] / 100;
 
 	double4 x4i;
 	double4 v4i; 
 
-	if(id < NT){
+	if(id < NT + Nstart){
 		int aecount = 0;
 		x4i = x4_d[id];
 		v4i = v4_d[id];
 		__syncthreads();
+//if(id % 7 == 0) printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
@@ -457,6 +453,7 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
+//if(id % 7 == 0) printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 
 		if(si == 0){
 			aecount_d[id] += aecount;
