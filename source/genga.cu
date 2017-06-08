@@ -16,9 +16,16 @@
 #endif
 
 volatile sig_atomic_t interrupted = 0;
+volatile sig_atomic_t terminated = 0;
 
 void catch_signal(int sig){
 	interrupted = 1;
+	printf("Signal %d received\n", sig);
+}
+void catch_signal2(int sig){
+	terminated = 1;
+	printf("Signal %d received\n", sig);
+	exit(sig);
 }
 
 
@@ -27,6 +34,7 @@ int main(int argc, char*argv[]){
 
 	//Register signal handler
 	signal(SIGINT, catch_signal);	//Ctrl C
+	signal(SIGTERM, catch_signal2);	//terminate signal
 
 
 	cudaError_t error;
