@@ -889,20 +889,20 @@ __host__ int Data::printTransits(){
 		int Epoch = 0;
 		int setEpoch = 0;
 		double P = TransitTimeObs_h[i * def_NtransitTimeMax].y; //period
-			for(int EpochObs = 0; EpochObs < NtransitsTObs_h[i]; ++EpochObs){
-				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch]; 
+			for(int EpochObs = 0; EpochObs <= NtransitsTObs_h[i]; ++EpochObs){
+				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch + 1]; 
 				double2 TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (T - TObs.x) > 0.5 * P){
-if(i == 0) printf("***** %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
+//if(i == 0) printf("***** %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
 					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
 				}
-//				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (TObs.x - T) > 0.5 * P){
+				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (TObs.x - T) > 0.5 * P){
 //if(i == 0) printf("#####  %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
-//					++Epoch;
-//					--EpochObs;
-//					continue;
-//				}
+					++Epoch;
+					--EpochObs;
+					continue;
+				}
 				if((TObs.x - T) <= 0.5 * P && T != 0.0 && TObs.x != 0.0) setEpoch = 1;
 				fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
 
@@ -923,8 +923,12 @@ __host__ void Data::printMCMC(int E){
 	FILE *MCMCfile;
 	MCMCfile = fopen("MCMC.dat", "a");
 
-	cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
-	cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+//print all
+	cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+//print only accepted
+//	cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+//	cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsLA_h, elementsLA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsLB_h, elementsLB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsP_h, elementsP_d, Nst * sizeof(double4), cudaMemcpyDeviceToHost);
@@ -938,20 +942,19 @@ __host__ void Data::printMCMC(int E){
 			if(Nst > 1) si = index_h[id] / 100;
 			int iT = si / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 #if MCMC_BLOCK < 3
-			if(elementsC_h[si + MCMC_NT].x == 0){
+//			if(elementsC_h[si + MCMC_NT].x == 0){
 #else
-			if(elementsC_h[si + MCMC_NT].x >= 0){
+//			if(elementsC_h[si + MCMC_NT].x >= 0){
 #endif
+		if(elementsP_h[si].z < 1.0e299){
 				double f = elementsP_h[iT].w;
+				if(MCMC_BLOCK >= 3) f = 1.0;
 				double time = ict_h[0];
 		
 				int ii = id;
-	#if MCMC_BLOCK < 3
-				ii = iT * N_h[0] + id % N_h[0];
-	#else
-				f = 1.0;
-	//if(id > N_h[0]) break;
-	#endif
+				if (MCMC_BLOCK < 3){
+					ii = iT * N_h[0] + id % N_h[0];
+				}
 				fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].z, f, elementsSA_h[si]);
 			}
 		}
@@ -967,7 +970,7 @@ __host__ void Data::printMCMC(int E){
 			double time = ict_h[0];
 		
 			int ii = id;
-			fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, index_h[ii], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si]);
+			fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si]);
 		}
 		fclose(MCMCfile);
 	}

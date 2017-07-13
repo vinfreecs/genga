@@ -197,41 +197,6 @@ __host__ int Data::timeStepLoop(int interrupted){
 		}
 	}
 
-#if def_TTV == 2
-	// calculate transit times
-	if(P.UseTransits == 1 && TransitDataStep < NTransitData && time_h[0] >= TransitData[TransitDataStep].y - TransitMaxError){
-
-		int ni = 1;
-		//count number of transits per time step
-		for(int i = 0; i < ni; ++i){
-			if(time_h[0] > TransitData[TransitDataStep + i].y - TransitMaxError){
-				Transit_h[ni - 1] = (int)(TransitData[TransitDataStep + i].x);
-				++ni;
-			}
-
-			if(ni + TransitDataStep - 1 >= NTransitData) break;
-		}
-printf("Do TTV check %.10g %d %d\n", time_h[0], ni - 1, TransitDataStep);	
-		if(ni - 1 > 0){
-			cudaMemcpy(Transit_d, Transit_h, (ni - 1) * sizeof(int), cudaMemcpyHostToDevice);
-			BSTTVCall(ni - 1);
-		}
-		ni = 1;
-		//update TransitDataStep
-		for(int i = 0; i < ni; ++i){
-
-			//step();
-			if(time_h[0] >= TransitData[TransitDataStep].y + TransitMaxError){
-				++TransitDataStep;
-				++ni;
-printf("Do TTV update %.10g %d %d\n", time_h[0], ni - 1, TransitDataStep);	
-			}
-		
-
-			if(ni + TransitDataStep - 1 >= NTransitData) break;
-		}
-	}
-#endif
 #if USE_NAF == 1
 	//compute the x and y arrays for the naf algorithm
 	if(timeStep % P.NAFinterval == 0){
@@ -973,6 +938,7 @@ __host__ int Data::writeEncCall(){
 }
 
 __host__ int Data::EjectionCall(){
+#if def_TTV == 0
 	Ejection();
 	EjectionFlag_m[0] = 0;
 	EjectionFlag_m[1] = 0;
@@ -981,9 +947,11 @@ __host__ int Data::EjectionCall(){
 	if(NminFlag == 1){
 		return 0;
 	}
+#endif
 	return 1;
 }
 __host__ void Data::EjectionMCall(){
+#if def_TTV == 0
 	Ejection();
 	int NminFlag = remove();
 	if(NminFlag == 1){
@@ -992,6 +960,7 @@ __host__ void Data::EjectionMCall(){
 	}
 	EjectionFlag_m[0] = 0;
 	EjectionFlag2 = 1;
+#endif
 }
 
 // ******************************************

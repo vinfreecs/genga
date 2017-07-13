@@ -110,6 +110,7 @@ public:
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
 	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
+	int4 *elementsI_h, *elementsI_d;			//indizes for proposals
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall(int, int);

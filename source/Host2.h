@@ -73,10 +73,6 @@ public:
 	double *IrrOutputs;
 	
 	//Transits Data
-	int TransitDataStep;
-	int NTransitData;
-	double3 *TransitData;
-	double TransitMaxError;
 	int2 *NtransitsT_h, *NtransitsT_d;			//Total number of computed transits per planet, old number
 	int *NtransitsTObs_h, *NtransitsTObs_d;			//Total number of observed transits per planet
 	double2 *TransitTimeObs_h, *TransitTimeObs_d;		//contains all observed transit times

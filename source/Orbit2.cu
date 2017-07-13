@@ -58,6 +58,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsC_h = (int2*)malloc((Nst + MCMC_NT) * sizeof(int2));
 	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
 	elementsSA_h = (double*)malloc(Nst * sizeof(double));
+	elementsI_h = (int4*)malloc(NconstT * sizeof(int4));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
@@ -68,6 +69,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsC_h = NULL;
 	elementsP_h = NULL;
 	elementsSA_h = NULL;
+	elementsI_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -144,6 +146,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &elementsC_d, (Nst + MCMC_NT) * sizeof(int2));
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
 	cudaMalloc((void **) &elementsSA_d, Nst * sizeof(double));
+	cudaMalloc((void **) &elementsI_d, NconstT * sizeof(int4));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
@@ -156,6 +159,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsC_d = NULL;
 	elementsP_d = NULL;
 	elementsSA_d = NULL;
+	elementsI_d = NULL;
 #endif
 
 	//arrays for backup step
@@ -474,6 +478,10 @@ __host__ int Data::init(){
 		elementsCB_h[i].y = 0;
 		elementsCB_h[i].z = 0;
 		elementsCB_h[i].w = 0;
+		elementsI_h[i].x = 0;
+		elementsI_h[i].y = 0;
+		elementsI_h[i].z = 0;
+		elementsI_h[i].w = P.mcmcNE * N_h[0];
 
 
 		if(i < Nst){
@@ -613,6 +621,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsCB_d, elementsCB_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsC_d, elementsC_h, sizeof(int2) * (Nst + MCMC_NT), cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsSA_d, elementsSA_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsI_d, elementsI_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
 #endif
 
 	cudaError_t error;
@@ -645,14 +654,15 @@ __host__ int Data::readic(int st){
 
 	double AU = def_AU * 100.0; // in cm
 	double Solarmass = def_Solarmass * 1000.0; //in g
-#if def_TTVR == 0
-	if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
-#else
-	if(st == 0){
-		MCMCRestartFile = fopen("MCMCR.dat", "r");
+	if(P.mcmcRestart == 0){
+		if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
 	}
-	infile = MCMCRestartFile;
-#endif
+	else{
+		if(st == 0){
+			MCMCRestartFile = fopen("MCMCR.dat", "r");
+		}
+		infile = MCMCRestartFile;
+	}
 
 	int ii = 0;
 	int iismall = 0;
@@ -927,13 +937,14 @@ __host__ int Data::readic(int st){
 			fclose(OrigInfile);
 		}
 	}
-#if def_TTVR == 0
-	if(P.FormatP == 1 || P.tRestart == 0 && def_TTVR == 0) fclose(infile);
-#else
-	if(st == Nst - 1){
-		fclose(infile);
+	if(P.mcmcRestart == 0){
+		if(P.FormatP == 1 || P.tRestart == 0) fclose(infile);
 	}
-#endif
+	else{
+		if(st == Nst - 1){
+			fclose(infile);
+		}
+	}
 	return ii;
 } 
 
@@ -1700,6 +1711,7 @@ __host__ int Data::freeOrbit(){
 	free(elementsC_h);
 	free(elementsP_h);
 	free(elementsSA_h);
+	free(elementsI_h);
 
 	free(vcom_h);
 
@@ -1812,6 +1824,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsC_d);
 	cudaFree(elementsP_d);
 	cudaFree(elementsSA_d);
+	cudaFree(elementsI_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

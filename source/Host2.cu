@@ -253,6 +253,7 @@ __host__ void Host::Halloc(){
 	sprintf(P.Transitsfilename, "%s", "-");
 	P.PrintTransits = 0;
 	P.mcmcNE = MCMC_NE;
+	P.mcmcRestart = 0;
 	sprintf(P.Gasfilename, "%s", "-");
 	
 	char format[50];
@@ -584,6 +585,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 				if(er <= 0){
 					printf("Error: MCMC NE is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "MCMC Restart =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.mcmcRestart);
+				
+				if(er <= 0){
+					printf("Error: MCMC Restart is not valid!\n");
 					return 0;
 				}
 			}
@@ -2070,6 +2086,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "TTV file name: %s\n", P.Transitsfilename);				// use only argument in simulation 0
 			fprintf(infofile, "Print Transits name: %d\n", P.PrintTransits);			// use only argument in simulation 0
 			fprintf(infofile, "MCMC NE: %d\n", P.mcmcNE);						// use only argument in simulation 0
+			fprintf(infofile, "MCMC Restart: %d\n", P.mcmcRestart);					// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
 			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
@@ -2262,7 +2279,7 @@ __host__ int Host::readIrregularOutputs(){
 }
 
 // **************************************
-// This function reads the transit times and stores them in TransitData
+// This function reads the transit times 
 // Authors: Simon Grimm
 // April 2017
 // ******************************************
@@ -2310,9 +2327,7 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 	++n;
 	fclose(Transitfile);
 	Transitfile = fopen(P.Transitsfilename, "r");
-	TransitMaxError = 0.0;
 	
-	TransitData = (double3*)malloc(n * sizeof(double3));
 	for(int i = 0; i < NconstT; ++i){
 		NtransitsTObs_h[i] = 0;
 		
@@ -2353,11 +2368,6 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 			break;
 		}
 		
-		TransitData[i].x = (double)(index);
-		TransitData[i].y = T;
-		TransitData[i].z = error;
-		TransitMaxError = fmax(TransitMaxError, error);
-		
 		double T0 = TransitTimeObs_h[index * def_NtransitTimeMax].x;
 
 		double P = TransitTimeObs_h[index * def_NtransitTimeMax].y;
@@ -2369,36 +2379,12 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		
 	}
 	fclose(Transitfile);
-	//compute starting Epoch
-	cudaMemcpy(NtransitsT_h, NtransitsT_d, NconstT * sizeof(int2), cudaMemcpyDeviceToHost);
-	for(int i = 0; i < N_h[0]; ++i){
-		double TOld = 0.0;
-		int EpochOld = 0;
-		for(int Epoch = 0; Epoch < NtransitsTObs_h[i]; ++Epoch){
-			double T = TransitTimeObs_h[i * def_NtransitTimeMax + Epoch + 1].x;
-			double time = ict_h[0] * 365.25;
-//printf("%d %d %.20g %.20g\n", i, Epoch, T, time);
-			if(T > time){
-				double EE = ((time - TOld) / ( T - TOld) * (Epoch - EpochOld) + EpochOld);
-				int E = (int)(ceil(EE));
-				NtransitsT_h[i].x = E;
-//printf("Epoch %.10g %.10g %.10g %d %d %g %d\n", time, T, TOld, Epoch, EpochOld, E, (int)(ceil(E)));
-				break;
-			}
-			if(T > 0){
-				TOld = T;
-				EpochOld = Epoch;
-			}
-		}
-	}
-
 
 	//copy first sub-sumulation to all the others
 	for(int st = 1; st < Nst; ++st){
 		for(int i = 0; i < N_h[0]; ++i){
 			//assume that all sub simulations are of equal size
 			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
-			NtransitsT_h[i + st * N_h[0]] = NtransitsT_h[i];
 			for(int Epoch = 0; Epoch <= NtransitsTObs_h[i] + 1; ++Epoch){
 				TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + Epoch] = TransitTimeObs_h[i * def_NtransitTimeMax + Epoch];
 			}
@@ -2407,9 +2393,6 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(NtransitsT_d, NtransitsT_h, NconstT * sizeof(int2), cudaMemcpyHostToDevice);
-	cudaMemset(TransitTime_d, 0, def_NtransitTimeMax * NconstT * sizeof(double));
-	NTransitData = n;
 	
 	return 1;
 }

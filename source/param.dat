@@ -56,5 +56,6 @@ TTV file name = -
 TTV steps = 1
 Print Transits = 0
 MCMC NE = 0
+MCMC Restart = 0
 Report Encounters = 0
 Report Encounters Radius = 3

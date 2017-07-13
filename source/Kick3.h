@@ -329,8 +329,9 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //if(id == 0) printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 
 			if(dt > 0){
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 					if(g <= 0.0){
+//if(id == 0) printf("----TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
 						Transit_d[Nt] = id;
@@ -338,7 +339,7 @@ __global__ void kick32BTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 				}
 			}
 			else{
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 					if(g >= 0.0){
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
@@ -390,7 +391,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 
 //printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 			if(dt > 0){
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 
 					if(g <= 0.0){
 						int Nt = atomicAdd(Ntransit_d, 1);
@@ -400,7 +401,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 				}
 			}
 			else{
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 					if(g >= 0.0){
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
@@ -567,7 +568,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 
 //printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 			if(dt > 0){
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 					if(g <= 0.0){
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
@@ -576,7 +577,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 				}
 			}
 			else{
-				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 					if(g >= 0.0){
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
@@ -1285,7 +1286,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 
 //printf("TTVA %d g %g gd %g g/gd %.20g x %.20g y %.20g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, dt, rsky, R, R + v * dt);
 		if(dt > 0){
-			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 				if(g <= 0.0){
 					int Nt = atomicAdd(Ntransit_d, 1);
 					Nt = min(Nt, def_NtransitMax - 1);
@@ -1294,7 +1295,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			}
 		}
 		else{
-			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 1.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+			if(x4_s[idy].z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 				if(g >= 0.0){
 					int Nt = atomicAdd(Ntransit_d, 1);
 					Nt = min(Nt, def_NtransitMax - 1);
