@@ -438,7 +438,7 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		x4i = x4_d[id];
 		v4i = v4_d[id];
 		__syncthreads();
-//if(id % 7 == 0) printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
@@ -453,7 +453,7 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		__syncthreads();
 		x4_d[id] = x4i;
 		v4_d[id] = v4i;
-//if(id % 7 == 0) printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 
 		if(si == 0){
 			aecount_d[id] += aecount;

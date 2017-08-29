@@ -38,11 +38,13 @@ int EjectionFlag2 = 0;
 __host__ int Data::timeStepLoop(int interrupted){
 	time_h[0] = timeStep * idt_h[0] + ict_h[0] * 365.25;
 	cudaMemcpy(time_d, time_h, sizeof(double), cudaMemcpyHostToDevice);
-	
-	int er = step();
+
+	int er;	
+	er = step();
 	if(er == 0){
 		 return 0;
 	}
+
 
 	if(interrupted == 1){
 		printf("GENGA is interrupted by SIGINT signal at time step %lld\n", timeStep);
@@ -70,10 +72,13 @@ __host__ int Data::timeStepLoop(int interrupted){
 		CoordinateOutput(4);
 		return 0;
 	}
+
+
 	//Print Energy and log information//
 	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1){
 		if(bufferCount + 1 >= P.Buffer || interrupt == 1){
-			EnergyOutput();
+			er = EnergyOutput();
+			if(er == 0) return 0;
 		}
 	}
 
@@ -91,6 +96,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 	}
 
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
+
 	//Print Output//
 	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt == 1){
 		if(P.Buffer == 1){
@@ -120,6 +126,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 		if(P.UseaeGrid == 1){
 			GridaeOutput();
 		}
+
 #if poincareFlag == 1
 		if((timeStep - 1) % P.ci == P.ci - P.nci){
 			fclose(poincarefile);
@@ -130,12 +137,13 @@ __host__ int Data::timeStepLoop(int interrupted){
 #endif
 	}
 
+
 	//print irregular outputs
 	if(interrupt == 1 && P.Buffer > 1){
 		//write out buffer
 		CoordinateOutputBuffer(1);
 	}
-	if(P.IrregularOutputs == 1 && irrTimeStep < NIrrOutputs && time_h[0] >= IrrOutputs[irrTimeStep]){
+ 	if(P.IrregularOutputs == 1 && irrTimeStep < NIrrOutputs && time_h[0] >= IrrOutputs[irrTimeStep]){
 
 		int ni = 1; //multiple outputs per time step
 		for(int i = 0; i < ni; ++i){
@@ -213,7 +221,8 @@ __host__ int Data::timeStepLoop(int interrupted){
 	// this should be the last thing to print, because it is used to restart at the last possible timestep
 	if((P.ci > 0 && timeStep % P.ci == 0) || interrupt == 1){
 		if(bufferCount >= P.Buffer || P.Buffer == 1 || interrupt == 1){
-			printTime();
+			er = printTime();
+			if(er == 0) return 0;
 			fflush(masterfile);
 			bufferCount = 0;
 		}
@@ -224,7 +233,6 @@ __host__ int Data::timeStepLoop(int interrupted){
 		cudaDeviceSynchronize();
 		return 0;
 	}
-
 
 	return 1;
 
@@ -441,12 +449,6 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 		rcrit_d[id] = fmax(rcrit, rcrit_d[id]);
 		rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
-/*	
-if(x4i.w == 0){
-rcrit_d[id] = 0.0;
-rcritv_d[id] = 0.0;
-}	
-*/
 		//Check for Ejections or to small distances to the Sun
 		if((rsq > Rcut * Rcut || rsq < RcutSun * RcutSun) && x4_d[id].w >= 0.0){
 			 EjectionFlag_d[0] = 1;
@@ -762,10 +764,10 @@ __host__ void Data::BSCall(int si, double time, int noColl){
 //		if(Nenc_m[10] > 0) BSA512_kernel < 1024, 512 > <<< Nenc_m[10], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 9, N_h[0], P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, noColl);
 //		if(Nenc_m[11] > 0) BSA512_kernel < 2048, 512 > <<< Nenc_m[11], 512 , 0, stream[0] >>> (x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt_h[0] * FGt[si], Msun_h[0].x, U_d, 10, N_h[0], P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, noColl);
 
-//if(Nenc_m[8] > 0) BSACall(7, 256, Nenc_m[8], si, time, FGt[si], noColl);
-//if(Nenc_m[9] > 0) BSACall(8, 512, Nenc_m[9], si, time, FGt[si], noColl);
-if(Nenc_m[10] > 0) BSACall(9, 1024, Nenc_m[10], si, time, FGt[si], noColl);
-if(Nenc_m[11] > 0) BSACall(10, 2048, Nenc_m[11], si, time, FGt[si], noColl);
+		//if(Nenc_m[8] > 0) BSACall(7, 256, Nenc_m[8], si, time, FGt[si], noColl);
+		//if(Nenc_m[9] > 0) BSACall(8, 512, Nenc_m[9], si, time, FGt[si], noColl);
+		if(Nenc_m[10] > 0) BSACall(9, 1024, Nenc_m[10], si, time, FGt[si], noColl);
+		if(Nenc_m[11] > 0) BSACall(10, 2048, Nenc_m[11], si, time, FGt[si], noColl);
 
 		int nn = 4096;
 		for(int st = 11; st < def_GMax - 1; ++st){
@@ -2170,6 +2172,7 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 			int enc = writeEncCall();
 			if(enc == 0) return 0;
 		}
+
 		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, Msun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce, Nstart);
 		if(si < SIn - 1){
 			KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[si], index_d, NT, test_d, Nstart);
@@ -2183,7 +2186,7 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 				if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1, Nstart);
 			}
-			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
+ 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 		}
 	}
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, test_d, Nstart);
@@ -2197,6 +2200,7 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1, Nstart);
 	}
+
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(EjectionFlag_m[0] > 0){
 		EjectionMCall();
@@ -2212,6 +2216,7 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 			cudaMemcpy(StopFlag_d, StopFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 		}
 	}
+
 	return 1;
 }
 

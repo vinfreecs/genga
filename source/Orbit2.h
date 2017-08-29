@@ -111,6 +111,7 @@ public:
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
 	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
 	int4 *elementsI_h, *elementsI_d;			//indizes for proposals
+	double *elementsM_h, *elementsM_d;			//Stellar mass
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall(int, int);
@@ -160,7 +161,7 @@ public:
 	__host__ void LastInfo();
 	__host__ void setStartTime();
 	__host__ void printLastTime();
-	__host__ void printTime();
+	__host__ int printTime();
 	__host__ void CoordinateOutput(int);
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
@@ -172,7 +173,7 @@ public:
 	__host__ int printTransits();
 	__host__ void printMCMC(int);
 	__host__ int firstEnergy();
-	__host__ void EnergyOutput();
+	__host__ int EnergyOutput();
 	__host__ void CoordinateToBuffer(int, int, double);
 
 	//Energy

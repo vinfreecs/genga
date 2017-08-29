@@ -265,7 +265,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 		}
  #endif
  #if MCMC_BLOCK < 3
-		setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
+		setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
 //if(ittv > 30) TSwap_kernel <<<1, 1 >>> (D.random_d, D.elementsP_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsSA_d, D.N_h[0], D.Nst);
 		D.modifyElementsCall(ittv, MCMC_BLOCK);
 		HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
@@ -274,7 +274,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 
  #if MCMC_BLOCK == 3
 //	if(ittv > 1 && ittv % 4 == 0) Mix_kernel <<< (D.NT + 255) / 256, 256 >>> (D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsC_d, D.elementsP_d, D.Nst, D.NT, D.N_h[0]);
-	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Nstart, D.P.mcmcNE, 3);
+	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 3);
 		
 	if(ittv <= 1) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 3);
@@ -283,7 +283,8 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
  #endif
  #if MCMC_BLOCK == 4
 //sigma_kernel <<< 1, D.N_h[0] >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.time_h[0] - D.dt_h[0] / dayUnit, D.Msun_h[0].x, D.N_h[0], D.Nst);
-	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Nstart, D.P.mcmcNE, 4);
+	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 4);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
 		
 	if(ittv <= 0) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 4);
@@ -420,9 +421,10 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 	}
 
 	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.NT, ittv, D.Nstart);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
-
-	D.printMCMC(0);
+	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
+	if(D.P.PrintMCMC > 0){
+		D.printMCMC(0);
+	}
 	if(D.P.PrintTransits == 1){
 		er = D.printTransits();
 		if(er <= 0) return 0;

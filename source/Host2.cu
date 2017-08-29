@@ -252,6 +252,7 @@ __host__ void Host::Halloc(){
 	P.TransitSteps = 1;
 	sprintf(P.Transitsfilename, "%s", "-");
 	P.PrintTransits = 0;
+	P.PrintMCMC = 0;
 	P.mcmcNE = MCMC_NE;
 	P.mcmcRestart = 0;
 	sprintf(P.Gasfilename, "%s", "-");
@@ -579,6 +580,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Print MCMC =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.PrintMCMC);
+				
+				if(er <= 0){
+					printf("Error: Print MCMC is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "MCMC NE =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.mcmcNE);
@@ -873,11 +889,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(er <= 0){
 				printf("Error: Input file format is not valid!\n");
 				return 0;
-			}
-			if(f >=22){
-				printf("Error: Input file format is not valid, '>>' not found! Maybe the spaces in << ... >> have been forgotten\n");
-				return 0;
-				
 			}
 			if(cartesian == 1 && keplerian == 1){
 				printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
@@ -2069,6 +2080,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
 			fprintf(infofile, "Stop collision minimum mass: %g\n", def_StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
+			fprintf(infofile, "CollTshift: %g\n", def_CollTshift);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
@@ -2084,7 +2096,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Use Transits: %d\n", P.UseTransits);					// use only argument in simulation 0
 			fprintf(infofile, "TTV file name: %s\n", P.Transitsfilename);				// use only argument in simulation 0
-			fprintf(infofile, "Print Transits name: %d\n", P.PrintTransits);			// use only argument in simulation 0
+			fprintf(infofile, "Print Transits: %d\n", P.PrintTransits);				// use only argument in simulation 0
+			fprintf(infofile, "Print MCMC: %d\n", P.PrintMCMC);					// use only argument in simulation 0
 			fprintf(infofile, "MCMC NE: %d\n", P.mcmcNE);						// use only argument in simulation 0
 			fprintf(infofile, "MCMC Restart: %d\n", P.mcmcRestart);					// use only argument in simulation 0
 			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
@@ -2220,7 +2233,7 @@ __host__ void Host::Tsizes(){
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
 		NB2T += NB[st] * NmaxM;
-		NEnergyT += max(NB[st], 8);
+		NEnergyT += max(N_h[st], 8);
 	}
 	NBNencT = NB2T;
 	

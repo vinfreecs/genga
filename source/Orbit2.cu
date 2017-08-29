@@ -59,6 +59,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
 	elementsSA_h = (double*)malloc(Nst * sizeof(double));
 	elementsI_h = (int4*)malloc(NconstT * sizeof(int4));
+	elementsM_h = (double*)malloc(Nst * sizeof(double));
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
@@ -70,6 +71,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsP_h = NULL;
 	elementsSA_h = NULL;
 	elementsI_h = NULL;
+	elementsM_h = NULL;
 #endif
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
@@ -147,6 +149,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
 	cudaMalloc((void **) &elementsSA_d, Nst * sizeof(double));
 	cudaMalloc((void **) &elementsI_d, NconstT * sizeof(int4));
+	cudaMalloc((void **) &elementsM_d, Nst * sizeof(double));
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
@@ -160,6 +163,7 @@ __host__ void Data::AllocateOrbitt(){
 	elementsP_d = NULL;
 	elementsSA_d = NULL;
 	elementsI_d = NULL;
+	elementsM_d = NULL;
 #endif
 
 	//arrays for backup step
@@ -489,9 +493,8 @@ __host__ int Data::init(){
 			elementsP_h[i].y = 0.0;		//contains later a random number
 			elementsP_h[i].z = 35.0;		//acceptance count
 			elementsP_h[i].w = 1.0;		//tunig factor according to acceptance rate
-		}
-		if(i < Nst){
 			elementsSA_h[i] = 1.0;
+			elementsM_h[i] = Msun_h[i].x;
 		}
 		if(i < Nst + MCMC_NT){
 			elementsC_h[i].x = 0;
@@ -622,6 +625,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsC_d, elementsC_h, sizeof(int2) * (Nst + MCMC_NT), cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsSA_d, elementsSA_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsI_d, elementsI_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsM_d, elementsM_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
 #endif
 
 	cudaError_t error;
@@ -930,7 +934,6 @@ __host__ int Data::readic(int st){
 				aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index);
 				++ii;
-
 				fclose(infile);
 				if(ii == N + Nsmall) break;
 			}
@@ -1712,6 +1715,7 @@ __host__ int Data::freeOrbit(){
 	free(elementsP_h);
 	free(elementsSA_h);
 	free(elementsI_h);
+	free(elementsM_h);
 
 	free(vcom_h);
 
@@ -1825,6 +1829,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsP_d);
 	cudaFree(elementsSA_d);
 	cudaFree(elementsI_d);
+	cudaFree(elementsM_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

@@ -460,7 +460,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						double delta = 100.0;
+						double delta = 1000.0;
 						double enct = 100.0;
 						double colt = 100.0;
 						double rcrit = v4_s[ii].w + v4_s[jj + l].w;

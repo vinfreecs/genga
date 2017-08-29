@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.65
+#define Version 3.66
 
 //Default parameter values
 #define def_TimeStep 6
@@ -177,7 +177,7 @@
 #define def_NtransitMax 2000
 #define def_NtransitTimeMax 2000		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
-#define MCMC_BLOCK 4			//0 update all elements per mcmc step
+#define MCMC_BLOCK 0			//0 update all elements per mcmc step
 					//1 update only one set of Keplerian elements but all planets per mcmc step
 					//2 update only one set of Keplerian elements and only 1 planet per mcmc step
 					//3 affine invariant ensemble walkers
@@ -247,6 +247,7 @@ struct Parameter{
 	char Transitsfilename[128];
 	int TransitSteps;
 	int PrintTransits;
+	int PrintMCMC;
 	int mcmcNE;
 	int mcmcRestart;
 	int setElements;

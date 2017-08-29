@@ -471,9 +471,9 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 		delta = fmin(delta, d0);
 
 //if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g\n", i, j, delta, enct, t1, t2);
-//printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcrit*rcrit, d0, d1, delta1, delta2, t1, t2);
 
 		if(delta < rcrit*rcrit){
+//printf("EEa %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcrit*rcrit, d0, d1, delta, t1, t2);
 			if((d0 >= rcrit*rcrit && d1 < rcrit*rcrit) || (d1 >= rcrit*rcrit && d0 < rcrit*rcrit)){
 				colt = (rcrit*rcrit - d0) / (d1 - d0);
 			}

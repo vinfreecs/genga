@@ -19,6 +19,10 @@ __host__ int Data::firstoutput(){
 			int NBS = NBS_h[st];
 			if(P.ei > 0){
 				GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+				if(GSF[st].Energyfile == NULL){
+					printf("Error, Energyfile not valid %d %s\n", st, GSF[st].timefilename);
+					return 0;
+				}
 				cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
 				fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
 				fclose(GSF[st].Energyfile);
@@ -231,10 +235,15 @@ __host__ int Data::firstEnergy(){
 }
 
 //This function calls the Energy function and prints information
-__host__ void Data::EnergyOutput(){
+__host__ int Data::EnergyOutput(){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
+		error = cudaGetLastError();
+		if(error != 0){
+			printf("Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+			return 0;
+		}
 	}
 	if(P.Usegas == 1){
 		if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0], Nsmall_h[0]);
@@ -247,10 +256,16 @@ __host__ void Data::EnergyOutput(){
 	}
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 1);
+		int NE = NEnergy[st];
+		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NE, test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 1);
 	}
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamDestroy(hstream[hst]);
+		error = cudaGetLastError();
+		if(error != 0){
+			printf("Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+			return 0;
+		}
 	}
 
 	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
@@ -258,7 +273,12 @@ __host__ void Data::EnergyOutput(){
 	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
-		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
+		if(GSF[st].Energyfile == NULL){
+			printf("Error, Energyfile not valid %d %s\n", st, GSF[st].Energyfilename);
+			return 0;
+		}
+		int NE = NEnergy[st];
+		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
 		fclose(GSF[st].Energyfile);
 
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -286,6 +306,7 @@ __host__ void Data::EnergyOutput(){
 	}
 	cudaMemset(Energy_d, 0, NEnergyT * sizeof(double));
 	
+	return 1;
 }
 
 
@@ -666,18 +687,27 @@ __host__ void Data::setStartTime(){
 
 
 //This function prints information how long the integration takes
-__host__ void Data::printTime(){
+__host__ int Data::printTime(){
 	
 	cudaEventRecord(tt3, 0);
 	cudaEventSynchronize(tt3);
+	cudaEventElapsedTime(&times, tt2, tt3);
 	for(int st = 0; st < Nst; ++st){
-		cudaEventElapsedTime(&times, tt2, tt3);
 
 		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
+		if(GSF[st].timefile == NULL){
+			printf("Error, timefile not valid %d %s\n", st, GSF[st].timefilename);
+			return 0;
+		}
+
 		fprintf(GSF[st].timefile, "%lld %.20g\n", timeStep, times * 0.001);
-		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
 		fclose(GSF[st].timefile);
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+		if(GSF[st].logfile == NULL){
+			printf("Error, infofile not valid %d %s\n", st, GSF[st].logfilename);
+			return 0;
+		}
+		fprintf(GSF[st].logfile,"Reached timestep %lld with %d bodies, %d test particles. Total Energy: %.20g\n", timeStep, N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
 		fclose(GSF[st].logfile);
 
 		if(Nst == 1){
@@ -690,6 +720,7 @@ __host__ void Data::printTime(){
 		}
 	}
 	cudaEventRecord(tt2, 0);
+	return 1;
 }
 
 //This function prints the total integration runtime
@@ -923,12 +954,16 @@ __host__ void Data::printMCMC(int E){
 	FILE *MCMCfile;
 	MCMCfile = fopen("MCMC.dat", "a");
 
-//print all
-	cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
-	cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
-//print only accepted
-//	cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
-//	cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	if(P.PrintMCMC == 2){
+		//print all
+		cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	}
+	if(P.PrintMCMC == 1){
+	//print only accepted
+		cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	}
 	cudaMemcpy(elementsLA_h, elementsLA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsLB_h, elementsLB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsP_h, elementsP_d, Nst * sizeof(double4), cudaMemcpyDeviceToHost);
@@ -941,12 +976,21 @@ __host__ void Data::printMCMC(int E){
 			int si = 0;
 			if(Nst > 1) si = index_h[id] / 100;
 			int iT = si / (Nst / MCMC_NT);			//index of temperature in parallel tempering
+
+			int p = 0;
+			if(P.PrintMCMC == 1){
+
 #if MCMC_BLOCK < 3
-//			if(elementsC_h[si + MCMC_NT].x == 0){
+				if(elementsC_h[si + MCMC_NT].x == 0) p = 1;
 #else
-//			if(elementsC_h[si + MCMC_NT].x >= 0){
+				if(elementsC_h[si + MCMC_NT].x >= 0) p = 1;
 #endif
-		if(elementsP_h[si].z < 1.0e299){
+			}
+			if(P.PrintMCMC == 2){
+				if(elementsP_h[si].z < 1.0e299) p = 1;
+			}
+
+			if(p == 1){
 				double f = elementsP_h[iT].w;
 				if(MCMC_BLOCK >= 3) f = 1.0;
 				double time = ict_h[0];
@@ -955,7 +999,7 @@ __host__ void Data::printMCMC(int E){
 				if (MCMC_BLOCK < 3){
 					ii = iT * N_h[0] + id % N_h[0];
 				}
-				fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].z, f, elementsSA_h[si]);
+				fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].z, f, elementsSA_h[si], Msun_h[si].x);
 			}
 		}
 		fclose(MCMCfile);
@@ -970,7 +1014,7 @@ __host__ void Data::printMCMC(int E){
 			double time = ict_h[0];
 		
 			int ii = id;
-			fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si]);
+			fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si], Msun_h[si].x);
 		}
 		fclose(MCMCfile);
 	}
