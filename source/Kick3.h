@@ -265,6 +265,27 @@ __global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		ab_d[id].z = a.z;
 	}
 }
+__global__ void kick32BMSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double *time_d, double *idt_d, double *ict_d, long long timeStep, int Nst, int Nstart){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	if(id < N + Nstart){
+		int st = index_d[id] / 100;
+		double dtksqKt = dt_d[st] * Kt * def_ksq;
+
+		double3 a = acck_d[id];
+		if(x4_d[id].w >= 0.0){
+			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
+			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
+			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
+//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+		}
+		if(id < Nst) time_d[id] = timeStep * idt_d[id] + ict_d[id] * 365.25;
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
+	}
+}
 
 // **************************************
 //This kernel performs the kick for a backup step.
@@ -416,6 +437,71 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 		ab_d[id].z = a.z;
 	}
 }
+__global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d, double *time_d, double *idt_d, double *ict_d, long long timeStep, int Nst,int Nstart){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	if(id < N + Nstart){
+		int st = index_d[id] / 100;
+		double dtksqKt = dt_d[st] * Kt * def_ksq;
+		double dt = dt_d[st];
+		double Msun = Msun_d[st].x;
+		double Rsun = Msun_d[st].y;
+		double3 a = acck_d[id];
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+		if(x4i.w >= 0.0){
+			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
+			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
+			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
+//printf("KickB %d %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a.x, a.y, a.z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
+
+			//calculate acceleration from the central star
+			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
+			double ir = 1.0 / sqrt(rsq);
+			double ir3 = ir * ir * ir;
+			double s = - def_ksq * Msun * ir3;
+
+			a.x += s * x4i.x;
+			a.y += s * x4i.y;
+			a.z += s * x4i.z;
+
+			double g = x4i.x * v4i.x + x4i.y * v4i.y;
+			double gd = v4i.x * v4i.x + v4i.y * v4i.y + x4i.x * a.x + x4i.y * a.y;
+			double rsky = sqrt(x4i.x * x4i.x + x4i.y * x4i.y);
+			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
+			double R = Rsun + v4i.w;
+
+//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+			if(dt > 0){
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+
+					if(g <= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
+				}
+			}
+			else{
+				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
+					if(g >= 0.0){
+						int Nt = atomicAdd(Ntransit_d, 1);
+						Nt = min(Nt, def_NtransitMax - 1);
+						Transit_d[Nt] = id;
+					}
+				}
+			}
+
+		}
+		ab_d[id].x = a.x;
+		ab_d[id].y = a.y;
+		ab_d[id].z = a.z;
+		if(id < Nst) time_d[id] = timeStep * idt_d[id] + ict_d[id] * 365.25;
+
+	}
+}
+
 // *******************************************
 //This kernel is used to sort the close encoutner list, to be able to reproduce simulations exactly
 //It shoud be used only for debugging or special cases.
@@ -1097,7 +1183,6 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			a_s[idy].x += __dmul_rn(rx, si);
 			a_s[idy].y += __dmul_rn(ry, si);
 			a_s[idy].z += __dmul_rn(rz, si);
-
 			b_s[idy + j].x += __dmul_rn(-rx, sj);
 			b_s[idy + j].y += __dmul_rn(-ry, sj);
 			b_s[idy + j].z += __dmul_rn(-rz, sj);
@@ -1110,6 +1195,113 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[id].x += __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
 			v4_d[id].y += __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
 			v4_d[id].z += __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
+		}
+		if(E <= 1){
+			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
+			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
+			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
+//printf("acc %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, acck_d[id].x, acck_d[id].y, acck_d[id].z);
+		}
+	}
+}
+
+template <int Bl, int Bl2, int Nmax, int E>
+__global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d, double3 *acck_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nst, int Nstart){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
+
+	__shared__ volatile double3 a_s[Bl + Nmax];
+	__shared__ volatile double3 b_s[Bl + Nmax];
+	__shared__ double4 x4_s[Bl + Nmax];
+	__shared__ int st_s[Bl + Nmax];
+
+	a_s[idy].x = 0.0;
+	a_s[idy].y = 0.0;
+	a_s[idy].z = 0.0;
+	b_s[idy].x = 0.0;
+	b_s[idy].y = 0.0;
+	b_s[idy].z = 0.0;
+
+	double dtksqKt = 0.0;
+
+	if(id < NT + Nstart && id >= Nstart){
+		st_s[idy] = index_d[id] / 100;
+		x4_s[idy] = x4_d[id];
+		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
+	}
+	else{
+		st_s[idy] = -idy-1;
+		x4_s[idy].x = 0.0; 
+		x4_s[idy].y = 0.0;
+		x4_s[idy].z = 0.0;
+		x4_s[idy].w = 0.0;
+	}
+	//halo
+	if(idy < Nmax){
+		a_s[idy + Bl].x = 0.0;
+		a_s[idy + Bl].y = 0.0;
+		a_s[idy + Bl].z = 0.0;
+		b_s[idy + Bl].x = 0.0;
+		b_s[idy + Bl].y = 0.0;
+		b_s[idy + Bl].z = 0.0;	
+		//right
+		if(id + Bl < NT + Nstart){
+			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			x4_s[idy + Bl] = x4_d[id + Bl];
+		}
+		else{
+			st_s[idy + Bl] = -idy-Bl-1;
+			x4_s[idy + Bl].x = 0.0;
+			x4_s[idy + Bl].y = 0.0;
+			x4_s[idy + Bl].z = 0.0;
+			x4_s[idy + Bl].w = 0.0;
+		}
+	}
+
+	volatile double a;
+	volatile double b;
+	volatile double rx, ry, rz;
+	volatile double rsq, ir, ir3;
+	volatile double y, yy, K;
+	volatile double si, sj;
+	
+	for(volatile int j = Nmax - 1; j > 0; --j){
+		__syncthreads();
+		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w >= 0.0 && x4_s[idy + j].w >= 0.0){
+			rx = x4_s[idy + j].x - x4_s[idy].x;
+			ry = x4_s[idy + j].y - x4_s[idy].y;
+			rz = x4_s[idy + j].z - x4_s[idy].z;
+			rsq = rx * rx + ry * ry + rz * rz;
+			ir = 1.0 / sqrt(rsq);
+			ir3 = ir * ir * ir;
+
+			si = x4_s[idy + j].w * ir3;
+			sj = x4_s[idy].w * ir3;
+
+			a_s[idy].x += __dmul_rn(rx, si);
+			a_s[idy].y += __dmul_rn(ry, si);
+			a_s[idy].z += __dmul_rn(rz, si);
+
+			b_s[idy + j].x += __dmul_rn(-rx, sj);
+			b_s[idy + j].y += __dmul_rn(-ry, sj);
+			b_s[idy + j].z += __dmul_rn(-rz, sj);
+
+		}
+	}
+	__syncthreads();
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax){
+		if(E >= 1){
+			double vx = __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
+			double vy = __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
+			double vz = __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
+			v4_d[id].x += vx;
+			v4_d[id].y += vy;
+			v4_d[id].z += vz;
+			if(E == 1){
+				v4b_d[id] = v4_d[id];
+			}
+
 		}
 		if(E <= 1){
 			acck_d[id].x = (a_s[idy].x + b_s[idy].x);

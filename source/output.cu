@@ -920,9 +920,17 @@ __host__ int Data::printTransits(){
 		int Epoch = 0;
 		int setEpoch = 0;
 		double P = TransitTimeObs_h[i * def_NtransitTimeMax].y; //period
-			for(int EpochObs = 0; EpochObs <= NtransitsTObs_h[i]; ++EpochObs){
+			//for(int EpochObs = 0; EpochObs <= NtransitsTObs_h[i]; ++EpochObs){
+			for(int EpochObs = 0; EpochObs <= NtransitsT_h[i].x; ++EpochObs){
 				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch + 1]; 
-				double2 TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
+				double2 TObs;
+				if(EpochObs <= NtransitsTObs_h[i]){
+					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
+				}
+				else{
+					TObs.x = 0.0;
+					TObs.y = 0.0;
+				}
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (T - TObs.x) > 0.5 * P){
 //if(i == 0) printf("***** %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
@@ -972,12 +980,18 @@ __host__ void Data::printMCMC(int E){
 
 	if(E == 0){
 
+#if MCMC_Q == 0
 		for(int id = 0; id < NconstT; ++id){
+#else
+		for(int id = 0; id < NconstT / 3; ++id){
+
+#endif
 			int si = 0;
 			if(Nst > 1) si = index_h[id] / 100;
 			int iT = si / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 
 			int p = 0;
+			double pp = elementsP_h[si].z;
 			if(P.PrintMCMC == 1){
 
 #if MCMC_BLOCK < 3
@@ -987,7 +1001,11 @@ __host__ void Data::printMCMC(int E){
 #endif
 			}
 			if(P.PrintMCMC == 2){
-				if(elementsP_h[si].z < 1.0e299) p = 1;
+				pp = elementsP_h[si].x;
+				if(pp >= 1.0e299) pp = elementsP_h[si].z;
+				if(elementsP_h[si].z < 1.0e299){
+					p = 1;
+				}
 			}
 
 			if(p == 1){
@@ -999,7 +1017,7 @@ __host__ void Data::printMCMC(int E){
 				if (MCMC_BLOCK < 3){
 					ii = iT * N_h[0] + id % N_h[0];
 				}
-				fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].z, f, elementsSA_h[si], Msun_h[si].x);
+				fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, pp, f, elementsSA_h[si], Msun_h[si].x);
 			}
 		}
 		fclose(MCMCfile);
@@ -1014,7 +1032,7 @@ __host__ void Data::printMCMC(int E){
 			double time = ict_h[0];
 		
 			int ii = id;
-			fprintf(MCMCfile, "%#.10g %d %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.20g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g %#.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si], Msun_h[si].x);
+			fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsA_h[ii].x, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsB_h[ii].z, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x, f, elementsSA_h[si], Msun_h[si].x);
 		}
 		fclose(MCMCfile);
 	}

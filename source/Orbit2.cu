@@ -140,7 +140,9 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsAOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsBOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsCA_d, NconstT * sizeof(int4));
@@ -154,7 +156,9 @@ __host__ void Data::AllocateOrbitt(){
 	elementsA_d = NULL;
 	elementsB_d = NULL;
 	elementsAOld_d = NULL;
+	elementsAOld2_d = NULL;
 	elementsBOld_d = NULL;
+	elementsBOld2_d = NULL;
 	elementsLA_d = NULL;
 	elementsLB_d = NULL;
 	elementsCA_d = NULL;
@@ -617,7 +621,9 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsAOld2_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsBOld2_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLA_d, elementsLA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLB_d, elementsLB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsCA_d, elementsCA_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
@@ -684,7 +690,8 @@ __host__ int Data::readic(int st){
 			v = v4_h[i + NBS];
 			spin = spin_h[i + NBS];
 			love = love_h[i + NBS];
-			index = index_h[i + NBS];
+			//index = index_h[i + NBS];
+			index = i+st*100;
 			aelimits = aelimits_h[i + NBS];
 			int keplerian = 0;
 #if def_TTV > 0
@@ -962,6 +969,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	double Omega = v.x;
 	double w = v.y;
 	double M = v.z;
+//printf("A %g %g %g %g %g %g %g %g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
 
 	double mu = def_ksq * (Msun + x.w);
 	
@@ -1005,6 +1013,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	v.x = t0 * (t1 * Px + t2 * Qx);
 	v.y = t0 * (t1 * Py + t2 * Qy);
 	v.z = t0 * (t1 * Pz + t2 * Qz);
+//printf("B %g %g %g %g %g %g %g %g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
 }
 
 // **************************************
@@ -1820,7 +1829,9 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsA_d);
 	cudaFree(elementsB_d);
 	cudaFree(elementsAOld_d);
+	cudaFree(elementsAOld2_d);
 	cudaFree(elementsBOld_d);
+	cudaFree(elementsBOld2_d);
 	cudaFree(elementsLA_d);
 	cudaFree(elementsLB_d);
 	cudaFree(elementsCA_d);

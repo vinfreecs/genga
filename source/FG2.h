@@ -460,4 +460,34 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		}
 	}
 }
+__global__ void fgMSimple_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, double FGt, int si, int UseForce, int Nstart){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int st = index_d[id] / 100;
+
+	double4 x4i;
+	double4 v4i; 
+
+	if(id < NT + Nstart){
+		int aecount = 0;
+		x4i = x4_d[id];
+		v4i = v4_d[id];
+		__syncthreads();
+//printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		double test;
+		double Msun = Msun_d[st].x;
+		double dt = dt_d[st];
+		float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
+		int index = index_d[id];
+		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, test, test, Msun, aelimits, aecount, NULL, NULL, si, id, index, UseForce);
+		__syncthreads();
+		x4_d[id] = x4i;
+		v4_d[id] = v4i;
+//printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+	}
+}
 #endif

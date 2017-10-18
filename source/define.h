@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.66
+#define Version 3.67
 
 //Default parameter values
 #define def_TimeStep 6
@@ -174,16 +174,21 @@
 #define USE_NAF 0
 
 #define def_TTV 0
-#define def_NtransitMax 2000
-#define def_NtransitTimeMax 2000		//Maximum number of transit times per object
+#define def_NtransitMax 4000
+#define def_NtransitTimeMax 4000		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
-#define MCMC_BLOCK 0			//0 update all elements per mcmc step
+#define MCMC_BLOCK 4			//0 update all elements per mcmc step
 					//1 update only one set of Keplerian elements but all planets per mcmc step
 					//2 update only one set of Keplerian elements and only 1 planet per mcmc step
 					//3 affine invariant ensemble walkers
+					//4 DEMCMC
+
+#define MCMC_Q 0			//quadratic estimator
 
 #define MCMC_NE 5 			//2: a M; 3: a M m; 5: a M m e w; 7: a m M e w inc Omega,; 8: + r
 #define MCMC_NT 1			//number of temperature levels in parallel tempering
+#define NoEncounters 0			
+
 
 #define USE_RANDOM 1
 

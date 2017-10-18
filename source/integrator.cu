@@ -39,6 +39,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 	time_h[0] = timeStep * idt_h[0] + ict_h[0] * 365.25;
 	cudaMemcpy(time_d, time_h, sizeof(double), cudaMemcpyHostToDevice);
 
+
 	int er;	
 	er = step();
 	if(er == 0){
@@ -490,7 +491,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	double4 x4i;
 	double4 v4i;
 
-	double rcrit, rcritv ;
+	double rcrit, rcritv;
 	double rsq, vsq, r, v;
 
 	if(id < NT + Nstart){
@@ -501,6 +502,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		double Rcut = Rcut_d[st];
 		double RcutSun = RcutSun_d[st];
 		double dt = dt_d[st];
+
 #if def_StopAtCollision != 0
 		if(f == 0){
 			x4i = x4_d[id];
@@ -539,6 +541,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		v4b_d[id] = v4i;
  #endif
 #endif
+
 		__syncthreads();
 
 		rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
@@ -572,7 +575,11 @@ __host__ int Data::step(){
 	int er;
 	//Multi simulation mode
 	if(MultiSim == 1){
+#if NoEncounters == 0
 		er = step_M();
+#else
+		er = step_MSimple();
+#endif
 		if(er == 0) return 0;
 	}
 	else{
@@ -729,6 +736,7 @@ __host__ void Data::firstKick_small(){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_M(long long ts){
+
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
@@ -2216,6 +2224,35 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 			cudaMemcpy(StopFlag_d, StopFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 		}
 	}
+
+	return 1;
+}
+__host__ int Data::step_MSimple(){
+#if def_TTV != 1
+	kick32BMSimple_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, a_d, ab_d, index_d, NT, dt_d, Kt[SIn - 1], time_d, idt_d, ict_d, timeStep, Nst, Nstart);
+#else
+	kick32BMTTVSimple_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, a_d, ab_d, index_d, NT, dt_d, Kt[SIn - 1], Msun_d, Ntransit_d, Transit_d, time_d, idt_d, ict_d, timeStep, Nst, Nstart);
+	cudaDeviceSynchronize();
+	if(Ntransit_m[0] > 0){
+		if(Ntransit_m[0] >= def_NtransitMax - 1){
+printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
+			return 0;
+		}
+		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, Nst, TransitTime_d, NtransitsT_d, Ntransit_m[0]);
+		Ntransit_m[0] = 0;
+	}
+#endif
+	EjectionFlag2 = 0;
+	for(int si = 0; si < SIn; ++si){
+		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 1 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, Msun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce, Nstart);
+		fgMSimple_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, xold_d, vold_d, dt_d, Msun_d, test_d, index_d, NT, FGt[si], si, P.UseForce, Nstart);
+		HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 2 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, Msun_d, index_d, NT, Ct[si], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce, Nstart);
+
+		if(si < SIn - 1){
+			KickM2Simple_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, v4b_d, a_d, dt_d, Kt[si], index_d, NT, test_d, Nst, Nstart);
+		}
+	}
+	KickM2Simple_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, v4b_d, a_d, dt_d, Kt[SIn - 1], index_d, NT, test_d, Nst, Nstart);
 
 	return 1;
 }

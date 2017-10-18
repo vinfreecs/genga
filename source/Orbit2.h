@@ -101,8 +101,8 @@ public:
 	//TTV
 	double4 *elementsA_h, *elementsA_d;
 	double4 *elementsB_h, *elementsB_d;
-	double4 *elementsAOld_d;
-	double4 *elementsBOld_d;
+	double4 *elementsAOld_d, *elementsAOld2_d;
+	double4 *elementsBOld_d, *elementsBOld2_d;
 	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
 	double4 *elementsLB_h, *elementsLB_d;			
 	int4 *elementsCA_h, *elementsCA_d;			//counts
@@ -209,6 +209,7 @@ public:
 	__host__ int step_largeN();
 	__host__ int step_small();
 	__host__ int step_M();
+	__host__ int step_MSimple();
 
 	__host__ int CollisionCall();
 	__host__ int CollisionMCall();

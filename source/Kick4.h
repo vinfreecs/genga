@@ -27,7 +27,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	rcritv = fmax(rcritvi, rcritvj);
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 	long long int clij = (long long int)(NconstT) * (long long int)(i - nn) + j;
-//if (cl) printf("cl %d %d %d %d %lld %g %g\n", nn, i - nn, j, NconstT, clij, x4i.x, x4j.x);
+//if (cl && i - nn  == 319) printf("cl %d %d %d %d %lld %g %g %g %g\n", nn, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
 	Encpairsb_d[clij] = cl;
 
 	ir = 1.0/sqrt(rsq);
@@ -726,21 +726,21 @@ __global__ void EncMatrixsmall_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 
 				if(ii != jj + j){
 					if(E == 1){
 						int Ni = atomicAdd(&Encpairs2_d[ii * NencMax].x, 1);
-//printf("enc1 %d %d %d\n", ii, jj + j, Ni);
+//if(ii == 319) printf("enc1 %d %d %d\n", ii, jj + j, Ni);
 						if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
 
 						Encpairs2_d[NencMax * ii + Ni].y = jj + j;
 					}
 					if(E == 2/* && ii >= Nx*/){
 						int Ni = atomicAdd(&Encpairs2_d[(jj + j) * NencMax].x, 1);
-//printf("enc2 %d %d %d\n", jj + j, ii, Ni);
+//if(ii == 319 && jj + j == 23133) printf("enc2 %d %d %d\n", jj + j, ii, Ni);
 						if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
 
 						Encpairs2_d[NencMax * (jj + j) + Ni].y = ii;
 					}
 				}
 				if(E == 1 && ii > jj + j){
-//printf("encp %d %d\n", jj + j, ii);
+//if(jj + j == 319) printf("encp %d %d\n", jj + j, ii);
 					int Ne = atomicAdd(Nencpairs_d, 1);
 					Encpairs_d[Ne].x = ii;
 					Encpairs_d[Ne].y = jj + j;

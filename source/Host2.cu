@@ -1836,7 +1836,6 @@ __host__ int Host::icSize(int st){
 			
 		}
 		if(P.FormatT == 1 && time > Et) break;
-		
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
 			if(P.FormatP == 1){ // All particles in one time file
@@ -2315,7 +2314,7 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		er = fscanf(Transitfile, "%d", &t);
 		er = fscanf(Transitfile, "%lf", &t1);
 		er = fscanf(Transitfile, "%lf", &t2);
-		//printf("file %d %d %g %g %g\n", i, er, t, t1, t2); 
+//printf("file a %d %d %g %g %g\n", i, er, t, t1, t2); 
 		if(er <= 0){
 			n += i;
 			break;
@@ -2331,7 +2330,7 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		er = fscanf(Transitfile, "%d", &t);
 		er = fscanf(Transitfile, "%lf", &t1);
 		er = fscanf(Transitfile, "%lf", &t2);
-		//printf("file %d %d %d %g %g\n", i, er, t, t1, t2); 
+//printf("file b %d %d %d %g %g\n", i, er, t, t1, t2); 
 		if(er <= 0){
 			n += i;
 			break;
@@ -2356,7 +2355,7 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		er = fscanf(Transitfile, "%d", &index);
 		er = fscanf(Transitfile, "%lf", &P);
 		er = fscanf(Transitfile, "%lf", &T0);
-//printf("file %d %d %d %g %g\n", i, er, index, T0, P); 
+//printf("file c %d %d %d %g %g\n", i, er, index, T0, P); 
 		if(er <= 0){
 			n += i;
 			break;

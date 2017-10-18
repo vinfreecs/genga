@@ -223,25 +223,25 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 	Coll[nc * 25 + 3] = v4[i].w;
 	Coll[nc * 25 + 4] = x4[i].x;
 	Coll[nc * 25 + 5] = x4[i].y;
-        Coll[nc * 25 + 6] = x4[i].z;
-        Coll[nc * 25 + 7] = v4[i].x;
-        Coll[nc * 25 + 8] = v4[i].y;
+	Coll[nc * 25 + 6] = x4[i].z;
+	Coll[nc * 25 + 7] = v4[i].x;
+	Coll[nc * 25 + 8] = v4[i].y;
 	Coll[nc * 25 + 9] = v4[i].z;
 	Coll[nc * 25 + 10] = spin[indexi].x;
 	Coll[nc * 25 + 11] = spin[indexi].y;
 	Coll[nc * 25 + 12] = spin[indexi].z;
 	Coll[nc * 25 + 13] = (double)(index[indexj]);
-        Coll[nc * 25 + 14] = x4[j].w;
+	Coll[nc * 25 + 14] = x4[j].w;
 	Coll[nc * 25 + 15] = v4[j].w;
-        Coll[nc * 25 + 16] = x4[j].x;
-        Coll[nc * 25 + 17] = x4[j].y;
-        Coll[nc * 25 + 18] = x4[j].z;
-        Coll[nc * 25 + 19] = v4[j].x;
-        Coll[nc * 25 + 20] = v4[j].y;
-        Coll[nc * 25 + 21] = v4[j].z;
-      	Coll[nc * 25 + 22] = spin[indexj].x;
-       	Coll[nc * 25 + 23] = spin[indexj].y;
-       	Coll[nc * 25 + 24] = spin[indexj].z;
+	Coll[nc * 25 + 16] = x4[j].x;
+	Coll[nc * 25 + 17] = x4[j].y;
+	Coll[nc * 25 + 18] = x4[j].z;
+	Coll[nc * 25 + 19] = v4[j].x;
+	Coll[nc * 25 + 20] = v4[j].y;
+	Coll[nc * 25 + 21] = v4[j].z;
+	Coll[nc * 25 + 22] = spin[indexj].x;
+	Coll[nc * 25 + 23] = spin[indexj].y;
+	Coll[nc * 25 + 24] = spin[indexj].z;
 
 	double mimj = x4[i].w * x4[j].w;
 	double mtot = x4[i].w + x4[j].w;
@@ -301,30 +301,30 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 		aecountT[indexi] = aecountT[indexj];
 		enccountT[indexi] = enccountT[indexj];
 	}
-        if(x4[i].w == x4[j].w){
-                index[indexi] = min(index[indexi], index[indexj]);
+	if(x4[i].w == x4[j].w){
+		index[indexi] = min(index[indexi], index[indexj]);
 		aelimits[indexi] = aelimits[min(indexi, indexj)];
 		aecount[indexi] = aecount[min(indexi, indexj)];
 		enccount[indexi] = enccount[min(indexi, indexj)];
 		aecountT[indexi] = aecountT[min(indexi, indexj)];
 		enccountT[indexi] = enccountT[min(indexi, indexj)];
-        }
-        index[indexj] = -1;
+	}
+	index[indexj] = -1;
 
 #if def_StopAtCollision == 0
-        x4[i].w = mtot;
+	x4[i].w = mtot;
 
 #else
 	if(x4[j].w >= def_StopMinMass && x4[i].w >= def_StopMinMass){
 		x4[i].w = -1.0e-12;
 	}
-        else{
+	else{
 		x4[i].w = mtot;
 	}
 #endif
-        x4[j].w = -1.0e-12;
-        v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
-        v4[j].w = 0.0;
+	x4[j].w = -1.0e-12;
+	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
+	v4[j].w = 0.0;
 
 }
 // **************************************
