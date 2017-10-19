@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.67
+#define Version 3.68
 
 //Default parameter values
 #define def_TimeStep 6
@@ -94,7 +94,6 @@
 #define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 
-#define def_NoCollTP 0			// not ready yet (//0: Collide all bodies, 1: No Collisions with test particles)
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details

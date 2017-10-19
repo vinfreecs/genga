@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, int noColl){
+__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -120,12 +120,12 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		a0.y = 0.0;
 		a0.z = 0.0;
 
-		if(Ne > 0) accEnc(x4_s[idy], x4_s[j0], a0, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass);
-		if(Ne > 1) accEnc(x4_s[idy], x4_s[j1], a0, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass);
+		if(Ne > 0) accEnc(x4_s[idy], x4_s[j0], a0, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass, UseTestParticles);
+		if(Ne > 1) accEnc(x4_s[idy], x4_s[j1], a0, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass, UseTestParticles);
 		for(int i = 2; i < Ne; ++i){
 			volatile int jg = Encpairs_d[idi * NencMax + i].x;
 			volatile int j = Encpairs_d[NT + jg].y;
-			accEnc(x4_s[idy], x4_s[j], a0, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass);
+			accEnc(x4_s[idy], x4_s[j], a0, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass, UseTestParticles);
 		}
 		__syncthreads();
 		if(Ne >= 0){
@@ -159,12 +159,12 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				a.y = 0.0;
 				a.z = 0.0;
 
-				if(Ne > 0) accEnc(xp_s[idy], xp_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass);
-				if(Ne > 1) accEnc(xp_s[idy], xp_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass);
+				if(Ne > 0) accEnc(xp_s[idy], xp_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass, UseTestParticles);
+				if(Ne > 1) accEnc(xp_s[idy], xp_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass, UseTestParticles);
 				for(int i = 2; i < Ne; ++i){
 					volatile int jg = Encpairs_d[idi * NencMax + i].x;
 					volatile int j = Encpairs_d[NT + jg].y;
-					accEnc(xp_s[idy], xp_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass);
+					accEnc(xp_s[idy], xp_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass, UseTestParticles);
 				}
 				__syncthreads();
 				if(Ne >= 0){
@@ -188,12 +188,12 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					a.y = 0.0;
 					a.z = 0.0;
 
-					if(Ne > 0) accEnc(xt_s[idy], xt_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass);
-					if(Ne > 1) accEnc(xt_s[idy], xt_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass);
+					if(Ne > 0) accEnc(xt_s[idy], xt_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass, UseTestParticles);
+					if(Ne > 1) accEnc(xt_s[idy], xt_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass, UseTestParticles);
 					for(int i = 2; i < Ne; ++i){
 						volatile int jg = Encpairs_d[idi * NencMax + i].x;
 						volatile int j = Encpairs_d[NT + jg].y;
-						accEnc(xt_s[idy], xt_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass);
+						accEnc(xt_s[idy], xt_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass, UseTestParticles);
 					}
 					__syncthreads();
 					if(Ne >= 0){
@@ -213,12 +213,12 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					a.y = 0.0;
 					a.z = 0.0;
 
-					if(Ne > 0) accEnc(xp_s[idy], xp_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass);
-					if(Ne > 1) accEnc(xp_s[idy], xp_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass);	
+					if(Ne > 0) accEnc(xp_s[idy], xp_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass, UseTestParticles);
+					if(Ne > 1) accEnc(xp_s[idy], xp_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass, UseTestParticles);	
 					for(int i = 2; i < Ne; ++i){
 						volatile int jg = Encpairs_d[idi * NencMax + i].x;
 						volatile int j = Encpairs_d[NT + jg].y;
-						accEnc(xp_s[idy], xp_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass);
+						accEnc(xp_s[idy], xp_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass, UseTestParticles);
 					}
 					__syncthreads();
 					if(Ne >= 0){
@@ -238,12 +238,12 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 				a.y = 0.0;
 				a.z = 0.0;
 
-				if(Ne > 0) accEnc(xt_s[idy], xt_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass);
-				if(Ne > 1) accEnc(xt_s[idy], xt_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass);
+				if(Ne > 0) accEnc(xt_s[idy], xt_s[j0], a, rcritv_s[idy], rcritv_s[j0], test, idy, j0, MinMass, UseTestParticles);
+				if(Ne > 1) accEnc(xt_s[idy], xt_s[j1], a, rcritv_s[idy], rcritv_s[j1], test, idy, j1, MinMass, UseTestParticles);
 				for(int i = 2; i < Ne; ++i){
 					volatile int jg = Encpairs_d[idi * NencMax + i].x;
 					volatile int j = Encpairs_d[NT + jg].y;
-					accEnc(xt_s[idy], xt_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass);
+					accEnc(xt_s[idy], xt_s[j], a, rcritv_s[idy], rcritv_s[j], test, idy, j, MinMass, UseTestParticles);
 				}
 				__syncthreads();
 				if(Ne >= 0){
@@ -508,7 +508,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 						volatile int j = Encpairs_d[NT + jg].y;
 						double rcrit = v4_s[idy].w + v4_s[j].w;
 						if(Encpairs2_d[start + idy].x > Encpairs2_d[start + j].x){
-							delta = encounter1(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], rcrit, dt1 * dtgr, idy, j, enct, colt);
+							delta = encounter1(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], rcrit, dt1 * dtgr, idy, j, enct, colt, MinMass);
 						}
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
@@ -661,7 +661,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, int noColl){
+__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -737,7 +737,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
 						double test;
 //if(tt == 0 && ff == 0 && n == 1) printf("BS2 %d %d %d %d %d %d %d %d | %d %d %d %.40g %g %g\n", idx, idy, st, idi, index_d[idi], j, N2, Ne, tt, ff, n, xold_d[idi].x, t, dt1);
-						accEnc(xold_d[idi], xold_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
+						accEnc(xold_d[idi], xold_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass, UseTestParticles);
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
@@ -774,7 +774,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					for(int ii = 0; ii < Ne; ++ii){
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
 						double test;
-						accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
+						accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass, UseTestParticles);
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
@@ -815,7 +815,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						for(int ii = 0; ii < Ne; ++ii){
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
 							double test;
-							accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
+							accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass, UseTestParticles);
 						}
 						if(Ne >= 0){
 							volatile double dtgr;
@@ -850,7 +850,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 						for(int ii = 0; ii < Ne; ++ii){
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
 							double test;
-							accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
+							accEnc(xp_d[idi], xp_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass, UseTestParticles);
 						}
 						if(Ne >= 0){
 							volatile double dtgr;
@@ -886,7 +886,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					for(int ii = 0; ii < Ne; ++ii){
 						volatile int j = Encpairs_d[idi * NencMax + ii].x;
 						double test;
-						accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass);
+						accEnc(xt_d[idi], xt_d[j], a, rcritv_d[idi], rcritv_d[j], test, idi, j, MinMass, UseTestParticles);
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
@@ -1030,7 +1030,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 							volatile int j = Encpairs_d[idi * NencMax + ii].x;
 							double rcrit = vold_d[idi].w + vold_d[j].w;
 							if(idi > j){
-								delta = encounter1(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], rcrit, dt1 * dtgr, idi, j, enct, colt);
+								delta = encounter1(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], rcrit, dt1 * dtgr, idi, j, enct, colt, MinMass);
 							}
 
 							if(delta < rcrit*rcrit){
@@ -1178,7 +1178,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 
 
 template <int E>
-__global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double4 *vA_d, double4 *xB_d, double4 *vB_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, double *dtgr_d, const double Msun, const int st, const int NT, const int NencMax, int *BSAstop_d,double *Coltime_d, const int n, const double MinMass, const double dt, int noColl){
+__global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double4 *vA_d, double4 *xB_d, double4 *vB_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt1_d, double *dtgr_d, const double Msun, const int st, const int NT, const int NencMax, int *BSAstop_d,double *Coltime_d, const int n, const double MinMass, const int UseTestParticles, const double dt, int noColl){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int idx = blockIdx.y;
@@ -1213,7 +1213,7 @@ __global__ void BSAcc_kernel(double4 *x4_d, double4 *v4_d, double4 *xA_d, double
 				double4 xAj = xA_d[j];
 				double rcritvj = rcritv_d[j];
 
-				accEnc(xAi, xAj, a, rcritvi, rcritvj, test, idi, j, MinMass);		
+				accEnc(xAi, xAj, a, rcritvi, rcritvj, test, idi, j, MinMass, UseTestParticles);		
 		
 			}	
 			accEncSun(xAi, a, def_ksq * Msun * dtgr);
@@ -1412,7 +1412,7 @@ __global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, dou
 }
 
 
-__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, int noColl){
+__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, int noColl){
 
 	int idx = blockIdx.y;	
 
@@ -1452,7 +1452,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 						volatile int j = Encpairs_d[idi * NencMax + i].x;
 						double rcrit = vold_d[idi].w + vold_d[j].w;
 						if(idi > j){
-							delta = encounter1(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], rcrit, dt1 * dtgr, idi, j, enct, colt);
+							delta = encounter1(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], rcrit, dt1 * dtgr, idi, j, enct, colt, MinMass);
 						}
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
@@ -1642,16 +1642,16 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 			if(BSAstop_h[0] == 1) break; 
 			if(BSAstop_h[0] == 3) break;
 			if(Ncoll_m[0] >= def_MaxColl) break; 
-			BSAcc_kernel < 0 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
-			BSAcc_kernel < 1 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+			BSAcc_kernel < 0 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
+			BSAcc_kernel < 1 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			for(int m = 2; m <= n; ++m){
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
+				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			}
-			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			BSError_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, st, N_h[0], n, f);
 			BSAccept_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, dt1_d, st, N_h[0], n);
-			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N_h[0], n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, noColl);
+			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N_h[0], n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, P.MinMass, P.UseTestParticles, noColl);
 			cudaMemcpy(BSAstop_h, BSAstop_d, sizeof(int), cudaMemcpyDeviceToHost);
 			if(BSAstop_h[0] == 1) break;
 			if(BSAstop_h[0] == 2) break;
@@ -1674,16 +1674,16 @@ __host__ void Data::BSAsmallCall(const int st, const int b, const int Nm, const 
 			if(BSAstop_h[0] == 1) break; 
 			if(BSAstop_h[0] == 3) break;
 			if(Ncoll_m[0] >= def_MaxColl) break; 
-			BSAcc_kernel < 0 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
-			BSAcc_kernel < 1 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+			BSAcc_kernel < 0 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
+			BSAcc_kernel < 1 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			for(int m = 2; m <= n; ++m){
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
+				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			}
-			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, dt_h[0], noColl);
+			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N_h[0] + Nsmall_h[0], P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
 			BSError_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, st, N_h[0] + Nsmall_h[0], n, f);
 			BSAccept_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, dt1_d, st, N_h[0] + Nsmall_h[0], n);
-			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N_h[0] + Nsmall_h[0], n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, noColl);
+			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N_h[0] + Nsmall_h[0], n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, P.WriteEncounters, P.WriteEncountersRadius, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, P.MinMass, P.UseTestParticles, noColl);
 			cudaMemcpy(BSAstop_h, BSAstop_d, sizeof(int), cudaMemcpyDeviceToHost);
 			if(BSAstop_h[0] == 1) break; 
 			if(BSAstop_h[0] == 2) break; 
@@ -1695,31 +1695,3 @@ __host__ void Data::BSAsmallCall(const int st, const int b, const int Nm, const 
 	}
 }
 
-
-/*
-__global__ void BSACall_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xp_d, double4 *vp_d,double4 *xt_d, double4 *vt_d, double3 *dx_d, double3 *dv_d, double *rcritv_d, int2 *Encpairs_d, double *dt1_d, double *t1_d, int *BSAstop_d, double dt, double Msun, int NB, int N){
-
-	int Nt = 32;
-	int Nb = (N + Nt - 1) / Nt;
-
-	BSA_setdt_kernel <<< Nb, Nt >>> (dt1_d, t1_d, dt, N);
-	for(int f = 0; f < 100000; ++f){
-//printf("f %d\n", f);
-		for(int n = 1; n <= 8; ++n){
-			BSAcc_kernel < 0 > <<< Nb, Nt >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);
-			BSAcc_kernel < 1 > <<< Nb, Nt >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);
-			for(int m = 2; m <= n; ++m){
-				BSAcc_kernel < 2 > <<< Nb, Nt >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);
-				BSAcc_kernel < 2 > <<< Nb, Nt >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);
-			}
-			BSAcc_kernel < 3 > <<< Nt, Nb >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, dt1_d, dtgr_d, Msun, N, NB, BSAstop_d, Coltime_d, n, P.MinMass, dt);
-			BSError_kernel <<< dim3(Nt, 6, 1), dim3(Nb, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, dx_d, dv_d, Encpairs_d, N, NB, n);
-			BSAccept_kernel <<< Nt, Nb >>> (xt_d, vt_d, dx_d, dv_d, Encpairs_d, dt1_d, N, NB, n);
-			BSUpdate_kernel <<< Nt, Nb >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, Encpairs_d, BSAstop_d, dt1_d, t1_d, dt, N, NB, n);
-			cudaDeviceSynchronize();
-			if(BSAstop_d[0] == 1) break; 
-		}
-		if(BSAstop_d[0] == 1) break; 
-	}
-}
-*/

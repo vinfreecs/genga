@@ -91,7 +91,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
 
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.
  * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies; 2: Small bodies only affect large bodies.
- * Particle minimum Mass:  Minimal Mass for massive particles in Test particle mode, lighter particles are treated as test particles.
+ * Particle minimum Mass:  Minimal Mass for massive particles in test particle mode, lighter or equal sized particles are treated as test particles.
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
  * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
@@ -434,7 +434,7 @@ The parameters for the gas disc can be set in:
 
 # Test particle mode
 The test particle mode can be used to speed up simulations with lots of small particles.
-Particles are considered as test particles, when the mass of the particle is smaller or equal than the value of the def_MinMass argument.
+Particles are considered as test particles, when the mass of the particle is smaller or equal than the value of the 'Particle minimum Mass' argument.
 
  * Test Particle mode = 1: The test particles don't interact with other test particles or massive bodies. They feel the gravitational potential of the massive bodies.
  * Test Particle mode = 2: The test particles don't interact with other test particles. They feel the gravitational potential of the massive bodies and vice versa.

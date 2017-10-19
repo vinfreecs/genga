@@ -788,7 +788,7 @@ __host__ int Data::readic(int st){
 			}
 			MaxIndex = max(MaxIndex, index);
 			int NBSN = NBS;
-			if(x.w >= 0.0 && x.w < P.MinMass && P.UseTestParticles > 0) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+			if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
 			else NBSN -= iismall;
 
 			x4_h[ii + NBSN] = x;
@@ -808,7 +808,7 @@ __host__ int Data::readic(int st){
 			elementsSA_h[st] = elementsSA * pow(sqrt(2.0), iT);
 #endif
 			++ii;
-			if(x.w >= 0 && x.w < P.MinMass && P.UseTestParticles > 0) ++iismall;
+			if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
 		}
 	}
 	else{

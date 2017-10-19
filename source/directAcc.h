@@ -8,8 +8,14 @@
 //March 2014
 //
 // ****************************************
-__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double MinMass){
-	if(x4i.w >= 0.0 && x4j.w >= MinMass && i != j){
+__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double MinMass, int UseTestParticles){
+
+	int c = 0;
+	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
+	if(UseTestParticles == 1 && x4i.w >= 0.0 && x4j.w > MinMass) c = 1;
+	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
+
+	if(c == 1 && i != j){
 
 		double3 r3;
 		double rsq;
@@ -51,8 +57,14 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 //Authors: Simon Grimm
 //December 2016
 // ****************************************
-__device__ void accEncFull(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double MinMass){
-	if(x4i.w >= 0.0 && x4j.w >= MinMass && i != j){
+__device__ void accEncFull(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double MinMass, int UseTestParticles){
+
+	int c = 0;
+	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
+	if(UseTestParticles == 1 && x4i.w >= 0.0 && x4j.w > MinMass) c = 1;
+	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
+
+	if(c == 1 && i != j){
 
 		double3 r3;
 		double rsq;
@@ -82,8 +94,14 @@ __device__ void accEncFull(double4 x4i, double4 x4j, double3 &ac, double &test, 
 //March 2014
 //
 // ****************************************
-__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K, double MinMass){
-	if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
+__device__ inline void accEncG3(double4 x4i, double4 x4j, double3 &ac, double &test, int i, int j, double time, double K, double MinMass, int UseTestParticles){
+
+	int c = 0;
+	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
+	if(UseTestParticles == 1 && x4i.w >= 0.0 && x4j.w > MinMass) c = 1;
+	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
+
+	if(c == 1 && i != j){
 
 		double3 r3;
 		double rsq;
@@ -140,8 +158,14 @@ __device__ void accEncSun(double4 x4i, double3 &ac, const double ksqMsun){
 //March 2014
 //
 // **************************************************
-__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int NB, double MinMass){
-        if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
+__device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int NB, double MinMass, int UseTestParticles){
+
+	int c = 0;
+	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
+	if(UseTestParticles == 1 && x4i.w >= 0.0 && x4j.w > MinMass) c = 1;
+	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
+
+	if(c == 1 && i != j){
 
                 double3 r3;
                 double rsq;
@@ -176,8 +200,14 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 //*************************************************
-__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int E, double MinMass){
-        if(x4i.w >= 0.0 && x4j.w > MinMass && i != j){
+__device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, double K, double Kold, double &test, int i, int j, double time, int E, double MinMass, int UseTestParticles){
+	
+	int c = 0;
+	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
+	if(UseTestParticles == 1 && x4i.w >= 0.0 && x4j.w > MinMass) c = 1;
+	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
+
+	if(c == 1 && i != j){
                 double3 r3;
                 double rsq;
                 double ir, ir3;

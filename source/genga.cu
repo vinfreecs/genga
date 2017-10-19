@@ -159,7 +159,6 @@ int main(int argc, char*argv[]){
 		NminFlag = 0;
 	}
 
-	if(D.P.UseTestParticles == 2) D.P.MinMass = 0.0;
 	cudaDeviceSynchronize();
 	error = cudaGetLastError();
 	if(error != 0){
