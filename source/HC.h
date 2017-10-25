@@ -40,13 +40,13 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 			double m = x4_d[idy + i].w;
 			if(m > 0.0){
 				if(idx == 0){
-					a1_s[idy] += m * v4_d[idy + i].x;
+					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].x);
 				}
 				if(idx == 1){
-					a1_s[idy] += m * v4_d[idy + i].y;
+					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].y);
 				}
 				if(idx == 2){
-					a1_s[idy] += m * v4_d[idy + i].z;
+					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].z);
 				}
 			}
 		}

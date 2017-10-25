@@ -7,16 +7,16 @@
 // ****************************************
 __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i){
 	if( i != j && x4i.w >= 0.0 && x4j.w > 0.0){
-		double rsq, ir, ir3, s;
+		volatile double rsq, ir, ir3, s;
 		double3 r3ij;
 		double rcritv, rcritv2;
-		double y, yy;
+		volatile double y, yy;
 
 		r3ij.x = x4j.x - x4i.x;
 		r3ij.y = x4j.y - x4i.y;
 		r3ij.z = x4j.z - x4i.z;
 
-		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 		rcritv = fmax(rcritvi, rcritvj);
 		rcritv2 = rcritv * rcritv;
 
@@ -25,15 +25,18 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
+//if(i == 13723) printf("acc %d %d %.40g %.40g %.40g %.40g %.40g\n", i, j, rsq, ac.z, 0.0, s, x4j.w);
 		}
 		else{
 			if(rsq <= 0.01 * rcritv2){
 				s = 0.0;
+//if(i == 13723) printf("acc %d %d %.40g %.40g %.40g %.40g %.40g\n", i, j, rsq, ac.z, 0.0, s, x4j.w);
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
-				s = ir3 * yy / (2.0*yy - 2.0*y + 1.0) * x4j.w;
+				s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
+//if(i == 13723) printf("acc %d %d %.40g %.40g %.40g %.40g %.40g\n", i, j, rsq, ac.z, y, s, x4j.w);
 			}
 		}
 		ac.x += __dmul_rn(r3ij.x, s);
@@ -61,17 +64,17 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 template < int E >
 __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int *NencpairsI, int2 *Encpairs2_d, int j, int i, int NencMax, double &test){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
-		double rsq, ir, ir3, s, sb;
+		volatile double rsq, ir, ir3, s, sb;
 		double3 r3ij;
 		double rcritv, rcritv2;
 //		double rcrit, rcrit2;
-		double y, yy;
+		volatile double y, yy;
 
 		r3ij.x = x4j.x - x4i.x;
 		r3ij.y = x4j.y - x4i.y;
 		r3ij.z = x4j.z - x4i.z;
 
-		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 //		rcrit = fmax(rcriti, rcritj);
 		rcritv = fmax(rcritvi, rcritvj);
 
@@ -109,7 +112,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
-				s = ir3 * yy / (2.0*yy - 2.0*y + 1.0) * x4j.w;
+				s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
 //if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
 
 			}
@@ -523,7 +526,7 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 			for(int i = 0; i < NI - 1; ++i){
 				int jj = Encpairs2_d[id * NencMax + i].y;
 				int jjnext = Encpairs2_d[id * NencMax + i + 1].y;
-
+//if(id == 13723) printf("sort %d %d %d %d\n", id, NI, jj, jjnext);
 				if(jjnext < jj){
 					//swap
 					Encpairs2_d[id * NencMax + i].y = jjnext;
@@ -569,7 +572,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			for(int i = 0; i < NI; ++i){
 				int jj = Encpairs2_d[id * NencMax + i].y;
 				double4 x4j = x4_d[jj];
-	//printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, v4_d[jj].z);
+//if(id == 13723)	printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
 				double rcritvj = rcritv_d[jj];
 				accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
 			}
@@ -585,7 +588,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			v4_d[id].y += aa.y;
 			v4_d[id].z += aa.z;
 		}
-//if(id == 25) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
+//if(id == 13723) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
 	}
 }
 // **************************************

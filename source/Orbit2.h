@@ -223,7 +223,6 @@ public:
 	__host__ void BSBMCall(int, int);
 
 	__host__ void BSACall(int, int, int, int, double, double, int);
-	__host__ void BSAsmallCall(int, int, int, int, double, double, int);
 
 	//gas
 	__host__ void GasAlloc();

@@ -12,7 +12,7 @@
 //November 2016
 //****************************************
 __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int NconstT, int nn){
-	double rsq, ir, ir3, s;
+	volatile double rsq, ir, ir3, s;
 	double3 r3ij;
 	double rcritv;
 
@@ -23,7 +23,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	r3ij.y = x4j.y - x4i.y;
 	r3ij.z = x4j.z - x4i.z;
 
-	rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+	rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 	rcritv = fmax(rcritvi, rcritvj);
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 	long long int clij = (long long int)(NconstT) * (long long int)(i - nn) + j;
@@ -33,7 +33,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	ir = 1.0/sqrt(rsq);
 	ir3 = ir*ir*ir;
 
-	s = x4j.w * ir3 * (!cl) * bm * (i != j);
+	s = (x4j.w * ir3) * (!cl) * bm * (i != j);
 
 	ac.x += __dmul_rn(r3ij.x, s);
 	ac.y += __dmul_rn(r3ij.y, s);

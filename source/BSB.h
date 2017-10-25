@@ -201,14 +201,14 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 				dt22 = dt2 * 2.0;
 
 				if(idy < NN){
-					xp_s[idy].x = x4_s[idy].x + dt2 * dtgr * v4_s[idy].x;
-					xp_s[idy].y = x4_s[idy].y + dt2 * dtgr * v4_s[idy].y;
-					xp_s[idy].z = x4_s[idy].z + dt2 * dtgr * v4_s[idy].z;
+					xp_s[idy].x = x4_s[idy].x + (dt2 * dtgr * v4_s[idy].x);
+					xp_s[idy].y = x4_s[idy].y + (dt2 * dtgr * v4_s[idy].y);
+					xp_s[idy].z = x4_s[idy].z + (dt2 * dtgr * v4_s[idy].z);
 					xp_s[idy].w = x4_s[idy].w;
 
-					vp_s[idy].x = v4_s[idy].x + dt2 * a0_s[idy * nb].x;  
-					vp_s[idy].y = v4_s[idy].y + dt2 * a0_s[idy * nb].y;  
-					vp_s[idy].z = v4_s[idy].z + dt2 * a0_s[idy * nb].z; 
+					vp_s[idy].x = v4_s[idy].x + (dt2 * a0_s[idy * nb].x);  
+					vp_s[idy].y = v4_s[idy].y + (dt2 * a0_s[idy * nb].y);  
+					vp_s[idy].z = v4_s[idy].z + (dt2 * a0_s[idy * nb].z); 
 					vp_s[idy].w = v4_s[idy].w;
 				}
 
@@ -247,14 +247,14 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 				__syncthreads();
 				if(idy < NN){
 					accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
-					xt_s[idy].x = x4_s[idy].x + dt22 * dtgr * vp_s[idy].x;
-					xt_s[idy].y = x4_s[idy].y + dt22 * dtgr * vp_s[idy].y;
-					xt_s[idy].z = x4_s[idy].z + dt22 * dtgr * vp_s[idy].z;
+					xt_s[idy].x = x4_s[idy].x + (dt22 * dtgr * vp_s[idy].x);
+					xt_s[idy].y = x4_s[idy].y + (dt22 * dtgr * vp_s[idy].y);
+					xt_s[idy].z = x4_s[idy].z + (dt22 * dtgr * vp_s[idy].z);
 					xt_s[idy].w = x4_s[idy].w;
 
-					vt_s[idy].x = v4_s[idy].x + dt22 * a_s[idy * nb].x;
-					vt_s[idy].y = v4_s[idy].y + dt22 * a_s[idy * nb].y;
-					vt_s[idy].z = v4_s[idy].z + dt22 * a_s[idy * nb].z;
+					vt_s[idy].x = v4_s[idy].x + (dt22 * a_s[idy * nb].x);
+					vt_s[idy].y = v4_s[idy].y + (dt22 * a_s[idy * nb].y);
+					vt_s[idy].z = v4_s[idy].z + (dt22 * a_s[idy * nb].z);
 					vt_s[idy].w = v4_s[idy].w;
 				}
 				__syncthreads();
@@ -296,13 +296,13 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(idy < N2){
 						accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
-						xp_s[idy].x += dt22 * dtgr * vt_s[idy].x;
-						xp_s[idy].y += dt22 * dtgr * vt_s[idy].y;
-						xp_s[idy].z += dt22 * dtgr * vt_s[idy].z;
+						xp_s[idy].x += (dt22 * dtgr * vt_s[idy].x);
+						xp_s[idy].y += (dt22 * dtgr * vt_s[idy].y);
+						xp_s[idy].z += (dt22 * dtgr * vt_s[idy].z);
 
-						vp_s[idy].x += dt22 * a_s[idy * nb].x;
-						vp_s[idy].y += dt22 * a_s[idy * nb].y;
-						vp_s[idy].z += dt22 * a_s[idy * nb].z;
+						vp_s[idy].x += (dt22 * a_s[idy * nb].x);
+						vp_s[idy].y += (dt22 * a_s[idy * nb].y);
+						vp_s[idy].z += (dt22 * a_s[idy * nb].z);
 					}
 					__syncthreads();
 					a_s[idy].x = 0.0;
@@ -341,13 +341,13 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(idy < N2){
 						accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
 
-						xt_s[idy].x += dt22 * dtgr * vp_s[idy].x;
-						xt_s[idy].y += dt22 * dtgr * vp_s[idy].y;
-						xt_s[idy].z += dt22 * dtgr * vp_s[idy].z;
+						xt_s[idy].x += (dt22 * dtgr * vp_s[idy].x);
+						xt_s[idy].y += (dt22 * dtgr * vp_s[idy].y);
+						xt_s[idy].z += (dt22 * dtgr * vp_s[idy].z);
 
-						vt_s[idy].x += dt22 * a_s[idy * nb].x;
-						vt_s[idy].y += dt22 * a_s[idy * nb].y;
-						vt_s[idy].z += dt22 * a_s[idy * nb].z;
+						vt_s[idy].x += (dt22 * a_s[idy * nb].x);
+						vt_s[idy].y += (dt22 * a_s[idy * nb].y);
+						vt_s[idy].z += (dt22 * a_s[idy * nb].z);
 					}
 					__syncthreads();
 				}//end of m loop
@@ -394,6 +394,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy * nb].x)));
 					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy * nb].y)));
 					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy * nb].z)));	
+//printf("dx %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, dx_s[idy][n-1].x, dx_s[idy][n-1].y, dx_s[idy][n-1].z, dv_s[idy][n-1].x, dv_s[idy][n-1].y, dv_s[idy][n-1].z);
 				}
 				
 				if(idy < N2){
@@ -404,13 +405,13 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						double t1 = t0 * 0.25 / ((j+1)*(j+1));
 						double t2 = t0 * ddt0;
 						
-						dx_s[idy][j-1].x = t1 * dx_s[idy][j].x - t2 * dx_s[idy][j-1].x;	
-						dx_s[idy][j-1].y = t1 * dx_s[idy][j].y - t2 * dx_s[idy][j-1].y;
-						dx_s[idy][j-1].z = t1 * dx_s[idy][j].z - t2 * dx_s[idy][j-1].z;
+						dx_s[idy][j-1].x = (t1 * dx_s[idy][j].x) - (t2 * dx_s[idy][j-1].x);	
+						dx_s[idy][j-1].y = (t1 * dx_s[idy][j].y) - (t2 * dx_s[idy][j-1].y);
+						dx_s[idy][j-1].z = (t1 * dx_s[idy][j].z) - (t2 * dx_s[idy][j-1].z);
 
-						dv_s[idy][j-1].x = t1 * dv_s[idy][j].x - t2 * dv_s[idy][j-1].x;
-						dv_s[idy][j-1].y = t1 * dv_s[idy][j].y - t2 * dv_s[idy][j-1].y;
-						dv_s[idy][j-1].z = t1 * dv_s[idy][j].z - t2 * dv_s[idy][j-1].z;
+						dv_s[idy][j-1].x = (t1 * dv_s[idy][j].x) - (t2 * dv_s[idy][j-1].x);
+						dv_s[idy][j-1].y = (t1 * dv_s[idy][j].y) - (t2 * dv_s[idy][j-1].y);
+						dv_s[idy][j-1].z = (t1 * dv_s[idy][j].z) - (t2 * dv_s[idy][j-1].z);
 					}
 					double errorx = dx_s[idy][0].x * dx_s[idy][0].x * scalex.x;
 					double errorv = dv_s[idy][0].x * dv_s[idy][0].x * scalev.x;
@@ -457,6 +458,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							vt_s[idy].y += dv_s[idy][j].y;
 							vt_s[idy].z += dv_s[idy][j].z;
 						}
+//printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt_s[idy].x, vt_s[idy].y, vt_s[idy].z);
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
@@ -575,7 +577,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 						if(idy < N2){
 							x4_s[idy] = xt_s[idy];
 							v4_s[idy] = vt_s[idy];
-//if(idi == 0 || idi == 1) printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g %g %g %d %d %d\n", idy, idx, index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, x4_s[idy].w, v4_s[idy].w, rcritv_s[idy], t / dayUnit, dt1 / dayUnit, tt, ff, n);
+//printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g %g %g %d %d %d\n", idy, idx, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, x4_s[idy].w, v4_s[idy].w, rcritv_s[idy], t / dayUnit, dt1 / dayUnit, tt, ff, n);
 						}
 					}
 					else{
