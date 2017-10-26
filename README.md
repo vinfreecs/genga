@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.70: Genga supports now up to 131072 bodies in the massive body integration mode.
  * Version 3.61: MinMass moved to param.dat file.
  * Version 3.60: Ctrl-C signal is recognized to write the current output and stop the simulation.
  * Version 3.60: Restart time step -1 is introduced, to continue at the last output.

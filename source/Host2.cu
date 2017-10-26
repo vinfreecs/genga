@@ -2239,7 +2239,8 @@ __host__ void Host::Tsizes(){
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
 		NB2T = (long long int)(NconstT) * (long long int)(NconstT);
-		if(P.UseTestParticles > 0){
+		//if(P.UseTestParticles > 0){
+		if(N_h[0] > 2048){
 			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NconstT);
 		}
 		NBNencT = NconstT * P.NencMax;

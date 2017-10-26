@@ -647,7 +647,7 @@ __host__ void Data::firstKick_128(){
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< 4, 32 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
 	acc128b_kernel < 128 > <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 128, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_256(){
@@ -656,7 +656,7 @@ __host__ void Data::firstKick_256(){
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< 8, 32 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
 	acc256b_kernel < 128 > <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 256, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_512(){
@@ -665,7 +665,7 @@ __host__ void Data::firstKick_512(){
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< 16, 32 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_1024(){
@@ -674,7 +674,7 @@ __host__ void Data::firstKick_1024(){
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< 32, 32 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_2048(){
@@ -683,7 +683,7 @@ __host__ void Data::firstKick_2048(){
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< 32, 64 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_largeN(){
@@ -691,8 +691,21 @@ __host__ void Data::firstKick_largeN(){
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	Rcrit_kernel <<< (NB[0] + 63) / 64, 64 >>> (x4_d, v4_d, x4b_d, v4b_d, x4G3_d, v4G3_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], EjectionFlag_d, N_h[0], 0);
-	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	if(N_h[0] <= 32768){
+		acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
+		EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
+	}
+	else{
+		for(int nn = 0; nn < N_h[0]; nn += def_MatrixMaxSize){
+			int ntx = min(256, ((N_h[0] + 31) / 32) * 32); 
+			int nty = 512 / ntx;
+			int N1 = min(N_h[0] - nn, def_MatrixMaxSize);
+			int nby = (N1 + nty - 1)/ nty;
+		
+			accsmall_kernel < 512, 1 > <<< dim3(1, nby , 1), dim3(ntx, nty, 1) >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, N1, N_h[0], nn, NconstT, P.NencMax, time_h[0]);
+			EncMatrix_kernel <<< dim3(N1, 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N1, nn, EncFlag_d);
+		}
+	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_small(){
@@ -1412,7 +1425,7 @@ __host__ int Data::step_128(){
 		HC128b_kernel < 128, 2 > <<< 3, 128 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
 			acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 128, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1434,7 +1447,7 @@ __host__ int Data::step_128(){
 		}
 	}
 	acc128b_kernel<128> <<< N2[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, test_d, N_h[0], N2[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(128, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 128, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<4, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1516,7 +1529,7 @@ __host__ int Data::step_256(){
 		HC128b_kernel < 256, 2 > <<< 3, 256 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
 			acc256b_kernel < 128 > <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 256, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1538,7 +1551,7 @@ __host__ int Data::step_256(){
 		}
 	}
 	acc256b_kernel < 128 > <<< N4[0] , 128 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(256, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 256, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<8, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1618,7 +1631,7 @@ __host__ int Data::step_512(){
 		HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1640,7 +1653,7 @@ __host__ int Data::step_512(){
 	}
 
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<16, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1718,7 +1731,7 @@ __host__ int Data::step_1024(){
 		HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0,EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1738,7 +1751,7 @@ __host__ int Data::step_1024(){
 		}
 	}
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1816,7 +1829,7 @@ __host__ int Data::step_2048(){
 		HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
 			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<<64, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1836,7 +1849,7 @@ __host__ int Data::step_2048(){
 		}
 	}
 	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+	EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
 	//ForceDriver(x4_d, rcritv_d, a_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, NconstT[0], NB[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
@@ -1916,8 +1929,21 @@ __host__ int Data::step_largeN(){
 
 		HC128b_kernel < 512, 2 > <<< 3, 512 >>> (x4_d, v4_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Nencpairs_d, Nencpairs2_d, Nenc_d, N_h[0], time_h[0], P.UseForce);
 		if(si < SIn - 1){
-			acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-			EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
+			if(N_h[0] <= 32768){
+				acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
+				EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
+			}
+			else{
+				for(int nn = 0; nn < N_h[0]; nn += def_MatrixMaxSize){
+					int ntx = min(256, ((N_h[0] + 31) / 32) * 32); 
+					int nty = 512 / ntx;
+					int N1 = min(N_h[0] - nn, def_MatrixMaxSize);
+					int nby = (N1 + nty - 1)/ nty;
+				
+					accsmall_kernel < 512, 1 > <<< dim3(1, nby , 1), dim3(ntx, nty, 1) >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, N1, N_h[0], nn, NconstT, P.NencMax, time_h[0]);
+					EncMatrix_kernel <<< dim3(N1, 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N1, nn, EncFlag_d);
+				}
+			}
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<< (NB[0] + 31) / 32, 32 >>>(Encpairs2_d, N_h[0], P.NencMax);
@@ -1938,10 +1964,21 @@ __host__ int Data::step_largeN(){
 			}
 		}
 	}
-
-	acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
-	EncMatrix_kernel <<< dim3(1, N_h[0], 1), dim3(512, 1, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], EncFlag_d);
-
+	if(N_h[0] <= 32768){
+		acc4b_kernel < 256 > <<< N4[0] , 256 >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, N4[0], Encpairsb_d, Encpairs2_d, test_d, N_h[0], NconstT, P.NencMax, time_h[0]);
+		EncMatrix_kernel <<< dim3(N_h[0], 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N_h[0], 0, EncFlag_d);
+	}
+	else{
+		for(int nn = 0; nn < N_h[0]; nn += def_MatrixMaxSize){
+			int ntx = min(256, ((N_h[0] + 31) / 32) * 32); 
+			int nty = 512 / ntx;
+			int N1 = min(N_h[0] - nn, def_MatrixMaxSize);
+			int nby = (N1 + nty - 1)/ nty;
+		
+			accsmall_kernel < 512, 1 > <<< dim3(1, nby , 1), dim3(ntx, nty, 1) >>> (x4_d, v4_d, a_d, rcrit_d, rcritv_d, groupIndex_d, Encpairsb_d, Encpairs2_d, N1, N_h[0], nn, NconstT, P.NencMax, time_h[0]);
+			EncMatrix_kernel <<< dim3(N1, 1, 1), dim3(1, 512, 1) >>> (Encpairsb_d, Encpairs_d, Encpairs2_d, Nencpairs_d, NconstT, P.NencMax, N_h[0], N1, nn, EncFlag_d);
+		}
+	}
 	//ForceDriver(x4_d, rcritv_d, a_d, Nencpairs_d, Encpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, NconstT[0], NB[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #if SERIAL_GROUPING == 1

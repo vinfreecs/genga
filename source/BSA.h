@@ -1596,7 +1596,6 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 					}
 					if(sgnt * t1 >= sgnt * dt){
 						//BS step finished
-//* */						Encpairs_d[idi].y = -1;
 						x4_d[idi] = xt_d[idi];
 						v4_d[idi] = vt_d[idi];
 						Encpairs_d[idi].y = -1;

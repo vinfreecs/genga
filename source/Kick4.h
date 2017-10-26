@@ -27,7 +27,8 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 	rcritv = fmax(rcritvi, rcritvj);
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 	long long int clij = (long long int)(NconstT) * (long long int)(i - nn) + j;
-//if (cl && i - nn  == 319) printf("cl %d %d %d %d %lld %g %g %g %g\n", nn, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
+//if (cl && i == 319) printf("cl %d %d %d %d %d %lld %g %g %g %g\n", nn, i, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
+//if (cl && i != j) printf("cl %d %d %d %d %d %lld %g %g %g %g\n", nn, i, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
 	Encpairsb_d[clij] = cl;
 
 	ir = 1.0/sqrt(rsq);
@@ -685,26 +686,27 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 //Author: Simon Grimm
 //November 2016
 //********************************************************
-__global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int NconstT, int NencMax, int Nx, int Ny, int *EncFlag_d){
+__global__ void EncMatrix_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int NconstT, int NencMax, int Nx, int Ny, int nn, int *EncFlag_d){
 
-	int j = threadIdx.x;
-	int i = blockIdx.y * blockDim.y + threadIdx.y;
+	int j = threadIdx.y;
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int ii = i + nn;
 
-	for(int jj = 0; jj < Nx; jj += blockDim.x){ 
+	for(int jj = 0; jj < Nx; jj += blockDim.y){ 
 		if(i < Ny && j + jj < Nx){
 			long long int clij = (long long int)(NconstT) * (long long int)(i) + (long long int)(jj + j);
 			bool cl = Encpairsb_d[clij];
 			if(cl){
-				if(i != jj + j){
-					int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-//printf("enc %d %d %lld %d\n", i, jj + j, clij, Ni);
+				if(ii != jj + j){
+					int Ni = atomicAdd(&Encpairs2_d[ii * NencMax].x, 1);
+//printf("enc1 %d %d %d\n", ii, jj + j, Ni);
 					if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
 
-					Encpairs2_d[NencMax * i + Ni].y = jj + j;
+					Encpairs2_d[NencMax * ii + Ni].y = jj + j;
 				}
-				if(i < jj + j){
+				if(ii < jj + j){
 					int Ne = atomicAdd(Nencpairs_d, 1);
-					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].x = ii;
 					Encpairs_d[Ne].y = jj + j;
 				}
 			}
