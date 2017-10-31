@@ -1703,6 +1703,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(GSF[st].logfilename, "%sinfo%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].timefilename, "%stime%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].Energyfilename, "%sEnergy%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].EnergyIrrfilename, "%sEnergyIrr%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].collisionfilename, "%sCollisions%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].ejectfilename, "%sEjections%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].encounterfilename, "%sEncounters%s.dat", GSF[st].path, GSF[st].X);

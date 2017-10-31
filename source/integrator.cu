@@ -78,7 +78,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 	//Print Energy and log information//
 	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1){
 		if(bufferCount + 1 >= P.Buffer || interrupt == 1){
-			er = EnergyOutput();
+			er = EnergyOutput(0);
 			if(er == 0) return 0;
 		}
 	}
@@ -161,6 +161,8 @@ __host__ int Data::timeStepLoop(int interrupted){
 
 			if(P.Buffer == 1){
 				CoordinateOutput(1);
+				int er = EnergyOutput(1);
+				if(er == 0) return 0;
 			}
 			else if(bufferCountIrr + 1 >= P.Buffer){
 				//write out buffer

@@ -176,7 +176,10 @@ int main(int argc, char*argv[]){
 	printf("Write initial Energy\n");
 
 	//write first output
-	er = D.firstoutput();
+	er = D.firstoutput(0);
+	if(D.P.IrregularOutputs == 1){
+		er = D.firstoutput(1);
+	}
 	if(er == 0) return 0;
 	printf("Energy OK\n");
 	

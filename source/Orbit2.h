@@ -156,7 +156,7 @@ public:
 	__host__ void constantCopySC(double *, double *);
 	//output
 	cudaStream_t *hstream;
-	__host__ int firstoutput();
+	__host__ int firstoutput(int);
 	__host__ void firstInfo();
 	__host__ void LastInfo();
 	__host__ void setStartTime();
@@ -173,7 +173,7 @@ public:
 	__host__ int printTransits();
 	__host__ void printMCMC(int);
 	__host__ int firstEnergy();
-	__host__ int EnergyOutput();
+	__host__ int EnergyOutput(int);
 	__host__ void CoordinateToBuffer(int, int, double);
 
 	//Energy

@@ -275,6 +275,7 @@ struct GSFiles{
 	char inputfilename[128];
 	char Originputfilename[128];
 	char Energyfilename[128];
+	char EnergyIrrfilename[128];
 	char logfilename[128];
 	char timefilename[128];
 	char collisionfilename[128];

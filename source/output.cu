@@ -13,12 +13,32 @@ float times;				//elapsed time in milliseconds
 //Author: Simon Grimm
 //June 2015
 // *************************************
-__host__ int Data::firstoutput(){
+__host__ int Data::firstoutput(int irregular){
 	for(int st = 0; st < Nst; ++st){
-		if(P.tRestart == 0){
+
+
+		//check if EnergyIrrfile already exists
+		int readIrrEnergyFile = 0;
+		if(irregular == 1){
+			FILE *Efile;
+			Efile = fopen(GSF[st].EnergyIrrfilename, "r");
+			if(Efile != NULL){
+				readIrrEnergyFile = 1;
+				printf("read initial energy from %s file\n", GSF[st].EnergyIrrfilename);
+			}
+
+		}
+
+		if(P.tRestart == 0 && readIrrEnergyFile == 0){
 			int NBS = NBS_h[st];
 			if(P.ei > 0){
-				GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+				if(irregular == 0){
+					GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+				}
+				else{
+					GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
+
+				}
 				if(GSF[st].Energyfile == NULL){
 					printf("Error, Energyfile not valid %d %s\n", st, GSF[st].timefilename);
 					return 0;
@@ -103,11 +123,17 @@ __host__ int Data::firstoutput(){
 		else if(N_h[st] + Nsmall_h[st] > 0){
 			int tsign = 1;
 			if(idt_h[st] < 0) tsign = -1;
-			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "r");
 			double skip;
 			double Et;
 			char Ets[160];
-			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
+			if(readIrrEnergyFile == 0){
+				GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "r");
+				sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
+			}
+			else{
+				GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
+				sprintf(Ets, "%.16g", (ict_h[st] * 365.25) / 365.25);
+			}
 			fscanf (GSF[st].Energyfile, "%lf",&Et);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
 			fscanf (GSF[st].Energyfile, "%lf",&skip);
@@ -235,7 +261,7 @@ __host__ int Data::firstEnergy(){
 }
 
 //This function calls the Energy function and prints information
-__host__ int Data::EnergyOutput(){
+__host__ int Data::EnergyOutput(int irregular){
 	cudaStream_t hstream[16];
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
@@ -272,7 +298,12 @@ __host__ int Data::EnergyOutput(){
 	cudaMemcpy(Energy_h, Energy_d, sizeof(double) * NEnergyT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
-		GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+		if(irregular == 0){
+			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+		}
+		else{
+			GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
+		}
 		if(GSF[st].Energyfile == NULL){
 			printf("Error, Energyfile not valid %d %s\n", st, GSF[st].Energyfilename);
 			return 0;
@@ -281,27 +312,29 @@ __host__ int Data::EnergyOutput(){
 		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
 		fclose(GSF[st].Energyfile);
 
-		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
-		cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
+		if(irregular == 0){
+			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+			cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 
-		if(Nst == 1){
-			fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
-			fprintf(GSF[0].logfile, "groups: %d; ", Nenc_m[0]);
-			int nn = 2;
-			for(int st = 1; st < def_GMax; ++st){
-				if(Nenc_m[st] > 0) fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
-				nn *= 2;
+			if(Nst == 1){
+				fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+				fprintf(GSF[0].logfile, "groups: %d; ", Nenc_m[0]);
+				int nn = 2;
+				for(int st = 1; st < def_GMax; ++st){
+					if(Nenc_m[st] > 0) fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
+					nn *= 2;
+				}
+				fprintf(GSF[0].logfile, "\n");
+
+				fprintf(GSF[0].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[0]);
 			}
-			fprintf(GSF[0].logfile, "\n");
-
-			fprintf(GSF[0].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+			else{
+				fprintf(GSF[st].logfile, "    CE:    %d\n", Nencpairs2_h[st + 1]);
+				fprintf(GSF[st].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[st + 1]);
+			}
+			fclose(GSF[st].logfile);
 		}
-		else{
-			fprintf(GSF[st].logfile, "    CE:    %d\n", Nencpairs2_h[st + 1]);
-			fprintf(GSF[st].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[st + 1]);
-		}
-		fclose(GSF[st].logfile);
 
 	}
 	cudaMemset(Energy_d, 0, NEnergyT * sizeof(double));

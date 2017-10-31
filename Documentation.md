@@ -382,7 +382,10 @@ In the 'param.dat' file can be specified the name of a calendar file, using the 
 This file must contain line by line the desired output times of the coordinates in years.
 When this option is used, then output files with names OutIrr... similar to the original output files are created. They contain the coordinate outputs of the 
 specified time. When the multi simulation mode is used, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
-When the argument of 'Irregular output calendar' is equal to "-", or if this line is missing in the 'param.dat', then no irregular output files are generated
+When the argument of 'Irregular output calendar' is equal to "-", or if this line is missing in the 'param.dat', then no irregular output files are generated.
+Additional to the coordinate output files, also a new energy file is created with the name EnergyIrr<name>.dat. This file contains the same columns as the Energy<name>file.
+When starting a new simulation, old OutIrr<name>.dat files and EnergyIrr<name>.dat files are not deleted. If the EnergyIrr<name>.dat file already exists, then the initial energy from
+a new simulation is read from this file. 
  
 
 # Restart a simulation #
@@ -544,4 +547,14 @@ An example data file to modiy the mass and radius of a body looks like this:
     .
     .
     .
-  
+
+An example data file to modiy the semi-major axis, eccentricity and inclination of the first four bodies looks like the following, where 
+the columns are, time, a0, a1, a2, a3, e0, e1, e2, e3, i0, i1, i2, i3, for the bodies 0-3:
+
+    4 t a e i
+    0   5.49973 5.70011 9.9999  11.25   3.17077e-05 3.10758e-05 3.09719e-06 2.33299e-06 1.03555e-06 0.00546965 0.000956204 0.00194193
+    100 5.49963 5.70002 9.99984 11.2499 3.09278e-05 3.01496e-05 6.81447e-06 7.15947e-06 1.00262e-06 0.00527889 0.000935937 0.00190979
+    200 5.49954 5.69991 9.99975 11.2498 9.73926e-05 9.89094e-05 7.85054e-06 7.8151e-06  4.8273e-06  0.00507701 0.000913772 0.00187511
+    .
+    .
+    . 
