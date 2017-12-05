@@ -131,6 +131,93 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 	}
 }
 
+__device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, double &test, int &NencpairsI, int2 *Encpairs2_d, const int i, const int j, const int N, const int NencMax, const int Slevel, const int E){
+
+	if(i != j){
+
+		double3 r3;
+		double rsq;
+		double ir, ir3;
+		double y, yy;
+		double rcritv, rcritv2;
+		double rcritvi, rcritvj;
+
+		r3.x = x4j.x - x4i.x;
+		r3.y = x4j.y - x4i.y;
+		r3.z = x4j.z - x4i.z;
+
+		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z + 1.0e-30;
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir * ir * ir;
+
+		double s = x4j.w * ir3 * def_ksq;
+
+		for(int l = 0; l < Slevel; ++l){
+//if(i == 0) printf(" (1-K%d)  ",l);
+			rcritvi = rcritv_d[i + N * l];
+			rcritvj = rcritv_d[j + N * l];
+
+			rcritv = fmax(rcritvi, rcritvj);
+			rcritv2 = rcritv * rcritv;
+
+			if(rsq <  1.0 * rcritv2){
+				if(rsq <= 0.01 * rcritv2){
+					s *= 1.0;
+				}
+				else{
+					y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
+					yy = y * y;
+					s *= (1.0 - yy / (2.0*yy - 2.0*y + 1.0));
+				}
+			}
+			else s = 0.0;
+		}
+
+		
+		if(Slevel < def_SLEVELS){
+		//if(Slevel < def_SLEVELS - 1){
+//if(i == 0) printf(" K%d  ",Slevel);
+			rcritvi = rcritv_d[i + N * Slevel];
+			rcritvj = rcritv_d[j + N * Slevel];
+
+			rcritv = fmax(rcritvi, rcritvj);
+
+			rcritv2 = rcritv * rcritv;
+
+
+			if(rsq >= 1.0 * rcritv2){
+				s *= 1.0;
+			}
+			else{
+				if(rsq <= 0.01 * rcritv2){
+					s = 0.0;
+
+				}
+				else{
+					y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
+					yy = y * y;
+					s *= yy / (2.0*yy - 2.0*y + 1.0);
+
+				}
+			}
+			//prechecker
+			if(E == 0 || E == 2){	
+				if(rsq < def_pc * rcritv2){  //prechecker
+//printf("Precheck %d %d\n", i, j);
+					Encpairs2_d[NencMax * i + NencpairsI].y = j;
+					++NencpairsI;
+				}
+			}
+		}
+
+//if(i == 0 && j == 1) printf("\n");
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
+//printf("%.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", x4i.w, x4i.x, x4i.y, x4i.z, x4j.w, x4j.x, x4j.y, x4j.z);
+	}
+}
+
 // *********************************
 //Only here for testing
 //
@@ -591,6 +678,73 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 //if(id == 13723) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
 	}
 }
+
+// **************************************
+// Symplectic sub step for close encounter pairs
+// Authors: Simon Grimm
+// November 2017
+// ****************************************
+__global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Encpairs3_d, int N, int NencMax, const int SLevel, const int E){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;	
+
+	double3 a;
+
+	a.x = 0.0;
+	a.y = 0.0;
+	a.z = 0.0;
+
+	double test;
+	if(id < N){
+		int NI = Encpairs3_d[id * NencMax];
+		if(NI > 0){
+//if(NI > 0) printf("NI %d %d\n", id, NI);
+			double4 x4i = xold_d[id];
+			double4 v4i = vold_d[id];
+			int NencpairsI = 0;
+			if(x4i.w >= 0.0){
+				__syncthreads();
+				NI = Encpairs3_d[id * NencMax + 1];
+				for(int i = 0; i < NI; ++i){
+					int jj = Encpairs3_d[id * NencMax + i + 2];
+					double4 x4j = xold_d[jj];
+					if(x4j.w >= 0.0){
+//if(E == 0) printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
+						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, N, NencMax, SLevel, E);
+					}
+				}
+				__syncthreads();
+				double3 aa;
+				aa.x = __dmul_rn(a.x, dtksq);
+				aa.y = __dmul_rn(a.y, dtksq);
+				aa.z = __dmul_rn(a.z, dtksq);
+
+				v4i.x += aa.x;
+				v4i.y += aa.y;
+				v4i.z += aa.z;
+
+				if(E == 0){
+					x4_d[id] = x4i;
+				}
+				v4_d[id] = v4i;
+
+				if(E == 0 || E == 2){
+					for(int i = 0; i < NencpairsI; ++i){
+						int jj = Encpairs2_d[id * NencMax + i].y;
+						if(id > jj){
+							int Ne = atomicAdd(Nencpairs_d, 1);
+							Encpairs_d[Ne].x = id;
+							Encpairs_d[Ne].y = jj;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
 // **************************************
 //This kernel performs the first kick of the time step, in the case of close interactions.
 //It reuses the values from the second kick in the previous time step, and adds the terms aij*dt*Kij for all

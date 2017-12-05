@@ -468,7 +468,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Output name =") == 0){
-			er = fscanf (paramfile, "%s", &GSF[st].X);
+			er = fscanf (paramfile, "%s", GSF[st].X);
 			if(er <= 0){
 				printf("Error: Output name is not valid!\n");	
 				return 0;
@@ -522,7 +522,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Irregular output calendar =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%s", &P.IrregularOutputsfilename);
+				er = fscanf (paramfile, "%s", P.IrregularOutputsfilename);
 				
 				if(er <= 0){
 					printf("Error: Irregular output calendar is not valid!\n");
@@ -537,7 +537,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "TTV file name =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%s", &P.Transitsfilename);
+				er = fscanf (paramfile, "%s", P.Transitsfilename);
 				
 				if(er <= 0){
 					printf("Error: TTV filename is not valid!\n");
@@ -735,7 +735,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file =") == 0){
-			er = fscanf (paramfile, "%s", &GSF[st].inputfilename);
+			er = fscanf (paramfile, "%s", GSF[st].inputfilename);
 			
 			if(er <= 0){
 				printf("Error: Input file name is not valid!\n");
@@ -1142,7 +1142,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "aeGrid name =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%s", &Gridae.X);
+				er = fscanf (paramfile, "%s", Gridae.X);
 				
 				if(er <= 0){
 					printf("Error: Grid name is not valid!\n");
@@ -1151,7 +1151,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			else{
 				char t[64];
-				er = fscanf (paramfile, "%s", &t);
+				er = fscanf (paramfile, "%s", t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1200,7 +1200,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Gas Sigma_10 =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%d", &P.G_Sigma_10);
+				er = fscanf (paramfile, "%lf", &P.G_Sigma_10);
 				P.G_Sigma_10 *= 1.49598*1.49598/1.98892*1.0e-7;
 				if(er <= 0 || P.G_Sigma_10 < 0){
 					printf("Error: Gas Sigma_10 value is not valid!\n");
@@ -1209,8 +1209,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 			}
 			else{
-				int t;
-				er = fscanf (paramfile, "%d", &t);
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1363,7 +1363,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Set Elements file name =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%s", &P.setElementsfilename);
+				er = fscanf (paramfile, "%s", P.setElementsfilename);
 				
 				if(er <= 0){
 					printf("Error: Set Elements file name = is not valid!\n");
@@ -1378,7 +1378,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Gas file name =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%s", &P.Gasfilename);
+				er = fscanf (paramfile, "%s", P.Gasfilename);
 				
 				if(er <= 0){
 					printf("Error: Gas file name = is not valid!\n");
@@ -2189,7 +2189,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
-			fprintf(infofile, "Gas Sigma_10: %d\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
+			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
@@ -2323,9 +2323,9 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 	}
 	//read *
 	char skip[160];
-	er = fscanf(Transitfile, "%s", &skip);
-	er = fscanf(Transitfile, "%s", &skip);
-	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", skip);
+	er = fscanf(Transitfile, "%s", skip);
+	er = fscanf(Transitfile, "%s", skip);
 	//read Transit times
 	for(int i = 0; i < 1000000; ++i){
 		er = fscanf(Transitfile, "%d", &t);
@@ -2365,9 +2365,9 @@ __host__ int Host::readTransits(double4 *elementsA_h){
 		TransitTimeObs_h[index * def_NtransitTimeMax + 0].y = P;
 	}
 	//read *
-	er = fscanf(Transitfile, "%s", &skip);
-	er = fscanf(Transitfile, "%s", &skip);
-	er = fscanf(Transitfile, "%s", &skip);
+	er = fscanf(Transitfile, "%s", skip);
+	er = fscanf(Transitfile, "%s", skip);
+	er = fscanf(Transitfile, "%s", skip);
 	
 	for(int i = 0; i < n; ++i){
 		int index;
@@ -2514,7 +2514,7 @@ __host__ int Host::readSetElements(){
 	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
-		er = fscanf(Efile, "%s", &c);
+		er = fscanf(Efile, "%s", c);
 	}
 	int nlines;
 	int ncolumns = (nelements - 1) * nbodies + 1;
@@ -2541,7 +2541,7 @@ __host__ int Host::readSetElements(){
 	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
 		char c[16];
-		er = fscanf(Efile, "%s", &c);
+		er = fscanf(Efile, "%s", c);
 	}
 	for(int j = 0; j < nlines; ++j){
 		for(int i = 0; i < ncolumns; ++i){

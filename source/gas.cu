@@ -387,7 +387,6 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	if(id < N + Nstart && r1 > 0.1 && r1 < 35.0 && x4.z/r1 < 1.5){ //otherwise there is no gas
 
 		h = h_1 * r1 * pow(r1, 0.25);
-
 		Sigma = G_Sigma_10 / r1;
 		if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
 

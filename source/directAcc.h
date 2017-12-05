@@ -8,7 +8,7 @@
 //March 2014
 //
 // ****************************************
-__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, double rcritvj, double &test, int i, int j, double MinMass, int UseTestParticles){
+__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *rcritv_, double &test, int i, int j, int NN, double MinMass, int UseTestParticles){
 
 	int c = 0;
 	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
@@ -29,26 +29,36 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, double rcritvi, do
 		r3.z = x4j.z - x4i.z;
 
 		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z + 1.0e-30;
-		rcritv = fmax(rcritvi, rcritvj);
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir * ir * ir;
+		s = x4j.w * ir3 * def_ksq;
 
-		rcritv2 = rcritv * rcritv;
+		for(int l = 0; l < def_SLEVELS; ++l){		
 
-		if(rsq <  1.0 * rcritv2){
-			ir = 1.0/sqrt(rsq);
-			ir3 = ir * ir * ir;
-			if(rsq <= 0.01 * rcritv2){
-				s = x4j.w * ir3 * def_ksq;
+			double rcritvi = rcritv_[i + l * NN];
+			double rcritvj = rcritv_[j + l * NN];
+			rcritv = fmax(rcritvi, rcritvj);
+
+			rcritv2 = rcritv * rcritv;
+
+			if(rsq <  1.0 * rcritv2){
+				if(rsq <= 0.01 * rcritv2){
+					s *= 1.0;
+				}
+				else{
+					y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
+					yy = y * y;
+					s *= (1.0 - yy / (2.0*yy - 2.0*y + 1.0));
+				}
 			}
 			else{
-				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
-				yy = y * y;
-				s = ir3 * def_ksq * (1.0 - yy / (2.0*yy - 2.0*y + 1.0)) * x4j.w;
+				s = 0.0;
 			}
-			ac.x += __dmul_rn(r3.x, s);
-			ac.y += __dmul_rn(r3.y, s);
-			ac.z += __dmul_rn(r3.z, s);
-		}
 //printf("%.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", x4i.w, x4i.x, x4i.y, x4i.z, x4j.w, x4j.x, x4j.y, x4j.z);
+		}
+		ac.x += __dmul_rn(r3.x, s);
+		ac.y += __dmul_rn(r3.y, s);
+		ac.z += __dmul_rn(r3.z, s);
 	}
 }
 //**************************************
@@ -241,7 +251,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, const double Msun, double *U_d, double &test, int *index, int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
 
 	double3 vij;
 	double3 rij;
@@ -301,8 +311,10 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, int i, int j
 	v4[i].y = (v4[i].y * x4[i].w + v4[j].y * x4[j].w) / mtot;
 	v4[i].z = (v4[i].z * x4[i].w + v4[j].z * x4[j].w) / mtot;
 
-	rcritv[i] = fmax(rcritv[i], rcritv[j]);
-	rcritv[j] = 0.0;
+	for(int l = 0; l < def_SLEVELS; ++l){
+		rcritv[i + l * NN] = fmax(rcritv[i + l * NN], rcritv[j + l * NN]);
+		rcritv[j + l * NN] = 0.0;
+	}
 
 	rcrit_d[indexi] = fmax(rcrit_d[indexi], rcrit_d[indexj]);
 	rcrit_d[indexj] = 0.0;

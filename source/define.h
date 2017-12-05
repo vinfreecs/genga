@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.70
+#define Version 3.71
 
 //Default parameter values
 #define def_TimeStep 6
@@ -168,6 +168,8 @@
 #define G3Limit	1.5e-12	//2.0e-12
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
+
+#define def_SLEVELS 1			//1
 
 //only here for testing
 #define USE_NAF 0

@@ -742,7 +742,7 @@ __global__ void EncMatrixsmall_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 
 					}
 				}
 				if(E == 1 && ii > jj + j){
-//if(jj + j == 319) printf("encp %d %d\n", jj + j, ii);
+//printf("encp %d %d\n", ii, jj + j);
 					int Ne = atomicAdd(Nencpairs_d, 1);
 					Encpairs_d[Ne].x = ii;
 					Encpairs_d[Ne].y = jj + j;

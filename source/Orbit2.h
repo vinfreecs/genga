@@ -36,6 +36,7 @@ public:
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
 	bool *Encpairsb_d;
+	int *Encpairs3_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
 	int *aecount_h, *aecount_d;
@@ -195,6 +196,7 @@ public:
 	__host__ void firstKick_small();
 	__host__ void firstKick_M(long long);
 
+	__host__ void SEnc(int, double, int);
 	__host__ int bStep(int);
 
 	__host__ int step();
@@ -218,9 +220,8 @@ public:
 	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
 	__host__ void EjectionMCall();
-	__host__ void BSCall(int, double, int);
-	__host__ void BSsmallCall(int, double, int);
-	__host__ void BSBMCall(int, int);
+	__host__ void BSCall(int, double, int, double);
+	__host__ void BSBMCall(int, int, double);
 
 	__host__ void BSACall(int, int, int, int, double, double, int);
 

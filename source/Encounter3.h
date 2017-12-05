@@ -27,9 +27,9 @@
 template<int E>
 __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, const int N, double &time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.40g %.40g %.40g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
-//if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
-//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
+//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z);
+//if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
+//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	int Enc = 0;
 	if(i != j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double d0, d1, dd0, dd1;
@@ -134,7 +134,7 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 		
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
-//if (E == 1)printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, delta1, delta2, t1, t2);
+//printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, delta1, delta2, t1, t2);
 
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
@@ -146,6 +146,7 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 //if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, collisiontime);
 			if(E < 2){ 
 				Ni = atomicAdd(&Nenc, 1);
+//printf("%d %d\n", i, j);
 				if(E == 1 && Nenc >= def_MaxColl) Ni = def_MaxColl - 1;
 				if(x4i.w >= x4j.w){
 					encpairs[Ni].x = i;
@@ -602,8 +603,6 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 // E = 2: less than 512 bodies and more than 512 close encounter pairs
 // E = 3: more than 512 bodies and less than 512 close encounter pairs
 // E = 4: more than 512 bodies and more than 512 close encounter pairs
-//This kernel works only in the case of more than 512 close encounter pairs, and 
-//less than 512 Bodies.
 //It classifies the groups into sets of equal sizes.
 //The size of group i is stored in Encpairs2_d[i].y, the elements j of the 
 //group i are stored in Encpairs2_d[i * N + j].x
@@ -1008,6 +1007,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	}
 }
 
+
 __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int *NBS_d, int *N_d, const int Nst){
 
 	int idy = threadIdx.x;
@@ -1037,5 +1037,46 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 			}
 		}
 	}
+}
+
+
+// This kernel writes a list of close encounter pairs needed for the symplectic sub step
+__global__ void setEnc3_kernel(int N, int *Encpairs3_d, const int NencMax){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+
+	if(id < N){
+		Encpairs3_d[id * NencMax] = 0;
+		Encpairs3_d[id * NencMax + 1] = 0;
+	}
+}
+
+__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int Ne = *Nencpairs2_d;
+
+	if(id < Ne){
+		int ii = Encpairs2_d[id].x;
+		int jj = Encpairs2_d[id].y;
+
+//printf("%d %d %d\n", id, ii, jj);
+		atomicAdd(&Encpairs3_d[ii * NencMax], 1);
+		atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+
+		if(jj < N || (UseTestParticles == 2 && ii < N)){
+			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 1], 1);
+			Encpairs3_d[ii * NencMax + Ni + 2] = jj;
+		}
+
+		if(ii < N || (UseTestParticles == 2 && jj < N)){
+			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 1], 1);
+			Encpairs3_d[jj * NencMax + Nj + 2] = ii;
+		}
+	}
+
 }
 #endif

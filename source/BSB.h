@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int NT, double *K_d, double *Kold_d, int *groupIndex_d, const int writeEncounters_d, const double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int NT, const int writeEncounters_d, const double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -25,7 +25,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
-	__shared__ double rcritv_s[NN];
+	__shared__ double rcritv_s[NN * def_SLEVELS];
 	__shared__ double3 a0_s[nb * NN +NN];
 	__shared__ double3 a_s[nb * NN + NN];
 	__shared__ double4 xp_s[NN];
@@ -49,7 +49,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	int writeEncounters = writeEncounters_d;
 	double writeEncountersRadius = writeEncountersRadius_d;
 	volatile int idi;
-	volatile int si = Encpairs2_d[ (st+2) * NT + idx].y; 
+	volatile int si = Encpairs2_d[ (st+2) * NT + idx].y;	//group index 
 	N2 = Encpairs2_d[si].y; //Number of bodies in current BS simulation
 	volatile int start = Encpairs2_d[NT + si].y;
 //printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
@@ -67,8 +67,10 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
  	__syncthreads();
 	if(idy < N2){
 		x4_s[idy] = xold_d[idi];  
-		v4_s[idy] = vold_d[idi];  
-		rcritv_s[idy] = rcritv_d[idi];
+		v4_s[idy] = vold_d[idi];
+		for(int l = 0; l < def_SLEVELS; ++l){  
+			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NT];
+		}
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
 		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
@@ -106,41 +108,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		Coltime_s[idy] = 10.0;
 	}
 	if(idy < 2 * NN) error_s[idy] = 0.0;
-#if G3 > 0
-        a0_s[idy].x = 0.0;
-        a0_s[idy].y = 0.0;
-        a0_s[idy].z = 0.0;
-        for(int l = 0; l < NN; l += nb){
-		int iK = Encpairs2_d[start + ii].x;
-		int jK = Encpairs2_d[start + jj + l].x;
-		CorrectKick(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NT + jK], Kold_d[iK * NT + jK], test, ii, jj + l, time + t / dayUnit, NT, MinMass, UseTestParticles);
-        }
-        __syncthreads();
-        {
-                volatile double3 *a = a0_s;
-                if(nb >= 16) a[idy].x += a[idy + 8].x;
-                if(nb >= 8) a[idy].x += a[idy + 4].x;
-                if(nb >= 4) a[idy].x += a[idy + 2].x;
-                if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-                if(nb >= 16) a[idy].y += a[idy + 8].y;
-                if(nb >= 8) a[idy].y += a[idy + 4].y;
-                if(nb >= 4) a[idy].y += a[idy + 2].y;
-                if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-                if(nb >= 16) a[idy].z += a[idy + 8].z;
-                if(nb >= 8) a[idy].z += a[idy + 4].z;
-                if(nb >= 4) a[idy].z += a[idy + 2].z;
-                if(nb >= 2) a[idy].z += a[idy + 1].z;
-        }
-        __syncthreads();
-        if(idy < NN){
-                v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-                v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-                v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
-        }
-
-#endif
 	__syncthreads();
 	for(int tt = 0; tt < 10000; ++tt){
 		__syncthreads();
@@ -160,13 +127,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
         	a0_s[idy].z = 0.0;
 		__syncthreads();
 		for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, MinMass, UseTestParticles);
-#else
-			int iK = Encpairs2_d[start + ii].x;
-			int jK = Encpairs2_d[start + jj + l].x;
-			accEncG3(x4_s[ii], x4_s[jj + l], a0_s[idy], test, ii, jj + l, time + t / dayUnit, K_d[iK * NT + jK], MinMass, UseTestParticles);
-#endif
+			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
 
 		}
 		__syncthreads();
@@ -218,13 +179,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, MinMass, UseTestParticles);
-#else
-					int iK = Encpairs2_d[start + ii].x;
-					int jK = Encpairs2_d[start + jj + l].x;
-					accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, time + t / dayUnit, K_d[iK * NT + jK], MinMass, UseTestParticles);
-#endif
+					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
 				}
 				__syncthreads();
 				{
@@ -266,13 +221,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, MinMass, UseTestParticles);
-#else
-						int iK = Encpairs2_d[start + ii].x;
-						int jK = Encpairs2_d[start + jj + l].x;
-						accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, time + t / dayUnit, K_d[iK * NT + jK], MinMass, UseTestParticles);
-#endif
+						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
 					}
 					__syncthreads();
 					{
@@ -311,13 +260,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, MinMass, UseTestParticles);
-#else
-						int iK = Encpairs2_d[start + ii].x;
-						int jK = Encpairs2_d[start + jj + l].x;
-						accEncG3(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, time + t / dayUnit, K_d[iK * NT + jK], MinMass, UseTestParticles);
-#endif
+						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
 					}
 					__syncthreads();
 					{
@@ -357,13 +300,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-#if G3 == 0
-					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s[ii], rcritv_s[jj + l], test, ii, jj + l, MinMass, UseTestParticles);
-#else
-					int iK = Encpairs2_d[start + ii].x;
-					int jK = Encpairs2_d[start + jj + l].x;
-					accEncG3(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, time + t / dayUnit, K_d[iK * NT + jK], MinMass, UseTestParticles);
-#endif
+					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
 				}
 				__syncthreads();
 				{
@@ -539,17 +476,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 									if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 										int nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
-											collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, rcritv_s, rcrit_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+											collide(xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, rcritv_s, rcrit_d, NN, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
 //printf("cTime coll %g %g %g %.20g %d\n", time, t / dayUnit, dt /dayUnit, time + (t + dt1) / dayUnit, nc);
-
-	#if G3 > 0
-											int iK = Encpairs2_d[start + i].x;
-											int jK = Encpairs2_d[start + j].x;
-											K_d[iK * NT + jK] = 1.0;
-											K_d[jK * NT + iK] = 1.0;
-											groupIndex_d[iK] =  -1;
-											groupIndex_d[jK] =  -1;
-	#endif
 									}
 								}
 								if(Coltime_s[0] < 10.0 && (noColl == 1 || noColl == -1)){
@@ -601,61 +529,13 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 
 		__syncthreads();
 	}//end of tt loop
-#if G3 > 0
-        a0_s[idy].x = 0.0;
-        a0_s[idy].y = 0.0;
-        a0_s[idy].z = 0.0;
-        for(int l = 0; l < NN; l += nb){
-		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[start + ii].x;
-			int jK = Encpairs2_d[start + jj + l].x;
-				CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], K_d[iK * NT + jK], 0.0, test, ii, jj + l, time + t / dayUnit, 0, MinMass, UseTestParticles);
-//				if((Kold_d[iK * NT + jK] < 1.0 && K_d[iK * NT + jK] > 0.0) || K_d[iK * NT + jK] == 1) CorrectKick2(x4_s[ii], x4_s[jj + l], a0_s[idy], 1.0, 0.0, test, ii, jj + l, time + t / dayUnit, 0);
-		}
-        }
-        __syncthreads();
-        {
-                volatile double3 *a = a0_s;
-                if(nb >= 16) a[idy].x += a[idy + 8].x;
-                if(nb >= 8) a[idy].x += a[idy + 4].x;
-                if(nb >= 4) a[idy].x += a[idy + 2].x;
-                if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-                if(nb >= 16) a[idy].y += a[idy + 8].y;
-                if(nb >= 8) a[idy].y += a[idy + 4].y;
-                if(nb >= 4) a[idy].y += a[idy + 2].y;
-                if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-                if(nb >= 16) a[idy].z += a[idy + 8].z;
-                if(nb >= 8) a[idy].z += a[idy + 4].z;
-                if(nb >= 4) a[idy].z += a[idy + 2].z;
-                if(nb >= 2) a[idy].z += a[idy + 1].z;
-        }
-        __syncthreads();
-        if(idy < NN){
-		for(int l = 0; l < NN; l += nb){
-			if(ii < N2 && jj + l < N2){
-				v4_s[idy].x += 0.5 * dt * a0_s[idy * nb].x; //change 0.5 to SI factor 
-				v4_s[idy].y += 0.5 * dt * a0_s[idy * nb].y;
-				v4_s[idy].z += 0.5 * dt * a0_s[idy * nb].z;
-			}	
-		}
-        }
-        for(int l = 0; l < NN; l += nb){
-		if(ii < N2 && jj + l < N2){
-			int iK = Encpairs2_d[start + ii].x;
-			a_d[iK].x = 0.5 * dt * a0_s[ii * nb].x;
-			a_d[iK].y = 0.5 * dt * a0_s[ii * nb].y;
-			a_d[iK].z = 0.5 * dt * a0_s[ii * nb].z;
-//printf("Correct 2A %d %g %d %d %d\n", iK, a0_s[ii * nb].x, ii, idy * nb, ii*nb);
-		}
-	}
-#endif
 	if(idy < N2){
 //if(x4_s[idy].w <= 0){
 		x4_d[idi] = x4_s[idy]; 
 		v4_d[idi] = v4_s[idy];
-		rcritv_d[idi] = rcritv_s[idy];
+		for(int l = 0; l < def_SLEVELS; ++l){  
+			rcritv_d[idi + l * NT] = rcritv_s[idy + l * NN];
+		}
 //}
 //printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g\n", idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, time + t/dayUnit);
 	}

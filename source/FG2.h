@@ -415,6 +415,42 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		}
 	}
 }
+__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si, int UseForce, int *Encpairs3_d, int NencMax){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < N){
+		int NI = Encpairs3_d[id * NencMax];
+		if(NI > 0){
+			int aecount = 0;
+			double4 x4i = x4_d[id];
+			double4 v4i = v4_d[id];
+			xold_d[id] = x4i;
+			vold_d[id] = v4i;
+			int index = index_d[id];
+//printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+			a_d[id].x = 0.0;
+			a_d[id].y = 0.0;
+			a_d[id].z = 0.0;
+			double test;
+			float4 aelimits = aelimits_d[id];
+			//fastfg(x4i, v4i, dt, def_ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+			fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+			//BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
+			__syncthreads();
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+//printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+	#if G3 > 0
+			groupIndex_d[id] = -1;
+	#endif
+			if(si == 0){
+				aecount_d[id] += aecount;
+			}
+		}
+	}
+}
 
 // **************************************
 //for multi simulation mode

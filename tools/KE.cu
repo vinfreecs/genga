@@ -134,7 +134,7 @@ int main(int argc, char*argv[]){
 			sprintf(X, "%s", argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-step") == 0){
-			step = atoi(argv[i + 1]);
+			step = atoll(argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-Msun") == 0){
 			Msun = atof(argv[i + 1]);

@@ -10,7 +10,7 @@ __host__ Data::Data(long long Restart): Host(Restart){
 __host__ void Data::AllocateOrbitt(){
 
 	//allocate memory on host//
-	rcrit_h = (double*)malloc(NconstT * sizeof(double));
+	rcrit_h = (double*)malloc(NconstT * def_SLEVELS * sizeof(double));
 	x4_h = (double4*)malloc(NconstT * sizeof(double4));
 	v4_h = (double4*)malloc(NconstT * sizeof(double4));
 	index_h = (int*)malloc(NconstT * sizeof(int));
@@ -94,8 +94,8 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &v4_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &xold_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &vold_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &rcrit_d, NconstT * sizeof(double));
-	cudaMalloc((void **) &rcritv_d, NconstT * sizeof(double));
+	cudaMalloc((void **) &rcrit_d, NconstT * def_SLEVELS * sizeof(double));
+	cudaMalloc((void **) &rcritv_d, NconstT * def_SLEVELS * sizeof(double));
 	cudaMalloc((void **) &test_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &index_d, NconstT * sizeof(int));
 	cudaMalloc((void **) &spin_d, NconstT * sizeof(double3));
@@ -111,6 +111,7 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
+	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * def_SLEVELS);
 	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
@@ -435,9 +436,11 @@ __host__ int Data::init(){
 		Nenc_m[i] = 0;
 	}
 	EjectionFlag_m[0] = 0;
+	for(int i = 0; i < NconstT * def_SLEVELS; ++i){
+		rcrit_h[i] = 0.0;
+	}
 	for(int i = 0; i < NconstT; ++i){
 		index_h[i] = -1;
-		rcrit_h[i] = 0.0;
 		x4_h[i].x = 1.0;
 		x4_h[i].y = 0.0;
 		x4_h[i].z = 0.0; 
@@ -593,8 +596,8 @@ __host__ int Data::ic(){
 	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(xold_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(vold_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NconstT * def_SLEVELS, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NconstT * def_SLEVELS, cudaMemcpyHostToDevice);
 	cudaMemcpy(U_d, U_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy0_d, Energy0_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
@@ -1766,6 +1769,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(groupIterate_d);
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
+	cudaFree(Encpairs3_d);
 	cudaFree(Encpairsb_d);
 
 	cudaFree(coordinateBuffer_d);
