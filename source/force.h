@@ -617,7 +617,6 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 }
 
 
-#if USE_RANDOM == 1
 // ***************************************************************
 // This kernel calulates the probability of a collisional induced
 // rotation reset. 
@@ -960,7 +959,6 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	rotation_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
 	cudaDeviceSynchronize();
 }
-#endif
 
 // ***************************************************************
 // This kernel computes the seasonal and diurnal Yarkovsky effect.

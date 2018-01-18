@@ -953,7 +953,6 @@ __host__ int Data::printTransits(){
 		int Epoch = 0;
 		int setEpoch = 0;
 		double P = TransitTimeObs_h[i * def_NtransitTimeMax].y; //period
-			//for(int EpochObs = 0; EpochObs <= NtransitsTObs_h[i]; ++EpochObs){
 			for(int EpochObs = 0; EpochObs <= NtransitsT_h[i].x; ++EpochObs){
 				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch + 1]; 
 				double2 TObs;
@@ -995,8 +994,13 @@ __host__ void Data::printMCMC(int E){
 	FILE *MCMCfile;
 	MCMCfile = fopen("MCMC.dat", "a");
 
+	if(P.PrintMCMC == 3){
+	//print all, reprint old values for not accepted steps
+		cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	}
 	if(P.PrintMCMC == 2){
-		//print all
+	//print all, also not accepted steps
 		cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	}
@@ -1035,6 +1039,12 @@ __host__ void Data::printMCMC(int E){
 			}
 			if(P.PrintMCMC == 2){
 				pp = elementsP_h[si].x;
+				if(pp >= 1.0e299) pp = elementsP_h[si].z;
+				if(elementsP_h[si].z < 1.0e299){
+					p = 1;
+				}
+			}
+			if(P.PrintMCMC == 3){
 				if(pp >= 1.0e299) pp = elementsP_h[si].z;
 				if(elementsP_h[si].z < 1.0e299){
 					p = 1;

@@ -182,7 +182,8 @@ int main(int argc, char*argv[]){
 		inputfile = fopen(inputfilename, "r");
 		if(inputfile == NULL){
 printf("%s skipped %lld\n", inputfilename, k);
-			continue;
+			//continue;
+			break;
 		}
 printf("%s\n", inputfilename);
 		FILE *outputfile;

@@ -68,8 +68,8 @@ __host__ int Data::timeStepLoop(int interrupted){
 
 	error = cudaGetLastError();
 	if(error != 0){
-		printf("Step error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
-		fprintf(masterfile, "Step error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+		printf("Step error = %d = %s at time step: %lld\n",error, cudaGetErrorString(error), timeStep);
+		fprintf(masterfile, "Step error = %d = %s at time step: %lld\n",error, cudaGetErrorString(error), timeStep);
 		CoordinateOutput(4);
 		return 0;
 	}

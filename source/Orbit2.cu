@@ -219,6 +219,8 @@ __host__ void Data::AllocateOrbitt(){
 #if USE_RANDOM
 	srand48(time(NULL));
 	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
+#else
+	random_d = NULL;
 #endif
 
 	CollisionFlag = 0;

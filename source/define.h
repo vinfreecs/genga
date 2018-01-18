@@ -34,12 +34,12 @@
 #define def_RcutSun 0.2
 #define def_OderOfIntegrator 2			//2, 4  or 6
 #define def_UseaeGrid 0				// 1 or 0
-#define def_aeGridamin 0.0
-#define def_aeGridamax 5.0
-#define def_aeGridemin 0.0
-#define def_aeGridemax 1.0
-#define def_aeGridimin 0.0
-#define def_aeGridimax 0.1
+#define def_aeGridamin 0.0f
+#define def_aeGridamax 5.0f
+#define def_aeGridemin 0.0f
+#define def_aeGridemax 1.0f
+#define def_aeGridimin 0.0f
+#define def_aeGridimax 0.1f
 #define def_aeGridNa 10
 #define def_aeGridNe 10
 #define def_aeGridNi 10
@@ -192,10 +192,7 @@
 
 
 #define USE_RANDOM 1
-
-#if USE_RANDOM
 #include <curand_kernel.h>
-#endif
 
 //values for Asteroids in force function
 #define Asteroid_eps 0.95	//Emissivity

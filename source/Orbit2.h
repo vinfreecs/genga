@@ -78,9 +78,7 @@ public:
 
 	double3 *vcom_h, *vcom_d;
 
-#if USE_RANDOM
 	curandState *random_d;
-#endif
 
 	double *U_h, *U_d;	//internal Energy
 	double *LI_h, *LI_d;	//internal Angular Momentum
