@@ -1616,7 +1616,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 //This function calls the function readparam
 //
 //Authors: Simon Grimm
-//January 2017
+//February 2018
 // *********************************************3
 __host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
@@ -1655,35 +1655,39 @@ __host__ int Host::Param(int argc, char*argv[]){
 	}
 	//if Restart == -1, find last printed output
 	if(P.tRestart == -1){
-		FILE *timefile;
-		char timefilename[160];
-		sprintf(timefilename, "%stime%s.dat", GSF[0].path, GSF[0].X);
-		int er = 0;
-		timefile = fopen(timefilename, "r");
-		
-		if(timefile == NULL){
-			printf("Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
-			fprintf(masterfile, "Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
-			P.tRestart = 0;
-		}
-		else{
-			long long ts = 0LL;
-			double time = 0.0;
+		long long Restart = -1;
+		for(int st = 0; st < Nst; ++st){
+			FILE *timefile;
+			char timefilename[160];
+			sprintf(timefilename, "%stime%s.dat", GSF[st].path, GSF[st].X);
+			int er = 0;
+			timefile = fopen(timefilename, "r");
 			
-			for(int i = 0; i < 1e8; ++i){
-				er = fscanf (timefile, "%lld",&ts);
-				er = fscanf (timefile, "%lf",&time);
-				if(er < 0){
-					P.tRestart = ts;
-					break;
+			if(timefile == NULL){
+				printf("Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
+				fprintf(masterfile, "Warning: file %s not found. Restore last time step not possible -> begin new simulation\n", timefilename);
+				Restart = 0;
+			}
+			else{
+				long long ts = 0LL;
+				double time = 0.0;
+				
+				for(int i = 0; i < 1e8; ++i){
+					er = fscanf (timefile, "%lld",&ts);
+					er = fscanf (timefile, "%lf",&time);
+					if(er < 0){
+						Restart = ts;
+						break;
+					}
+				}
+				fclose(timefile);
+				if(Restart < 0){
+					printf("Error: restore last time step failed\n");
+					fprintf(masterfile, "Error: restore last time step failed\n");
+					return 0;
 				}
 			}
-			fclose(timefile);
-			if(P.tRestart < 0){
-				printf("Error: restore last time step failed\n");
-				fprintf(masterfile, "Error: restore last time step failed\n");
-				return 0;
-			}
+		P.tRestart = max(Restart, P.tRestart);
 		}
 	}
 	
