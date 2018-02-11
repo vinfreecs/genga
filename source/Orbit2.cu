@@ -1520,9 +1520,11 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn){
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
+		Encpairs2_d[j + NBS].x = j + NT;
+		Encpairs2_d[j + NBS].y = Nh;
 		x4_d[j + NT] = x4_d[j + NBS];
 		v4_d[j + NT] = v4_d[j + NBS];
 		xold_d[j + NT] = xold_d[j + NBS];
@@ -1560,6 +1562,31 @@ __global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
 
 		int index = index_d[idy + NBS] % 100;
 		index_d[idy + NBS] = index + st * 100;
+//printf("index %d %d %d\n", st, index + st * 100, N);
+	}
+}
+
+
+//this kernel rearranges the indices of the prechecker list
+__global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpairs){
+
+	int idy = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(idy < Nencpairs){
+
+		int i = Encpairs_d[idy].x;
+		int j = Encpairs_d[idy].y;
+		
+		int ii = Encpairs2_d[i].x;
+		int jj = Encpairs2_d[j].x;
+
+		Encpairs_d[idy].x = ii;
+		Encpairs_d[idy].y = jj;
+
+		if(Encpairs2_d[i].y == 0) Encpairs_d[idy].x = -1;
+		if(Encpairs2_d[j].y == 0) Encpairs_d[idy].y = -1;
+
+
 	}
 }
 
@@ -1579,11 +1606,11 @@ __host__ void Data::stopSimulations(){
 #if USE_NAF == 1
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
 #else
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0, Encpairs2_d, N_h[st]);
 #endif
 
 		NBS_h[st] = NT;
@@ -1604,7 +1631,7 @@ __host__ void Data::stopSimulations(){
 		int s = 0;
 		if(timeStep >= delta_h[st]){
 			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
-			fprintf(masterfile,"In Simulation %s: Rreached the end, simulation stopped\n", GSF[st].path);
+			fprintf(masterfile,"In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			fprintf(GSF[st].logfile,"Reached the end, simulation stopped\n");
 			fclose(GSF[st].logfile);
@@ -1686,8 +1713,10 @@ __host__ void Data::stopSimulations(){
 
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
-	if(Nst > 0) remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
-
+	if(Nst > 0){
+		remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
+		if(Nencpairs_h[0] > 0) remove4M_kernel <<< (Nencpairs_h[0] + 255) / 256, 256 >>>  (Encpairs_d, Encpairs2_d, Nencpairs_h[0]);
+	}
 }
 
 

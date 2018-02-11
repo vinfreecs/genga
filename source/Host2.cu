@@ -1907,7 +1907,8 @@ __host__ int Host::icSize(int st){
 						break;
 					}
 				}
-				if(time > Et) break;
+//if(st < 10 && i == 1) printf("%d %d %d %.20g %.20g | %g %g\n", st, i, it, time, Et, idt_h[st], ict_h[st]);
+				//if(time > Et) break;  //uncomment because of resolution increment in restarting
 				
 				if(er1 == 1){
 					if(Nst == 1 || P.FormatS == 0){

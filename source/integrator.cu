@@ -46,7 +46,6 @@ __host__ int Data::timeStepLoop(int interrupted){
 		 return 0;
 	}
 
-
 	if(interrupted == 1){
 		printf("GENGA is interrupted by SIGINT signal at time step %lld\n", timeStep);
 		fprintf(masterfile, "GENGA is interrupted by SIGINT signal at time step %lld\n", timeStep);
@@ -2400,7 +2399,6 @@ printf("more Transits than allowed in def_NtransitMax: %d\n", def_NtransitMax);
 			cudaMemcpy(StopFlag_d, StopFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 		}
 	}
-
 	return 1;
 }
 __host__ int Data::step_MSimple(){

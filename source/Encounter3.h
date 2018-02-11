@@ -517,6 +517,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 			NBS = NBS_d[st];
 			dt = dt_d[st];
 			time = time_d[st];
+//printf("encA %d %d %d %d %d %d\n", ii, jj, st, index_d[ii], index_d[jj], NBS);
 		}
 	}
 	__syncthreads();
@@ -526,6 +527,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
+//printf("encB %d %d %d %d %d %d\n", ii, jj, st, index_d[ii], index_d[jj], NBS);
 #if def_StopAtEncounter > 0 
 			if(enccount == 1){
 				N_d[st] = 0;
@@ -916,7 +918,6 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	int Ne = Nencpairs2_d[st + 1];
 	int BN2 = NmaxM * NmaxM - 1;
 	__syncthreads();
-
 	if(idy == 0){
 		T_s = 1;
 		Nenc_s = 0;
@@ -949,6 +950,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		T_s = 0;
 		if(idy < Ne){
 			if (A_s[idy] < B_s[encpairs_s[idy].x]) atomicMin(&B_s[encpairs_s[idy].x], A_s[idy]);
+//printf("A %d %d %d %d %d\n", tt, st, idy, A_s[idy], B_s[encpairs_s[idy].x]);
 		}
 		__syncthreads();
 		if(idy < Ne){
@@ -975,7 +977,10 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	}
 	//At this point B_s[idy] contains the smallest index of the group//
 	__syncthreads();
-	if(idy < NmaxM) B2_s[idy] = -1;
+	if(idy < NmaxM){
+//printf("B %d %d %d\n", st, idy, B_s[idy]);
+		B2_s[idy] = -1;
+	}
 	__syncthreads();
 	//Check now for new groups and increase the total number of groups//
 	if(idy < NmaxM){
