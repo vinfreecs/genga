@@ -367,7 +367,6 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	x4[j].w = -1.0e-12;
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;
-
 }
 // **************************************
 // This function stores the details of close encounters
