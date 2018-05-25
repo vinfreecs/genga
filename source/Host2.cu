@@ -163,7 +163,8 @@ __host__ int Host::DeviceInfo(){
 	
 	for(int i = 0; i < devCount; ++i){
 		cudaGetDeviceProperties(&devProp, i);
-		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels %d, regsPerBlock %d\n",  devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory, devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels, devProp.regsPerBlock);
+		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels:%d, regsPerBlock:%d, sharedMemPerBlock:%lu\n",  
+			devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory,devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels, devProp.regsPerBlock, devProp.sharedMemPerBlock);
 		if(!devProp.canMapHostMemory) {
 			fprintf(masterfile, "Device %d cannot map host memory!\n", i);
 			return 0;

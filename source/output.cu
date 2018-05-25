@@ -189,7 +189,11 @@ __host__ int Data::firstoutput(int irregular){
 // ***************************************
 __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double3 *spin_h, int Nsmall, int Nst, float4 *aelimits_h, int *aecount_h, int *enccount_h, long long *aecountT_h, long long *enccountT_h, int ci, int irregular){
 
+#if def_TTV != 2
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
+#else
+	BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
+#endif
 
 	int index;
 	int st = 0;
@@ -963,6 +967,7 @@ __host__ int Data::printTransits(){
 					TObs.x = 0.0;
 					TObs.y = 0.0;
 				}
+
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (T - TObs.x) > 0.5 * P){
 //if(i == 0) printf("***** %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
@@ -974,8 +979,10 @@ __host__ int Data::printTransits(){
 					--EpochObs;
 					continue;
 				}
+
 				if((TObs.x - T) <= 0.5 * P && T != 0.0 && TObs.x != 0.0) setEpoch = 1;
-				fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
+				
+				if(setEpoch == 1) fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
 
 				++Epoch;
 				if(NtransitsTObs_h[i] >= def_NtransitTimeMax -1){

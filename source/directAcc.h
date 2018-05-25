@@ -60,6 +60,7 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *r
 		ac.y += __dmul_rn(r3.y, s);
 		ac.z += __dmul_rn(r3.z, s);
 	}
+
 }
 //**************************************
 //This function computes the term a = mj/rij^3.

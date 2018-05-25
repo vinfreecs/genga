@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.72
+#define Version 3.73
 
 //Default parameter values
 #define def_TimeStep 6
@@ -174,7 +174,7 @@
 //only here for testing
 #define USE_NAF 0
 
-#define def_TTV 0
+#define def_TTV 0			//1: to transit detection and MCMC sampling, 2: use only BS integrator
 #define def_NtransitMax 4000
 #define def_NtransitTimeMax 4000		//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12

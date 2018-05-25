@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int NT, const int writeEncounters_d, const double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int NT, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -38,19 +38,16 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
 	__shared__ double Coltime_s[def_MaxColl];
-	__shared__ int N2; 
-	__shared__ int sgnt;
+	volatile int sgnt;
 
 	double3 scalex;
 	double3 scalev;
 
 	__shared__ double error_s[2*NN];
 	double test;
-	int writeEncounters = writeEncounters_d;
-	double writeEncountersRadius = writeEncountersRadius_d;
 	volatile int idi;
 	volatile int si = Encpairs2_d[ (st+2) * NT + idx].y;	//group index 
-	N2 = Encpairs2_d[si].y; //Number of bodies in current BS simulation
+	volatile int N2 = Encpairs2_d[si].y; //Number of bodies in current BS simulation
 	volatile int start = Encpairs2_d[NT + si].y;
 //printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
 	if(idy < N2){
@@ -352,7 +349,6 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					}
 					double errorx = dx_s[idy][0].x * dx_s[idy][0].x * scalex.x;
 					double errorv = dv_s[idy][0].x * dv_s[idy][0].x * scalev.x;
-//printf("%d %d %d %d %g %g %g %g %g %g | %g %g \n", idy, tt, ff, n, dx_s[idy][0].x, dx_s[idy][0].y, dx_s[idy][0].z, dv_s[idy][0].x, dv_s[idy][0].y, dv_s[idy][0].z, t, dt1); 
 					errorx = fmax(errorx, dx_s[idy][0].y * dx_s[idy][0].y * scalex.y);
 					errorv = fmax(errorv, dv_s[idy][0].y * dv_s[idy][0].y * scalev.y);
 
@@ -360,6 +356,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					errorv = fmax(errorv, dv_s[idy][0].z * dv_s[idy][0].z * scalev.z);
 
 					error_s[idy] = fmax(errorx, errorv);
+//printf("%d %d %d %d %d %g %g %g %g %g %g %g | %g %g \n", idy, tt, ff, n, idi, error_s[idy], dx_s[idy][0].x, dx_s[idy][0].y, dx_s[idy][0].z, dv_s[idy][0].x, dv_s[idy][0].y, dv_s[idy][0].z, t, dt1); 
 	
 					Ncol_s[0] = 0;
 					Coltime_s[0] = 10.0;

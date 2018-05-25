@@ -143,7 +143,9 @@ public:
 	__host__ int ic();
 	__host__ void KepToCart(double4 &, double4 &, double);
 	__host__ void HelioToDemo(double4 *, double4 *, double, int);
+	__host__ void HelioToBary(double4 *, double4 *, double, int);
 	__host__ void DemoToHelio(double4 *, double4 *, double, int);
+	__host__ void BaryToHelio(double4 *, double4 *, double, int);
 	__host__ int remove();
 	__host__ void stopSimulations();
 	__host__ void Ejection();
@@ -210,6 +212,7 @@ public:
 	__host__ int step_small();
 	__host__ int step_M();
 	__host__ int step_MSimple();
+	__host__ int step_BS();
 
 	__host__ int CollisionCall();
 	__host__ int CollisionMCall();

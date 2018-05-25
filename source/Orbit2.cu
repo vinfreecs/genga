@@ -589,7 +589,11 @@ __host__ int Data::ic(){
 				return 0;
 			}
 			fclose(GSF[st].logfile);
+#if def_TTV != 2
 			HelioToDemo(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
+#else
+			HelioToBary(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
+#endif
 		}
 	}
 	//Copy memory to device//
@@ -817,7 +821,7 @@ __host__ int Data::readic(int st){
 		}
 	}
 	else{
-#if def_TTV > 1
+#if def_TTV > 0
 	printf("Restart for TTV not possible\n");
 	return 0;
 
@@ -974,7 +978,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	double Omega = v.x;
 	double w = v.y;
 	double M = v.z;
-//printf("A %g %g %g %g %g %g %g %g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
+//printf("A KtoC m:%g r:%g a:%g e:%g i:%g O:%g w:%g M:%g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
 
 	double mu = def_ksq * (Msun + x.w);
 	
@@ -1018,7 +1022,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	v.x = t0 * (t1 * Px + t2 * Qx);
 	v.y = t0 * (t1 * Py + t2 * Qy);
 	v.z = t0 * (t1 * Pz + t2 * Qz);
-//printf("B %g %g %g %g %g %g %g %g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
+//printf("B KtoC m:%g r:%g x:%g y:%g z:%g vx:%g vy:%g vz:%g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
 }
 
 // **************************************
@@ -1051,6 +1055,50 @@ __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].z -= vcom.z;
 	}
 }
+// This function converts heliocentric coordinares to barycentric coordinates.
+// The zeroth body must be the cetnral star here
+__host__ void Data::HelioToBary(double4 *x4_h, double4 *v4_h, double Msun, int N){
+
+	double mtot = 0.0;
+	double3 vcom;
+	double3 xcom;
+	xcom.x = 0.0;
+	xcom.y = 0.0;
+	xcom.z = 0.0;
+	vcom.x = 0.0;
+	vcom.y = 0.0;
+	vcom.z = 0.0;
+	
+	for(int i = 0; i < N; ++i){
+//printf("A HtB %g %g %g %g %g %g %g %g\n", x4_h[i].w, v4_h[i].w, x4_h[i].x, x4_h[i].y, x4_h[i].z, v4_h[i].x ,v4_h[i].y, v4_h[i].z);
+		if(x4_h[i].w > 0.0){
+			double m = x4_h[i].w;
+			mtot += m;
+			xcom.x += m * x4_h[i].x;
+			xcom.y += m * x4_h[i].y;
+			xcom.z += m * x4_h[i].z;
+			vcom.x += m * v4_h[i].x;
+			vcom.y += m * v4_h[i].y;
+			vcom.z += m * v4_h[i].z;
+		}
+	}
+	xcom.x /= mtot;
+	xcom.y /= mtot;
+	xcom.z /= mtot;
+	vcom.x /= mtot;
+	vcom.y /= mtot;
+	vcom.z /= mtot;
+
+	for(int i = 0; i < N; ++i){
+		x4_h[i].x -= xcom.x;
+		x4_h[i].y -= xcom.y;
+		x4_h[i].z -= xcom.z;
+		v4_h[i].x -= vcom.x;
+		v4_h[i].y -= vcom.y;
+		v4_h[i].z -= vcom.z;
+//printf("B HtB %g %g %g %g %g %g %g %g\n", x4_h[i].w, v4_h[i].w, x4_h[i].x, x4_h[i].y, x4_h[i].z, v4_h[i].x ,v4_h[i].y, v4_h[i].z);
+	}
+}
 // **************************************
 //This function converts democratic coordinares to heliocentric coordinates.
 __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
@@ -1076,6 +1124,59 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].y += vcom.y;
 		v4_h[i].z += vcom.z;
 	}
+
+}
+// **************************************
+//This function converts barycentric coordinares to heliocentric coordinates.
+// The zeroth body must be the cetnral star here
+__host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
+
+#if def_TTV != 2
+	double3 xcom;
+	double3 vcom;
+	xcom.x = 0.0;
+	xcom.y = 0.0;
+	xcom.z = 0.0;
+	vcom.x = 0.0;
+	vcom.y = 0.0;
+	vcom.z = 0.0;
+
+	for(int i = 0; i < N; ++i){
+		if(x4_h[i].w > 0.0){
+			xcom.x += x4_h[i].w * x4_h[i].x;
+			xcom.y += x4_h[i].w * x4_h[i].y;
+			xcom.z += x4_h[i].w * x4_h[i].z;
+			vcom.x += x4_h[i].w * v4_h[i].x;
+			vcom.y += x4_h[i].w * v4_h[i].y;
+			vcom.z += x4_h[i].w * v4_h[i].z;
+		}
+	}
+	xcom.x /= x4_h[0].w;
+	xcom.y /= x4_h[0].w;
+	xcom.z /= x4_h[0].w;
+	vcom.x /= x4_h[0].w;
+	vcom.y /= x4_h[0].w;
+	vcom.z /= x4_h[0].w;
+
+	for(int i = 0; i < N; ++i){
+		x4_h[i].x += xcom.x;
+		x4_h[i].y += xcom.y;
+		x4_h[i].z += xcom.z;
+		v4_h[i].x += vcom.x;
+		v4_h[i].y += vcom.y;
+		v4_h[i].z += vcom.z;
+	}
+#else
+	
+	for(int i = 0; i < N; ++i){
+		x4_h[i].x -= x4_h[0].x;
+		x4_h[i].y -= x4_h[0].y;
+		x4_h[i].z -= x4_h[0].z;
+		v4_h[i].x -= v4_h[0].x;
+		v4_h[i].y -= v4_h[0].y; 
+		v4_h[i].z -= v4_h[0].z;
+	} 
+#endif
 
 }
 
