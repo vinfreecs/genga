@@ -1483,7 +1483,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else{
-			printf("Unefined line in param.dat file: line %d\n", j);
+			printf("Undefined line in param.dat file: line %d\n", j);
 			return 0;
 		}
 	}
