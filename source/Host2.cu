@@ -268,7 +268,7 @@ __host__ void Host::Halloc(){
 		 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
 	
 	for(int st = 0; st < Nst; ++st){
-		for(int i = 0; i < 40; ++i){
+		for(int i = 0; i < 50; ++i){
 			GSF[st].informat[i] = 0;
 		}
 		
@@ -383,6 +383,18 @@ __host__ void Host::Halloc(){
 			}
 			else if(strcmp(ff + f * 5, "saT") == 0){
 				GSF[st].informat[f] = 37;
+			}
+			else if(strcmp(ff + f * 5, "P") == 0){
+				GSF[st].informat[f] = 38;
+			}
+			else if(strcmp(ff + f * 5, "PL") == 0){
+				GSF[st].informat[f] = 39;
+			}
+			else if(strcmp(ff + f * 5, "T") == 0){
+				GSF[st].informat[f] = 40;
+			}
+			else if(strcmp(ff + f * 5, "TL") == 0){
+				GSF[st].informat[f] = 41;
 			}
 		}	
 		n1_h[st] = def_n1;
@@ -745,7 +757,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
-			for(int i = 0; i < 40; ++i){
+			for(int i = 0; i < 50; ++i){
 				GSF[st].informat[i] = 0;
 			}
 			//Read input file Format
@@ -876,6 +888,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 				else if(strcmp(sp, "saT") == 0){
 					GSF[st].informat[f] = 37;
+				}
+				else if(strcmp(sp, "P") == 0){
+					GSF[st].informat[f] = 38;
+				}
+				else if(strcmp(sp, "PL") == 0){
+					GSF[st].informat[f] = 39;
+				}
+				else if(strcmp(sp, "T") == 0){
+					GSF[st].informat[f] = 40;
+				}
+				else if(strcmp(sp, "TL") == 0){
+					GSF[st].informat[f] = 41;
 				}
 				else if(strcmp(sp, ">>") == 0){
 					break;
@@ -1785,7 +1809,7 @@ __host__ int Host::icSize(int st){
 	
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
-	for(int f = 0; f < 40; ++f){
+	for(int f = 0; f < 50; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
 	
@@ -2161,6 +2185,10 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 35) fprintf(infofile, "ML ");
 				else if(GSF[st].informat[f] == 36) fprintf(infofile, "rL ");
 				else if(GSF[st].informat[f] == 37) fprintf(infofile, "saT ");
+				else if(GSF[st].informat[f] == 38) fprintf(infofile, "P ");
+				else if(GSF[st].informat[f] == 39) fprintf(infofile, "PL ");
+				else if(GSF[st].informat[f] == 40) fprintf(infofile, "T ");
+				else if(GSF[st].informat[f] == 41) fprintf(infofile, "TL ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -2302,7 +2330,7 @@ __host__ int Host::readIrregularOutputs(){
 // Authors: Simon Grimm
 // April 2017
 // ******************************************
-__host__ int Host::readTransits(double4 *elementsA_h){
+__host__ int Host::readTransits(){
 	
 	FILE *Transitfile;
 	Transitfile = fopen(P.Transitsfilename, "r");

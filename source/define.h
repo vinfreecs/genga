@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.73
+#define Version 3.74
 
 //Default parameter values
 #define def_TimeStep 6
@@ -184,7 +184,9 @@
 					//3 affine invariant ensemble walkers
 					//4 DEMCMC
 
-#define MCMC_Q 0			//quadratic estimator
+#define MCMC_Q 0			//1 quadratic estimator
+					//2 iterative adjustment of M
+#define MCMC_NQ 1
 
 #define MCMC_NE 5 			//2: a M; 3: a M m; 5: a M m e w; 7: a m M e w inc Omega,; 8: + r
 #define MCMC_NT 1			//number of temperature levels in parallel tempering
@@ -282,7 +284,7 @@ struct GSFiles{
 	char encounterfilename[128];
 	char fragmentfilename[128];
 	char X[128];
-	int informat[40];
+	int informat[50];
 	char path[128];
 };
 

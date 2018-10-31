@@ -77,7 +77,7 @@ public:
 	int *NtransitsTObs_h, *NtransitsTObs_d;			//Total number of observed transits per planet
 	double2 *TransitTimeObs_h, *TransitTimeObs_d;		//contains all observed transit times
 	double *TransitTime_h, *TransitTime_d;			//contains all computed transit times
-	__host__ int readTransits(double4 *);
+	__host__ int readTransits();
 
 	double *setElementsData_h, *setElementsData_d;
 	int *setElementsLine_d;

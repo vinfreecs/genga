@@ -51,6 +51,7 @@ __host__ void Data::AllocateOrbitt(){
 #if def_TTV > 0
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsT_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsLB_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsCA_h = (int4*)malloc(NconstT * sizeof(int4));
@@ -63,6 +64,7 @@ __host__ void Data::AllocateOrbitt(){
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
+	elementsT_h = NULL;
 	elementsLA_h = NULL;
 	elementsLB_h = NULL;
 	elementsCA_h = NULL;
@@ -140,10 +142,13 @@ __host__ void Data::AllocateOrbitt(){
 #if def_TTV > 0
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsT_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld2_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsTOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsTOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsCA_d, NconstT * sizeof(int4));
@@ -156,10 +161,13 @@ __host__ void Data::AllocateOrbitt(){
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
+	elementsT_d = NULL;
 	elementsAOld_d = NULL;
 	elementsAOld2_d = NULL;
 	elementsBOld_d = NULL;
 	elementsBOld2_d = NULL;
+	elementsTOld_d = NULL;
+	elementsTOld2_d = NULL;
 	elementsLA_d = NULL;
 	elementsLB_d = NULL;
 	elementsCA_d = NULL;
@@ -475,6 +483,10 @@ __host__ int Data::init(){
 		elementsB_h[i].y = 0.0;
 		elementsB_h[i].z = 0.0;
 		elementsB_h[i].w = 0.0;
+		elementsT_h[i].x = 0.0;
+		elementsT_h[i].y = 0.0;
+		elementsT_h[i].z = 0.0;
+		elementsT_h[i].w = 0.0;
 		elementsLA_h[i].x = 0.0;
 		elementsLA_h[i].y = 0.0;
 		elementsLA_h[i].z = 0.0;
@@ -629,10 +641,13 @@ __host__ int Data::ic(){
 #if def_TTV > 0
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsT_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld2_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld2_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsTOld_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsTOld2_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLA_d, elementsLA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsLB_d, elementsLB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsCA_d, elementsCA_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
@@ -703,15 +718,20 @@ __host__ int Data::readic(int st){
 			index = i+st*100;
 			aelimits = aelimits_h[i + NBS];
 			int keplerian = 0;
+			int convertPToA = 0;
+			double p = 0.0;
+			int convertTToM = 0;
+			double T = 0.0;
 #if def_TTV > 0
 			double4 elementsA = elementsA_h[i + NBS];
 			double4 elementsB = elementsB_h[i + NBS];
+			double4 elementsT = elementsT_h[i + NBS];
 			double4 elementsLA = elementsLA_h[i + NBS];
 			double4 elementsLB = elementsLB_h[i + NBS];
 			double elementsSA = elementsSA_h[st];
 #endif
 
-			for(int f = 0; f < 40; ++f){
+			for(int f = 0; f < 50; ++f){
 				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);
 				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);
 				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);
@@ -738,28 +758,56 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
 				else if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
 				else if (GSF[st].informat[f] == 23){
+					//a
 					fscanf (infile, "%lf",&x.x);
+					elementsA.x = x.x;
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 24){
+					//e
 					fscanf (infile, "%lf",&x.y);
+					elementsA.y = x.y;
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 25){
+					//inc
 					fscanf (infile, "%lf",&x.z);
+					elementsA.z = x.z;
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 26){
+					//Omega
 					fscanf (infile, "%lf",&v.x);
+					elementsB.x = v.x;
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 27){
+					//w
 					fscanf (infile, "%lf",&v.y);
+					elementsB.y = v.y;
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 28){
+					//M
 					fscanf (infile, "%lf",&v.z);
+					elementsB.z = v.z;
 					keplerian = 1;
+				}
+				else if (GSF[st].informat[f] == 38){
+					//P
+					fscanf (infile, "%lf",&p);
+					elementsT.z = p;
+					elementsT.w = 0.0;
+					keplerian = 1;
+					convertPToA = 1;
+				}
+				else if (GSF[st].informat[f] == 40){
+					//T
+					fscanf (infile, "%lf",&T);
+					elementsT.x = T;
+					elementsT.y = 0.0;
+					keplerian = 1;
+					convertTToM = 1;
 				}
 #if def_TTV > 0
 				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&elementsLA.x);
@@ -771,6 +819,8 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&elementsLB.z);
 				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&elementsLB.w);
 				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&elementsSA);
+				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&elementsLA.x);
+				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&elementsLB.z);
 #else
 				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
@@ -781,13 +831,41 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
 #endif
 			}
+
 			if(dayUnit == 1) x.w *= def_Kg;
+			if(convertPToA == 1){
+				double mu = def_ksq * (Msun_h[st].x + x.w);
+				double a = cbrt(p * p * dayUnit * dayUnit * mu / (4.0 * M_PI * M_PI));
+				x.x = a;
+				elementsA.x = a;
+			}
+			if(convertTToM == 1){
+
+				double w = v.y;
+				double e = x.y;
+
+				double nu = M_PI * 0.5 - w;     //true anomaly at first transit
+				double ee2 = e * e;
+				double ee4 = ee2 * ee2;
+				//double time = time_h[0] - dt_h[0] / dayUnit;
+				double time = ict_h[0] * 365.25;
+				//compute Mean Anomaly of the first transit
+				double Mt = nu - 2.0 * e * sin(nu) + (3.0 * 0.25 * ee2 + 0.125 * ee4) * sin(2.0 * nu) - 1.0 / 3.0 * e * ee2 * sin(3.0 * nu) + 5.0/32.0 * ee4 * sin(4.0 * nu);
+				double M = -(T - time) / p * 2.0 * M_PI + Mt;
+				M = fmod(M, 2.0 * M_PI);
+				if(M < 0.0) M+= 2.0 * M_PI;
+
+				v.z = M;
+				elementsB.z = M;
+			}
 			if(keplerian == 1){
 #if def_TTV > 0
-				elementsA = x;
-				elementsB = v;
+				elementsA.w = x.w;
+				elementsB.w = v.w;
 #endif	
 				KepToCart(x, v, Msun_h[st].x);
 			}
@@ -810,6 +888,7 @@ __host__ int Data::readic(int st){
 #if def_TTV > 0
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
+			elementsT_h[ii + NBSN] = elementsT;
 			elementsLA_h[ii + NBSN] = elementsLA;
 			elementsLB_h[ii + NBSN] = elementsLB;
 			int iT = st / (Nst / MCMC_NT);			//index of temperature in parallel tempering
@@ -1851,6 +1930,7 @@ __host__ int Data::freeOrbit(){
 	free(NtransitsTObs_h);
 	free(elementsA_h);
 	free(elementsB_h);
+	free(elementsT_h);
 	free(elementsLA_h);
 	free(elementsLB_h);
 	free(elementsCA_h);
@@ -1964,10 +2044,13 @@ __host__ int Data::freeOrbit(){
 	cudaFree(NtransitsTObs_d);
 	cudaFree(elementsA_d);
 	cudaFree(elementsB_d);
+	cudaFree(elementsT_d);
 	cudaFree(elementsAOld_d);
 	cudaFree(elementsAOld2_d);
 	cudaFree(elementsBOld_d);
 	cudaFree(elementsBOld2_d);
+	cudaFree(elementsTOld_d);
+	cudaFree(elementsTOld2_d);
 	cudaFree(elementsLA_d);
 	cudaFree(elementsLB_d);
 	cudaFree(elementsCA_d);

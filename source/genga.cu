@@ -12,7 +12,8 @@
 #include "signal.h"
 
 #if def_TTV > 0
-	#include "TTVStep.h"
+	//#include "TTVStep.h"
+	#include "TTVStep2.h"
 #endif
 
 volatile sig_atomic_t interrupted = 0;
@@ -267,7 +268,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 		}
  #endif
  #if MCMC_BLOCK < 3
-		setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
+		setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
 //if(ittv > 30) TSwap_kernel <<<1, 1 >>> (D.random_d, D.elementsP_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsSA_d, D.N_h[0], D.Nst);
 		D.modifyElementsCall(ittv, MCMC_BLOCK);
   #if def_TTV == 1 
@@ -281,7 +282,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 
  #if MCMC_BLOCK == 3
 //	if(ittv > 1 && ittv % 4 == 0) Mix_kernel <<< (D.NT + 255) / 256, 256 >>> (D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsC_d, D.elementsP_d, D.Nst, D.NT, D.N_h[0]);
-	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 3);
+	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 3);
 		
 	if(ittv <= 1) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 3);
@@ -296,10 +297,12 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 //sigma_kernel <<< 1, D.N_h[0] >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.time_h[0] - D.dt_h[0] / dayUnit, D.Msun_h[0].x, D.N_h[0], D.Nst);
   #if MCMC_Q == 1
 if(ittv % 16 == 0){
+  #elif MCMC_Q == 2
+if(ittv % MCMC_NQ == 0){
   #else
 {
   #endif
-	setJ_kenrnel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 4);
+	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 4);
 }
 	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
 		
@@ -389,7 +392,7 @@ if(ittv % 16 == 0){
 		}
 	}
 	if(D.P.UseTransits == 1 && ittv == 0){
-		er = D.readTransits(D.elementsA_h);
+		er = D.readTransits();
 		if(er == 0){
 			return 0;
 		}
@@ -451,10 +454,21 @@ if(ittv % 16 == 0){
 		} 
 	}
 
-	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.NT, ittv, D.Nstart);
-	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
+	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.elementsT_d, D.NT, ittv, D.Nstart);
+ #if MCMC_Q == 2
+	if(ittv % MCMC_NQ == 6){
+	//	TTVstepRefine <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.elementsT_d, D.NT, ittv, D.Nstart);
+	}
+	if(ittv % MCMC_NQ == MCMC_NQ - 1){
+ #else
+        {
+ #endif
+		TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
+        }
  #if MCMC_Q == 1
 	if(ittv % 16 == 15){
+ #elif MCMC_Q == 2
+	if(ittv % MCMC_NQ == MCMC_NQ - 1){
  #else 
 	{
  #endif
@@ -470,6 +484,8 @@ if(ittv % 16 == 0){
 	}//end of TTV loop
  #if MCMC_Q == 1
 	if(ittv % 16 == 15){
+ #elif MCMC_Q == 2
+	if(ittv % MCMC_NQ == MCMC_NQ - 1){
  #else 
 	{
  #endif

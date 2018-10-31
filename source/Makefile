@@ -14,5 +14,5 @@ headers = define.h Host2.h Orbit2.h FG2.h BSSingle.h Encounter3.h Kick3.h Kick4.
 genga: $(source) $(headers)
 	nvcc $(ARCH) --compiler-options -Wall -o genga $(source) $(BUILD_DATA)
 #	nvcc $(ARCH) --ptxas-options=-v --compiler-options -Wall -o genga $(source) $(BUILD_DATA)
-#	nvcc $(ARCH) -ccbin=g++-6 -o genga $(source) $(BUILD_DATA)
+#	nvcc $(ARCH) -ccbin=g++-7 --compiler-options -Wall -o genga $(source) $(BUILD_DATA)
 #	nvcc $(ARCH) -rdc=true -o genga $(source) $(BUILD_DATA)
