@@ -760,52 +760,68 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 23){
 					//a
 					fscanf (infile, "%lf",&x.x);
+#if def_TTV > 0
 					elementsA.x = x.x;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 24){
 					//e
 					fscanf (infile, "%lf",&x.y);
+#if def_TTV > 0
 					elementsA.y = x.y;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 25){
 					//inc
 					fscanf (infile, "%lf",&x.z);
+#if def_TTV > 0
 					elementsA.z = x.z;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 26){
 					//Omega
 					fscanf (infile, "%lf",&v.x);
+#if def_TTV > 0
 					elementsB.x = v.x;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 27){
 					//w
 					fscanf (infile, "%lf",&v.y);
+#if def_TTV > 0
 					elementsB.y = v.y;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 28){
 					//M
 					fscanf (infile, "%lf",&v.z);
+#if def_TTV > 0
 					elementsB.z = v.z;
+#endif
 					keplerian = 1;
 				}
 				else if (GSF[st].informat[f] == 38){
 					//P
 					fscanf (infile, "%lf",&p);
+#if def_TTV > 0
 					elementsT.z = p;
 					elementsT.w = 0.0;
+#endif
 					keplerian = 1;
 					convertPToA = 1;
 				}
 				else if (GSF[st].informat[f] == 40){
 					//T
 					fscanf (infile, "%lf",&T);
+#if def_TTV > 0
 					elementsT.x = T;
 					elementsT.y = 0.0;
+#endif
 					keplerian = 1;
 					convertTToM = 1;
 				}
@@ -841,7 +857,9 @@ __host__ int Data::readic(int st){
 				double mu = def_ksq * (Msun_h[st].x + x.w);
 				double a = cbrt(p * p * dayUnit * dayUnit * mu / (4.0 * M_PI * M_PI));
 				x.x = a;
+#if def_TTV > 0
 				elementsA.x = a;
+#endif
 			}
 			if(convertTToM == 1){
 
@@ -860,7 +878,9 @@ __host__ int Data::readic(int st){
 				if(M < 0.0) M+= 2.0 * M_PI;
 
 				v.z = M;
+#if def_TTV > 0
 				elementsB.z = M;
+#endif
 			}
 			if(keplerian == 1){
 #if def_TTV > 0
