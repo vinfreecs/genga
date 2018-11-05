@@ -25,8 +25,6 @@ GENGA can be compiled with the Makefile by typing 'make SM=xx' to the terminal, 
 GENGA can be startet with
 
 ```
-#!cuda
-
 ./genga
 ```
 followed by optional arguments listed [here](#markdown-header-console-arguments).
@@ -89,6 +87,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * tau = time lag in day / 0.0172020989.
     * \- = skip this column, optional
 
+ * The angle units: "radians" or "degrees".
  * The default value of the density in g/cm^3. If the density is not included in the initial condition file, it can be set here globally for all bodies.
  * Use the Test particle mode: 0: All Bodies are treated as massive bodies; 1: Small bodies does not affect big bodies; 2: Small bodies only affect large bodies.
  * Particle minimum Mass:  Minimal Mass for massive particles in test particle mode, lighter or equal sized particles are treated as test particles.

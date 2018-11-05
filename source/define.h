@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.74
+#define Version 3.75
 
 //Default parameter values
 #define def_TimeStep 6
@@ -267,6 +267,7 @@ struct Parameter{
 	int NAFinterval;
 	int NencMax;
 	double MinMass;
+	int AngleUnits;
 };
 
 //File names of Simulstions

@@ -732,14 +732,14 @@ __host__ int Data::readic(int st){
 #endif
 
 			for(int f = 0; f < 50; ++f){
-				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);
-				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);
-				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);
-				else if (GSF[st].informat[f] == 4) fscanf (infile, "%lf",&x.w);
-				else if (GSF[st].informat[f] == 5) fscanf (infile, "%lf",&v.x);
-				else if (GSF[st].informat[f] == 6) fscanf (infile, "%lf",&v.y);
-				else if (GSF[st].informat[f] == 7) fscanf (infile, "%lf",&v.z);
-				else if (GSF[st].informat[f] == 8) fscanf (infile, "%lf",&v.w);
+				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);		//x
+				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);		//y
+				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);		//z
+				else if (GSF[st].informat[f] == 4) fscanf (infile, "%lf",&x.w);		//m
+				else if (GSF[st].informat[f] == 5) fscanf (infile, "%lf",&v.x);		//vx
+				else if (GSF[st].informat[f] == 6) fscanf (infile, "%lf",&v.y);		//vy
+				else if (GSF[st].informat[f] == 7) fscanf (infile, "%lf",&v.z);		//vz
+				else if (GSF[st].informat[f] == 8) fscanf (infile, "%lf",&v.w);		//r
 				else if (GSF[st].informat[f] == 9) fscanf (infile, "%lf",&rho[st]);
 				else if (GSF[st].informat[f] == 10) fscanf (infile, "%lf",&spin.x);
 				else if (GSF[st].informat[f] == 11) fscanf (infile, "%lf",&spin.y);
@@ -776,6 +776,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 25){
 					//inc
 					fscanf (infile, "%lf",&x.z);
+					if(P.AngleUnits == 1) x.z = x.z / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsA.z = x.z;
 #endif
@@ -784,6 +785,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 26){
 					//Omega
 					fscanf (infile, "%lf",&v.x);
+					if(P.AngleUnits == 1) v.x = v.x / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.x = v.x;
 #endif
@@ -792,6 +794,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 27){
 					//w
 					fscanf (infile, "%lf",&v.y);
+					if(P.AngleUnits == 1) v.y = v.y / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.y = v.y;
 #endif
@@ -800,6 +803,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 28){
 					//M
 					fscanf (infile, "%lf",&v.z);
+					if(P.AngleUnits == 1) v.z = v.z / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.z = v.z;
 #endif
@@ -826,17 +830,44 @@ __host__ int Data::readic(int st){
 					convertTToM = 1;
 				}
 #if def_TTV > 0
-				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&elementsLA.x);
-				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&elementsLA.y);
-				else if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&elementsLA.z);
-				else if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&elementsLA.w);
-				else if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&elementsLB.x);
-				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&elementsLB.y);
-				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&elementsLB.z);
-				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&elementsLB.w);
-				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&elementsSA);
-				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&elementsLA.x);
-				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&elementsLB.z);
+				else if (GSF[st].informat[f] == 29){
+					fscanf (infile, "%lf",&elementsLA.x);	//aL
+				}
+				else if (GSF[st].informat[f] == 30){
+					fscanf (infile, "%lf",&elementsLA.y);	//eL
+				}
+				else if (GSF[st].informat[f] == 31){
+					fscanf (infile, "%lf",&elementsLA.z);	//incL
+					if(P.AngleUnits == 1) elementsLA.z = elementsLA.z / 180.0 * M_PI;
+				}
+				else if (GSF[st].informat[f] == 32){
+					 fscanf (infile, "%lf",&elementsLA.w);	//mL
+				}
+				else if (GSF[st].informat[f] == 33){
+					fscanf (infile, "%lf",&elementsLB.x);	//OmegaL
+					if(P.AngleUnits == 1) elementsLB.x = elementsLB.x / 180.0 * M_PI;
+				}
+				else if (GSF[st].informat[f] == 34){
+					fscanf (infile, "%lf",&elementsLB.y);	//wL
+					if(P.AngleUnits == 1) elementsLB.y = elementsLB.y / 180.0 * M_PI;
+				}
+				else if (GSF[st].informat[f] == 35){
+					fscanf (infile, "%lf",&elementsLB.z);	//ML
+					if(P.AngleUnits == 1) elementsLB.z = elementsLB.z / 180.0 * M_PI;
+				}
+				else if (GSF[st].informat[f] == 36){
+					fscanf (infile, "%lf",&elementsLB.w);	//rL
+				}
+				else if (GSF[st].informat[f] == 37){
+					fscanf (infile, "%lf",&elementsSA);
+				}
+				else if (GSF[st].informat[f] == 39){
+					fscanf (infile, "%lf",&elementsLA.x);	//PL
+				}
+				else if (GSF[st].informat[f] == 41){
+					fscanf (infile, "%lf",&elementsLB.z);	//TL
+				}
+
 #else
 				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
@@ -984,7 +1015,7 @@ __host__ int Data::readic(int st){
 		if(P.FormatP == 0){
 			ii = 0;
 			FILE *OrigInfile;	
-			char Origfilename[160];
+			char Origfilename[300];
 			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 			OrigInfile = fopen(Origfilename, "r");
 			for(int k = 0; k < 1000000000; ++k){
@@ -1002,7 +1033,7 @@ __host__ int Data::readic(int st){
 				if(eri < 0) break;
 		
 				int er = 0;
-				char infilename[160];
+				char infilename[300];
 				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 				infile = fopen(infilename, "r");
 				if(infile == NULL) continue;

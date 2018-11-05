@@ -348,7 +348,7 @@ __global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			v4_d[id].x += __dmul_rn(a.x, dtksqKt);
 			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
 			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
-//printf("KickB %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
+//printf("Kick32BM %d %g %g %g %g\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x);
 		}
 		ab_d[id].x = a.x;
 		ab_d[id].y = a.y;
@@ -1358,7 +1358,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
 			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
 			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
-//printf("acc %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, acck_d[id].x, acck_d[id].y, acck_d[id].z);
+//printf("acc %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, acck_d[id].x, acck_d[id].y, acck_d[id].z, x4_d[id].w);
 		}
 	}
 }

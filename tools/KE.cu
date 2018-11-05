@@ -195,7 +195,7 @@ printf("%s\n", inputfilename);
 				xOld = x.x;
 				fscanf (inputfile, "%lf",&t);
 				fscanf (inputfile, "%d",&index);
-	//printf("%d %g %d\n", i, t, index);
+//printf("%d %g %d\n", i, t, index);
 				fscanf (inputfile, "%lf",&m);
 				fscanf (inputfile, "%lf",&r);
 				fscanf (inputfile, "%lf",&x.x);
@@ -217,7 +217,7 @@ printf("%s\n", inputfilename);
 				fscanf (inputfile, "%lf",&s);
 				if(xOld == x.x){
 					NN = i;
-	printf("%d\n", NN);
+printf("%d\n", NN);
 					break;
 				}
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
@@ -244,7 +244,7 @@ printf("%s\n", inputfilename);
 				er = fscanf (inputfile, "%lf",&spin.z);
 				if(er < 0){
 					NN = i;
-	printf("%d\n", NN);
+printf("%d\n", NN);
 					break;
 				}
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
@@ -265,7 +265,7 @@ printf("%s\n", inputfilename);
 				er = fscanf (inputfile, "%lf",&spin.z);
 				if(er < 0){
 					NN = i;
-	printf("%d\n", NN);
+printf("%d\n", NN);
 					break;
 				}
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);

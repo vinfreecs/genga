@@ -214,6 +214,7 @@ __host__ void Host::Halloc(){
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
 	P.NencMax = def_NencMax;
+	P.AngleUnits = 0;		//0: radians, 1:degrees
 	P.UseaeGrid = def_UseaeGrid;
 	Gridae.amin = def_aeGridamin;
 	Gridae.amax = def_aeGridamax;		
@@ -459,7 +460,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 	
-	for(int j = 0; j < 70; ++j){ //loop around all lines in the param.dat file
+	for(int j = 0; j < 100; ++j){ //loop around all lines in the param.dat file
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -919,6 +920,31 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
 				return 0;
 				
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Angle units =") == 0){
+			if(st == 0){
+				char angle[16];
+				er = fscanf (paramfile, "%s", angle);
+				if(strcmp(angle, "radians") == 0){
+					P.AngleUnits = 0;
+				}
+				else if(strcmp(angle, "degrees") == 0){
+					P.AngleUnits = 1;
+				}
+				else{
+					er = -1;
+				}
+
+				if(er <= 0){
+					printf("Error: Angle units value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char angle[16];
+				er = fscanf (paramfile, "%s", angle);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1645,7 +1671,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 // *********************************************3
 __host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
-	char paramfilename[160];
+	char paramfilename[300];
 	
 	// Read parameters from param file //
 	for(int st = 0; st < Nst; ++st){
@@ -1666,7 +1692,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		fclose(paramfile);
 		
 		if(Nst > 1){
-			char tname[160];
+			char tname[300];
 			sprintf(tname, "%s%s", GSF[st].path, GSF[st].inputfilename);
 			sprintf(GSF[st].inputfilename, "%s", tname);
 			P.UseTestParticles = 0;
@@ -1683,7 +1709,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		long long Restart = -1;
 		for(int st = 0; st < Nst; ++st){
 			FILE *timefile;
-			char timefilename[160];
+			char timefilename[300];
 			sprintf(timefilename, "%stime%s.dat", GSF[st].path, GSF[st].X);
 			int er = 0;
 			timefile = fopen(timefilename, "r");
@@ -1780,7 +1806,7 @@ __host__ int Host::icict(int Nformat, int st){
 	double time = 0.0;
 	int er = 1;
 	FILE *OrigInfile;
-	char Origfilename[160];
+	char Origfilename[300];
 	sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 	OrigInfile = fopen(Origfilename, "r");
 	if(OrigInfile == NULL){
@@ -1899,7 +1925,7 @@ __host__ int Host::icSize(int st){
 		int NNNsmall = 0;
 		Nformat = 21;
 		FILE *OrigInfile;
-		char Origfilename[160];
+		char Origfilename[300];
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 		OrigInfile = fopen(Origfilename, "r");
 		for(int k = 0; k < 1000000000; ++k){
@@ -1918,7 +1944,7 @@ __host__ int Host::icSize(int st){
 			
 			int NMAX = 0;
 			er1 = 1;
-			char infilename[160];
+			char infilename[300];
 			sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 			infile = fopen(infilename, "r");
 			if(infile == NULL) continue;
@@ -2192,6 +2218,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
+			fprintf(infofile, "Angle units: %d\n", P.AngleUnits);
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
 			fprintf(infofile, "Device number: %d\n", P.dev);                           // use only argument in simulation 0
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);

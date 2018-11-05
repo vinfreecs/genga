@@ -89,7 +89,7 @@ __host__ int Data::firstoutput(int irregular){
 					//clear Irregular output files
 					if(Nst == 1 || P.FormatS == 0){
 						for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-							char name[160];
+							char name[300];
 							sprintf(name, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 							FILE *file;
 							file = fopen(name, "r");
@@ -102,7 +102,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 					else{
 						for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-							char name[160];
+							char name[300];
 							sprintf(name, "%s../OutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 							FILE *file;
 							file = fopen(name, "r");
@@ -201,7 +201,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 	for(int j = 0; j < N + Nsmall; j+=1){
 		if(Nst > 1) st = index_h[j] / 100;
 		if(P.FormatP == 0){
-			char outputfilename[160];
+			char outputfilename[300];
 			if(Nst == 1){
 				if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
 					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);

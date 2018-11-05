@@ -424,9 +424,9 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 		x4_d[id].x += p_s[idy].x * dtiMsun;
 		x4_d[id].y += p_s[idy].y * dtiMsun;
 		x4_d[id].z += p_s[idy].z * dtiMsun;
-//printf("HCx %d %.20e %.20e %.20e\n", id, x4_d[id].x, p_s[idy].x, dtiMsun);
-//printf("HCy %d %.20e %.20e %.20e\n", id, x4_d[id].y, p_s[idy].y, dtiMsun);
-//printf("HCz %d %.20e %.20e %.20e\n", id, x4_d[id].z, p_s[idy].z, dtiMsun);
+//printf("HCx %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].x, p_s[idy].x, dtiMsun);
+//printf("HCy %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].y, p_s[idy].y, dtiMsun);
+//printf("HCz %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].z, p_s[idy].z, dtiMsun);
 		if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];

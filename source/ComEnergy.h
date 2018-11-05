@@ -146,6 +146,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		NBS = -1;
 	}
 	//halo
+
 	if(idy < Nmax / 2){
 		//right
 		if(id + Bl < NT + Nstart){
@@ -350,6 +351,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		p_s[idy + 32].w = pw;
 		__syncthreads();
 	}
+//if(p_s[idy].x != p_s[idy].x) printf("CoM %d %g %g %g %d %d\n", id, p_s[idy].x, p_s[idy].y, p_s[idy].z, Nmax, ff);
 
 	double iMsun = 1.0 / Msun;
 	//now the sum is complete
