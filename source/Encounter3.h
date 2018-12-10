@@ -16,7 +16,7 @@
 //
 //E = 0: Used for Critical Radius 
 //E = 1: Used for Physical Radius 
-//E = 2: Used for Critical Radius with Test Particles
+//E = 2: Used for Critical Radius with Test Particles (not used anymore)
 //E = 3: Used for Critial Radius in multi simlation mode
 //Code is adapted from Mercury
 //
@@ -497,7 +497,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 //
 // ****************************************
 template < int Nmax >
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int writeEncounters, const double writeEncountersRadius, int *StopFlag_d, const double MinMass){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int writeEncounters, const double writeEncountersRadius, int *StopFlag_d, const double MinMass){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -565,7 +565,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;

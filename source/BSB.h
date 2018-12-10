@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int NT, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 

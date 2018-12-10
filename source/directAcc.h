@@ -252,7 +252,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, int *aecount, int *enccount, long long *aecountT, long long *enccountT){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT){
 
 	double3 vij;
 	double3 rij;

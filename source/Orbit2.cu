@@ -25,10 +25,10 @@ __host__ void Data::AllocateOrbitt(){
 	writeEnc_h = (double*)malloc(25 * def_MaxWriteEnc * Nst * sizeof(double));
 	Fragments_h = (double*)malloc(25 * def_Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
-	aecount_h = (int*)malloc(NconstT * sizeof(int));
-	enccount_h = (int*)malloc(NconstT * sizeof(int));
-	aecountT_h = (long long*)malloc(NconstT * sizeof(long long));
-	enccountT_h = (long long*)malloc(NconstT * sizeof(long long));
+	aecount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
+	enccount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
+	aecountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
+	enccountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
 
 	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
 	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
@@ -119,10 +119,10 @@ __host__ void Data::AllocateOrbitt(){
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
-	cudaMalloc((void **) &aecount_d, NconstT * sizeof(int));
-	cudaMalloc((void **) &enccount_d, NconstT * sizeof(int));
-	cudaMalloc((void **) &aecountT_d, NconstT * sizeof(long long));
-	cudaMalloc((void **) &enccountT_d, NconstT * sizeof(long long));
+	cudaMalloc((void **) &aecount_d, NconstT * sizeof(unsigned int));
+	cudaMalloc((void **) &enccount_d, NconstT * sizeof(unsigned int));
+	cudaMalloc((void **) &aecountT_d, NconstT * sizeof(unsigned long long));
+	cudaMalloc((void **) &enccountT_d, NconstT * sizeof(unsigned long long));
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
@@ -285,29 +285,29 @@ __host__ int Data::CMallocateOrbit(){
 __host__ int Data::GridaeAlloc(){
 	cudaError_t error;
 	GridNae = Gridae.Na * Gridae.Ne;
-	cudaMalloc((void **) &Gridaecount_d, GridNae * sizeof(int));
-	Gridaecount_h = (int*)malloc(GridNae * sizeof(int));
-	GridaecountT_h = (long long*)malloc(GridNae * sizeof(long long));
-	GridaecountS_h = (long long*)malloc(GridNae * sizeof(long long));
+	cudaMalloc((void **) &Gridaecount_d, GridNae * sizeof(unsigned int));
+	Gridaecount_h = (unsigned int*)malloc(GridNae * sizeof(unsigned int));
+	GridaecountT_h = (unsigned long long*)malloc(GridNae * sizeof(unsigned long long));
+	GridaecountS_h = (unsigned long long*)malloc(GridNae * sizeof(unsigned long long));
 
 	for(int i = 0; i < GridNae; ++i){
-	      Gridaecount_h[i] = 0;
-	      GridaecountT_h[i] = 0;
-	      GridaecountS_h[i] = 0;
+	      Gridaecount_h[i] = 0u;
+	      GridaecountT_h[i] = 0ull;
+	      GridaecountS_h[i] = 0ull;
 	}
-	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(int)*GridNae, cudaMemcpyHostToDevice);
+	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(unsigned int)*GridNae, cudaMemcpyHostToDevice);
 	GridNai = Gridae.Na * Gridae.Ni;
-	cudaMalloc((void **) &Gridaicount_d, GridNai * sizeof(int));
-	Gridaicount_h = (int*)malloc(GridNai * sizeof(int));
-	GridaicountT_h = (long long*)malloc(GridNai * sizeof(long long));
-	GridaicountS_h = (long long*)malloc(GridNai * sizeof(long long));
+	cudaMalloc((void **) &Gridaicount_d, GridNai * sizeof(unsigned int));
+	Gridaicount_h = (unsigned int*)malloc(GridNai * sizeof(unsigned int));
+	GridaicountT_h = (unsigned long long*)malloc(GridNai * sizeof(unsigned long long));
+	GridaicountS_h = (unsigned long long*)malloc(GridNai * sizeof(unsigned long long));
 
 	for(int i = 0; i < GridNai; ++i){
-	      Gridaicount_h[i] = 0;
-	      GridaicountT_h[i] = 0;
-	      GridaicountS_h[i] = 0;
+	      Gridaicount_h[i] = 0u;
+	      GridaicountT_h[i] = 0ull;
+	      GridaicountS_h[i] = 0ull;
 	}
-	cudaMemcpy(Gridaicount_d, Gridaicount_h, sizeof(int)*GridNai, cudaMemcpyHostToDevice);
+	cudaMemcpy(Gridaicount_d, Gridaicount_h, sizeof(unsigned int)*GridNai, cudaMemcpyHostToDevice);
 
 	constantCopy();
 
@@ -382,7 +382,7 @@ __host__ int Data::readGridae(){
 __host__ int Data::copyGridae(){
 	cudaError_t error;
 	//ae grid
-	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int) * GridNae, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(unsigned int) * GridNae, cudaMemcpyDeviceToHost);
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
 			if(timeStep > Gridae.Start){
@@ -393,7 +393,7 @@ __host__ int Data::copyGridae(){
 	}
 	cudaMemset(Gridaecount_d, 0, sizeof(int)*GridNae);
 	//ae grid
-	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int) * GridNai, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(unsigned int) * GridNai, cudaMemcpyDeviceToHost);
 	for(int i = 0; i < Gridae.Ni; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
 			if(timeStep > Gridae.Start){
@@ -470,10 +470,10 @@ __host__ int Data::init(){
 		aelimits_h[i].y = 1.0f;
 		aelimits_h[i].z = 0.0f;
 		aelimits_h[i].w = 1.0f;
-		aecount_h[i] = 0;
-		enccount_h[i] = 0;
-		aecountT_h[i] = 0;
-		enccountT_h[i] = 0;
+		aecount_h[i] = 0u;
+		enccount_h[i] = 0u;
+		aecountT_h[i] = 0ull;
+		enccountT_h[i] = 0ull;
 #if def_TTV > 0
 		elementsA_h[i].x = 0.0;
 		elementsA_h[i].y = 0.0;
@@ -632,10 +632,10 @@ __host__ int Data::ic(){
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * def_MaxWriteEnc, cudaMemcpyHostToDevice);
 	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * def_Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecount_d, aecount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccount_d, enccount_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(enccountT_d, enccountT_h, sizeof(long long) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecount_d, aecount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccount_d, enccount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecountT_d, aecountT_h, sizeof(unsigned long long) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccountT_d, enccountT_h, sizeof(unsigned long long) * NconstT, cudaMemcpyHostToDevice);
 
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 #if def_TTV > 0
@@ -704,6 +704,7 @@ __host__ int Data::readic(int st){
 	
 	double skip;
 	double4 x, v;
+	double rcrit;
 	double3 spin;
 	double3 love;
 	int index;
@@ -712,6 +713,7 @@ __host__ int Data::readic(int st){
 		for(int i = 0; i < N + Nsmall; ++i){
 			x = x4_h[i + NBS];
 			v = v4_h[i + NBS];
+			rcrit = rcrit_h[i + NBS];
 			spin = spin_h[i + NBS];
 			love = love_h[i + NBS];
 			//index = index_h[i + NBS];
@@ -880,6 +882,7 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
+				else if (GSF[st].informat[f] == 42) fscanf (infile, "%lf",&rcrit);
 #endif
 			}
 
@@ -931,6 +934,7 @@ __host__ int Data::readic(int st){
 
 			x4_h[ii + NBSN] = x;
 			v4_h[ii + NBSN] = v;
+			rcrit_h[ii + NBSN] = rcrit;
 			spin_h[ii + NBSN] = spin;
 			love_h[ii + NBSN] = love;
 			if(Nst == 1) index_h[ii + NBSN] = index;
@@ -1007,7 +1011,7 @@ __host__ int Data::readic(int st){
 				fscanf (infile, "%lf",&ttest);
 
 				if(P.FormatS == 0) index_h[i + NBS] += 100*st;
-				aecountT_h[i + NBS] = (long long)(aecount * P.tRestart);
+				aecountT_h[i + NBS] = (unsigned long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index_h[i + NBS]);
 				++ii;
 			}
@@ -1077,7 +1081,7 @@ __host__ int Data::readic(int st){
 				fscanf (infile, "%lf",&ttest);
 
 				if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
-				aecountT_h[ii + NBS] = (long long)(aecount * P.tRestart);
+				aecountT_h[ii + NBS] = (unsigned long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index);
 				++ii;
 				fclose(infile);
@@ -1318,7 +1322,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -1380,13 +1384,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				aelimits_d[Nb].w = 0.0f;
 
 				aecount_d[Na] = aecount_d[Nb];
-				aecount_d[Nb] = 0;
+				aecount_d[Nb] = 0u;
 				enccount_d[Na] = enccount_d[Nb];
-				enccount_d[Nb] = 0;
+				enccount_d[Nb] = 0u;
 				aecountT_d[Na] = aecountT_d[Nb];
-				aecountT_d[Nb] = 0;
+				aecountT_d[Nb] = 0ull;
 				enccountT_d[Na] = enccountT_d[Nb];
-				enccountT_d[Nb] = 0;
+				enccountT_d[Nb] = 0ull;
 
 				Energy_d[Na] += Energy_d[Nb];
 				Energy_d[Nb] = 0.0;
@@ -1470,13 +1474,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					aelimits_d[Nb].w = 0.0f;
 
 					aecount_d[Na] = aecount_d[Nb];
-					aecount_d[Nb] = 0;
+					aecount_d[Nb] = 0u;
 					enccount_d[Na] = enccount_d[Nb];
-					enccount_d[Nb] = 0;
+					enccount_d[Nb] = 0u;
 					aecountT_d[Na] = aecountT_d[Nb];
-					aecountT_d[Nb] = 0;
+					aecountT_d[Nb] = 0ull;
 					enccountT_d[Na] = enccountT_d[Nb];
-					enccountT_d[Nb] = 0;
+					enccountT_d[Nb] = 0ull;
 
 					Energy_d[Na] = Energy_d[Nb];
 					Energy_d[Nb] = 0.0;
@@ -1545,13 +1549,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				aelimits_d[Nb].w = 0.0f;
 
 				aecount_d[Na] = aecount_d[Nb];
-				aecount_d[Nb] = 0;
+				aecount_d[Nb] = 0u;
 				enccount_d[Na] = enccount_d[Nb];
-				enccount_d[Nb] = 0;
+				enccount_d[Nb] = 0u;
 				aecountT_d[Na] = aecountT_d[Nb];
-				aecountT_d[Nb] = 0;
+				aecountT_d[Nb] = 0ull;
 				enccountT_d[Na] = enccountT_d[Nb];
-				enccountT_d[Nb] = 0;
+				enccountT_d[Nb] = 0ull;
 
 				Energy_d[Na] += Energy_d[Nb];
 				Energy_d[Nb] = 0.0;
@@ -1751,7 +1755,7 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
 		Encpairs2_d[j + NBS].x = j + NT;

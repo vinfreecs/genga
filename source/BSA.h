@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -673,7 +673,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -1421,7 +1421,7 @@ __global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, dou
 }
 
 
-__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, int *aecount_d, int *enccount_d, long long *aecountT_d, long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, int noColl){
 
 	int idx = blockIdx.y;	
 

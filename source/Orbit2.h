@@ -39,16 +39,16 @@ public:
 	int *Encpairs3_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
-	int *aecount_h, *aecount_d;
-	int *enccount_h, *enccount_d;
-	long long *aecountT_h, *aecountT_d;
-	long long *enccountT_h, *enccountT_d;
-	int *Gridaecount_h, *Gridaecount_d;
-	long long *GridaecountS_h;
-	long long *GridaecountT_h;
-	int *Gridaicount_h, *Gridaicount_d;
-	long long *GridaicountS_h;
-	long long *GridaicountT_h;
+	unsigned int *aecount_h, *aecount_d;
+	unsigned int *enccount_h, *enccount_d;
+	unsigned long long *aecountT_h, *aecountT_d;
+	unsigned long long *enccountT_h, *enccountT_d;
+	unsigned int *Gridaecount_h, *Gridaecount_d;
+	unsigned long long *GridaecountS_h;
+	unsigned long long *GridaecountT_h;
+	unsigned int *Gridaicount_h, *Gridaicount_d;
+	unsigned long long *GridaicountS_h;
+	unsigned long long *GridaicountT_h;
 
 	//arrays for backup
 	double4 *x4b_d;
@@ -255,7 +255,7 @@ private:
 	__host__ void resize(int &, int &, int &, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, int *, int *, long long *, long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

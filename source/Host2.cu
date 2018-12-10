@@ -174,6 +174,169 @@ __host__ int Host::DeviceInfo(){
 }
 
 
+
+__host__ int assignInformat(char *ff, int &format){
+
+	int cartesian = 0;
+	int keplerian = 0;
+
+	if(strcmp(ff, "x") == 0){
+		format = 1;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "y") == 0){
+		format = 2;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "z") == 0){
+		format = 3;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "m") == 0){
+		format = 4;
+	}
+	else if(strcmp(ff, "vx") == 0){
+		format = 5;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "vy") == 0){
+		format = 6;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "vz") == 0){
+		format = 7;
+		cartesian = 1;
+	}
+	else if(strcmp(ff, "r") == 0){
+		format = 8;
+	}
+	else if(strcmp(ff, "rho") == 0){
+		format = 9;
+	}
+	else if(strcmp(ff, "Sx") == 0){
+		format = 10;
+	}
+	else if(strcmp(ff, "Sy") == 0){
+		format = 11;
+	}
+	else if(strcmp(ff, "Sz") == 0){
+		format = 12;
+	}
+	else if(strcmp(ff, "i") == 0){
+		format = 13;
+	}
+	else if(strcmp(ff, "-") == 0){
+		format = 14;
+	}
+	else if(strcmp(ff, "amin") == 0){
+		format = 15;
+	}
+	else if(strcmp(ff, "amax") == 0){
+		format = 16;
+	}
+	else if(strcmp(ff, "emin") == 0){
+		format = 17;
+	}
+	else if(strcmp(ff, "emax") == 0){
+		format = 18;
+	}
+	else if(strcmp(ff, "t") == 0){
+		format = 19;
+	}
+	else if(strcmp(ff, "k2") == 0){
+		format = 20;
+	}
+	else if(strcmp(ff, "k2f") == 0){
+		format = 21;
+	}
+	else if(strcmp(ff, "tau") == 0){
+		format = 22;
+	}
+	else if(strcmp(ff, "a") == 0){
+		format = 23;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "e") == 0){
+		format = 24;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "inc") == 0){
+		format = 25;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "O") == 0){
+		format = 26;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "w") == 0){
+		format = 27;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "M") == 0){
+		format = 28;
+		keplerian = 1;
+	}
+	else if(strcmp(ff, "aL") == 0){		//tunig lengths for mcmc step
+		format = 29;
+	}
+	else if(strcmp(ff, "eL") == 0){
+		format = 30;
+	}
+	else if(strcmp(ff, "incL") == 0){
+		format = 31;
+	}
+	else if(strcmp(ff, "mL") == 0){
+		format = 32;
+	}
+	else if(strcmp(ff, "OL") == 0){
+		format = 33;
+	}
+	else if(strcmp(ff, "wL") == 0){
+		format = 34;
+	}
+	else if(strcmp(ff, "ML") == 0){
+		format = 35;
+	}
+	else if(strcmp(ff, "rL") == 0){
+		format = 36;
+	}
+	else if(strcmp(ff, "saT") == 0){
+		format = 37;
+	}
+	else if(strcmp(ff, "P") == 0){
+		format = 38;
+	}
+	else if(strcmp(ff, "PL") == 0){
+		format = 39;
+	}
+	else if(strcmp(ff, "T") == 0){
+		format = 40;
+	}
+	else if(strcmp(ff, "TL") == 0){
+		format = 41;
+	}
+	else if(strcmp(ff, "Rc") == 0){		//Rcrit
+		format = 42;
+	}
+	else if(strcmp(ff, ">>") == 0){
+		return 2;
+	}
+	else if(strcmp(ff, "<<") == 0){
+	}
+	else {
+		printf("Error: Input format not valid! Maybe the spaces in << ... >> have been forgotten\n");
+		return 1;
+	}
+
+	if(cartesian == 1 && keplerian == 1){
+		printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
+		return 1;
+		
+	}
+
+	return 0;
+}
+
 // ************************************************
 //This function allocates memory on the Host
 //Authors: Simon Grimm
@@ -262,141 +425,23 @@ __host__ void Host::Halloc(){
 	char format[50];
 	sprintf(format, def_InputFileFormat);
 	
-	char ff[5 * 30];
-	int er = sscanf(format, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-			&ff[0 * 5], &ff[1 * 5], &ff[2 * 5], &ff[3 * 5],&ff[4 * 5], &ff[5 * 5], &ff[6 * 5], &ff[7 * 5], &ff[8 * 5],
-		 &ff[9 * 5], &ff[10 * 5], &ff[11 * 5], &ff[12 * 5], &ff[13 * 5], &ff[14 * 5], &ff[15 * 5], &ff[16 * 5], 
-		 &ff[17 * 5], &ff[18 * 5], &ff[19 * 5], &ff[20 * 5], &ff[21 * 5], &ff[22 * 5], &ff[23 * 5], &ff[24 * 5], &ff[25 * 5]);
-	
 	for(int st = 0; st < Nst; ++st){
 		for(int i = 0; i < 50; ++i){
 			GSF[st].informat[i] = 0;
 		}
-		
-		for(int f = -1; f < er; ++f){
-			if(strcmp(ff + f * 5, "x") == 0){
-				GSF[st].informat[f] = 1;
-			}
-			else if(strcmp(ff + f * 5, "y") == 0){
-				GSF[st].informat[f] = 2;
-			}
-			else if(strcmp(ff + f * 5, "z") == 0){
-				GSF[st].informat[f] = 3;
-			}
-			else if(strcmp(ff + f * 5, "m") == 0){
-				GSF[st].informat[f] = 4;
-			}
-			else if(strcmp(ff + f * 5, "vx") == 0){
-				GSF[st].informat[f] = 5;
-			}
-			else if(strcmp(ff + f * 5, "vy") == 0){
-				GSF[st].informat[f] = 6;
-			}
-			else if(strcmp(ff + f * 5, "vz") == 0){
-				GSF[st].informat[f] = 7;
-			}
-			else if(strcmp(ff + f * 5, "r") == 0){
-				GSF[st].informat[f] = 8;
-			}
-			else if(strcmp(ff + f * 5, "rho") == 0){
-				GSF[st].informat[f] = 9;
-			}
-			else if(strcmp(ff + f * 5, "Sx") == 0){
-				GSF[st].informat[f] = 10;
-			}
-			else if(strcmp(ff + f * 5, "Sy") == 0){
-				GSF[st].informat[f] = 11;
-			}
-			else if(strcmp(ff + f * 5, "Sz") == 0){
-				GSF[st].informat[f] = 12;
-			}
-			else if(strcmp(ff + f * 5, "i") == 0){
-				GSF[st].informat[f] = 13;
-			}
-			else if(strcmp(ff + f * 5, "-") == 0){
-				GSF[st].informat[f] = 14;
-			}
-			else if(strcmp(ff + f * 5, "amin") == 0){
-				GSF[st].informat[f] = 15;
-			}
-			else if(strcmp(ff + f * 5, "amax") == 0){
-				GSF[st].informat[f] = 16;
-			}
-			else if(strcmp(ff + f * 5, "emin") == 0){
-				GSF[st].informat[f] = 17;
-			}
-			else if(strcmp(ff + f * 5, "emax") == 0){
-				GSF[st].informat[f] = 18;
-			}
-			else if(strcmp(ff + f * 5, "t") == 0){
-				GSF[st].informat[f] = 19;
-			}
-			else if(strcmp(ff + f * 5, "k2") == 0){
-				GSF[st].informat[f] = 20;
-			}
-			else if(strcmp(ff + f * 5, "k2f") == 0){
-				GSF[st].informat[f] = 21;
-			}
-			else if(strcmp(ff + f * 5, "tau") == 0){
-				GSF[st].informat[f] = 22;
-			}
-			else if(strcmp(ff + f * 5, "a") == 0){
-				GSF[st].informat[f] = 23;
-			}
-			else if(strcmp(ff + f * 5, "e") == 0){
-				GSF[st].informat[f] = 24;
-			}
-			else if(strcmp(ff + f * 5, "inc") == 0){
-				GSF[st].informat[f] = 25;
-			}
-			else if(strcmp(ff + f * 5, "O") == 0){
-				GSF[st].informat[f] = 26;
-			}
-			else if(strcmp(ff + f * 5, "w") == 0){
-				GSF[st].informat[f] = 27;
-			}
-			else if(strcmp(ff + f * 5, "M") == 0){
-				GSF[st].informat[f] = 28;
-			}
-			else if(strcmp(ff + f * 5, "aL") == 0){		//tunig lengths for mcmc step
-				GSF[st].informat[f] = 29;
-			}
-			else if(strcmp(ff + f * 5, "eL") == 0){
-				GSF[st].informat[f] = 30;
-			}
-			else if(strcmp(ff + f * 5, "incL") == 0){
-				GSF[st].informat[f] = 31;
-			}
-			else if(strcmp(ff + f * 5, "mL") == 0){
-				GSF[st].informat[f] = 32;
-			}
-			else if(strcmp(ff + f * 5, "OL") == 0){
-				GSF[st].informat[f] = 33;
-			}
-			else if(strcmp(ff + f * 5, "wL") == 0){
-				GSF[st].informat[f] = 34;
-			}
-			else if(strcmp(ff + f * 5, "ML") == 0){
-				GSF[st].informat[f] = 35;
-			}
-			else if(strcmp(ff + f * 5, "rL") == 0){
-				GSF[st].informat[f] = 36;
-			}
-			else if(strcmp(ff + f * 5, "saT") == 0){
-				GSF[st].informat[f] = 37;
-			}
-			else if(strcmp(ff + f * 5, "P") == 0){
-				GSF[st].informat[f] = 38;
-			}
-			else if(strcmp(ff + f * 5, "PL") == 0){
-				GSF[st].informat[f] = 39;
-			}
-			else if(strcmp(ff + f * 5, "T") == 0){
-				GSF[st].informat[f] = 40;
-			}
-			else if(strcmp(ff + f * 5, "TL") == 0){
-				GSF[st].informat[f] = 41;
-			}
+
+		int pos = 0;		
+		for(int f = -1; f < 50; ++f){
+			char ff[5];
+			int n = 0;
+			int er = sscanf(format + pos, "%s%n", ff, &n);
+			if(er <= 0) break;
+
+			pos += n;
+
+			er = assignInformat(ff, GSF[st].informat[f]);
+			if(er == 2) break;
+
 		}	
 		n1_h[st] = def_n1;
 		n2_h[st] = def_n2;
@@ -763,163 +808,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			//Read input file Format
 			int f;
-			int cartesian = 0;
-			int keplerian = 0;
-			for(f = -1; f < 30; ++f){
+			for(f = -1; f < 50; ++f){
 				er = fscanf (paramfile, "%s", sp);
-				if(strcmp(sp, "x") == 0){
-					GSF[st].informat[f] = 1;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "y") == 0){
-					GSF[st].informat[f] = 2;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "z") == 0){
-					GSF[st].informat[f] = 3;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "m") == 0){
-					GSF[st].informat[f] = 4;
-				}
-				else if(strcmp(sp, "vx") == 0){
-					GSF[st].informat[f] = 5;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "vy") == 0){
-					GSF[st].informat[f] = 6;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "vz") == 0){
-					GSF[st].informat[f] = 7;
-					cartesian = 1;
-				}
-				else if(strcmp(sp, "r") == 0){
-					GSF[st].informat[f] = 8;
-				}
-				else if(strcmp(sp, "rho") == 0){
-					GSF[st].informat[f] = 9;
-				}
-				else if(strcmp(sp, "Sx") == 0){
-					GSF[st].informat[f] = 10;
-				}
-				else if(strcmp(sp, "Sy") == 0){
-					GSF[st].informat[f] = 11;
-				}
-				else if(strcmp(sp, "Sz") == 0){
-					GSF[st].informat[f] = 12;
-				}
-				else if(strcmp(sp, "i") == 0){
-					GSF[st].informat[f] = 13;
-				}
-				else if(strcmp(sp, "-") == 0){
-					GSF[st].informat[f] = 14;
-				}
-				else if(strcmp(sp, "amin") == 0){
-					GSF[st].informat[f] = 15;
-				}
-				else if(strcmp(sp, "amax") == 0){
-					GSF[st].informat[f] = 16;
-				}
-				else if(strcmp(sp, "emin") == 0){
-					GSF[st].informat[f] = 17;
-				}
-				else if(strcmp(sp, "emax") == 0){
-					GSF[st].informat[f] = 18;
-				}
-				else if(strcmp(sp, "t") == 0){
-					GSF[st].informat[f] = 19;
-				}
-				else if(strcmp(sp, "k2") == 0){
-					GSF[st].informat[f] = 20;
-				}
-				else if(strcmp(sp, "k2f") == 0){
-					GSF[st].informat[f] = 21;
-				}
-				else if(strcmp(sp, "tau") == 0){
-					GSF[st].informat[f] = 22;
-				}
-				else if(strcmp(sp, "a") == 0){
-					GSF[st].informat[f] = 23;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "e") == 0){
-					GSF[st].informat[f] = 24;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "inc") == 0){
-					GSF[st].informat[f] = 25;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "O") == 0){
-					GSF[st].informat[f] = 26;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "w") == 0){
-					GSF[st].informat[f] = 27;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "M") == 0){
-					GSF[st].informat[f] = 28;
-					keplerian = 1;
-				}
-				else if(strcmp(sp, "aL") == 0){
-					GSF[st].informat[f] = 29;
-				}
-				else if(strcmp(sp, "eL") == 0){
-					GSF[st].informat[f] = 30;
-				}
-				else if(strcmp(sp, "incL") == 0){
-					GSF[st].informat[f] = 31;
-				}
-				else if(strcmp(sp, "mL") == 0){
-					GSF[st].informat[f] = 32;
-				}
-				else if(strcmp(sp, "OL") == 0){
-					GSF[st].informat[f] = 33;
-				}
-				else if(strcmp(sp, "wL") == 0){
-					GSF[st].informat[f] = 34;
-				}
-				else if(strcmp(sp, "ML") == 0){
-					GSF[st].informat[f] = 35;
-				}
-				else if(strcmp(sp, "rL") == 0){
-					GSF[st].informat[f] = 36;
-				}
-				else if(strcmp(sp, "saT") == 0){
-					GSF[st].informat[f] = 37;
-				}
-				else if(strcmp(sp, "P") == 0){
-					GSF[st].informat[f] = 38;
-				}
-				else if(strcmp(sp, "PL") == 0){
-					GSF[st].informat[f] = 39;
-				}
-				else if(strcmp(sp, "T") == 0){
-					GSF[st].informat[f] = 40;
-				}
-				else if(strcmp(sp, "TL") == 0){
-					GSF[st].informat[f] = 41;
-				}
-				else if(strcmp(sp, ">>") == 0){
-					break;
-				}
-				else if(strcmp(sp, "<<") == 0){
-				}
-				else {
-					printf("Error: Input format not valid! Maybe the spaces in << ... >> have been forgotten\n");
-					return 0;
-				}
+	
+
+				int er2 = assignInformat(sp, GSF[st].informat[f]);
+				if(er2 == 2) break;
+				if(er2 == 1) return 0;
+
 			}
 			if(er <= 0){
 				printf("Error: Input file format is not valid!\n");
 				return 0;
-			}
-			if(cartesian == 1 && keplerian == 1){
-				printf("Error: Input file format is not valid! Kartesian and Keplerian coordinates can not be mixed.\n");
-				return 0;
-				
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -2215,6 +2115,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 39) fprintf(infofile, "PL ");
 				else if(GSF[st].informat[f] == 40) fprintf(infofile, "T ");
 				else if(GSF[st].informat[f] == 41) fprintf(infofile, "TL ");
+				else if(GSF[st].informat[f] == 42) fprintf(infofile, "Rc ");
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");

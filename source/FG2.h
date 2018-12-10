@@ -55,7 +55,7 @@ __host__ void Data::constantCopySC(double *S_h, double *C_h){
 //July 2016
 //
 //***************************************/
-__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int *Gridaicount_d, int si, int id, int index, int UseForce){
+__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, double mu, double &test, double &test2, const double Msun, float4 aelimits, unsigned int &aecount, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int id, int index, int UseForce){
 
 	if(x4i.w >= 0.0){
 
@@ -146,7 +146,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			}
 			if(e >= aelimits.z && e <= aelimits.w){
 				if(a >= aelimits.x && a <= aelimits.y){
-					aecount = 1;
+					aecount = 1u;
 				}
 			}
 			dm = en * dt - es;
@@ -223,7 +223,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 //July 2016
 //
 //***************************************/
-__device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, int &aecount, int *Gridaecount_d, int si, int id, int UseForce){
+__device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double &test, const double Msun, float4 aelimits, unsigned int &aecount, int *Gridaecount_d, int si, int id, int UseForce){
 
 	if(x4i.w >= 0.0){
 		int ii,i,j,jnew;
@@ -350,8 +350,9 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 	aelimits.y = 0.0f;
 	aelimits.z = 0.0f;
 	aelimits.w = 0.0f;
-	int aecount = 0;
-	int aicount = 0;
+	unsigned aecount = 0u;
+	unsigned int Gridaecount = 0u;
+	unsigned int Gridaicount = 0u;
 
 
 	if(id < N && si == 0){
@@ -362,7 +363,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
 			PFlag_d[0] = 1;
 			double dtt = -x4oldi.y / v4oldi.y;
-			fgfull(x4oldi, v4oldi, dtt, def_ksq * Msun, test, test, Msun, aelimits, aecount, &aecount, &aicount, si, id, index, 0);
+			fgfull(x4oldi, v4oldi, dtt, def_ksq * Msun, test, test, Msun, aelimits, aecount, &Gridaecount, &Gridaicount, si, id, index, 0);
 //			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
 			xold_d[id] = x4oldi;
 			vold_d[id] = v4oldi;
@@ -382,13 +383,13 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //July 2016
 //
 // *****************************************
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si, int UseForce){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int UseForce){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < N){
-		int aecount = 0;
+		unsigned int aecount = 0u;
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
@@ -415,7 +416,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		}
 	}
 }
-__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, int si, int UseForce, int *Encpairs3_d, int NencMax){
+__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int UseForce, int *Encpairs3_d, int NencMax){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -423,7 +424,7 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	if(id < N){
 		int NI = Encpairs3_d[id * NencMax];
 		if(NI > 0){
-			int aecount = 0;
+			unsigned int aecount = 0u;
 			double4 x4i = x4_d[id];
 			double4 v4i = v4_d[id];
 			xold_d[id] = x4i;
@@ -460,7 +461,7 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 //July 2016
 //
 // *****************************************
-__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, int *aecount_d, int *Gridaecount_d, int *Gridaicount_d, double FGt, int si, int UseForce, int Nstart){
+__global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double4 *Msun_d, double *test_d, int *index_d, int NT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, double FGt, int si, int UseForce, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -470,7 +471,7 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 	double4 v4i; 
 
 	if(id < NT + Nstart){
-		int aecount = 0;
+		unsigned int aecount = 0u;
 		x4i = x4_d[id];
 		v4i = v4_d[id];
 		__syncthreads();
@@ -506,7 +507,7 @@ __global__ void fgMSimple_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	double4 v4i; 
 
 	if(id < NT + Nstart){
-		int aecount = 0;
+		unsigned int aecount = 0u;
 		x4i = x4_d[id];
 		v4i = v4_d[id];
 		__syncthreads();

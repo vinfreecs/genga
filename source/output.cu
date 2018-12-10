@@ -187,7 +187,7 @@ __host__ int Data::firstoutput(int irregular){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double3 *spin_h, int Nsmall, int Nst, float4 *aelimits_h, int *aecount_h, int *enccount_h, long long *aecountT_h, long long *enccountT_h, int ci, int irregular){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double3 *spin_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
 #if def_TTV != 2
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
@@ -347,7 +347,7 @@ __host__ int Data::EnergyOutput(int irregular){
 }
 
 
-__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, float4 *aelimits_d, int* aecount_d, long long *aecountT_d, long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
+__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -416,10 +416,10 @@ __host__ void Data::CoordinateOutput(int irregular){
 	cudaMemcpy(test_h, test_d, sizeof(double)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(spin_h, spin_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(aecount_h, aecount_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(enccount_h, enccount_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(aecountT_h, aecountT_d, sizeof(long long)*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(enccountT_h, enccountT_d, sizeof(long long)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(aecountT_h, aecountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(enccountT_h, enccountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
 
 	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
 
@@ -487,9 +487,11 @@ __host__ void Data::CoordinateOutput(int irregular){
 		}
 
 	}
-	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long)*NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecountT_d, aecountT_h, sizeof(unsigned long long)*NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccountT_d, enccountT_h, sizeof(unsigned long long)*NconstT, cudaMemcpyHostToDevice);
 
-	cudaMemset(aecount_d, 0, sizeof(int)*NconstT);
+	cudaMemset(aecount_d, 0, sizeof(unsigned int)*NconstT);
+	cudaMemset(enccount_d, 0, sizeof(unsigned int)*NconstT);
 }
 
 //This function copies the data from the coordinate buffer and calls the printoutput function
@@ -594,9 +596,11 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 
 		}
 	}
-	cudaMemcpy(aecountT_d, aecountT_h, sizeof(long long)*NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(aecountT_d, aecountT_h, sizeof(unsigned long long)*NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(enccountT_d, enccountT_h, sizeof(unsigned long long)*NconstT, cudaMemcpyHostToDevice);
 
-	cudaMemset(aecount_d, 0, sizeof(int)*NconstT);
+	cudaMemset(aecount_d, 0, sizeof(unsigned int)*NconstT);
+	cudaMemset(enccount_d, 0, sizeof(unsigned int)*NconstT);
 
 	if(timeStep < P.deltaT){
 		int s = 0;
@@ -616,8 +620,8 @@ __host__ void Data::GridaeOutput(){
 	int GridNai = Gridae.Na * Gridae.Ni;
 	sprintf(Gridae.filename, "aeCount%s_%.12lld.dat", Gridae.X, timeStep);
 	Gridae.file = fopen(Gridae.filename, "w");
-	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(int)*GridNae, cudaMemcpyDeviceToHost);
-	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(int)*GridNai, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(unsigned int)*GridNae, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(unsigned int)*GridNai, cudaMemcpyDeviceToHost);
 	//ae grid
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
@@ -625,7 +629,7 @@ __host__ void Data::GridaeOutput(){
 				GridaecountS_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 				GridaecountT_h[i * Gridae.Na + j] += Gridaecount_h[i * Gridae.Na + j];
 			}
-			fprintf(Gridae.file, "%lld ", GridaecountT_h[i * Gridae.Na + j]);
+			fprintf(Gridae.file, "%llu ", GridaecountT_h[i * Gridae.Na + j]);
 		}
 		fprintf(Gridae.file, "\n");
 	}
@@ -633,7 +637,7 @@ __host__ void Data::GridaeOutput(){
 	fprintf(Gridae.file, "\n");
 	for(int i = 0; i < Gridae.Ne; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			fprintf(Gridae.file, "%lld ", GridaecountS_h[i * Gridae.Na + j]);
+			fprintf(Gridae.file, "%llu ", GridaecountS_h[i * Gridae.Na + j]);
 			GridaecountS_h[i * Gridae.Na + j] = 0;
 		}
 		fprintf(Gridae.file, "\n");
@@ -647,7 +651,7 @@ __host__ void Data::GridaeOutput(){
 				GridaicountS_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 				GridaicountT_h[i * Gridae.Na + j] += Gridaicount_h[i * Gridae.Na + j];
 			}
-			fprintf(Gridae.file, "%lld ", GridaicountT_h[i * Gridae.Na + j]);
+			fprintf(Gridae.file, "%llu ", GridaicountT_h[i * Gridae.Na + j]);
 		}
 		fprintf(Gridae.file, "\n");
 	}
@@ -655,7 +659,7 @@ __host__ void Data::GridaeOutput(){
 	fprintf(Gridae.file, "\n");
 	for(int i = 0; i < Gridae.Ni; ++i){
 		for(int j = 0; j < Gridae.Na; ++j){
-			fprintf(Gridae.file, "%lld ", GridaicountS_h[i * Gridae.Na + j]);
+			fprintf(Gridae.file, "%llu ", GridaicountS_h[i * Gridae.Na + j]);
 			GridaicountS_h[i * Gridae.Na + j] = 0;
 		}
 		fprintf(Gridae.file, "\n");
@@ -689,10 +693,10 @@ __host__ int Data::MaxGroups(){
 			cudaMemcpy(test_h, test_d, sizeof(double)*NB[0], cudaMemcpyDeviceToHost);
 			cudaMemcpy(spin_h, spin_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
-			cudaMemcpy(aecount_h, aecount_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
-			cudaMemcpy(enccount_h, enccount_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
-			cudaMemcpy(aecountT_h, aecountT_d, sizeof(long long)*NconstT, cudaMemcpyDeviceToHost);
-			cudaMemcpy(enccountT_h, enccountT_d, sizeof(long long)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(aecountT_h, aecountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(enccountT_h, enccountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
 
 
 			GSF[0].outputfile = fopen(GSF[0].outputfilename, "w");	

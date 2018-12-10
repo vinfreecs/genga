@@ -62,7 +62,7 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //August 2016
 //****************************************
 template < int E >
-__device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int *NencpairsI, int2 *Encpairs2_d, int j, int i, int NencMax, double &test){
+__device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int2 *Encpairs2_d, int j, int i, int NencMax, double &test){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		volatile double rsq, ir, ir3, s, sb;
 		double3 r3ij;
@@ -75,7 +75,6 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		r3ij.z = x4j.z - x4i.z;
 
 		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-//		rcrit = fmax(rcriti, rcritj);
 		rcritv = fmax(rcritvi, rcritvj);
 
 //		rcrit2 = rcrit * rcrit;
@@ -226,7 +225,7 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 //
 // ********************************
 template < int E >
-__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcriti, double rcritvi, double rcritj, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NconstT, int NencMax, double &test, double t){
+__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NconstT, int NencMax, double &test, double t){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -852,7 +851,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //August 2016
 //****************************************
 template <int Bl2, int E>
-__global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NencMax, double t, int N){
+__global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NencMax, double t, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -860,18 +859,16 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	__shared__ int NencpairsI_s;
 
 	double4 x4i = x4_d[idx];
-	double rcriti = rcrit_d[idx];
 	double rcritvi = rcritv_d[idx];
 #if G3 > 0
 	int groupIndexi = groupIndex_d[idx];
 #endif
 
 	double4 x4j;
-	double rcritj, rcritvj;
+	double rcritvj;
 
 	if(idy < N){
 		x4j = x4_d[idy];
-		rcritj = rcrit_d[idy];
 		rcritvj = rcritv_d[idy];
 	}
 	else{
@@ -879,7 +876,6 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		x4j.y = 0.0;
 		x4j.z = 0.0;
 		x4j.w = 0.0;
-		rcritj = 0.0;
 		rcritvj = 0.0;
 	}
 #if G3 > 0
@@ -909,9 +905,9 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 	if(idy < N){
 #if G3 == 0
-		acc_d<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		acc_d<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		//accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t);
+		//accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t);
 #endif
 	}
 
@@ -982,7 +978,7 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //
 //****************************************
 template < int Bl, int Bl2, int E>
-__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NconstT, int NencMax, double t, int N){
+__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NconstT, int NencMax, double t, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -991,7 +987,6 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	__shared__ int NencpairsI_s;
 
 	double4 x4i = x4_d[idx];
-	double rcriti = rcrit_d[idx];
 	double rcritvi = rcritv_d[idx];
 #if G3 > 0
 	int groupIndexi = groupIndex_d[idx];
@@ -999,10 +994,9 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 	double4 x4j;
-	double rcritj, rcritvj;
+	double rcritvj;
 	if(idy < N){
 		x4j = x4_d[idy];
-		rcritj = rcrit_d[idy];
 		rcritvj = rcritv_d[idy];
 	}
 	else{
@@ -1010,7 +1004,6 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		x4j.y = 0.0;
 		x4j.z = 0.0;
 		x4j.w = 0.0;
-		rcritj = 0.0;
 		rcritvj = 0.0;
 	}
 #if G3 > 0
@@ -1036,9 +1029,9 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	__syncthreads();
 	if(idy < N){
 #if G3 == 0
-		acc_d<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		acc_d<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
 #else
-		//accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcriti, rcritvi, rcritj, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t); 
+		//accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t); 
 
 #endif
 	}
@@ -1140,7 +1133,7 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //August 2016
 // ****************************************
 template < int E >
-__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax, int UseTestParticles){
+__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax, int UseTestParticles){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1159,26 +1152,24 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	int NencpairsI = 0;
 
 	double4 x4i;
-	double rcriti;
 	double rcritvi;
 	double test;
 
 	if(id < N + Nsmall){
 		x4i = x4_d[id];
-		rcriti = rcrit_d[id];
 		rcritvi = rcritv_d[id];
 	}
 
 	if(UseTestParticles == 2){
 		if(id < N){
 			for(int j = N; j < N + Nsmall; ++j){
-				acc_d <E + 10> (a, b, x4i, x4_d[j], rcriti, rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, Encpairs2_d, j, id, NencMax, test);
+				acc_d <E + 10> (a, b, x4i, x4_d[j], rcritvi, rcritv_d[j], &NencpairsI, Encpairs2_d, j, id, NencMax, test);
 			}
 		}
 	}
 	if(id < N + Nsmall){
 		for(int j = 0; j < N; ++j){
-			acc_d <E + 10> (a, b, x4i, x4_d[j], rcriti, rcritvi, rcrit_d[j], rcritv_d[j], &NencpairsI, Encpairs2_d, j, id, NencMax, test);
+			acc_d <E + 10> (a, b, x4i, x4_d[j], rcritvi, rcritv_d[j], &NencpairsI, Encpairs2_d, j, id, NencMax, test);
 		}
 		if(E >= 1){
 			v4_d[id].x += __dmul_rn(a.x, dtksq);
@@ -1224,7 +1215,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nstart){
+__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
@@ -1248,7 +1239,6 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
-		//rcrit_s[idy] = rcrit_d[id];
 		rcritv_s[idy] = rcritv_d[id];
 		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
 	}
@@ -1273,7 +1263,6 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			x4_s[idy + Bl] = x4_d[id + Bl];
-			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
 			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
 		}
 		else{
@@ -1470,7 +1459,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 	}
 }
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
+__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
@@ -1499,7 +1488,6 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		st_s[idy] = index_d[id] / 100;
 		x4_s[idy] = x4_d[id];
 		v4i = v4_d[id];
-		//rcrit_s[idy] = rcrit_d[id];
 		rcritv_s[idy] = rcritv_d[id];
 		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
 		dt = dt_d[st_s[idy]];
@@ -1527,7 +1515,6 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		if(id + Bl < NT + Nstart){
 			st_s[idy + Bl] = index_d[id + Bl] / 100;
 			x4_s[idy + Bl] = x4_d[id + Bl];
-			//rcrit_s[idy + Bl] = rcrit_d[id + Bl];
 			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
 		}
 		else{

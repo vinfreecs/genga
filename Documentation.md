@@ -19,7 +19,7 @@ We strongly recommend to use the driver version 5.0 or higher to get the full pe
 
 
 # Compilation #
-GENGA can be compiled with the Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. 
+GENGA can be compiled with the given Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. A list of all GPUS can be found here: https://developer.nvidia.com/cuda-gpus .
 
 # Starting GENGA #
 GENGA can be startet with

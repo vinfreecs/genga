@@ -55,7 +55,7 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 //
 // ****************************************
 template <int Bl>
-__global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int N2, int NconstT, int NencMax, double t){
+__global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int N2, int NconstT, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -193,7 +193,7 @@ __global__ void acc128b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //November 2015
 // ****************************************
 template <int Bl>
-__global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
+__global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -443,7 +443,7 @@ __global__ void acc256b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //November 2015
 // ****************************************
 template <int Bl>
-__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
+__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -764,7 +764,7 @@ __global__ void EncMatrixsmall_kernel(bool *Encpairsb_d, int2 *Encpairs_d, int2 
 //August 2016
 // ****************************************
 template <int Bl, int E>
-__global__ void accsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcrit_d, double *rcritv_d, int *groupIndex_d, bool *Encpairsb_d, int2 *Encpairs2_d, int Nx, int Ny, int nn, int NconstT, int NencMax, double t){
+__global__ void accsmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, bool *Encpairsb_d, int2 *Encpairs2_d, int Nx, int Ny, int nn, int NconstT, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int itx = threadIdx.y;
