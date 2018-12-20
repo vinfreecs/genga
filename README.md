@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.77: Stop at Encounter arguments are included in the param.dat file.
  * Version 3.75: Angle values can be set in degrees or radians
  * Version 3.70: Genga supports now up to 131072 bodies in the massive body integration mode.
  * Version 3.61: MinMass moved to param.dat file.

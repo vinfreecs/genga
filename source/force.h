@@ -1315,7 +1315,8 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			m /= def_Solarmass;					//mass im Solar masses
 			mu = def_ksq * (Msun + m);
 		}
-		double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+		double eta = Asteroid_S * def_AU * def_AU * 3.0 / ( 4.0 * def_c * def_c * Asteroid_rho * RR);			//m^2 / s
 		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
 		double a, e, inc, Omega, w, Theta, E;
@@ -1498,7 +1499,8 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 		double dt = dt_d[st] * Kt;
 		double RR = v4i.w * def_AU;					//covert radius in m	
 
-		double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+		double eta = Asteroid_S * def_AU * def_AU * 3.0 / ( 4.0 * def_c * def_c * Asteroid_rho * RR);			//m^2 / s
 		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
 		//BURNS, LAMY, AND SOTER, 1979 equation 2

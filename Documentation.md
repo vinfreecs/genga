@@ -37,7 +37,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The time step, in days
  * The output name
  * The Energy output interval, in time steps. When it is set to zero, then no Energy outputs are written.
- * The Coordinates output interval, in time steps. When it is set to 0, then no coordinate outputs are written. When set to -1, then the multi simulations mode prints only the last time step per sub-simulation.
+ * The Coordinates output interval, in time steps. When it is set to 0, then no coordinate outputs are written. When set to -1, then only the last time step is written.
  * The number of outputs per Coordinate output interval.
  * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
  * The file name of irregular coordinate output calendar. "-" means no irregular outputs. See [here](#markdown-header-irregular-coordinate-output) for more details. 
@@ -121,8 +121,11 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
- * Report Encounters: When this is set to one, then close encounters with a separation less than a factor times the physical radius of the body are reported to a file.
- * Report Encounters Radius: This option sets the factor of the close encounter separation.
+ * Report Encounters: When this is set to one, then close encounters with a separation less than a factor f times the physical radius of the body are reported to a file.
+ * Report Encounters Radius: This option sets the factor f of the 'Report Encounter'  separation.
+ * Stop at Encounter: When this is set to one, then the simulation or sub-simulation is stopped when the separation between two bodies is less than a factor g times the Hill radii of the involved bodies. 
+ * Stop at Encounter Radius: This option sets the factor g of the 'Stop at Encounter' sepparation.  
+
 
 # Console Arguments #
 Instead of using the parameter file, some arguments can also be passed as console arguments. The console arguments have the highest priority and are overwriting the arguments of the param.dat file. The options are:
@@ -164,8 +167,6 @@ Here it can also be chosen if the gas disc is included or not.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
- * StopAtEncounter i: When > 0, then the multisimulation mode stops simulations when a close encounter occurs (d < StopAtEncounterRadius * RHill). n2 is ignored for the stopping criterion, but still used for numerical close encounters.
- * StopAtEncounterRadius f: factor to stop simulations at close encounters in multisimulation mode
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
  * def_StopAtCollision i: 1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
  * def_StopMinMass f: when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
@@ -327,7 +328,7 @@ In this file are listed the details of the ejected particles. An ejection happen
 
 
 ## The encounter file Encounters<name>.dat
-This file is only generated when the 'Report Encounters' argument in the 'param.dat' file is greater than zero. It contains the coordinates before the closest encounter between two bodies.
+This file is only generated when the 'Report Encounters' argument in the 'param.dat' file is greater than zero. It contains the coordinates at the time step just before the closest encounter between two bodies occurs.
 
     time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
     .
@@ -505,7 +506,7 @@ The following parameters are relevant for the Yarkovsky effect and can be set in
 
 
 # Poynting Robertson drag #
-The Yarkovsky effect is implemented with two different schemes, both according to BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System). 
+The Poynting Robertson drag is implemented with two different schemes, both according to BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System). 
  * The first scheme computes the Yarkovsky effect and performs a velocity kick.
  * The second  scheme computes the drift rates da/dt and de/dt updates the Keplerian elements.
 

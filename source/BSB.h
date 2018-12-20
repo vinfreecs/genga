@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -433,18 +433,19 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							// *****************
 						}
 
-						if(writeEncounters > 0){
+						if(WriteEncounters > 0){
 							double writeRadius = 0.0;
-							if(writeEncounters == 1){
+							if(WriteEncounters == 1){
 								//in scales of planetary Radius
-								writeRadius = writeEncountersRadius * fmax(vt_s[ii].w, vt_s[jj + l].w);
+								writeRadius = WriteEncountersRadius * fmax(vt_s[ii].w, vt_s[jj + l].w);
 							}
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
-//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);      
+//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, sqrt(delta), enct, colt, ii, jj + l);      
 								int ne = atomicAdd(NWriteEnc_d, 1);
 								if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+								//check the following line ?
 								writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;
 								storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + t / dayUnit, spin_d);
 								}

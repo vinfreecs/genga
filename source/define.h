@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.76
+#define Version 3.77
 
 //Default parameter values
 #define def_TimeStep 6
@@ -57,7 +57,9 @@
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
 #define def_WriteEncounters 0		//Write all close encounters to a file
-#define def_WriteEncountersRadius 3
+#define def_WriteEncountersRadius 3	//factor in terms fo physical radii
+#define def_StopAtEncounter 0		//Stop simulations at close encounters
+#define def_StopAtEncounterRadius 1.0	//factor in terms of Hill radii
 #define def_NAFvars 1
 #define def_NAFn0 10
 #define def_NAFnfreqs 1
@@ -84,9 +86,6 @@
 //ignore the lock file and start GENGA anyway
 #define IgnoreLockFile 1
 
-//stop Simulation at close encounters
-#define def_StopAtEncounter 0
-#define def_StopAtEncounterRadius 1.0
 
 //Collision Arguments
 #define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
@@ -260,6 +259,8 @@ struct Parameter{
 	char Gasfilename[128];
 	int WriteEncounters;
 	double WriteEncountersRadius;
+	int StopAtEncounter;
+	double StopAtEncounterRadius;
 	int NAFvars;
 	int NAFn0;
 	int NAFnfreqs;

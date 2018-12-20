@@ -658,7 +658,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			for(int i = 0; i < NI; ++i){
 				int jj = Encpairs2_d[id * NencMax + i].y;
 				double4 x4j = x4_d[jj];
-//if(id == 13723)	printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
+//printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
 				double rcritvj = rcritv_d[jj];
 				accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
 			}

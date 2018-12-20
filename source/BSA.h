@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -549,11 +549,11 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 							// *****************
 						}
 
-						if(writeEncounters > 0){
+						if(WriteEncounters > 0){
 							double writeRadius = 0.0;
-							if(writeEncounters == 1){
+							if(WriteEncounters == 1){
 								//in scales of planetary Radius
-								writeRadius = writeEncountersRadius * fmax(vt_s[idy].w, vt_s[j].w);
+								writeRadius = WriteEncountersRadius * fmax(vt_s[idy].w, vt_s[j].w);
 							}
 							if(delta < writeRadius * writeRadius){
 
@@ -673,7 +673,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -1071,11 +1071,11 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					// *****************
 							}
 
-							if(writeEncounters > 0){
+							if(WriteEncounters > 0){
 								double writeRadius = 0.0;
-								if(writeEncounters == 1){
+								if(WriteEncounters == 1){
 									//in scales of planetary Radius
-									writeRadius = writeEncountersRadius * fmax(vt_d[idi].w, vt_d[j].w);
+									writeRadius = WriteEncountersRadius * fmax(vt_d[idi].w, vt_d[j].w);
 								}
 								if(delta < writeRadius * writeRadius){
 
@@ -1421,7 +1421,7 @@ __global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, dou
 }
 
 
-__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int writeEncounters, const double writeEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, int noColl){
+__global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, int noColl){
 
 	int idx = blockIdx.y;	
 
@@ -1491,11 +1491,11 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 							// *****************
 						}
 
-						if(writeEncounters > 0){
+						if(WriteEncounters > 0){
 							double writeRadius = 0.0;
-							if(writeEncounters == 1){
+							if(WriteEncounters == 1){
 								//in scales of planetary Radius
-								writeRadius = writeEncountersRadius * fmax(vt_d[idi].w, vt_d[j].w);
+								writeRadius = WriteEncountersRadius * fmax(vt_d[idi].w, vt_d[j].w);
 							}
 							if(delta < writeRadius * writeRadius){
 

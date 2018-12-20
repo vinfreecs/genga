@@ -14,7 +14,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int writeEncounters_d, double writeEncountersRadius_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, int noColl){
+__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int WriteEncounters, double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -49,8 +49,6 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 
 	__shared__ double error_s[NN];
 	double test;
-	int writeEncounters = writeEncounters_d;
-	double writeEncountersRadius = writeEncountersRadius_d;
 	int idi;
 	int si = Encpairs2_d[ (st+1) + NmaxM * idx].y; 
 	N2 = Encpairs2_d[si + Nst].y;
@@ -417,13 +415,61 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						double enct = 0.0;
-						encounter<1>(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], v4_s[ii].w, v4_s[jj + l].w, 0.0, 0.0, dt1 * dtgr, ii, jj + l, &test, Colpairs_s, Coltime_s, Ncol_s[0], 0, enct, writeEncounters, writeEncountersRadius, 0.0);
+						double delta = 1000.0;
+						double enct = 100.0;
+						double colt = 100.0;
+						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
+
+						if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
+							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass);
+						}
+			
+						if(delta < rcrit*rcrit){
+							int Ni = atomicAdd(&Ncol_s[0], 1);
+							if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
+//printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, Ni);
+							if(xt_s[ii].w >= xt_s[jj + l].w){
+								Colpairs_s[Ni].x = ii;
+								Colpairs_s[Ni].y = jj + l;
+							}
+							else{
+								Colpairs_s[Ni].x = jj + l;
+								Colpairs_s[Ni].y = ii;
+							}
+							Coltime_s[Ni] = colt;
+
+							// *****************
+							//dont group test particles
+							/*                                                      if(xt_s[ii].w == 0.0){
+							Colpairs_s[Ni].x = ii;
+							Colpairs_s[Ni].y = ii;
+							}
+							if(xt_s[jj + l].w == 0.0){
+							Colpairs_s[Ni].x = jj + l;
+							Colpairs_s[Ni].y = jj + l;
+							}
+							*/
+							// *****************
+						}
+
+
 						//write Encounters to file
-						if(enct > 0.0){
-							int ne = atomicAdd(NWriteEnc_d, 1);
-							if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
-							storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + t / dayUnit, spin_d);
+						if(WriteEncounters > 0){
+							double writeRadius = 0.0;
+							if(WriteEncounters == 1){
+								//in scales of planetary Radius
+								writeRadius = WriteEncountersRadius * fmax(vt_s[ii].w, vt_s[jj + l].w);
+							}
+							if(delta < writeRadius * writeRadius){
+
+								if(enct > 0.0 && enct < 1.0){
+									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);      
+									int ne = atomicAdd(NWriteEnc_d, 1);
+									if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+									writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;
+									storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + t / dayUnit, spin_d);
+								}
+							}
 						}
 					}
                                         __syncthreads();

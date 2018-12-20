@@ -403,6 +403,8 @@ __host__ void Host::Halloc(){
 	P.FormatP = def_FormatP;
 	P.WriteEncounters = def_WriteEncounters;
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
+	P.StopAtEncounter = def_StopAtEncounter;
+	P.StopAtEncounterRadius = def_StopAtEncounterRadius;
 	P.NAFvars = def_NAFvars;
 	P.NAFn0 = def_NAFn0;
 	P.NAFnfreqs = def_NAFnfreqs;
@@ -1296,6 +1298,36 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Stop at Encounter =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.StopAtEncounter);
+				if(er <= 0){
+					printf("Error: Stop At Encounter value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Stop at Encounter Radius =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.StopAtEncounterRadius);
+				if(er <= 0){
+					printf("Error: Stop at Encounter Radius value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Coordinate output buffer =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.Buffer);
@@ -2031,8 +2063,6 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
-			fprintf(infofile, "Stop at close Encounters: %d\n", def_StopAtEncounter);
-			fprintf(infofile, "Stop at close Encounter Radius: %g\n", def_StopAtEncounterRadius);
 			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
 			fprintf(infofile, "Stop collision minimum mass: %g\n", def_StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
@@ -2161,6 +2191,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
+			fprintf(infofile, "Stop at close Encounters: %d\n", P.StopAtEncounter);
+			fprintf(infofile, "Stop at close Encounter Radius: %g\n", P.StopAtEncounterRadius);
 			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);

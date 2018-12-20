@@ -81,8 +81,6 @@ __host__ void Data::AllocateOrbitt(){
 	groupIterate_h = (int*)malloc(sizeof(int));
 
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
-	StopFlag_h = (int*)malloc(sizeof(int));
-	StopFlag_h[0] = 0;
 #if poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
@@ -217,7 +215,6 @@ __host__ void Data::AllocateOrbitt(){
 #endif
 	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
 	cudaMalloc((void **) &StopFlag_d, sizeof(int));
-	cudaMemcpy(StopFlag_d, StopFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 
 #if poincareFlag == 1
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
@@ -268,6 +265,9 @@ __host__ int Data::CMallocateOrbit(){
 	cudaHostGetDevicePointer((void **)&EncFlag_d, (void *)EncFlag_m, 0);
 	EncFlag_m[0] = 0;
 
+	cudaHostAlloc((void **)&StopFlag_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&StopFlag_d, (void *)StopFlag_m, 0);
+	StopFlag_m[0] = 0;
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"mapping error = %d = %s\n",error, cudaGetErrorString(error));
@@ -1582,7 +1582,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 // **************************************
 //This function prints out data of ejected bodies
-//It sets the masses of ejecte bodies to zero, this are then later removed
+//It sets the masses of ejected bodies to zero, this are then later removed
 //It Updates the lost Energy term U
 //
 //Authors: Simon Grimm, Joachim Stadel
@@ -1598,6 +1598,8 @@ __host__ void Data::Ejection(){
 
 	for(int st = 0; st < Nst; ++st){
 		if(EjectionFlag_m[st + 1] > 0){
+			EjectionFlag_m[st + 1] = 0;
+
 			int NBS = NBS_h[st];
 
 			ejectfile = fopen(GSF[st].ejectfilename, "a");
@@ -1672,7 +1674,6 @@ __host__ void Data::Ejection(){
 			}
 			fclose(ejectfile);
 			fclose(logfile);
-			EjectionFlag_m[st + 1] = 0;
 		}
 	}
 }
@@ -1693,18 +1694,8 @@ __host__ int Data::remove(){
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		resize(N_h[st], NB[st], N4[st], N2[st]);
 
-		if(Nst == 1 && N_h[0] < Nmin[0]){
-			printf("Number of bodies smaller than Nmin, simulation stopped\n");
-			fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-			fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-			fclose(GSF[0].logfile);
+		if(N_h[st] < Nmin[st]){
 			NminFlag = 1;
-			N_h[0] = 0;
-		}
-		if(Nst > 1 && N_h[st] < Nmin[st]){
-			NminFlag = 1;
-			N_h[st] = 0;
 		}
 
 	}
@@ -1753,11 +1744,12 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 
 
 //This function rearranges the memory if a simulations is stopped
-//It runs with only one thread ond the GPU, to avoid unnecesary data copies
+//It runs with only one thread on the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
 double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
+//printf("removeM %d %d %d %d %d\n", st, N_d[st], j, j + NBS, j + NT);
 		Encpairs2_d[j + NBS].x = j + NT;
 		Encpairs2_d[j + NBS].y = Nh;
 		x4_d[j + NT] = x4_d[j + NBS];
@@ -1828,7 +1820,7 @@ __global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpai
 
 
 // This function stopps simulations with less than the minimal number of bodies 
-// or if the simulation ended.
+// or if the simulation has ended.
 // it rearanges the memory
 __host__ void Data::stopSimulations(){
 	NT = 0;
@@ -1837,6 +1829,19 @@ __host__ void Data::stopSimulations(){
 	NEnergyT = 0;
 
 	for(int st = 0; st < Nst; ++st){
+
+		//In the following, set N_h to zero for all simulations which should be stopped
+		if(N_h[st] < Nmin[st]){
+			N_h[st] = 0;
+		}
+
+		if(StopFlag_m[0] > 0 && timeStep >= delta_h[st]){
+			N_h[st] = 0;
+		}
+		if(P.StopAtEncounter > 0 && n1_h[st] < 0){
+			N_h[st] = 0;
+
+		}
 		//rearange arrays//
 #if USE_NAF == 1
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
@@ -1863,6 +1868,8 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(LI0_h, LI0_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);
 
 	for(int st = 0; st < Nst; ++st){
+
+//printf("stop simulations  %d %d %d Nst %d Ntot %d\n", st, N_h[st], Nmin[st], Nst, NT);
 		int s = 0;
 		if(timeStep >= delta_h[st]){
 			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
@@ -1873,21 +1880,42 @@ __host__ void Data::stopSimulations(){
 			s = 1;
 		}
 		else if(N_h[st] < Nmin[st]){
-#if def_StopAtEncounter > 0
-			printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
-			fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
-			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-			fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
-			fclose(GSF[st].logfile);
-			s = 1;
-#else
-			printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
-			fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
-			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-			fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-			fclose(GSF[st].logfile);
-			s = 1;
-#endif
+			if(P.StopAtEncounter > 0 && n1_h[st] < 0){
+				if(Nst > 1){
+					printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
+					fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
+					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
+					fclose(GSF[st].logfile);
+					s = 1;
+				}
+				else{
+					printf("Close Encounter occurred, simulation stopped\n");
+					fprintf(masterfile,"Close Encounter occurred, simulation stopped\n");
+					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
+					fclose(GSF[st].logfile);
+					s = 1;
+				}
+			}
+			else{
+				if(Nst > 1){
+					printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
+					fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
+					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+					fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+					fclose(GSF[st].logfile);
+					s = 1;
+				}
+				else{
+					printf("Number of bodies smaller than Nmin, simulation stopped\n");
+					fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+					GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+					fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+					fclose(GSF[0].logfile);
+					s = 1;
+				}
+			}
 		}
 		if(s == 1){
 			for(int sst = st; sst < Nst - 1; ++sst){
@@ -2011,11 +2039,11 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(EjectionFlag_m);
 	cudaFreeHost(nFragments_m);
 	cudaFreeHost(EncFlag_m);
+	cudaFreeHost(StopFlag_m);
 	free(Coll_h);
 	free(writeEnc_h);
 	free(Fragments_h);
 	cudaFreeHost(test_h);
-	free(StopFlag_h);
 #if poincareFlag == 1
 	free(PFlag_h);
 #endif	
@@ -2072,7 +2100,6 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Energy_d);
 	cudaFree(Energy0_d);
 	cudaFree(LI0_d);
-	cudaFree(StopFlag_d);
 #if poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif

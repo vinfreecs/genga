@@ -306,7 +306,8 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 	}
 	
 	__syncthreads();
-	
+
+	//mark here the particle as ghost particle	
 	x4_d[idx].w = -1.0e-12;
 	for(int i = 0; i < Bl; i += blockDim.x){
 		T_s[idy + i] = 0.0;

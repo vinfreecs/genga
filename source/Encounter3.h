@@ -14,22 +14,14 @@
 //If the minimal separation is less than the critical radius, a
 //close encounter is reported.
 //
-//E = 0: Used for Critical Radius 
-//E = 1: Used for Physical Radius 
-//E = 2: Used for Critical Radius with Test Particles (not used anymore)
-//E = 3: Used for Critial Radius in multi simlation mode
-//Code is adapted from Mercury
 //
 // Authors: Simon Grimm
 // April 2016
 //
 // ****************************************
-template<int E>
-__device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, const int N, double &time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
+__device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, double &time, const double MinMass){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i ,j, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z);
-//if(E == 1 && i != j) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
-//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
+//printf("E %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g\n", i ,j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z);
 	int Enc = 0;
 	if(i != j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double d0, d1, dd0, dd1;
@@ -43,19 +35,11 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 		double sgnb;
 		double rcrit;
 		double rcritv;
-		int Ni;
 		double f;
 	
-		if(E == 0 || E == 3){
-			rcrit = fmax(rcriti, rcritj);
-			rcritv = fmax(rcritvi, rcritvj);
-			f = def_cef;
-		}
-		if(E == 1){
-			rcrit = 0.0;
-			rcritv = rcriti + rcritj;
-			f = 1.0;
-		}
+		rcrit = fmax(rcriti, rcritj);
+		rcritv = fmax(rcritvi, rcritvj);
+		f = def_cef;
 
 		r1.x = x4j.x - x4i.x;
 		r1.y = x4j.y - x4i.y;
@@ -138,78 +122,21 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 
 		if(delta < f * rcritv*rcritv){
 			Enc = 2;
-			double collisiontime = 0.0;
-			if(E == 1 && ((d0 >= f * rcritv*rcritv && d1 < f * rcritv*rcritv) || (d1 >= f * rcritv*rcritv && d0 < f * rcritv*rcritv))){
-				collisiontime = (f * rcritv*rcritv - d0) / (d1 - d0);
-			}
-//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %g %g %d\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, v4i.z, v4j.x, v4j.y, v4j.z, E);
-//if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, collisiontime);
-			if(E < 2){ 
-				Ni = atomicAdd(&Nenc, 1);
-//printf("%d %d\n", i, j);
-				if(E == 1 && Nenc >= def_MaxColl) Ni = def_MaxColl - 1;
-				if(x4i.w >= x4j.w){
-					encpairs[Ni].x = i;
-					encpairs[Ni].y = j;
-				}
-				else{
-					encpairs[Ni].x = j;
-					encpairs[Ni].y = i;
-				}
-				if(E == 1) enctime[Ni] = collisiontime;
-
-// *****************
-//dont group test particles
-/*				if(x4i.w == 0.0){
-					encpairs[Ni].x = i;
-					encpairs[Ni].y = i;
-				}
-				if(x4j.w == 0.0){
-					encpairs[Ni].x = j;
-					encpairs[Ni].y = j;
-				}
-*/
-// *****************
-			}
+//printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, v4i.z, v4j.x, v4j.y, v4j.z);
 		}
 		else Enc = 0;
+
 		if(delta < rcrit*rcrit){
 			Enc = 1;
 		}
-
-
-		if(writeEncounters > 0 && E == 1){
-			double writeRadius = 0.0;
-			if(writeEncounters == 1){
-				//in scales of planetary Radius
-				writeRadius = writeEncountersRadius * fmax(v4i.w, v4j.w);
-
-			}
-			if(delta < writeRadius * writeRadius){
-
-				double t = 0.0;
-				if(0 <= t1 && t1 <= 1) t = t1;
-				if(0 <= t2 && t2 <= 1 && delta2 < delta1) t = t2;
-
-				if(t > 0.0 && t < 1.0){
-					time = t;
-//printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
-//					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2) / dayUnit) / 365.25;
-				}
-			}
-		}
-
 
 		return Enc;
 	}
 	else return 0;
 }
-template<int E>
-__device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, int2 *encpairs, double *enctime, int &Nenc, const int N, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
+__device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, const double MinMass){
 
-//if((E == 0 || E >= 2))printf("E %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i ,j - N, E, N, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
-//if(E == 1 && i < j ) printf("E1  %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, x4j.w, v4j.w, x4j.x, x4j.y, x4j.z);
-//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, time, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
+//printf("E %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i , j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 
 	int Enc = 0;
 	if(i < j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
@@ -224,19 +151,11 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 		double sgnb;
 		double rcrit;
 		double rcritv;
-		int Ni;
 		double f;
 	
-		if(E == 0 || E == 3){
-			rcrit = fmax(rcriti, rcritj);
-			rcritv = fmax(rcritvi, rcritvj);
-			f = def_cef;
-		}
-		if(E == 1){
-			rcrit = 0.0;
-			rcritv = rcriti + rcritj;
-			f = 1.0;
-		}
+		rcrit = fmax(rcriti, rcritj);
+		rcritv = fmax(rcritvi, rcritvj);
+		f = def_cef;
 
 		r1.x = x4j.x - x4i.x;
 		r1.y = x4j.y - x4i.y;
@@ -314,7 +233,7 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
 
-//if((E == 0 || E >= 2))printf("d %d %d %.20g %.20g\n", i, j - N, delta, rcritv);
+//printf("d %d %d %.20g %.20g\n", i, j, delta, rcritv);
 	
 		Kiold = Ki;
 		Kjold = Kj;
@@ -324,19 +243,7 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 
 		if(delta < f * rcritv*rcritv || Kiold < 1.0){
 			Enc = 2;
-//if((E == 0 || E >= 2))printf("EE %d %d %g %g %.40g %.40g %.40g %.40g %d\n", i, j - N, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x, E);
-//if (E == 1)printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4i.x, x4j.x, x4i.y, x4j.y, x4i.z, x4j.z, delta, rcritv*rcritv, d0, d1);
-			if(E < 2){ 
-				Ni = atomicAdd(&Nenc, 1);
-				if(x4i.w >= x4j.w){
-					encpairs[Ni].x = i;
-					encpairs[Ni].y = j;
-				}
-				else{
-					encpairs[Ni].x = j;
-					encpairs[Ni].y = i;
-				}
-			}
+//printf("EE %d %d %g %g %.40g %.40g %.40g %.40g\n", i, j, x4i.w, x4j.w, x4i.x, x4j.x, v4i.x, v4j.x);
 
 			if(delta <= 0.01 * rcritv*rcritv){
 		 		Ki = 0.0;
@@ -357,32 +264,16 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 		}
 
 //printf("Enc %d %d %g %g\n", i, j, Ki, Kiold);
-		if(writeEncounters > 0 && E == 1){
-			double writeRadius = 0.0;
-			if(writeEncounters == 1){
-				//in scales of planetary Radius
-				writeRadius = writeEncountersRadius * fmax(v4i.w, v4j.w);
-
-			}
-			if(delta < writeRadius * writeRadius){
-
-				double t = 0.0;
-				if(0 <= t1 && t1 <= 1) t = t1;
-				if(0 <= t2 && t2 <= 1 && delta2 < delta1) t = t2;
-
-				if(t > 0.0 && t < 1.0){
-					time = t;
-//printf("Enc %g %g %g %d %d\n", t, writeRadius, sqrt(delta), i, j);	
-/*					writeEnc_d[ne * 25 + 0] = (time + dt * fmin(t1, t2) / dayUnit) / 365.25;
-*/				}
-			}
-		}
-
 
 		return Enc;
 	}
 	else return 0;
 }
+
+
+// This function returns delta, the square of the minimal distanz
+// It sets colt, the collision time  0 < colt < 1.
+// It sets enct, the time of smallest distance. 0 < enct < 1
 __device__ double encounter1(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcrit, const double dt, const int i, const int j, double &enct, double &colt, const double MinMass){
 
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
@@ -475,7 +366,11 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 
 		if(delta < rcrit*rcrit){
 //printf("EEa %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcrit*rcrit, d0, d1, delta, t1, t2, MinMass);
-			if((d0 >= rcrit*rcrit && d1 < rcrit*rcrit) || (d1 >= rcrit*rcrit && d0 < rcrit*rcrit)){
+			if(d0 == d1){
+				colt = 0.0;
+			}
+			else if((d0 >= rcrit*rcrit && d1 < rcrit*rcrit) || (d1 >= rcrit*rcrit && d0 < rcrit*rcrit)){
+				//linear interpolation of the collision time
 				colt = (rcrit*rcrit - d0) / (d1 - d0);
 			}
 		}
@@ -497,7 +392,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 //
 // ****************************************
 template < int Nmax >
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, int *N_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int writeEncounters, const double writeEncountersRadius, int *StopFlag_d, const double MinMass){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -523,17 +418,18 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__syncthreads();
 
 	if(id < Nencpairs_d[0] && ii >= 0 && jj >= 0 && st < Nst){
-		int enccount = encounter<3>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, Encpairs2_d, NULL, Nencpairs2_d[st], 0, time, writeEncounters, writeEncountersRadius, MinMass);
+		int enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, time, MinMass);
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
 //printf("encB %d %d %d %d %d %d\n", ii, jj, st, index_d[ii], index_d[jj], NBS);
-#if def_StopAtEncounter > 0 
-			if(enccount == 1){
-				N_d[st] = 0;
-				StopFlag_d[0] = 1;
+
+			if(StopAtEncounter > 0){ 
+				if(enccount == 1){
+					Ncoll_d[0] = 1;
+					n1_d[st] = -1.0;
+				}
 			}
-#endif
 			if(Ne == 0){
 				//write a list with simulations containing close encounters
 				int NT = atomicAdd(Nencpairs2_d, 1);
@@ -565,7 +461,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //March 2014
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int writeEncounters, const double writeEncountersRadius, const double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -582,13 +478,46 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	int enccount = 0;	
 	if(id < *Nencpairs_d){
 #if G3 == 0
-		enccount = encounter<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, NULL, *Nencpairs2_d, 0, time, writeEncounters, writeEncountersRadius, MinMass);
+		enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, time, MinMass);
 #elif G3 == 1
-		enccount = encounterb<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, NULL, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, writeEncounters, writeEncountersRadius, MinMass);
+		enccount = encounterb(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, MinMass);
 #else
 //change here ii and jj to index[ii], index[jj]
-		enccount = encounterG3<0>(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, MinMass);
+		enccount = encounterG3(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, MinMass);
 #endif
+		if(enccount > 0){
+			int Ne = atomicAdd(Nencpairs2_d, 1);
+
+			if(StopAtEncounter > 0){
+				if(enccount == 1){
+					Ncoll_d[0] = 1;
+				}
+			}
+
+			if(x4_d[ii].w >= x4_d[jj].w){
+				Encpairs2_d[Ne].x = ii;
+				Encpairs2_d[Ne].y = jj;
+			}
+			else{
+				Encpairs2_d[Ne].x = jj;
+				Encpairs2_d[Ne].y = ii;
+			}
+
+// *****************
+//dont group test particles
+/*
+			if(x4_d[ii].w == 0.0){
+				Encpairs2_d[Ne].x = ii;
+				Encpairs2_d[Ne].y = jj;
+			}
+			if(x4_d[jj].w == 0.0){
+				Encpairs2_d[Ne].x = jj;
+				Encpairs2_d[Ne].y = ii;
+			}
+*/
+// *****************
+
+		}
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);

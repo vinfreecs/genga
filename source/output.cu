@@ -18,6 +18,7 @@ __host__ int Data::firstoutput(int irregular){
 
 
 		//check if EnergyIrrfile already exists
+		//This is needed for Gasolenga runs
 		int readIrrEnergyFile = 0;
 		if(irregular == 1){
 			FILE *Efile;
@@ -31,7 +32,7 @@ __host__ int Data::firstoutput(int irregular){
 
 		if(P.tRestart == 0 && readIrrEnergyFile == 0){
 			int NBS = NBS_h[st];
-			if(P.ei > 0){
+			if(P.ei > 0 || irregular == 1){
 				if(irregular == 0){
 					GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
 				}
@@ -203,7 +204,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		if(P.FormatP == 0){
 			char outputfilename[300];
 			if(Nst == 1){
-				if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+				if(irregular == 0 || irregular == 3){
 					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j]);
 				}
 				else{
@@ -211,7 +212,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 				}
 			}
 			else{
-				if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+				if(irregular == 0 || irregular == 3){
 					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
 				}
 				else{
@@ -316,7 +317,7 @@ __host__ int Data::EnergyOutput(int irregular){
 		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
 		fclose(GSF[st].Energyfile);
 
-		if(irregular == 0){
+		if(irregular == 0 || interrupt == 1){
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
@@ -336,6 +337,10 @@ __host__ int Data::EnergyOutput(int irregular){
 			else{
 				fprintf(GSF[st].logfile, "    CE:    %d\n", Nencpairs2_h[st + 1]);
 				fprintf(GSF[st].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[st + 1]);
+			}
+			if(interrupt == 1){
+				fprintf(GSF[st].logfile, "GENGA is terminated by SIGINT signal at time step %lld\n", timeStep);
+
 			}
 			fclose(GSF[st].logfile);
 		}
@@ -384,12 +389,14 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 }
 
 __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dTau){
-	if(irregular == 0){
-		CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
-	}
-	else{
-		CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+	if(NT + NsmallT > 0){
+		if(irregular == 0){
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+		}
+		else{
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
 
+		}
 	}
 }
 
@@ -399,16 +406,6 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dT
 //irregular = 3 means to print the last time step
 //irregular = 4 means Step Error output
 __host__ void Data::CoordinateOutput(int irregular){
-	if(Nst > 1 && timeStep < P.deltaT && irregular < 3){
-		int s = 0;
-		for(int st = 0; st < Nst; ++st){
-			if(timeStep >= delta_h[st]){
-				s = 1;
-				N_h[st] = 0;
-			}
-		}
-		if(s == 1) stopSimulations();
-	}
 
 	cudaMemcpy(x4_h, x4_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(v4_h, v4_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
@@ -426,7 +423,25 @@ __host__ void Data::CoordinateOutput(int irregular){
 	cudaDeviceSynchronize();
 
 	for(int st = 0; st < Nst; ++st){
+
+
 		int NBS = NBS_h[st];
+
+//printf("Print Output | irreguler: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+		if(Nst > 1){
+			int s = 0;
+		
+			if(irregular < 3) s = 1;	
+			if(N_h[st] < Nmin[st]) s = 1;
+			if(n1_h[st] < 0) s = 1;
+			if(timeStep >= delta_h[st]) s = 1;
+			//print only simulations which must be stopped by StopAtEncounter
+			//or when the simulation reached the end
+			if(s == 0){
+				continue;
+			}			
+		}
+//printf("Print Output2 | irreguler: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
 
 		if(P.FormatP == 1){
 			if(irregular == 2){
@@ -439,7 +454,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 			else if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
-					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+					if(irregular == 0 || irregular == 3){
 						sprintf(GSF[st].outputfilename,"%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else if(irregular == 1){
@@ -448,7 +463,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 				}
 				if(P.FormatT == 1){
-					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+					if(irregular == 0 || irregular == 3){
 						sprintf(GSF[st].outputfilename,"%sOut%s.dat", GSF[st].path, GSF[st].X);
 					}
 					else if(irregular == 1){
@@ -459,7 +474,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 			else{
 				if(P.FormatT == 0){
-					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+					if(irregular == 0 || irregular == 3){
 						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
 					}
 					else if(irregular == 1){
@@ -469,7 +484,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
 				}
 				if(P.FormatT == 1){
-					if(irregular == 0 || irregular == 3 && timeStep == delta_h[st]){
+					if(irregular == 0 || irregular == 3){
 						sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
 					}
 					else if(irregular == 1){
@@ -480,11 +495,11 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 
-		if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
+		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
 			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
-		}
+		//}
 
 	}
 	cudaMemcpy(aecountT_d, aecountT_h, sizeof(unsigned long long)*NconstT, cudaMemcpyHostToDevice);
@@ -533,6 +548,21 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 		}
 		for(int st = 0; st < Nst; ++st){
 			int NBS = NBS_h[st];
+
+//printf("Print Output Buffer %d %d %g\n", irregular, st, n1_h[st]);
+		if(Nst > 1){
+			int s = 0;
+
+			if(irregular < 3) s = 1;	
+			if(N_h[st] < Nmin[st]) s = 1;
+			if(n1_h[st] < 0) s = 1;
+			if(timeStep >= delta_h[st]) s = 1;
+			//print only simulations which must be stopped by StopAtEncounter
+			//or when the simulation reached the end
+			if(s == 0){
+				continue;
+			}			
+		}
 
 			if(P.FormatP == 1){
 				if(Nst == 1 || P.FormatS == 0){
@@ -601,17 +631,6 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 
 	cudaMemset(aecount_d, 0, sizeof(unsigned int)*NconstT);
 	cudaMemset(enccount_d, 0, sizeof(unsigned int)*NconstT);
-
-	if(timeStep < P.deltaT){
-		int s = 0;
-		for(int st = 0; st < Nst; ++st){
-			if(timeStep >= delta_h[st]){
-				s = 1;
-				N_h[st] = 0;
-			}
-		}
-		if(s == 1) stopSimulations();
-	}
 }
 
 

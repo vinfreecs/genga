@@ -178,6 +178,8 @@ int main(int argc, char*argv[]){
 
 	//write first output
 	er = D.firstoutput(0);
+	if(er == 0) return 0;
+
 	if(D.P.IrregularOutputs == 1){
 		er = D.firstoutput(1);
 	}
@@ -429,15 +431,14 @@ if(ittv % MCMC_NQ == 0){
 		}
 	} // end of time step loop
 	// ***********************************************************************
+
 	//write out the remaining buffer
 	if(D.P.IrregularOutputs == 1){
 		if(D.bufferCountIrr > 1){
-			D.P.Buffer = D.bufferCountIrr - 1;
 			D.CoordinateOutputBuffer(1);
 		}
 	}
-	if(D.bufferCount > 1){
-		D.P.Buffer = D.bufferCount - 1;
+	if(D.bufferCount > 0){
 		D.CoordinateOutputBuffer(0);
 	}
 

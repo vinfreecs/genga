@@ -89,7 +89,7 @@ public:
 	int *EjectionFlag_d, *EjectionFlag_m;
 	int *EncFlag_d, *EncFlag_m;
 	int CollisionFlag;
-	int *StopFlag_d, *StopFlag_h;
+	int *StopFlag_d, *StopFlag_m;
 	double *Coll_h, *Coll_d;
 	double *writeEnc_h, *writeEnc_d;
 	double *Fragments_h, *Fragments_d;
@@ -222,7 +222,7 @@ public:
 	__host__ int writeEncCall();
 	__host__ int writeEncMCall();
 	__host__ int EjectionCall();
-	__host__ void EjectionMCall();
+	__host__ int StopAtEncounterCall();
 	__host__ void BSCall(int, double, int, double);
 	__host__ void BSBMCall(int, int, double);
 

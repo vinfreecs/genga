@@ -61,3 +61,5 @@ MCMC NE = 0
 MCMC Restart = 0
 Report Encounters = 0
 Report Encounters Radius = 3
+Stop at Encounter = 0
+Stop at Encounter Radius = 1
