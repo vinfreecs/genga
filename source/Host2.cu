@@ -405,6 +405,10 @@ __host__ void Host::Halloc(){
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
 	P.StopAtEncounter = def_StopAtEncounter;
 	P.StopAtEncounterRadius = def_StopAtEncounterRadius;
+	P.StopAtCollision = def_StopAtCollision;
+	P.StopMinMass = def_StopMinMass;
+	P.CollisionPrecision = def_CollisionPrecision;
+	P.CollTshift = def_CollTshift;
 	P.NAFvars = def_NAFvars;
 	P.NAFn0 = def_NAFn0;
 	P.NAFnfreqs = def_NAFnfreqs;
@@ -1302,7 +1306,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.StopAtEncounter);
 				if(er <= 0){
-					printf("Error: Stop At Encounter value is not valid!\n");
+					printf("Error: Stop at Encounter value is not valid!\n");
 					return 0;
 				}
 				
@@ -1325,6 +1329,66 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else{
 				int t;
 				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Stop at Collision =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.StopAtCollision);
+				if(er <= 0){
+					printf("Error: Stop at Collision value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Stop Minimum Mass =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.StopMinMass);
+				if(er <= 0){
+					printf("Error: Stop Minumun Mass value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Collision Precision =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.CollisionPrecision);
+				if(er <= 0){
+					printf("Error: Collision Precision value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Collision Time Shift =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.CollTshift);
+				if(er <= 0){
+					printf("Error: Collision Time Shift value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1570,18 +1634,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 	
 	
-	if(def_StopAtCollision != 0 && Nst > 1){
-		printf("Error: def_StopAtCollision not available in multi simulation mode!\n");
+	if(P.StopAtCollision != 0 && Nst > 1){
+		printf("Error: Stop at Collision not available in multi simulation mode!\n");
 		return 0;
 	}
 	
-	if(def_CollTshift < 1.0){
-		printf("Error: def_CollTshift not valid! %g\n", def_CollTshift);
+	if(P.CollTshift < 1.0){
+		printf("Error: Collision Time Shift not valid! %g\n", P.CollTshift);
 		return 0;
 	}
 	
-	if(def_CollisionPrecision <= 0.0){
-		printf("Error: def_CollisionPrecision not valid! %g\n", def_CollisionPrecision);
+	if(P.CollisionPrecision <= 0.0){
+		printf("Error: Collision Precision not valid! %g\n", P.CollisionPrecision);
 		return 0;
 	}
 
@@ -2055,7 +2119,7 @@ __host__ void Host::Info(){
 			}
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
-			fprintf(infofile, "Genga Version: %g\n", Version);
+			fprintf(infofile, "Genga Version: %g\n", def_Version);
 			fprintf(infofile, "Mercurial Branch: %s\n", HG_BRANCH);
 			fprintf(infofile, "Mercurial Commit: %s\n", HG_COMMIT);
 			fprintf(infofile, "Build Date: %s\n", BUILD_DATE);
@@ -2063,10 +2127,6 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
-			fprintf(infofile, "Stop at collision: %d\n", def_StopAtCollision);
-			fprintf(infofile, "Stop collision minimum mass: %g\n", def_StopMinMass);
-			fprintf(infofile, "Collision precision: %g\n", def_CollisionPrecision);
-			fprintf(infofile, "CollTshift: %g\n", def_CollTshift);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
@@ -2193,6 +2253,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
 			fprintf(infofile, "Stop at close Encounters: %d\n", P.StopAtEncounter);
 			fprintf(infofile, "Stop at close Encounter Radius: %g\n", P.StopAtEncounterRadius);
+			fprintf(infofile, "Stop at Collision: %d\n", P.StopAtCollision);
+			fprintf(infofile, "Stop collision minimum mass: %g\n", P.StopMinMass);
+			fprintf(infofile, "Collision precision: %g\n", P.CollisionPrecision);
+			fprintf(infofile, "Collision Time Shift: %g\n", P.CollTshift);
 			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);

@@ -479,13 +479,13 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 							int i = Colpairs_s[c].x;
 							int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
-printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
+//printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
-printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
 					}
                                         __syncthreads();
-					if(Coltime_s[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1)){
+					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1)){
 						if(idy == 0) {
 							for(int c = 0; c < Ncol_s[0]; ++c){
 								int i = Colpairs_s[c].x;
@@ -501,10 +501,10 @@ printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, d
 									for(int cc = 0; cc < min(Ncoll_d[0], def_MaxColl); ++cc){
 										int ci = (int)(Coll_d[cc * 25 + 1]);
 										int cj = (int)(Coll_d[cc * 25 + 13]);
-printf("cc %d %d | %d %d | %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, ci, cj, Ncoll_d[0]);
-										if(ci == Encpairs_d[(si * NmaxM) + i].x && cj == Encpairs_d[(si * NmaxM) + j].x && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+//printf("cc %d %d | %d %d | %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, ci, cj, Ncoll_d[0]);
+										if(ci == Encpairs_d[(si * NmaxM) + i].x && cj == Encpairs_d[(si * NmaxM) + j].x && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
 										if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
-printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
+//printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
 										}
 									}
 									noColl = 2;

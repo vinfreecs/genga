@@ -16,6 +16,7 @@
 	#include "TTVStep2.h"
 #endif
 
+
 volatile sig_atomic_t interrupted = 0;
 volatile sig_atomic_t terminated = 0;
 
@@ -90,6 +91,7 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 	printf("Parameters OK\n");
 
+	
 
 	// Determine the size of the simulations
 	printf("Read Size\n");
@@ -112,11 +114,14 @@ int main(int argc, char*argv[]){
 	Data D = H;
 
 	//Allocate orbit data on Host and Device
-	D.AllocateOrbitt();
+	D.AllocateOrbit();
 
 	 //allocate mapped memory//
 	er = D.CMallocateOrbit();
 	if(er == 0) return 0;
+
+	//copy constant memory
+	D.constantCopyDirectAcc();
 
 	//Allocate aeGride
 	D.constantCopy2();

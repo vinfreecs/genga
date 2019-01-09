@@ -1,6 +1,7 @@
 #ifndef DIRECTACC_H
 #define DIRECTACC_H
 
+
 //**************************************
 //This function computes the term a = mj/rij^3 * (1 - Kij).
 //
@@ -354,17 +355,19 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	}
 	index[indexj] = -1;
 
-#if def_StopAtCollision == 0
-	x4[i].w = mtot;
-
-#else
-	if(x4[j].w >= def_StopMinMass && x4[i].w >= def_StopMinMass){
-		x4[i].w = -1.0e-12;
-	}
-	else{
+	if(StopAtCollision_c[0] == 0){
 		x4[i].w = mtot;
 	}
-#endif
+	else{
+		//prevent from following collisions in the same time step
+		if(x4[j].w >= StopMinMass_c[0] && x4[i].w >= StopMinMass_c[0]){
+			x4[i].w = -1.0e-12;
+printf("Stop At Collision %d %g\n", StopAtCollision_c[0], StopMinMass_c[0]);
+		}
+		else{
+			x4[i].w = mtot;
+		}
+	}
 	x4[j].w = -1.0e-12;
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;

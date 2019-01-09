@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define Version 3.77
+#define def_Version 3.78
 
 //Default parameter values
 #define def_TimeStep 6
@@ -60,6 +60,10 @@
 #define def_WriteEncountersRadius 3	//factor in terms fo physical radii
 #define def_StopAtEncounter 0		//Stop simulations at close encounters
 #define def_StopAtEncounterRadius 1.0	//factor in terms of Hill radii
+#define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
+#define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations only when both bodies are more massive than def_StopMinMass
+#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
+#define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 #define def_NAFvars 1
 #define def_NAFn0 10
 #define def_NAFnfreqs 1
@@ -87,11 +91,6 @@
 #define IgnoreLockFile 1
 
 
-//Collision Arguments
-#define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
-#define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
-#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
-#define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 
 
 //gas disk constants 
@@ -222,6 +221,11 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
+__constant__ int  StopAtCollision_c[1];
+__constant__ double  StopMinMass_c[1];
+__constant__ double CollisionPrecision_c[1]; 
+__constant__ double CollTshift_c[1]; 
+
 
 struct Parameter{
 	int dev;                        //Number of device
@@ -261,6 +265,10 @@ struct Parameter{
 	double WriteEncountersRadius;
 	int StopAtEncounter;
 	double StopAtEncounterRadius;
+	int StopAtCollision;
+	double StopMinMass;
+	double CollisionPrecision;
+	double CollTshift;
 	int NAFvars;
 	int NAFn0;
 	int NAFnfreqs;
@@ -271,7 +279,7 @@ struct Parameter{
 	int AngleUnits;
 };
 
-//File names of Simulstions
+//File names of Simulations
 struct GSFiles{
 	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile, *encounterfile, *fragmentfile;
 	char outputfilename[128];

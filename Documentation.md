@@ -124,7 +124,11 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * Report Encounters: When this is set to one, then close encounters with a separation less than a factor f times the physical radius of the body are reported to a file.
  * Report Encounters Radius: This option sets the factor f of the 'Report Encounter'  separation.
  * Stop at Encounter: When this is set to one, then the simulation or sub-simulation is stopped when the separation between two bodies is less than a factor g times the Hill radii of the involved bodies. 
- * Stop at Encounter Radius: This option sets the factor g of the 'Stop at Encounter' sepparation.  
+ * Stop at Encounter Radius. This option sets the factor g of the 'Stop at Encounter' sepparation.  
+ * Stop at Collision. 1: stop simulation when a collision occurs; 0: continue simulation with merged bodies (default)
+ * Stop Minimum Mass. when `Stop at Collision` = 1, then stop simulations only when both bodies are more massive than `Stop Minimum Mass`.
+ * Collision Precision. Tolerance for Collision Time Precision, In days. The default values is 1.0
+ * Collision Time Shift. Print the collision coordinates before the collision happens, when the involved bodies are sepparated by `Collision time Shift` times the physical radii. The default value is 1.0.
 
 
 # Console Arguments #
@@ -168,10 +172,6 @@ Here it can also be chosen if the gas disc is included or not.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
- * def_StopAtCollision i: 1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
- * def_StopMinMass f: when def_StopAtCollision = 1, then stop simulations when both bodies are more massive than def_StopMinMass
- * def_CollisionPrecision f: Tolerance for Collision time precision. In days. Default is 1.0
- * def_CollTshift f: Collision output before Collision happens, default is 1.0
  * Asteroid_eps f: Emissivity factor
  * Asteroid_S f: Solar Constant at 1 AU in W /m^2
  * Asteroid_rho f: Density of body in kg/m^3
@@ -305,7 +305,7 @@ If an error occurs during the simulation, then in this File is written the last 
 
 ##The collision file: Collisions<name>.dat
 In this file are listed the details of the collisions between particle i and j just after they collide.
-The precision of the collision output can be adjuted with the def_CollisionPrecision argument in the 'define.h' file. A value of 1.0 prints the position at the Bulirsh stoer step just after the collision. A Value of 1.0e7 refines the Bulirsch Stoer steps to 1.0e7 days. This value should not be smaller than def_dtmin.
+The precision of the collision output can be adjuted with the `Collision Precision` argument in the 'define.h' file. A value of 1.0 prints the position at the Bulirsh stoer step just after the collision. A Value of 1.0e7 refines the Bulirsch Stoer steps down to 1.0e7 days. This value should not be smaller than def_dtmin.
 
     time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
     .
@@ -313,7 +313,7 @@ The precision of the collision output can be adjuted with the def_CollisionPreci
     .
 
 ##The full collision output file: OutCollison.dat
-This file is only written when the def_StopAtCollision argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the def_CollTshift argument. When this argument is larger than 1.0, then the coordinates are reported at the time whe the separation between the two bodies was def_CollTshift times the planetary radii.
+This file is only written when the `Stop at Collision` argument is set to 1. This file contains the coordinates of all the bodies at the collision time of two individual bodies. The output time can be moved before the actual collision with the `Collision Time Shift` argument. When this argument is larger than 1.0, then the coordinates are reported at the time when the separation between the two bodies was `Collision Time Shift` times the planetary radii.
 
 
 ## The ejection file Ejections<name>.dat

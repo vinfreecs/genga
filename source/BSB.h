@@ -13,8 +13,12 @@
 
 template< int NN, int nb>
 __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+
+
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
+
+//printf("BSB %d %d %g %g\n", idy, idx, StopMinMass_c[0], CollisionPrecision_c[0]);
 
 	int ii = idy / nb;
 	int jj = idy % nb;
@@ -462,10 +466,10 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 //printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
 					}
 					__syncthreads();
-					if(Coltime_s[0] > 1.0 - def_CollisionPrecision/(sgnt * dt1)){
+					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0]/(sgnt * dt1)){
 						if(idy == 0) {
 							for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 								int i = Colpairs_s[c].x;
@@ -483,7 +487,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 										int ci = (int)(Coll_d[cc * 25 + 1]);
 										int cj = (int)(Coll_d[cc * 25 + 13]);
 //printf("cc %d %d | %d %d | %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, ci, cj, Ncoll_d[0]);
-										if(ci == Encpairs2_d[start + i].x && cj == Encpairs2_d[start + j].x && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+										if(ci == Encpairs2_d[start + i].x && cj == Encpairs2_d[start + j].x && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
 											if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
 //printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
 										}

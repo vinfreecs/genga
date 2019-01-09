@@ -841,7 +841,7 @@ __host__ int Data::printCollisions(double &Coltime){
 			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * 25 + 1]) % 100 , (int)(Coll_h[nc * 25 + 13]) % 100);
 		}
 	
-		if(Coll_h[nc * 25 + 2] >= def_StopMinMass && Coll_h[nc * 25 + 14] >= def_StopMinMass){
+		if(Coll_h[nc * 25 + 2] >= P.StopMinMass && Coll_h[nc * 25 + 14] >= P.StopMinMass){
 			stopAtCollision = 1;
 			Coltime = min(Coltime, Coll_h[nc * 25]);
 		}

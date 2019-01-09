@@ -31,6 +31,14 @@ double *Kt;		//time factor for Kick steps
 int EjectionFlag2 = 0;
 int StopAtEncounterFlag2 = 0;
 
+__host__ void Data::constantCopyDirectAcc(){
+	cudaMemcpyToSymbol(StopAtCollision_c, &P.StopAtCollision, sizeof(int), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(StopMinMass_c, &P.StopMinMass, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(CollisionPrecision_c, &P.CollisionPrecision, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(CollTshift_c, &P.CollTshift, sizeof(double), 0, cudaMemcpyHostToDevice);
+
+}
+
 // *****************************************************
 // This function calls all necessary sub steps for comuting 
 // one time step.
@@ -395,43 +403,47 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 	double rcrit, rcritv ;
 	double rsq, vsq, r, v;
 	if(id < N){
-		
-#if def_StopAtCollision != 0
-		if(f == 0){
+			
+		if(StopAtCollision_c[0] != 0){
+//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);
+			if(f == 0){
+				x4i = x4_d[id];
+				v4i = v4_d[id];
+				
+				//store coordinates backup		
+				x4b_d[id] = x4i;
+				v4b_d[id] = v4i;
+				indexb_d[id] = index_d[id];
+			}
+			if(f == 1 || f == -1){
+				//restore old coordinates
+				x4i = x4b_d[id];
+				v4i = v4b_d[id];
+			
+				//increase radius 	
+				v4i.w *= CollTshift_c[0];
+				
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+				index_d[id] = indexb_d[id];
+			}
+			if(f == 2){
+				//restore old coordinates
+				x4i = x4b_d[id];
+				v4i = v4b_d[id];
+				
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+				index_d[id] = indexb_d[id];
+			}
+		}
+		else{
 			x4i = x4_d[id];
 			v4i = v4_d[id];
-			
-			x4b_d[id] = x4i;
+#if def_TTV > 0
 			v4b_d[id] = v4i;
-			indexb_d[id] = index_d[id];
-		}
-		if(f == 1 || f == -1){
-			//restore old coordinates
-			x4i = x4b_d[id];
-			v4i = v4b_d[id];
-			
-			v4i.w *= def_CollTshift;
-			
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-			index_d[id] = indexb_d[id];
-		}
-		if(f == 2){
-			//restore old coordinates
-			x4i = x4b_d[id];
-			v4i = v4b_d[id];
-			
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-			index_d[id] = indexb_d[id];
-		}
-#else
-		x4i = x4_d[id];
-		v4i = v4_d[id];
-  #if def_TTV > 0
-		v4b_d[id] = v4i;
-  #endif
 #endif
+		}
 		rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
 		vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z + 1.0e-30;
 		
@@ -551,40 +563,42 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		double RcutSun = RcutSun_d[st];
 		double dt = dt_d[st];
 		
-#if def_StopAtCollision != 0
-		if(f == 0){
+		if(StopAtCollision_c[0] != 0){
+			if(f == 0){
+				x4i = x4_d[id];
+				v4i = v4_d[id];
+				
+				x4b_d[id] = x4i;
+				v4b_d[id] = v4i;
+				indexb_d[id] = index_d[id];
+			}
+			if(f == 1 || f == -1){
+				x4i = x4b_d[id];
+				v4i = v4b_d[id];
+	
+				//increase radius 	
+				v4i.w *= CollTshift_c[0];
+				
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+				index_d[id] = indexb_d[id];
+			}
+			if(f == 2){
+				x4i = x4b_d[id];
+				v4i = v4b_d[id];
+				
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+				index_d[id] = indexb_d[id];
+			}
+		}
+		else{
 			x4i = x4_d[id];
 			v4i = v4_d[id];
-			
-			x4b_d[id] = x4i;
+#if def_TTV > 0
 			v4b_d[id] = v4i;
-			indexb_d[id] = index_d[id];
-		}
-		if(f == 1 || f == -1){
-			x4i = x4b_d[id];
-			v4i = v4b_d[id];
-			
-			v4i.w *= def_CollTshift;
-			
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-			index_d[id] = indexb_d[id];
-		}
-		if(f == 2){
-			x4i = x4b_d[id];
-			v4i = v4b_d[id];
-			
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-			index_d[id] = indexb_d[id];
-		}
-#else
-		x4i = x4_d[id];
-		v4i = v4_d[id];
-  #if def_TTV > 0
-		v4b_d[id] = v4i;
-  #endif
 #endif
+		}
 		
 		__syncthreads();
 		
@@ -900,10 +914,10 @@ __host__ int Data::CollisionCall(){
 	double Coltime = 1.0e100;
 	int stopAtCollision = printCollisions(Coltime);
 	CollisionFlag = 1;
-#if def_StopAtCollision == 0 
-	Ncoll_m[0] = 0;
-	return 1;
-#else
+	if(P.StopAtCollision == 0){
+		Ncoll_m[0] = 0;
+		return 1;
+	}
 	if(stopAtCollision == 1){
 		
 printf("Backup step %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0], (Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]);
@@ -911,7 +925,7 @@ printf("Backup step %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0]
 		IrregularStep(1.0 * ((Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
 		double ColtimeOld = Coltime;
 		
-		if(def_CollTshift > 1.0){
+		if(P.CollTshift > 1.0){
 			bStep(1);
 			cudaDeviceSynchronize();
 			cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);	
@@ -926,9 +940,9 @@ printf("Backup step3 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0
 				cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
 				Coltime = Coll_h[0];
 				if(Coltime >= ColtimeOld){
-					printf("Error: Collision time could not be reconstructed. Maybe def_CollTshift is too large.\n");
+					printf("Error: Collision time could not be reconstructed. Maybe CollTshift is too large.\n");
 				}
-				
+
 			}
 			IrregularStep(1.0 * ((Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
 printf("Backup step2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0], (Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]);
@@ -950,7 +964,6 @@ printf("Backup step2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0
 		Ncoll_m[0] = 0;
 		return 1;
 	}
-#endif
 }
 
 __host__ int Data::CollisionMCall(){

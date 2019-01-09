@@ -1,7 +1,9 @@
 template <int NN>
 __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, int noColl){
+
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
+//printf("BSA %d %d %g\n", idy, idx, StopMinMass_c[0]);
 
 	volatile double dt1 = dt;
 	volatile double dt2, dt22;
@@ -577,10 +579,10 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 //printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
 					}
 					__syncthreads();
-					if(Coltime_s[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1)){
+					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1)){
 						if(idy == 0){
 							for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 								int i = Colpairs_s[c].x;
@@ -597,7 +599,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 										int ci = (int)(Coll_d[cc * 25 + 1]);
 										int cj = (int)(Coll_d[cc * 25 + 13]);
 //printf("cc %d %d | %d %d | %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, ci, cj, Ncoll_d[0]);
-										if(ci == Encpairs2_d[start + i].x && cj == Encpairs2_d[start + j].x && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+										if(ci == Encpairs2_d[start + i].x && cj == Encpairs2_d[start + j].x && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
 											if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
 //printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
 										}
@@ -1100,10 +1102,10 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 //printf("Coltime %d %d %.20g %g %g %.20g %d\n", i, j, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
 						Coltime_s[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
 					}
 					__syncthreads();
-					if(Coltime_s[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1)){
+					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1)){
 						if(idy == 0) {
 							for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 								int i = Colpairs_s[c].x;
@@ -1121,7 +1123,7 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 										int ci = (int)(Coll_d[cc * 25 + 1]);
 										int cj = (int)(Coll_d[cc * 25 + 13]);
 //printf("cc %d %d | %d %d | %d\n", i, j, ci, cj, Ncoll_d[0]);
-										if(ci == i && cj == j && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+										if(ci == i && cj == j && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
 											if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
 //printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
 										}
@@ -1523,7 +1525,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 //printf("Coltime %d %d %.20g %g %g %.20g %d\n", i, j, Coltime,  t1_d[i] / dayUnit,  dt1_d[i] / dayUnit, (1.0 - Coltime) * dt1_d[i], n);
 		}
 		Coltime_d[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %.20g\n", Coltime, t1_d[i] / dayUnit, dt1_d[i] / dayUnit, (1.0 - Coltime) * dt1_d[i], n, Ncol_s[0], Ncoll_d[0], 1.0 - def_CollisionPrecision/(sgnt * dt1_d[i]));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %.20g\n", Coltime, t1_d[i] / dayUnit, dt1_d[i] / dayUnit, (1.0 - Coltime) * dt1_d[i], n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1_d[i]));
 
 	}
 
@@ -1535,7 +1537,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 			volatile double t1 = t1_d[i];
 			int sgnt = 1;
 			if(dt < 0.0) sgnt= -1;
-			if(Coltime_d[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1_d[i])){
+			if(Coltime_d[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1_d[i])){
 				if(noColl == 0){
 					if(xt_d[i].w >= 0 && xt_d[j].w >= 0){
 						int nc = atomicAdd(Ncoll_d, 1);
@@ -1548,7 +1550,7 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 						int ci = (int)(Coll_d[cc * 25 + 1]);
 						int cj = (int)(Coll_d[cc * 25 + 13]);
 //printf("cc %d %d | %d %d | %d\n", i, j, ci, cj, Ncoll_d[0]);
-						if(ci == i && cj == j && Coll_d[cc * 25 + 2] >= def_StopMinMass && Coll_d[cc * 25 + 14] >= def_StopMinMass){
+						if(ci == i && cj == j && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
 							if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t1_d[i] + dt1_d[i]) / dayUnit) / 365.25;
 //printf("cTime nocoll %g %g %g %.20g %d\n", time, t1_d[i] / dayUnit, dt / dayUnit, time + (t1_d[i] + dt1_d[i]) / dayUnit, cc);
 						}
@@ -1572,8 +1574,8 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 				volatile double t1 = t1_d[idi];
 				int sgnt = 1;
 				if(dt < 0.0) sgnt= -1;
-//if(idi == 0) printf("C %d %d %g %g %g %g %d %d\n", id, idi, Coltime_d[0], t1_d[idi], dt1_d[idi], 1.0 - def_CollisionPrecision/dt1_d[idi], n, ii);
-				if(Coltime_d[0] > 1.0 - def_CollisionPrecision / (sgnt * dt1_d[idi])){
+//if(idi == 0) printf("C %d %d %g %g %g %g %d %d\n", id, idi, Coltime_d[0], t1_d[idi], dt1_d[idi], 1.0 - CollisionPrecision_c[0]/dt1_d[idi], n, ii);
+				if(Coltime_d[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1_d[idi])){
 					if((accept == 0 || sgnt * dt1 < def_dtmin) && Ne1 >= 0){
 
 						t1 += dt1;

@@ -135,7 +135,7 @@ public:
 
 	__host__ Data(long long);
 	__host__ int timeStepLoop(int);
-	__host__ void AllocateOrbitt();
+	__host__ void AllocateOrbit();
 	__host__ int CMallocateOrbit();
 	__host__ int GridaeAlloc();
 	__host__ int FGAlloc();
@@ -152,6 +152,10 @@ public:
 	__host__ void stopSimulations();
 	__host__ void Ejection();
 	__host__ int freeOrbit();
+
+	__host__ void constantCopyDirectAcc();
+
+
 
 	//FG2
 	__host__ void constantCopy();

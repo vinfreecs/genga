@@ -7,7 +7,7 @@ __host__ Data::Data(long long Restart): Host(Restart){
 }
 
 //Allocate orbit data
-__host__ void Data::AllocateOrbitt(){
+__host__ void Data::AllocateOrbit(){
 
 	//allocate memory on host//
 	rcrit_h = (double*)malloc(NconstT * def_SLEVELS * sizeof(double));
