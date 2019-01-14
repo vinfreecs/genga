@@ -395,6 +395,8 @@ __host__ void Host::Halloc(){
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.UsePR = def_UsePR;
+	P.Qpr = def_Qpr;
+	P.SolarConstant = def_SolarConstant;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
@@ -778,6 +780,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(er <= 0){
 				printf("Error: Star tau is not valid!\n");
 				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Solar Constant =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.SolarConstant);
+				if(er <= 0){
+					printf("Error: Solar Constant value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1224,6 +1240,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else{
 				int t;
 				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Radiation Pressure Coefficient Qpr =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Qpr);
+				if(er <= 0){
+					printf("Error: Radiation Pressure Coefficient value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -2155,6 +2185,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Star spin_y: %g\n", Spinsun_h[st].y);
 			fprintf(infofile, "Star spin_z: %g\n", Spinsun_h[st].z);
 			fprintf(infofile, "Star tau: %g\n", Spinsun_h[st].w);
+			fprintf(infofile, "Solar Constant: %g\n", P.SolarConstant);				// use only argument in simulation 0
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
 			#if G3 > 0
@@ -2245,6 +2276,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
+			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
@@ -2261,7 +2293,6 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
 			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
 			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
-			fprintf(infofile, "Asteroid radiation pressure coefficient Q: %g\n", Asteroid_Q);
 			fprintf(infofile, "Asteroid collisional velocity V: %g\n", Asteroid_V);
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);

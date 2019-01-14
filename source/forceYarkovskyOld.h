@@ -14,7 +14,7 @@
 //h3 angular momentum vector
 //h norm of angular momentum vector |r x v|
 //dt time step in day / 0.017
-__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double3 spin, const double3 h3, const double h, const double dt){
+__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double3 spin, const double3 h3, const double h, const double dt, const double SolarConstant){
 
 	//material constants
 //A = 0.0;
@@ -28,7 +28,7 @@ if(m == 0.0) m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 	m /= 1.98855e30;						//mass im Solar masses
 
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-	double F = Asteroid_S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+	double F = SolarConstant / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
 	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
@@ -144,7 +144,7 @@ if(m == 0.0) m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double3 spin, const double3 h3, const double h, const double dt){
+__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double3 spin, const double3 h3, const double h, const double dt, const double SolarConstant){
 
 	//material constants
 //A = 0.0;
@@ -162,7 +162,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	}
 
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-	double F = Asteroid_S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+	double F = SolarConstant / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
 	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
@@ -262,7 +262,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 }	
 
-__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, const double SolarConstant, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -389,13 +389,13 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 
 		//modify elements
 #if PVERSION == 1
-		Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
+		Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt, SolarConstant);
 #endif
 #if PVERSION == 2
-		Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
+		Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt, SolarConstant);
 #endif
 #if PVERSION == 3
-		Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt);
+		Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt, SolarConstant);
 #endif
 		//Convert to Cartesian Coordinates
 

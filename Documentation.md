@@ -52,6 +52,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Star spin_y in Solar masses AU^2 * day / 0.0172020989
  * The Star spin_z in Solar masses AU^2 * day / 0.0172020989
  * The Star tau (time lag) in day / 0.0172020989.
+ * The Solar Constant at 1 AU in W /m^2. 
  * The Input file name
  * The input file format:
 
@@ -116,6 +117,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * use additional force, which is specified in the file force.h. See [here](#markdown-header-additional-forces) for more details.
  * Use Yarkovsky. 0: No Yarkovsky effect, 1: Yarkovsky effect (dv/dt), 2: Yarkovsky effect (da/dt) See [here](#markdown-header-yarkovsky-effect) for more details.
  * Use Poynting-Robertson. 0: No PR drag, 1: PR drag (dv/dt), 2: PR drag (da/dt, de/dt) See [here](#markdown-header-poynting-robertson-drag) for more details.
+ * Radiation Pressure Coefficient Qpr: Efficiency factor, used for Poynting Robertson drag.
  * Use Small Collisions. 0: no effect, 1: Fragmentation and rotation rate reset model for test particles.
  * Set Elements file name: '-': no file, 'name':  name of the file containg the data table for Keplerian elements. See [here](#markdown-header-set-elements-function) for more details. 
  * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
@@ -173,12 +175,10 @@ Here it can also be chosen if the gas disc is included or not.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
  * Asteroid_eps f: Emissivity factor
- * Asteroid_S f: Solar Constant at 1 AU in W /m^2
  * Asteroid_rho f: Density of body in kg/m^3
  * Asteroid_C f: Specific Heat Capacity in J/kgK
  * Asteroid_A f: Bond albedo
  * Asteroid_K f: Thermal conductivity in W/mK
- * Asteroid_Q f: Radiation pressure coefficient
 
 
 
@@ -496,9 +496,11 @@ Formulation and Examples). This scheme computes the drift rate da/dt and updates
 
 The Yarkovsky effect can be enabled by setting 'Use Yarkovsky = 1' or 'Use Yarkovsky = 2' in the param.dat' file.
 
+The following parameters are relevant for the Yarkovsky effect and can be set in the 'param.h' file:
+ * Solar Constant: Solar Constant at 1 AU in W /m^2
+
 The following parameters are relevant for the Yarkovsky effect and can be set in the 'define.h' file:
  * Asteroid_eps: Emissivity factor
- * Asteroid_S: Solar Constant at 1 AU in W /m^2
  * Asteroid_rho: density of the body in kg/m^3
  * Asteroid_C: Specific Heat Capacity in J/kg/K
  * Asteroid_A: Bond albedo
@@ -508,12 +510,15 @@ The following parameters are relevant for the Yarkovsky effect and can be set in
 # Poynting Robertson drag #
 The Poynting Robertson drag is implemented with two different schemes, both according to BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System). 
  * The first scheme computes the Yarkovsky effect and performs a velocity kick.
- * The second  scheme computes the drift rates da/dt and de/dt updates the Keplerian elements.
+ * The second scheme computes the drift rates da/dt and de/dt and updates the Keplerian elements. This takes longer to compute than the first scheme. 
 
 The Poynting-Robertson drag effect can be enabled by setting 'Use Poynting-Robertson = 1' or 'Use Poynting-Robertson = 2' in the param.dat' file.
 
-The following parameters are relevant for the Poynting-Robertson drag and can be set in the 'define.h' file:
- * Asteroid_Q: radiation pressure coefficient
+The following parameters are relevant for the Poynting-Robertson drag and can be set in the 'param.h' file:
+ * Solar Constant: Solar Constant at 1 AU in W /m^2
+ * Qpr: radiation pressure coefficient
+
+When the mass of a particle is zero, then the density `Asteroid_rho`, specified in the `define.h` file, is used to calculate its mass.
 
 # Set Elements function #
 This option can be used to modiy the orbital parameters of a body according to a precomputed data table. To enable this option, the file name must be set with the 

@@ -449,7 +449,7 @@ int main(int argc, char*argv[]){
 	D = H;
 
 	//Allocate orbit data on Host and Device
-	D.AllocateOrbitt();
+	D.AllocateOrbit();
 
 	 //allocate mapped memory//
 	er = D.CMallocateOrbit();

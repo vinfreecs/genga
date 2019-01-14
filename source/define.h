@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.78
+#define def_Version 3.79
 
 //Default parameter values
 #define def_TimeStep 6
@@ -21,6 +21,7 @@
 #define def_CentralRadius 0.00465475877
 #define def_CentralK2 1.0
 #define def_CentralK2f 1.0
+#define def_SolarConstant 1367.0	//Solar Constant at 1 AU in W /m^2
 #define def_n1 3.0
 #define def_n2 0.4
 #define def_InputFile "inital.dat"
@@ -50,6 +51,7 @@
 #define def_UseYarkovsky 0
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_UsePR 0
+#define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
 #define def_G_Sigma_10 2000		 //surface density at 1AU
@@ -196,7 +198,6 @@
 
 //values for Asteroids in force function
 #define Asteroid_eps 0.95	//Emissivity
-#define Asteroid_S 1367.0	//Solar Constant at 1 AU in W /m^2
 
 
 #define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
@@ -214,7 +215,6 @@
 //#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
 
 
-#define Asteroid_Q 1.0		//radiation pressure coefficient, 1 pure absortion
 
 #define Asteroid_V 5000.0	//Collisional velocity in m/s 
 
@@ -249,6 +249,8 @@ struct Parameter{
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int UsePR;			//Poynting Robertson drag
+	double Qpr;			//radiation pressure coefficient
+	double SolarConstant;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 	int UseTransits;

@@ -969,7 +969,7 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, const double SolarConstant, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -994,13 +994,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
 			double dt = dt_d[st] * Kt;
-			double mu = def_ksq * (Msun + x4i.w);
 			double m = x4i.w;
-			if(x4i.w == 0.0){
+			if(m == 0.0){
 				m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 				m /= def_Solarmass;						//mass im Solar masses
-				mu = def_ksq * (Msun + m);
 			}
+			double mu = def_ksq * (Msun + m);
 	
 			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
 			double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
@@ -1128,7 +1127,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0); 						//in 1 / s
 
 			double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-			double F = Asteroid_S / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+			double F = SolarConstant / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 
 			double Ts4 = (1.0 - Asteroid_A) * F / (Asteroid_eps * def_sigma);
 			double Ts = sqrt(sqrt(Ts4));
@@ -1286,10 +1285,10 @@ __device__ void alpha(double e){
 
 // BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
 
-// March 2017
+// January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, const double SolarConstant, const double Qpr, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -1306,17 +1305,17 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 
 		double Msun = Msun_d[st].x;
 		double dt = dt_d[st] * Kt;
-		double mu = def_ksq * (Msun + x4i.w);
 		double m = x4i.w;
 		double RR = v4i.w * def_AU;					//covert radius in m	
 
-		if(x4i.w == 0.0){
+		if(m == 0.0){
 			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 			m /= def_Solarmass;					//mass im Solar masses
-			mu = def_ksq * (Msun + m);
 		}
+		double mu = def_ksq * (Msun + m);
+
 		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
-		double eta = Asteroid_S * def_AU * def_AU * 3.0 / ( 4.0 * def_c * def_c * Asteroid_rho * RR);			//m^2 / s
+		double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
 		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
 		double a, e, inc, Omega, w, Theta, E;
@@ -1417,18 +1416,18 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			}
 
 
-//printf("K1 %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+//if(id < 100) printf("K1 %d %g %g %g %g %g %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta);
 
 			//modify elements
 			//BURNS, LAMY, AND SOTER, 1979 equation 47 and 48
 			double tt1 = 1.0 - e * e;
 			double tt2 = sqrt(tt1);
-			double dadt = -(eta * ia) * Asteroid_Q * (2.0 + 3.0 * e * e) / (tt1 * tt2);
-			double dedt = -2.5 * (eta * ia * ia) * Asteroid_Q * e / tt2;
+			double dadt = -(eta * ia) * Qpr * (2.0 + 3.0 * e * e) / (tt1 * tt2);
+			double dedt = -2.5 * (eta * ia * ia) * Qpr * e / tt2;
 
 			a += dadt * dt;
 			e += dedt * dt;
-//printf("K2 %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+//if(id < 100) printf("K2 %d %g %g %g %g %g %g %g %g %g | %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta, Qpr, eta, dadt, dedt);
 
 			//Convert to Cartesian Coordinates
 
@@ -1478,10 +1477,10 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 
 // BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
 
-// March 2017
+// January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, const double SolarConstant, const double Qpr, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -1495,28 +1494,52 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
+		double4 v4it = v4i;
+		double3 a3t;
+
 
 		double dt = dt_d[st] * Kt;
 		double RR = v4i.w * def_AU;					//covert radius in m	
-
+		double m = x4i.w;
+	
+		if(m == 0.0){
+			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+			m /= def_Solarmass;					//mass im Solar masses
+		}
+	
 		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
-		double eta = Asteroid_S * def_AU * def_AU * 3.0 / ( 4.0 * def_c * def_c * Asteroid_rho * RR);			//m^2 / s
+		double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
 		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
 		//BURNS, LAMY, AND SOTER, 1979 equation 2
 
 		double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
 		double ir = 1.0 / sqrt(rsq);
-		double rd = (x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z) * ir; 
+	
+		double t1 = eta * ir * ir * Qpr;
 
 
-		double t1 = eta * def_cm * ir * ir * Asteroid_Q;
-		double t2 = (1.0 - rd / def_cm);
+		//v dependen part with implicit midpoint method
+		for(int k = 0; k < 3; ++k){	
+		
+			double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir; 
+			double t2 = (def_cm - rd);
 
 
-		v4i.x += (t1 * (t2 * x4i.x * ir - v4i.x / def_cm)) * dt;
-		v4i.y += (t1 * (t2 * x4i.y * ir - v4i.y / def_cm)) * dt;
-		v4i.z += (t1 * (t2 * x4i.z * ir - v4i.z / def_cm)) * dt;
+			a3t.x = t1 * (t2 * x4i.x * ir - v4it.x);
+			a3t.y = t1 * (t2 * x4i.y * ir - v4it.y);
+			a3t.z = t1 * (t2 * x4i.z * ir - v4it.z);
+
+			v4it.x = v4i.x + 0.5 * dt * a3t.x;
+			v4it.y = v4i.y + 0.5 * dt * a3t.y;
+			v4it.z = v4i.z + 0.5 * dt * a3t.z;
+
+
+		}
+		//apply the Kick
+		v4i.x += a3t.x * dt;
+		v4i.y += a3t.y * dt;
+		v4i.z += a3t.z * dt;
 
 
 		x4_d[id] = x4i;
