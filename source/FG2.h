@@ -379,7 +379,7 @@ __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //The fg_kernel does a copy of the coordinates and calls the FG function to perform the Kepler drift.
 //There are 2 different FG, and one Burlish Stoer function, fastest one is fastfg.
 //
-//Authors: Simon Grimm
+//Author: Simon Grimm
 //July 2016
 //
 // *****************************************
@@ -416,14 +416,21 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		}
 	}
 }
-__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int UseForce, int *Encpairs3_d, int NencMax){
+// *****************************************************
+// Version of the FG kernel which is called from the recursive symplectic sub step method
+// calls fg only if there are close encounter candidates in the current recursion level
+//
+// Author: Simon Grimm
+// January 2019
+// ********************************************************
+__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, int *index_d, int *groupIndex_d, double dt, const double Msun, double *test_d, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int UseForce, int *Nencpairs3_d, int *Encpairs3_d, int NencMax){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int idd = blockIdx.x * blockDim.x + idy;
 
-	if(id < N){
-		int NI = Encpairs3_d[id * NencMax];
-		if(NI > 0){
+	if(idd < Nencpairs3_d[0]){
+		int id = Encpairs3_d[idd * NencMax + 1];
+		if(id >= 0 && id < N){
 			unsigned int aecount = 0u;
 			double4 x4i = x4_d[id];
 			double4 v4i = v4_d[id];
@@ -443,9 +450,9 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
 //printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
-	#if G3 > 0
+#if G3 > 0
 			groupIndex_d[id] = -1;
-	#endif
+#endif
 			if(si == 0){
 				aecount_d[id] += aecount;
 			}

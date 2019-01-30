@@ -377,6 +377,8 @@ __host__ void Host::Halloc(){
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
 	P.NencMax = def_NencMax;
+	P.SLevels = def_SLevels;
+	P.SLSteps = def_SLSteps;
 	P.AngleUnits = 0;		//0: radians, 1:degrees
 	P.UseaeGrid = def_UseaeGrid;
 	Gridae.amin = def_aeGridamin;
@@ -1547,8 +1549,40 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.NencMax);
 				if(P.NencMax < 512) P.NencMax = 512;	
-				if(er <= 0 || P.NAFinterval <= 0){
+				if(er <= 0){
 					printf("Error: Maximum encounter pairs = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Symplectic recursion levels =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.SLevels);
+				if(P.SLevels > def_SLevelsMax){
+					printf("Error, Symplectic recursion levels larger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
+					P.SLevels = def_SLevelsMax;
+				}
+				if(er <= 0){
+					printf("Error: Symplectic recursion levels = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Symplectic recursion sub steps =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.SLSteps);
+				if(er <= 0){
+					printf("Error: Symplectic recursion sub steps = is not valid!\n");
 					return 0;
 				}
 			}
@@ -2253,6 +2287,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Particle Minimum Mass : %g\n", P.MinMass);			// use only argument in simulation 0
+			fprintf(infofile, "Symplectic recursion Max levels : %d\n", def_SLevelsMax);	// use only argument in simulation 0
+			fprintf(infofile, "Symplectic recursion levels : %d\n", P.SLevels);		// use only argument in simulation 0
+			fprintf(infofile, "Symplectic recursion sub steps : %d\n", P.SLSteps);		// use only argument in simulation 0
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
 			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0

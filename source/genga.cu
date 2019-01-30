@@ -275,7 +275,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 		}
  #endif
  #if MCMC_BLOCK < 3
-		setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
+		setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, ittv, D.Nstart, D.P.mcmcNE, MCMC_BLOCK);
 //if(ittv > 30) TSwap_kernel <<<1, 1 >>> (D.random_d, D.elementsP_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsSA_d, D.N_h[0], D.Nst);
 		D.modifyElementsCall(ittv, MCMC_BLOCK);
   #if def_TTV == 1 
@@ -289,7 +289,7 @@ printf("*********** TTV Step %d *********** %d\n", ittv, D.Nstart);
 
  #if MCMC_BLOCK == 3
 //	if(ittv > 1 && ittv % 4 == 0) Mix_kernel <<< (D.NT + 255) / 256, 256 >>> (D.elementsA_d, D.elementsB_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsC_d, D.elementsP_d, D.Nst, D.NT, D.N_h[0]);
-	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 3);
+	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, ittv, D.Nstart, D.P.mcmcNE, 3);
 		
 	if(ittv <= 1) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 3);
@@ -309,7 +309,7 @@ if(ittv % MCMC_NQ == 0){
   #else
 {
   #endif
-	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, D.Nstart, D.P.mcmcNE, 4);
+	setJ_kernel <<< (Nst + 127) / 128, 128 >>>(D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, ittv, D.Nstart, D.P.mcmcNE, 4);
 }
 	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
 		

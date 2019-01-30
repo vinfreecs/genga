@@ -130,7 +130,12 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 	}
 }
 
-__device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, double &test, int &NencpairsI, int2 *Encpairs2_d, const int i, const int j, const int N, const int NencMax, const int Slevel, const int E){
+// ******************************************************
+// Version of acc which is called from the recursive symplectic sub step method
+// Author: Simon Grimm
+// Janury 2019
+// ******************************************************
+__device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, double &test, int &NencpairsI, int2 *Encpairs2_d, const int i, const int j, const int N, const int NencMax, const int SLevel, const int SLevels, const int E){
 
 	if(i != j){
 
@@ -151,7 +156,8 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 
 		double s = x4j.w * ir3 * def_ksq;
 
-		for(int l = 0; l < Slevel; ++l){
+		for(int l = 0; l < SLevel; ++l){
+		// (1 - K) factors of the previous levels 
 //if(i == 0) printf(" (1-K%d)  ",l);
 			rcritvi = rcritv_d[i + N * l];
 			rcritvj = rcritv_d[j + N * l];
@@ -173,11 +179,12 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 		}
 
 		
-		if(Slevel < def_SLEVELS){
-		//if(Slevel < def_SLEVELS - 1){
-//if(i == 0) printf(" K%d  ",Slevel);
-			rcritvi = rcritv_d[i + N * Slevel];
-			rcritvj = rcritv_d[j + N * Slevel];
+		if(SLevel < SLevels){
+		//if(SLevel < SLevels - 1){ //<- use that for a complete last level Kick without BS
+		// K factor of the current level
+//if(i == 0) printf(" K%d  ",SLevel);
+			rcritvi = rcritv_d[i + N * SLevel];
+			rcritvj = rcritv_d[j + N * SLevel];
 
 			rcritv = fmax(rcritvi, rcritvj);
 
@@ -678,15 +685,16 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 	}
 }
 
-// **************************************
-// Symplectic sub step for close encounter pairs
-// Authors: Simon Grimm
-// November 2017
-// ****************************************
-__global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Encpairs3_d, int N, int NencMax, const int SLevel, const int E){
+// *****************************************************
+// Version of the Kick kernel which is called from the recursive symplectic sub step method
+//
+// Author: Simon Grimm
+// January 2019
+// ********************************************************
+__global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, int N, int NencMax, const int SLevel, const int SLevels, const int E){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;	
+	int idd = blockIdx.x * blockDim.x + idy;	
 
 	double3 a;
 
@@ -695,22 +703,22 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 	a.z = 0.0;
 
 	double test;
-	if(id < N){
-		int NI = Encpairs3_d[id * NencMax];
-		if(NI > 0){
+	if(idd < Nencpairs3_d[0]){
+		int id = Encpairs3_d[idd * NencMax + 1];
+		if(id >= 0 && id < N){
 //if(NI > 0) printf("NI %d %d\n", id, NI);
 			double4 x4i = xold_d[id];
 			double4 v4i = vold_d[id];
 			int NencpairsI = 0;
 			if(x4i.w >= 0.0){
 				__syncthreads();
-				NI = Encpairs3_d[id * NencMax + 1];
+				int NI = Encpairs3_d[id * NencMax + 2];
 				for(int i = 0; i < NI; ++i){
-					int jj = Encpairs3_d[id * NencMax + i + 2];
+					int jj = Encpairs3_d[id * NencMax + i + 3];
 					double4 x4j = xold_d[jj];
 					if(x4j.w >= 0.0){
 //if(E == 0) printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
-						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, N, NencMax, SLevel, E);
+						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, N, NencMax, SLevel, SLevels, E);
 					}
 				}
 				__syncthreads();

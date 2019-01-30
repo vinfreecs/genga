@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.79
+#define def_Version 3.80
 
 //Default parameter values
 #define def_TimeStep 6
@@ -72,6 +72,8 @@
 #define def_NAFformat 1
 #define def_NAFinterval 1
 #define def_NencMax 512
+#define def_SLevels 1			//Number of recursive symplectic sub step levels
+#define def_SLSteps 2			//number of time steps per level
 
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
@@ -92,7 +94,7 @@
 //ignore the lock file and start GENGA anyway
 #define IgnoreLockFile 1
 
-
+#define def_SLevelsMax 1
 
 
 //gas disk constants 
@@ -169,7 +171,6 @@
 #define G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
-#define def_SLEVELS 1			//1
 
 //only here for testing
 #define USE_NAF 0
@@ -279,6 +280,8 @@ struct Parameter{
 	int NencMax;
 	double MinMass;
 	int AngleUnits;
+	int SLevels;
+	int SLSteps;
 };
 
 //File names of Simulations

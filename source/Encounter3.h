@@ -975,18 +975,22 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 
 
 // This kernel writes a list of close encounter pairs needed for the symplectic sub step
-__global__ void setEnc3_kernel(int N, int *Encpairs3_d, const int NencMax){
+__global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
+	if(id == 0){
+		Nencpairs3_d[0] = 0;
+	}
 
 	if(id < N){
-		Encpairs3_d[id * NencMax] = 0;
-		Encpairs3_d[id * NencMax + 1] = 0;
+		Encpairs3_d[id * NencMax] = 0;		//Encpunter pairs per body
+		Encpairs3_d[id * NencMax + 1] = -1;	//list of indices 
+		Encpairs3_d[id * NencMax + 2] = 0;	//number of pairs with real gravitational influence
 	}
 }
 
-__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N){
+__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -998,17 +1002,29 @@ __global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Encpair
 		int jj = Encpairs2_d[id].y;
 
 //printf("%d %d %d\n", id, ii, jj);
-		atomicAdd(&Encpairs3_d[ii * NencMax], 1);
-		atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+		//count encounter pairs per body
+		int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
+		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+
+		//count total number of close encounters
+		if(NI == 0){
+			int iii = atomicAdd(Nencpairs3_d, 1);
+			Encpairs3_d[iii * NencMax + 1] = ii;
+		}
+		if(NJ == 0){
+			int jjj = atomicAdd(Nencpairs3_d, 1);
+			Encpairs3_d[jjj * NencMax + 1] = jj;
+		}
+
 
 		if(jj < N || (UseTestParticles == 2 && ii < N)){
-			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 1], 1);
-			Encpairs3_d[ii * NencMax + Ni + 2] = jj;
+			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);
+			Encpairs3_d[ii * NencMax + Ni + 3] = jj;
 		}
 
 		if(ii < N || (UseTestParticles == 2 && jj < N)){
-			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 1], 1);
-			Encpairs3_d[jj * NencMax + Nj + 2] = ii;
+			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 2], 1);
+			Encpairs3_d[jj * NencMax + Nj + 3] = ii;
 		}
 	}
 

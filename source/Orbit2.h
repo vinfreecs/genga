@@ -32,6 +32,7 @@ public:
 	int *groupIndex_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
+	int *Nencpairs3_h, *Nencpairs3_d;
 	int *groupIterate_h, *groupIterate_d;
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
@@ -106,7 +107,7 @@ public:
 	double4 *elementsTOld_d, *elementsTOld2_d;
 	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
 	double4 *elementsLB_h, *elementsLB_d;			
-	int4 *elementsCA_h, *elementsCA_d;			//counts
+	int4 *elementsCA_h, *elementsCA_d;			//counts per elements
 	int4 *elementsCB_h, *elementsCB_d;
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor

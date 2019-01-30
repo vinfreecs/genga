@@ -12,7 +12,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double4 *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, int noColl){
+__global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double4 *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int WriteEncounters, const double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, const int SLevels, int noColl){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -25,7 +25,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
-	__shared__ double rcritv_s[NN * def_SLEVELS];
+	__shared__ double rcritv_s[NN * def_SLevelsMax];
 	__shared__ double3 a0_s[nb * NN +NN];
 	__shared__ double3 a_s[nb * NN + NN];
 	__shared__ double4 xp_s[NN];
@@ -79,7 +79,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 	if(idy < N2){
                 x4_s[idy] = xold_d[idi];
                 v4_s[idy] = vold_d[idi];
-		for(int l = 0; l < def_SLEVELS; ++l){
+		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NT];
 		}
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
@@ -142,7 +142,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
         	a0_s[idy].z = 0.0;
 		__syncthreads();
 		for(int l = 0; l < NN; l += nb){
-			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
+			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 		}
 		__syncthreads();
 		{
@@ -194,7 +194,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
+					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 				}
 				__syncthreads();
 				{
@@ -237,7 +237,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
+						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 					}
 					__syncthreads();
 					{
@@ -277,7 +277,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
+						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 					}
 					__syncthreads();
 					{
@@ -318,7 +318,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles);
+					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 				}
 				__syncthreads();
 				{
@@ -495,7 +495,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 									if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 										int nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
-										collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d);
+										collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels);
 									}
 								}
 								if(Coltime_s[0] < 10.0 && (noColl == 1 || noColl == -1)){

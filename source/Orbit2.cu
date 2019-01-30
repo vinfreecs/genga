@@ -10,7 +10,7 @@ __host__ Data::Data(long long Restart): Host(Restart){
 __host__ void Data::AllocateOrbit(){
 
 	//allocate memory on host//
-	rcrit_h = (double*)malloc(NconstT * def_SLEVELS * sizeof(double));
+	rcrit_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
 	x4_h = (double4*)malloc(NconstT * sizeof(double4));
 	v4_h = (double4*)malloc(NconstT * sizeof(double4));
 	index_h = (int*)malloc(NconstT * sizeof(int));
@@ -88,14 +88,15 @@ __host__ void Data::AllocateOrbit(){
 	//allocate pinned memory on host//
 	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairs3_h, P.SLevels * sizeof(int), cudaHostAllocDefault);
 
 	//allocate memory on device//
 	cudaMalloc((void **) &x4_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &v4_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &xold_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &vold_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &rcrit_d, NconstT * def_SLEVELS * sizeof(double));
-	cudaMalloc((void **) &rcritv_d, NconstT * def_SLEVELS * sizeof(double));
+	cudaMalloc((void **) &rcrit_d, NconstT * P.SLevels * sizeof(double));
+	cudaMalloc((void **) &rcritv_d, NconstT * P.SLevels * sizeof(double));
 	cudaMalloc((void **) &test_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &index_d, NconstT * sizeof(int));
 	cudaMalloc((void **) &spin_d, NconstT * sizeof(double3));
@@ -108,10 +109,11 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &Nencpairs_d, (Nst + 1) * sizeof(int));
 	cudaMalloc((void **) &Nencpairs2_d, (Nst + 1) * sizeof(int));
+	cudaMalloc((void **) &Nencpairs3_d, P.SLevels * sizeof(int));
 	cudaMalloc((void **) &groupIterate_d, 1 * sizeof(int));
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
-	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * def_SLEVELS);
+	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
 	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
@@ -446,7 +448,7 @@ __host__ int Data::init(){
 		Nenc_m[i] = 0;
 	}
 	EjectionFlag_m[0] = 0;
-	for(int i = 0; i < NconstT * def_SLEVELS; ++i){
+	for(int i = 0; i < NconstT * P.SLevels; ++i){
 		rcrit_h[i] = 0.0;
 	}
 	for(int i = 0; i < NconstT; ++i){
@@ -564,6 +566,9 @@ __host__ int Data::init(){
 		Nencpairs_h[st] = 0;
 		Nencpairs2_h[st] = 0;
 	}
+	for(int i = 0; i < P.SLevels; ++i){
+		Nencpairs3_h[i] = 0;
+	}
 	for(int st = 0; st < Nst; ++st){
 		U_h[st] = 0.0;
 		LI_h[st] = 0.0;
@@ -614,8 +619,8 @@ __host__ int Data::ic(){
 	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(xold_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(vold_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NconstT * def_SLEVELS, cudaMemcpyHostToDevice);
-	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NconstT * def_SLEVELS, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcrit_d, rcrit_h, sizeof(double) * NconstT * P.SLevels, cudaMemcpyHostToDevice);
+	cudaMemcpy(rcritv_d, rcrit_h, sizeof(double) * NconstT * P.SLevels, cudaMemcpyHostToDevice);
 	cudaMemcpy(U_d, U_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(LI_d, LI_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Energy0_d, Energy0_h, Nst * sizeof(double), cudaMemcpyHostToDevice);
@@ -628,6 +633,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(N_d, N_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(Nencpairs3_d, Nencpairs3_h, P.SLevels * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * 25 * def_MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * def_MaxWriteEnc, cudaMemcpyHostToDevice);
 	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * def_Nfragments, cudaMemcpyHostToDevice);
@@ -2061,6 +2067,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(rcritv_d);
 	cudaFree(Nencpairs_d);
 	cudaFree(Nencpairs2_d);
+	cudaFree(Nencpairs3_d);
 	cudaFree(groupIterate_d);
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);

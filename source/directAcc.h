@@ -9,7 +9,7 @@
 //March 2014
 //
 // ****************************************
-__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *rcritv_, double &test, int i, int j, int NN, double MinMass, int UseTestParticles){
+__device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *rcritv_, double &test, const int i, const int j, const int NN, const double MinMass, const int UseTestParticles, const int SLevels){
 
 	int c = 0;
 	if(UseTestParticles == 0 && x4i.w >= 0.0 && x4j.w >= 0.0) c = 1;
@@ -34,7 +34,7 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *r
 		ir3 = ir * ir * ir;
 		s = x4j.w * ir3 * def_ksq;
 
-		for(int l = 0; l < def_SLEVELS; ++l){		
+		for(int l = 0; l < SLevels; ++l){		
 
 			double rcritvi = rcritv_[i + l * NN];
 			double rcritvj = rcritv_[j + l * NN];
@@ -253,7 +253,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels){
 
 	double3 vij;
 	double3 rij;
@@ -313,7 +313,7 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	v4[i].y = (v4[i].y * x4[i].w + v4[j].y * x4[j].w) / mtot;
 	v4[i].z = (v4[i].z * x4[i].w + v4[j].z * x4[j].w) / mtot;
 
-	for(int l = 0; l < def_SLEVELS; ++l){
+	for(int l = 0; l < SLevels; ++l){
 		rcritv[i + l * NN] = fmax(rcritv[i + l * NN], rcritv[j + l * NN]);
 		rcritv[j + l * NN] = 0.0;
 	}
