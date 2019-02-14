@@ -271,7 +271,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 }
 
 __constant__ int setElementsNumbers_c[4];
-__constant__ int setElements_c[12];
+__constant__ int setElements_c[15];
 //**************************************
 // This function copies the setElements parameters to constant memor. This functions must be in
 // the same file as the use of the constant memory
@@ -281,7 +281,7 @@ __constant__ int setElements_c[12];
 //***************************************/
 __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines, int ncolumns){
 	int setElementsNumbers[4] = {nelements, nbodies, nlines, ncolumns};	
-        cudaMemcpyToSymbol(setElements_c, Elements, 12 * sizeof(int), 0, cudaMemcpyHostToDevice);
+        cudaMemcpyToSymbol(setElements_c, Elements, 15 * sizeof(int), 0, cudaMemcpyHostToDevice);
         cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
@@ -474,7 +474,10 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 			double i0, i1;
 			double Omega0, Omega1;
 			double w0, w1;
-			double M0, M1, M;
+			double T0, T1, M, T;
+			double x0, x1;
+			double y0, y1;
+			double z0, z1;
 
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 1){
@@ -521,44 +524,60 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 	//printf("r %g %g\n", r0, r1);
 				}
 				if(setElements_c[i] == 10){
-					M0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					M1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("r %g %g\n", r0, r1);
+					T0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+					T1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+	//printf("T %g %g\n", T0, T1);
+				}
+				if(setElements_c[i] == 11){
+					x0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+					x1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+	//printf("x %g %g\n", x0, x1);
+				}
+				if(setElements_c[i] == 12){
+					y0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+					y1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+	//printf("y %g %g\n", y0, y1);
+				}
+				if(setElements_c[i] == 13){
+					z0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
+					z1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
+	//printf("x %g %g\n", x0, x1);
 				}
 
 			}
 			setElementsLine_d[0] = line;
 			
-			double x = (time - time0) / (time1 - time0);
-			if(time1 - time0 == 0 || time < time0) x = 0.0;
+			double xx = (time - time0) / (time1 - time0);
+			if(time1 - time0 == 0 || time < time0) xx = 0.0;
 
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 3){
-					a = (a0 + (a1 - a0) * x);
+					a = (a0 + (a1 - a0) * xx);
 				}
 				if(setElements_c[i] == 4){
-					e = (e0 + (e1 - e0) * x);
+					e = (e0 + (e1 - e0) * xx);
 				}
 				if(setElements_c[i] == 5){
-					inc = (i0 + (i1 - i0) * x);
+					inc = (i0 + (i1 - i0) * xx);
 				}
 				if(setElements_c[i] == 6){
-					Omega = (Omega0 + (Omega1 - Omega0) * x);
+					Omega = (Omega0 + (Omega1 - Omega0) * xx);
 				}
 				if(setElements_c[i] == 7){
-					w = (w0 + (w1 - w0) * x);
+					w = (w0 + (w1 - w0) * xx);
 				}
 				if(setElements_c[i] == 8){
-					x4i.w = (m0 + (m1 - m0) * x) * 3.0024584e-6; //convert Earth masses to Solar masses
+					x4i.w = (m0 + (m1 - m0) * xx) * 3.0024584e-6; //convert Earth masses to Solar masses
 				}
 				if(setElements_c[i] == 9){
-					v4i.w = (r0 + (r1 - r0) * x) * 6.68458712e-14; //convert cm in AU
+					v4i.w = (r0 + (r1 - r0) * xx) * 6.68458712e-14; //convert cm in AU
 				}
 				if(setElements_c[i] == 10){
-					M = (M0 + (M1 - M0) * x) * dayUnit;	//t0 epoch time day to day'
-					M *= sqrt(mu / (a * a * a));		//Mean anomaly
+					T = (T0 + (T1 - T0) * xx) * dayUnit;	//t0 epoch time day to day'
+					M = T * sqrt(mu / (a * a * a));		//Mean anomaly
 					M = fmod(M, 2.0*M_PI);
 				}
+				//do  x y z after conversion from Kepler elements
 			}
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 10){
@@ -606,6 +625,18 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				v4i.x = t0 * (t1 * Px + t2 * Qx);
 				v4i.y = t0 * (t1 * Py + t2 * Qy);
 				v4i.z = t0 * (t1 * Pz + t2 * Qz);
+			}
+
+			for(int i = 0; i < nelements; ++i){
+				if(setElements_c[i] == 11){
+					x4i.x = (x0 + (x1 - x0) * xx);
+				}
+				if(setElements_c[i] == 12){
+					x4i.y = (y0 + (y1 - y0) * xx);
+				}
+				if(setElements_c[i] == 13){
+					x4i.z = (z0 + (z1 - z0) * xx);
+				}
 			}
 
 			x4_d[id] = x4i;

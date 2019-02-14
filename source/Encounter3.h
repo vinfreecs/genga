@@ -487,7 +487,6 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 #endif
 		if(enccount > 0){
 			int Ne = atomicAdd(Nencpairs2_d, 1);
-
 			if(StopAtEncounter > 0){
 				if(enccount == 1){
 					Ncoll_d[0] = 1;

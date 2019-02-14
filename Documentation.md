@@ -541,6 +541,9 @@ This option can be used to modiy the orbital parameters of a body according to a
     * T, epoch time in days
     * m, mass in Earth masses
     * r, radius in cm
+    * x, X-position in AU
+    * y, Y-position in AU
+    * z, Z-position in AU
 
 An example data file to modiy the mass and radius of a body looks like this:
 

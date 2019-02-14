@@ -476,8 +476,8 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+							//int i = Colpairs_s[c].x;
+							//int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
 //printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}

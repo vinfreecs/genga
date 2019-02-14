@@ -448,159 +448,11 @@ int main(int argc, char*argv[]){
 //	Data D = H;
 	D = H;
 
-	//Allocate orbit data on Host and Device
-	D.AllocateOrbit();
-
-	 //allocate mapped memory//
-	er = D.CMallocateOrbit();
+	er = D.beforeTimeStepLoop1();
 	if(er == 0) return 0;
 
-        //Allocate Grideae 
-	D.constantCopy2();
-	if(H.P.UseaeGrid == 1){
-      		er = D.GridaeAlloc();
-       		if(er == 0) return 0;
-	}
-	if(D.P.Usegas == 1){
-		D.GasAlloc();
-	}
-
-	//Table for fastfg//
-	er = D.FGAlloc();
+	er = D.beforeTimeStepLoop(0);	
 	if(er == 0) return 0;
-
-	//initialize memory//
-	er = D.init();
-	printf("\nInitialize Memory\n");	
-
-	cudaDeviceSynchronize();
-	//read initial conditions//
-	printf("\nRead Initial Conditions\n");
-	er = D.ic();
-	if(er == 0) return 0;
-	printf("Initial Conditions OK\n");
-
-#if USE_NAF == 1
-	er = D.naf.alloc1(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.P.tRestart, D.idt_h, D.ict_h, D.P.NAFn0, D.P.NAFnfreqs);
-	if(er == 0) return 0;
-
-	er = D.naf.alloc2(D.NT, D.N_h[0], D.Nsmall_h[0], D.Nst, D.GSF, D.P.NAFformat, D.P.tRestart, D.index_h);
-	if(er == 0) return 0;
-#endif
-
-	//remove ghost particles and reorder arrays//
-	int NminFlag = D.remove();
-
-	//remove stopped simulations//
-	if(NminFlag == 1){
-		D.stopSimulations();
-		NminFlag = 0;
-	}
-
-	cudaDeviceSynchronize();
-	printf("Compute initial Energy\n");
-
-	er = D.firstEnergy();
-	if(er == 0) return 0;
-
-	cudaDeviceSynchronize();
-
-	printf("Write initial Energy\n");
-
-	//write first output
-	er = D.firstoutput(0);
- 	if(D.P.IrregularOutputs == 1){
-		er = D.firstoutput(1);
-	}
-	if(er == 0) return 0;
-	printf("Energy OK\n");
-
-	//read aeGrid at restart time step 
-	if(H.P.UseaeGrid == 1){
-		D.readGridae();	
-	}
-
-	//Set Gas Disc and Gas Table
-	if(D.P.Usegas == 1){
-		printf("Set Gas Table\n");
-		er = D.setGasDisk();
-		if(er == 0) return 0;
-		printf("Gas Table OK\n");
-	}
-
-	// Set Order and Coefficients of the symplectic integrator //
-	D.SymplecticP(0);
-
-	cudaDeviceSynchronize();
-	cudaMemset(D.Energy_d, 0, D.NEnergyT*sizeof(double));
-	if(Nst == 1) printf("Start integration with %d simulation\n", Nst);
-	else printf("Start integration with %d simulations\n", Nst);
-        error = cudaGetLastError();
-	if(error != 0){
-		fprintf(D.masterfile, "Start error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("Start error = %d = %s\n",error, cudaGetErrorString(error));
-		return 0;
-	}
-
-	fflush(D.masterfile);
-#if USE_NAF == 1
-	//compute the x and y arrays for the naf algorithm
-	int NAFstep = 0;
-	D.naf.getnafvarsCall(D.x4_d, D.v4_d, D.index_d, D.NBS_d, D.vcom_d, D.test_d, D.P.NAFvars, D.naf.x_d, D.naf.y_d, D.Msun_d, D.Msun_h[0].x, D.NT, D.Nst, D.naf.n, NAFstep, D.NB[0], D.N_h[0], D.Nsmall_h[0], D.P.UseTestParticles);
-	++NAFstep;
-#endif
-	if(D.Nst > 1){
-		D.firstKick_M(0);
-	}
-	else{
-		if(D.P.UseTestParticles == 1) D.firstKick_small();
-		else{
-			switch( D.NB[0] ) {
-				case 16: D.firstKick_16();
-				break;
-				case 32: D.firstKick_32();
-				break;
-				case 64: D.firstKick_64();
-				break;
-				case 128: D.firstKick_128();
-				break;
-				case 256: D.firstKick_256();
-				break;
-				case 512: D.firstKick_512();
-				break;
-				case 1024: D.firstKick_1024();
-				break;
-				case 2048: D.firstKick_2048();
-				break;
-			}
-			if(D.NB[0] > 2048) D.firstKick_largeN();
-		}
-	}
-	cudaDeviceSynchronize();
-	//Print first informations about close encounter pairs
-	D.firstInfo();
-	D.setStartTime();
-#if poincareFlag == 1
-	sprintf(D.poincarefilename, "%sPoincare%s_%.12ld.dat", D.GSF[0].path, D.GSF[0].X, 0);
-	D.poincarefile = fopen(D.poincarefilename, "w");
-#endif
-
-	D.irrTimeStep = 0;
-	if(D.P.IrregularOutputs == 1){
-		er = D.readIrregularOutputs();
-		if(er == 0){
-			return 0;
-		}
-	}
-	if(D.P.setElements == 1){
-		er = D.readSetElements();
-		if(er == 0){
-			return 0;
-		}
-	}
-	
-	D.MultiSim = 0;
-	if(D.Nst > 1) D.MultiSim = 1;
 
 	//Start time loop here
 	D.timeStep = D.P.tRestart + 1;
@@ -638,35 +490,19 @@ int main(int argc, char*argv[]){
 	}
 	cudaMalloc((void **) &MLimits_d, 2 * sizeof(double));
 
+
+	
+	// *************************************************************3
+	// **************************************************************
+	// time step loop
+
 	glutMainLoop();
 
+	// **************************************************************
+	// **************************************************************
 
-#if poincareFlag == 1
-	fclose(D.poincarefile);
-#endif
-
-	//print last informations
-	D.printLastTime();
-	D.LastInfo();
-
-	//free all the memory on the Host and on the Device
-	er = D.freeOrbit();
+	er = D.Remaining();
 	if(er == 0) return 0;
-
-#if useGridae
-	free(D.Gridaecount_h);
-	cudaFree(D.Gridaecount_d);
-#endif
-
-#if useGas > 0
-	er = D.freeGas();
-	if(er == 0) return 0;
-#endif
-	er = H.freeHost();
-	if(er == 0) return 0;
-
-        printf("GENGA terminated successfully\n");
-	fprintf(H.masterfile, "GENGA terminated successfully\n");
 
 	return 0; 
 }

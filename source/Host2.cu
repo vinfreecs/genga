@@ -2550,8 +2550,8 @@ __host__ int Host::readSetElements(){
 		return 0;
 	}
 	
-	int Elements[12];
-	for(int i = 0; i < 12; ++i){
+	int Elements[15];
+	for(int i = 0; i < 15; ++i){
 		Elements[i] = 0;
 	}
 	
@@ -2565,7 +2565,7 @@ __host__ int Host::readSetElements(){
 	char sp[16];
 	fgets(sp, 2, Efile);
 	//determine the specified elements
-	for(int i = 0; i < 12; ++i){
+	for(int i = 0; i < 15; ++i){
 		int c = fgetc(Efile);
 		
 		if(c == 't'){
@@ -2573,7 +2573,7 @@ __host__ int Host::readSetElements(){
 			printf("t ");
 			++nelements;
 		}
-		else if(c == 'j'){
+		else if(c == 'j'){		//index
 			Elements[i] = 2;
 			printf("j ");
 			++nelements;
@@ -2616,6 +2616,21 @@ __host__ int Host::readSetElements(){
 		else if(c == 'T'){
 			Elements[i] = 10;
 			printf("T ");
+			++nelements;
+		}
+		else if(c == 'x'){
+			Elements[i] = 11;
+			printf("x ");
+			++nelements;
+		}
+		else if(c == 'y'){
+			Elements[i] = 12;
+			printf("y ");
+			++nelements;
+		}
+		else if(c == 'z'){
+			Elements[i] = 13;
+			printf("z ");
 			++nelements;
 		}
 		else{
