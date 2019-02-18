@@ -1328,7 +1328,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double3 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -1378,10 +1378,12 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
 
-				rcrit_d[Na] = rcrit_d[Nb];
-				rcritv_d[Na] = rcritv_d[Nb];
-				rcrit_d[Nb] = 0.0;
-				rcritv_d[Nb] = 0.0;
+				for(int l = 0; l < SLevels; ++l){
+					rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
+					rcritv_d[Na + l * NconstT] = rcritv_d[Nb + l * NconstT];
+					rcrit_d[Nb + l * NconstT] = 0.0;
+					rcritv_d[Nb + l * NconstT] = 0.0;
+				}
 
 				aelimits_d[Na] = aelimits_d[Nb];
 				aelimits_d[Nb].x = 0.0f;
@@ -1467,11 +1469,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					love_d[Nb].x = 0.0;
 					love_d[Nb].y = 0.0;
 					love_d[Nb].z = 0.0;
-
-					rcrit_d[Na] = rcrit_d[Nb];
-					rcritv_d[Na] = rcritv_d[Nb];
-					rcrit_d[Nb] = 0.0;
-					rcritv_d[Nb] = 0.0;
+			
+					for(int l = 0; l < SLevels; ++l){
+						rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
+						rcritv_d[Na + l * NconstT] = rcritv_d[Nb + l * NconstT];
+						rcrit_d[Nb + l * NconstT] = 0.0;
+						rcritv_d[Nb + l * NconstT] = 0.0;
+					}
 
 					aelimits_d[Na] = aelimits_d[Nb];
 					aelimits_d[Nb].x = 0.0f;
@@ -1543,10 +1547,12 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
 
-				rcrit_d[Na] = rcrit_d[Nb];
-				rcritv_d[Na] = rcritv_d[Nb];
-				rcrit_d[Nb] = 0.0;
-				rcritv_d[Nb] = 0.0;
+				for(int l = 0; l < SLevels; ++l){
+					rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
+					rcritv_d[Na + l * NconstT] = rcritv_d[Nb + l * NconstT];
+					rcrit_d[Nb + l * NconstT] = 0.0;
+					rcritv_d[Nb + l * NconstT] = 0.0;
+				}
 
 				aelimits_d[Na] = aelimits_d[Nb];
 				aelimits_d[Nb].x = 0.0f;
@@ -1692,9 +1698,9 @@ __host__ int Data::remove(){
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, naf.x_d, naf.y_d, naf.n);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, NULL, NULL, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -1752,7 +1758,7 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread on the GPU, to avoid unnecesary data copies
 __global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int SLevels, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
 //printf("removeM %d %d %d %d %d\n", st, N_d[st], j, j + NBS, j + NT);
@@ -1767,8 +1773,10 @@ double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT,
 		a_d[j + NT] = a_d[j + NBS];
 		test_d[j + NT] = test_d[j + NBS];
 		index_d[j + NT] = index_d[j + NBS];
-		rcrit_d[j + NT] = rcrit_d[j + NBS];
-		rcritv_d[j + NT] = rcritv_d[j + NBS];
+		for(int l = 0; l < SLevels; ++l){
+			rcrit_d[j + NT + l * NconstT] = rcrit_d[j + NBS + l * NconstT];
+			rcritv_d[j + NT + l * NconstT] = rcritv_d[j + NBS + l * NconstT];
+		}
 		aelimits_d[j + NT] = aelimits_d[j + NBS];
 		enccount_d[j + NT] = enccount_d[j + NBS];
 		aecount_d[j + NT] = aecount_d[j + NBS];
@@ -1851,12 +1859,12 @@ __host__ void Data::stopSimulations(){
 		//rearange arrays//
 #if USE_NAF == 1
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
-					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
+					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
 #else
 		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
-					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, NULL, NULL, 0, Encpairs2_d, N_h[st]);
+					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, NULL, NULL, 0, Encpairs2_d, N_h[st]);
 #endif
 
 		NBS_h[st] = NT;

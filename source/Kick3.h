@@ -135,7 +135,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 // Author: Simon Grimm
 // Janury 2019
 // ******************************************************
-__device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, double &test, int &NencpairsI, int2 *Encpairs2_d, const int i, const int j, const int N, const int NencMax, const int SLevel, const int SLevels, const int E){
+__device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, double &test, int &NencpairsI, int2 *Encpairs2_d, const int i, const int j, const int NconstT, const int NencMax, const int SLevel, const int SLevels, const int E){
 
 	if(i != j){
 
@@ -159,8 +159,8 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 		for(int l = 0; l < SLevel; ++l){
 		// (1 - K) factors of the previous levels 
 //if(i == 0) printf(" (1-K%d)  ",l);
-			rcritvi = rcritv_d[i + N * l];
-			rcritvj = rcritv_d[j + N * l];
+			rcritvi = rcritv_d[i + NconstT * l];
+			rcritvj = rcritv_d[j + NconstT * l];
 
 			rcritv = fmax(rcritvi, rcritvj);
 			rcritv2 = rcritv * rcritv;
@@ -183,8 +183,8 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 		//if(SLevel < SLevels - 1){ //<- use that for a complete last level Kick without BS
 		// K factor of the current level
 //if(i == 0) printf(" K%d  ",SLevel);
-			rcritvi = rcritv_d[i + N * SLevel];
-			rcritvj = rcritv_d[j + N * SLevel];
+			rcritvi = rcritv_d[i + NconstT * SLevel];
+			rcritvj = rcritv_d[j + NconstT * SLevel];
 
 			rcritv = fmax(rcritvi, rcritvj);
 
@@ -691,7 +691,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 // Author: Simon Grimm
 // January 2019
 // ********************************************************
-__global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, int N, int NencMax, const int SLevel, const int SLevels, const int E){
+__global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int N, const int NconstT, const int NencMax, const int SLevel, const int SLevels, const int E){
 
 	int idy = threadIdx.x;
 	int idd = blockIdx.x * blockDim.x + idy;	
@@ -718,7 +718,7 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 					double4 x4j = xold_d[jj];
 					if(x4j.w >= 0.0){
 //if(E == 0) printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
-						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, N, NencMax, SLevel, SLevels, E);
+						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, NconstT, NencMax, SLevel, SLevels, E);
 					}
 				}
 				__syncthreads();

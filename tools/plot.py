@@ -19,11 +19,11 @@ scale = 4e10
 
 pl.figure(figsize=(8, 6))
 
-for jj in range(0 * step, 1000, step):
+for jj in range(0 * step, 1000 * step, step):
 
 	filename = 'Outt_%.12d.dat' % jj
 	
-	print filename
+	print(filename)
 
 	ax1=pl.subplot(111)
 	t, i, m ,r, x, y, z, vx, vy, vz, Sx, Sy, Sz, t1, t2, t3, t4, t5, t6, t7, t8 = np.loadtxt(filename, unpack=True)

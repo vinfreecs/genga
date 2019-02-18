@@ -253,7 +253,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels){
 
 	double3 vij;
 	double3 rij;
@@ -316,10 +316,11 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	for(int l = 0; l < SLevels; ++l){
 		rcritv[i + l * NN] = fmax(rcritv[i + l * NN], rcritv[j + l * NN]);
 		rcritv[j + l * NN] = 0.0;
+	
+		rcrit_d[indexi + l * NconstT] = fmax(rcrit_d[indexi + l * NconstT], rcrit_d[indexj + l * NconstT]);
+		rcrit_d[indexj + l * NconstT] = 0.0;
 	}
 
-	rcrit_d[indexi] = fmax(rcrit_d[indexi], rcrit_d[indexj]);
-	rcrit_d[indexj] = 0.0;
 
 	spin[indexi].x += spin[indexj].x + L.x;
 	spin[indexi].y += spin[indexj].y + L.y;

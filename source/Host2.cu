@@ -1571,6 +1571,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Symplectic recursion levels = is not valid!\n");
 					return 0;
 				}
+				if(P.SLevels > def_SLevelsMax){
+					printf("Error, Symplectic recursion levels bigger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
+					return 0;
+				} 
 			}
 			else{
 				int t;
