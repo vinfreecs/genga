@@ -41,8 +41,8 @@ __host__ void Data::constantCopy2(){
 
 
 __host__ void Data::constantCopySC(double *S_h, double *C_h){
-        cudaMemcpyToSymbol(S_c, S_h, sizeof(S_h), 0, cudaMemcpyHostToDevice);
-        cudaMemcpyToSymbol(C_c, C_h, sizeof(C_h), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(S_c, S_h, sizeof(S_h), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(C_c, C_h, sizeof(C_h), 0, cudaMemcpyHostToDevice);
 }
 
 
@@ -340,8 +340,8 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, double mu, double 
 // ******************************************
 __global__ void PoincareSection(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, double Msun, int N, int si, int *PFlag_d){
 
-        int idy = threadIdx.x;
-        int id = blockIdx.x * blockDim.x + idy;
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
 
 	double test;
 

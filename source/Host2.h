@@ -28,8 +28,6 @@ public:
 	int interrupt;				//signal handling
 
 	int *NB;				//number of bodies increased to integer block size
-	int *N4;				//number of bodies divided by 4
-	int *N2;				//number of bodies divided by 2
 	int *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta_h, *delta_d;		//number of timesteps
@@ -55,7 +53,6 @@ public:
 	int NT;
 	int Nstart;
 	int NsmallT;
-	long long int NB2T;
 	int NBNencT;
 	int NEnergyT;
 
@@ -63,6 +60,19 @@ public:
 	int *NEnergy;
 
 	int *NBS_h, *NBS_d;			//starting point in memory of individual simulations
+
+
+	//kernel tuning parameters
+	//Rcrit kernel
+	int RTX;
+	//kick kernel
+	int KP;
+	int KTX;
+	int KTY;
+	//kick TP 2
+	int KP2;
+	int KTX2;
+	int KTY2;
 
 	//data for irregular outputs
 	int bufferCount;

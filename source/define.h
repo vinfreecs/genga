@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.82
+#define def_Version 3.83
 
 //Default parameter values
 #define def_TimeStep 6
@@ -83,7 +83,6 @@
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
 #define def_Nfragments 0		//Additional array size for debris particles
-#define def_MatrixMaxSize 16384		//slice Encounter matrix to reduce memory usage
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0

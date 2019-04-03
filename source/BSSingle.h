@@ -107,7 +107,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 				vt.x = v4.x + dt22 * a.x;
 				vt.y = v4.y + dt22 * a.y;
 				vt.z = v4.z + dt22 * a.z;
-			      
+
 				for(int m = 2; m <= n; ++m){
 					a.x = 0.0;
 					a.y = 0.0;

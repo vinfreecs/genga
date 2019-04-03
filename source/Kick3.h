@@ -644,7 +644,7 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 //Authors: Simon Grimm
 //December 2016
 // ****************************************
-__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, int N, int NencMax, double t){
+__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, int N, int NencMax, double t){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -762,7 +762,7 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 //Authors: Simon Grimm
 //December 2016
 // ****************************************
-__global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, double *test_d, const int N, const int NencMax, double t, double dt, double Msun, double Rsun, int *Ntransit_d, int *Transit_d){
+__global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int2 *Encpairs2_d, const int N, const int NencMax, double t, double dt, double Msun, double Rsun, int *Ntransit_d, int *Transit_d){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -859,7 +859,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //August 2016
 //****************************************
 template <int Bl2, int E>
-__global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NencMax, double t, int N){
+__global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, double t, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -868,9 +868,6 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 	double4 x4i = x4_d[idx];
 	double rcritvi = rcritv_d[idx];
-#if G3 > 0
-	int groupIndexi = groupIndex_d[idx];
-#endif
 
 	double4 x4j;
 	double rcritvj;
@@ -886,12 +883,6 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		x4j.w = 0.0;
 		rcritvj = 0.0;
 	}
-#if G3 > 0
-	int groupIndexj;
-	if(idy < N) groupIndexj = groupIndex_d[idy];
-	else groupIndexj = 0;
-#endif
-
 
 	double test;
 
@@ -986,7 +977,7 @@ __global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //
 //****************************************
 template < int Bl, int Bl2, int E>
-__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *test_d, int NconstT, int NencMax, double t, int N){
+__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NconstT, int NencMax, double t, int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -996,10 +987,6 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 	double4 x4i = x4_d[idx];
 	double rcritvi = rcritv_d[idx];
-#if G3 > 0
-	int groupIndexi = groupIndex_d[idx];
-#endif
-
 
 	double4 x4j;
 	double rcritvj;
@@ -1014,11 +1001,6 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		x4j.w = 0.0;
 		rcritvj = 0.0;
 	}
-#if G3 > 0
-	int groupIndexj;
-	if(idy < N) groupIndexj = groupIndex_d[idy];
-	else groupIndexj = 0;
-#endif
 
 	double test;
 
@@ -1141,7 +1123,7 @@ __global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //August 2016
 // ****************************************
 template < int E >
-__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax, int UseTestParticles){
+__global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int N, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int Nsmall, int NencMax, int UseTestParticles){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1223,7 +1205,7 @@ __global__ void kicksmall_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 //
 // ****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nstart){
+__global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
@@ -1361,7 +1343,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 }
 
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d, double3 *acck_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, int Nst, int Nstart){
+__global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d, double3 *acck_d, double *dt_d, double Kt, int *index_d, int NT, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
@@ -1467,7 +1449,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 	}
 }
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double *test_d, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
+__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;

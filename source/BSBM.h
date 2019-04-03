@@ -63,22 +63,22 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 	}
 	__syncthreads();
 
-        double Msun = Msun_d[sstt].x;
-        double time = time_d[sstt] - dt_d[sstt] / dayUnit;
+	double Msun = Msun_d[sstt].x;
+	double time = time_d[sstt] - dt_d[sstt] / dayUnit;
 	double dt = dt_d[sstt] * FGt;
 	double dtgr = 1.0;
 	dt1 = dt;
 
-        if(dt < 0.0){
-                sgnt = -1;
-        }
-        else sgnt = 1;
+	if(dt < 0.0){
+		sgnt = -1;
+	}
+	else sgnt = 1;
 
  	__syncthreads();
 
 	if(idy < N2){
-                x4_s[idy] = xold_d[idi];
-                v4_s[idy] = vold_d[idi];
+		x4_s[idy] = xold_d[idi];
+		v4_s[idy] = vold_d[idi];
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NconstT];
 		}
@@ -99,10 +99,10 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
 		x4_s[idy].w = -1.0e-12;
-                v4_s[idy].x = 0.0;
-                v4_s[idy].y = 0.0;
-                v4_s[idy].z = 0.0;
-                v4_s[idy].w = 0.0;
+		v4_s[idy].x = 0.0;
+		v4_s[idy].y = 0.0;
+		v4_s[idy].z = 0.0;
+		v4_s[idy].w = 0.0;
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = 0.0;
 		}
@@ -113,8 +113,8 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		a0_s[idy + nb*NN].z = 0.0;
 
 		a_s[idy + nb*NN].x = 0.0;
-                a_s[idy + nb*NN].y = 0.0;
-                a_s[idy + nb*NN].z = 0.0;
+		a_s[idy + nb*NN].y = 0.0;
+		a_s[idy + nb*NN].z = 0.0;
 	}
 	if(idy < def_MaxColl){
 		Colpairs_s[idy].x = 0;
@@ -140,8 +140,8 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		}
 
 		a0_s[idy].x = 0.0;
-        	a0_s[idy].y = 0.0;
-        	a0_s[idy].z = 0.0;
+		a0_s[idy].y = 0.0;
+		a0_s[idy].z = 0.0;
 		__syncthreads();
 		for(int l = 0; l < NN; l += nb){
 			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
@@ -442,7 +442,8 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 
 							// *****************
 							//dont group test particles
-							/*                                                      if(xt_s[ii].w == 0.0){
+							/*
+							if(xt_s[ii].w == 0.0){
 							Colpairs_s[Ni].x = ii;
 							Colpairs_s[Ni].y = ii;
 							}
@@ -465,7 +466,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
-									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);      
+									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);
 									int ne = atomicAdd(NWriteEnc_d, 1);
 									if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
 									writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;
@@ -475,7 +476,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 						}
 
 					}
-                                        __syncthreads();
+					__syncthreads();
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){

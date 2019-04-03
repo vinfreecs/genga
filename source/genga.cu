@@ -259,10 +259,10 @@ if(ittv % MCMC_NQ == 0){
 	}
 	if(ittv % MCMC_NQ == MCMC_NQ - 1){
  #else
-        {
+	{
  #endif
 		TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsCA_d, D.elementsCB_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, ittv, D.Nstart, D.P.mcmcNE);
-        }
+	}
  #if MCMC_Q == 1
 	if(ittv % 16 == 15){
  #elif MCMC_Q == 2

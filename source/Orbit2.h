@@ -36,7 +36,6 @@ public:
 	int *groupIterate_h, *groupIterate_d;
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
-	bool *Encpairsb_d;
 	int *Encpairs3_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
@@ -194,6 +193,9 @@ public:
 	//integrator
 	__host__ void SymplecticP(int);
 	__host__ void IrregularStep(double);
+	__host__ int tuneRcrit(int &);
+	__host__ int tuneKick(int, int &, int &, int &);
+
 	__host__ void firstKick_16();
 	__host__ void firstKick_32();
 	__host__ void firstKick_64();
@@ -260,7 +262,7 @@ private:
 	int GridNae;
 	int GridNai;
 	__host__ int readic(int);
-	__host__ void resize(int &, int &, int &, int &);
+	__host__ void resize(int &, int &);
 
 	//output
 	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);

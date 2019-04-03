@@ -114,7 +114,6 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
-	cudaMalloc((void **) &Encpairsb_d, sizeof(bool) * NB2T);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);
@@ -293,9 +292,9 @@ __host__ int Data::GridaeAlloc(){
 	GridaecountS_h = (unsigned long long*)malloc(GridNae * sizeof(unsigned long long));
 
 	for(int i = 0; i < GridNae; ++i){
-	      Gridaecount_h[i] = 0u;
-	      GridaecountT_h[i] = 0ull;
-	      GridaecountS_h[i] = 0ull;
+		Gridaecount_h[i] = 0u;
+		GridaecountT_h[i] = 0ull;
+		GridaecountS_h[i] = 0ull;
 	}
 	cudaMemcpy(Gridaecount_d, Gridaecount_h, sizeof(unsigned int)*GridNae, cudaMemcpyHostToDevice);
 	GridNai = Gridae.Na * Gridae.Ni;
@@ -305,9 +304,9 @@ __host__ int Data::GridaeAlloc(){
 	GridaicountS_h = (unsigned long long*)malloc(GridNai * sizeof(unsigned long long));
 
 	for(int i = 0; i < GridNai; ++i){
-	      Gridaicount_h[i] = 0u;
-	      GridaicountT_h[i] = 0ull;
-	      GridaicountS_h[i] = 0ull;
+		Gridaicount_h[i] = 0u;
+		GridaicountT_h[i] = 0ull;
+		GridaicountS_h[i] = 0ull;
 	}
 	cudaMemcpy(Gridaicount_d, Gridaicount_h, sizeof(unsigned int)*GridNai, cudaMemcpyHostToDevice);
 
@@ -326,15 +325,15 @@ __host__ int Data::GridaeAlloc(){
 
 __host__ int Data::FGAlloc(){
 	cudaError_t error;
-        double S_h[FGN + 1];
-        double C_h[FGN + 1];
+	double S_h[FGN + 1];
+	double C_h[FGN + 1];
 
-        //Table for fastfg//
-        for (int j = 0; j<= FGN; ++j) {
-                double dEj = j*PI_N;
-                S_h[j] = sin(dEj);
-                C_h[j] = cos(dEj);
-        }
+	//Table for fastfg//
+	for (int j = 0; j<= FGN; ++j) {
+		double dEj = j*PI_N;
+		S_h[j] = sin(dEj);
+		C_h[j] = cos(dEj);
+	}
 	constantCopySC(S_h, C_h);
 	error = cudaGetLastError();
 	fprintf(masterfile,"FGAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
@@ -405,14 +404,14 @@ __host__ int Data::copyGridae(){
 		}
 	}
 	cudaMemset(Gridaicount_d, 0, sizeof(int)*GridNai);
-        error = cudaGetLastError();
-        fprintf(masterfile,"Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
-        if(error != 0){
-        	printf("Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
+	error = cudaGetLastError();
+	fprintf(masterfile,"Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
-        return 1;
+	return 1;
 }
 
 __global__ void BufferInit_kernel(double *coordinateBuffer_d, int N){
@@ -562,7 +561,7 @@ __host__ int Data::init(){
 		Fragments_h[i] = 0.0;
 	}
 
-	for(int st = 0; st < Nst + 1; ++st){    
+	for(int st = 0; st < Nst + 1; ++st){
 		Nencpairs_h[st] = 0;
 		Nencpairs2_h[st] = 0;
 	}
@@ -1704,7 +1703,7 @@ __host__ int Data::remove(){
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
-		resize(N_h[st], NB[st], N4[st], N2[st]);
+		resize(N_h[st], NB[st]);
 
 		if(N_h[st] < Nmin[st]){
 			NminFlag = 1;
@@ -1725,7 +1724,7 @@ __host__ int Data::remove(){
 // **************************************
 //This function recomputes the value of NB, which is the next bigger 
 //number to N which is a power of two.
-__host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
+__host__ void Data::resize(int &N, int &NB){
 
 	NB = 16;
 	if( N > 16) NB = 32;
@@ -1742,16 +1741,6 @@ __host__ void Data::resize(int &N, int &NB, int &N4, int &N2){
 	if( N > 32768) NB = 65536;
 	if( N > 65536) NB = 131072;
 	if( N > 131072) NB = 262144;
-
-	N4 = N;
-	if(N4 %4 == 3) N4 +=1;
-	if(N4 %4 == 2) N4 +=2;
-	if(N4 %4 == 1) N4 +=3;
-	N4 /= 4;
-
-	N2 = N;
-	if(N2 %2 == 1) N2 +=1;
-	N2 /=2;
 }
 
 
@@ -1839,7 +1828,6 @@ __global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpai
 __host__ void Data::stopSimulations(){
 	NT = 0;
 	NsmallT = 0;
-	NB2T = 0;
 	NEnergyT = 0;
 
 	for(int st = 0; st < Nst; ++st){
@@ -1872,7 +1860,6 @@ __host__ void Data::stopSimulations(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
 	}
 
@@ -1936,8 +1923,6 @@ __host__ void Data::stopSimulations(){
 				GSF[sst] = GSF[sst + 1];
 
 				NB[sst] = NB[sst + 1];
-				N4[sst] = N4[sst + 1];
-				N2[sst] = N2[sst + 1];
 				Nmin[sst] = Nmin[sst + 1];
 				rho[sst] = rho[sst + 1];
 				n1_h[sst] = n1_h[sst + 1];
@@ -2080,7 +2065,6 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
 	cudaFree(Encpairs3_d);
-	cudaFree(Encpairsb_d);
 
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);

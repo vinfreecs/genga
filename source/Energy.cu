@@ -226,26 +226,26 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
 		if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
 
-                if(blockDim.x >= 64) s_s[idy].x += s_s[idy + 32].x;
-                if(blockDim.x >= 32) s_s[idy].x += s_s[idy + 16].x;
-                if(blockDim.x >= 16) s_s[idy].x += s_s[idy + 8].x;
-                if(blockDim.x >= 8) s_s[idy].x += s_s[idy + 4].x;
-                if(blockDim.x >= 4) s_s[idy].x += s_s[idy + 2].x;
-                if(blockDim.x >= 2) s_s[idy].x += s_s[idy + 1].x;
+		if(blockDim.x >= 64) s_s[idy].x += s_s[idy + 32].x;
+		if(blockDim.x >= 32) s_s[idy].x += s_s[idy + 16].x;
+		if(blockDim.x >= 16) s_s[idy].x += s_s[idy + 8].x;
+		if(blockDim.x >= 8) s_s[idy].x += s_s[idy + 4].x;
+		if(blockDim.x >= 4) s_s[idy].x += s_s[idy + 2].x;
+		if(blockDim.x >= 2) s_s[idy].x += s_s[idy + 1].x;
 
-                if(blockDim.x >= 64) s_s[idy].y += s_s[idy + 32].y;
-                if(blockDim.x >= 32) s_s[idy].y += s_s[idy + 16].y;
-                if(blockDim.x >= 16) s_s[idy].y += s_s[idy + 8].y;
-                if(blockDim.x >= 8) s_s[idy].y += s_s[idy + 4].y;
-                if(blockDim.x >= 4) s_s[idy].y += s_s[idy + 2].y;
-                if(blockDim.x >= 2) s_s[idy].y += s_s[idy + 1].y;
+		if(blockDim.x >= 64) s_s[idy].y += s_s[idy + 32].y;
+		if(blockDim.x >= 32) s_s[idy].y += s_s[idy + 16].y;
+		if(blockDim.x >= 16) s_s[idy].y += s_s[idy + 8].y;
+		if(blockDim.x >= 8) s_s[idy].y += s_s[idy + 4].y;
+		if(blockDim.x >= 4) s_s[idy].y += s_s[idy + 2].y;
+		if(blockDim.x >= 2) s_s[idy].y += s_s[idy + 1].y;
 
-                if(blockDim.x >= 64) s_s[idy].z += s_s[idy + 32].z;
-                if(blockDim.x >= 32) s_s[idy].z += s_s[idy + 16].z;
-                if(blockDim.x >= 16) s_s[idy].z += s_s[idy + 8].z;
-                if(blockDim.x >= 8) s_s[idy].z += s_s[idy + 4].z;
-                if(blockDim.x >= 4) s_s[idy].z += s_s[idy + 2].z;
-                if(blockDim.x >= 2) s_s[idy].z += s_s[idy + 1].z;
+		if(blockDim.x >= 64) s_s[idy].z += s_s[idy + 32].z;
+		if(blockDim.x >= 32) s_s[idy].z += s_s[idy + 16].z;
+		if(blockDim.x >= 16) s_s[idy].z += s_s[idy + 8].z;
+		if(blockDim.x >= 8) s_s[idy].z += s_s[idy + 4].z;
+		if(blockDim.x >= 4) s_s[idy].z += s_s[idy + 2].z;
+		if(blockDim.x >= 2) s_s[idy].z += s_s[idy + 1].z;
 
 	}
 
@@ -267,16 +267,16 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		
 		*U_d += -Tsun1 + Tsun0 + T_s[0] + V_s[0];
 
-                //convert to barycentric positions
-                double4 x4i;
-                x4i.x = x4_d[idx].x - s_s[0].x / Msun;
-                x4i.y = x4_d[idx].y - s_s[0].y / Msun;
-                x4i.z = x4_d[idx].z - s_s[0].z / Msun;
-                x4i.w = x4_d[idx].w;
-                double3 Li;
-                Li.x = x4i.w * (x4i.y * v4_d[idx].z - x4i.z * v4_d[idx].y) + spin_d[idx].x;
-                Li.y = x4i.w * (x4i.z * v4_d[idx].x - x4i.x * v4_d[idx].z) + spin_d[idx].y;
-                Li.z = x4i.w * (x4i.x * v4_d[idx].y - x4i.y * v4_d[idx].x) + spin_d[idx].z;
+		//convert to barycentric positions
+		double4 x4i;
+		x4i.x = x4_d[idx].x - s_s[0].x / Msun;
+		x4i.y = x4_d[idx].y - s_s[0].y / Msun;
+		x4i.z = x4_d[idx].z - s_s[0].z / Msun;
+		x4i.w = x4_d[idx].w;
+		double3 Li;
+		Li.x = x4i.w * (x4i.y * v4_d[idx].z - x4i.z * v4_d[idx].y) + spin_d[idx].x;
+		Li.y = x4i.w * (x4i.z * v4_d[idx].x - x4i.x * v4_d[idx].z) + spin_d[idx].y;
+		Li.z = x4i.w * (x4i.x * v4_d[idx].y - x4i.y * v4_d[idx].x) + spin_d[idx].z;
 
 		*LI_d += sqrt(Li.x * Li.x + Li.y * Li.y + Li.z * Li.z);
 	}

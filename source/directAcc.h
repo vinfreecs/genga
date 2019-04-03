@@ -179,16 +179,16 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 
 	if(c == 1 && i != j){
 
-                double3 r3;
-                double rsq;
-                double ir, ir3;
-                double s;
+		double3 r3;
+		double rsq;
+		double ir, ir3;
+		double s;
 
-                r3.x = x4j.x - x4i.x;
-                r3.y = x4j.y - x4i.y;
-                r3.z = x4j.z - x4i.z;
+		r3.x = x4j.x - x4i.x;
+		r3.y = x4j.y - x4i.y;
+		r3.z = x4j.z - x4i.z;
 
-                rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
+		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
 
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir * ir * ir;
@@ -220,16 +220,16 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 	if(UseTestParticles == 2 && (x4i.w >= 0.0 && x4j.w >= 0.0) && (x4i.w > MinMass || x4j.w > MinMass)) c = 1;
 
 	if(c == 1 && i != j){
-                double3 r3;
-                double rsq;
-                double ir, ir3;
-                double s;
+		double3 r3;
+		double rsq;
+		double ir, ir3;
+		double s;
 
-                r3.x = x4j.x - x4i.x;
-                r3.y = x4j.y - x4i.y;
-                r3.z = x4j.z - x4i.z;
+		r3.x = x4j.x - x4i.x;
+		r3.y = x4j.y - x4i.y;
+		r3.z = x4j.z - x4i.z;
 
-                rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
+		rsq = r3.x*r3.x + r3.y*r3.y + r3.z*r3.z;
 
 		ir = 1.0/sqrt(rsq);
 		ir3 = ir * ir * ir;
@@ -338,8 +338,8 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	spin[indexj].y = 0.0;
 	spin[indexj].z = 0.0;
 
-        if(x4[i].w < x4[j].w){
-                index[indexi] = index[indexj];
+	if(x4[i].w < x4[j].w){
+		index[indexi] = index[indexj];
 		aelimits[indexi] = aelimits[indexj];
 		aecount[indexi] = aecount[indexj];
 		enccount[indexi] = enccount[indexj];

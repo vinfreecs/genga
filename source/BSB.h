@@ -60,10 +60,10 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 	}
 	else idi = 0;
 
-        if(dt < 0.0){
-                sgnt = -1;
-        }
-        else sgnt = 1;
+	if(dt < 0.0){
+		sgnt = -1;
+	}
+	else sgnt = 1;
 
  	__syncthreads();
 	if(idy < N2){
@@ -88,10 +88,10 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		x4_s[idy].y = 0.0;
 		x4_s[idy].z = 0.0;
 		x4_s[idy].w = -1.0e-12;
-                v4_s[idy].x = 0.0;
-                v4_s[idy].y = 0.0;
-                v4_s[idy].z = 0.0;
-                v4_s[idy].w = 0.0;
+		v4_s[idy].x = 0.0;
+		v4_s[idy].y = 0.0;
+		v4_s[idy].z = 0.0;
+		v4_s[idy].w = 0.0;
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = 0.0;
 		}
@@ -102,8 +102,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		a0_s[idy + nb*NN].z = 0.0;
 
 		a_s[idy + nb*NN].x = 0.0;
-                a_s[idy + nb*NN].y = 0.0;
-                a_s[idy + nb*NN].z = 0.0;
+		a_s[idy + nb*NN].y = 0.0;
+		a_s[idy + nb*NN].z = 0.0;
 	}
 	if(idy < def_MaxColl){
 		Colpairs_s[idy].x = 0;
@@ -126,8 +126,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 		}
 
 		a0_s[idy].x = 0.0;
-        	a0_s[idy].y = 0.0;
-        	a0_s[idy].z = 0.0;
+		a0_s[idy].y = 0.0;
+		a0_s[idy].z = 0.0;
 		__syncthreads();
 		for(int l = 0; l < NN; l += nb){
 			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
@@ -448,7 +448,7 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
-//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, sqrt(delta), enct, colt, ii, jj + l);      
+//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 								int ne = atomicAdd(NWriteEnc_d, 1);
 								if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
 								//check the following line ?

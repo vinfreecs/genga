@@ -169,7 +169,6 @@ Here it can also be chosen if the gas disc is included or not.
  * def_tol f: Tolerance in Bulirsh Stoer integrator
  * def_dtmin f: Minimal time step in Bulirsch Stoer integrator 
  * def_Nfragments d: Additional array size for debris particles
- * def_MatrixMaxSize f: slice Encounter matrix to reduce memory usage
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.

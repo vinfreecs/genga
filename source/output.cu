@@ -800,12 +800,12 @@ __host__ void Data::printLastTime(){
 //This function prints the last information
 __host__ void Data::LastInfo(){
 	for(int st = 0; st < Nst; ++st){
-	        GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-                fprintf(GSF[st].logfile,"Integration finished with %d bodies, %d test particles. Total Energy: %.20g\n", N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
-                fclose (GSF[st].logfile);       
-        }
-        if(Nst > 1) printf("Integration finished with %d simulations\n", Nst);
-        else printf("Integration finished with %d bodies, %d test particles. Total Energy: %.20g\n", N_h[0], Nsmall_h[0], Energy_h[4]);
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+		fprintf(GSF[st].logfile,"Integration finished with %d bodies, %d test particles. Total Energy: %.20g\n", N_h[st], Nsmall_h[st], Energy_h[4 + NEnergy[st]]);
+		fclose (GSF[st].logfile);
+	}
+	if(Nst > 1) printf("Integration finished with %d simulations\n", Nst);
+	else printf("Integration finished with %d bodies, %d test particles. Total Energy: %.20g\n", N_h[0], Nsmall_h[0], Energy_h[4]);
 }
 
 //This function prints details of the Collisions

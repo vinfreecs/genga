@@ -74,7 +74,6 @@ __host__ Host::Host(long long Restart){
 	
 	NT = 0;
 	NsmallT = 0;
-	NB2T = 0;
 	NBNencT = 0;
 	NEnergyT = 0;
 }
@@ -344,8 +343,6 @@ __host__ int assignInformat(char *ff, int &format){
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
-	N4 = (int*)malloc(Nst*sizeof(int));
-	N2 = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int*)malloc(Nst*sizeof(int));
 	rho = (double*)malloc(Nst*sizeof(double));	
 	
@@ -474,8 +471,6 @@ __host__ void Host::Halloc(){
 		delta_h[st] = def_IntegrationSteps;
 		
 		NB[st] = N_h[st];
-		N4[st] = N_h[st]/4;
-		N2[st] = N_h[st]/2;
 		Nmin[st] = def_MinimumNumberOfBodies;
 		rho[st] = def_rho;
 		sprintf(GSF[st].X, def_Name);
@@ -1571,10 +1566,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Symplectic recursion levels = is not valid!\n");
 					return 0;
 				}
-				if(P.SLevels > def_SLevelsMax){
-					printf("Error, Symplectic recursion levels bigger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
-					return 0;
-				} 
 			}
 			else{
 				int t;
@@ -1670,6 +1661,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-MT") == 0){
 			Nst = atoi(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-sl") == 0){
+			P.SLevels = atoi(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-sls") == 0){
+			P.SLSteps = atoi(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;
@@ -1716,6 +1713,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error: Collision Precision not valid! %g\n", P.CollisionPrecision);
 		return 0;
 	}
+
+
+	if(P.SLevels > def_SLevelsMax){
+		printf("Error, Symplectic recursion levels bigger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
+		return 0;
+	} 
 
 
 	ForceFlag = 0;
@@ -2104,16 +2107,6 @@ __host__ int Host::size(){
 		if( N_h[st] > 131072) NB[st] = 262144;
 		
 		
-		N4[st] = N_h[st];
-		if(N4[st] %4 == 3) N4[st] +=1;
-		if(N4[st] %4 == 2) N4[st] +=2;
-		if(N4[st] %4 == 1) N4[st] +=3;
-		N4[st] /= 4;
-		
-		N2[st] = N_h[st];
-		if(N2[st] % 2 == 1) N2[st] +=1;
-		N2[st] /= 2;
-		
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		fclose(GSF[st].logfile);
 		if(MTFlag == 1){
@@ -2121,8 +2114,6 @@ __host__ int Host::size(){
 				N_h[sst] = N_h[0];
 				Nsmall_h[sst] = Nsmall_h[0];
 				NB[sst] = NB[0];
-				N2[sst] = N2[0];
-				N4[sst] = N4[0];
 			}
 			break;
 		}
@@ -2362,17 +2353,12 @@ __host__ void Host::Tsizes(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NB2T += NB[st] * NmaxM;
+		NBNencT += NB[st] * NmaxM;
 		NEnergyT += max(N_h[st], 8);
 	}
-	NBNencT = NB2T;
 	
 	NconstT = NT + NsmallT + def_Nfragments;
 	if(Nst == 1){
-		NB2T = (long long int)(NconstT) * (long long int)(NconstT);
-		if(N_h[0] > 2048 || P.UseTestParticles > 0){
-			NB2T = ((long long int)min(NconstT, def_MatrixMaxSize)) * (long long int)(NconstT);
-		}
 		NBNencT = NconstT * P.NencMax;
 		NEnergyT = max(NconstT, 8);
 	}
@@ -2821,8 +2807,6 @@ __host__ int Host::readGasFile2(double time){
 __host__ int Host::freeHost(){
 	cudaError_t error;
 	free(NB);
-	free(N4);
-	free(N2);
 	free(Nmin);
 	free(rho);
 	

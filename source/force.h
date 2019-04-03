@@ -281,8 +281,8 @@ __constant__ int setElements_c[15];
 //***************************************/
 __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines, int ncolumns){
 	int setElementsNumbers[4] = {nelements, nbodies, nlines, ncolumns};	
-        cudaMemcpyToSymbol(setElements_c, Elements, 15 * sizeof(int), 0, cudaMemcpyHostToDevice);
-        cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(setElements_c, Elements, 15 * sizeof(int), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
 // ***************************************************************
