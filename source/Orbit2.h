@@ -76,7 +76,7 @@ public:
 	double4 *x4G3_d;
 	double4 *v4G3_d;
 
-	double3 *vcom_h, *vcom_d;
+	double3 *vcom_d;
 
 	curandState *random_d;
 
@@ -132,6 +132,8 @@ public:
 #endif
 
 	cudaError_t error;
+	cudaEvent_t KickEvent;
+	cudaStream_t copyStream;
 
 	__host__ Data(long long);
 	__host__ int beforeTimeStepLoop1();
@@ -193,17 +195,13 @@ public:
 	//integrator
 	__host__ void SymplecticP(int);
 	__host__ void IrregularStep(double);
+	__host__ int tuneFG(int &);
 	__host__ int tuneRcrit(int &);
 	__host__ int tuneKick(int, int &, int &, int &);
 
 	__host__ void firstKick_16();
 	__host__ void firstKick_32();
 	__host__ void firstKick_64();
-	__host__ void firstKick_128();
-	__host__ void firstKick_256();
-	__host__ void firstKick_512();
-	__host__ void firstKick_1024();
-	__host__ void firstKick_2048();
 	__host__ void firstKick_largeN();
 	__host__ void firstKick_small();
 	__host__ void firstKick_M(long long);

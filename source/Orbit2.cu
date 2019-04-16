@@ -76,8 +76,6 @@ __host__ void Data::AllocateOrbit(){
 	elementsM_h = NULL;
 #endif
 
-	vcom_h = (double3*)malloc(Nst * sizeof(double3));
-
 	groupIterate_h = (int*)malloc(sizeof(int));
 
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
@@ -1622,12 +1620,10 @@ __host__ void Data::Ejection(){
 			cudaMemcpy(spin_h + NBS, spin_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
 			cudaMemcpy(love_h + NBS, love_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
 
+			cudaMemset(Nencpairs_d, 0, sizeof(int));
+
 			int c = 0;
 			for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-				vcom_h[st].x = 0.0;
-				vcom_h[st].y = 0.0;
-				vcom_h[st].z = 0.0;
-				cudaMemcpy(vcom_d + st, vcom_h + st, sizeof(double3), cudaMemcpyHostToDevice);
 				c = 0;
 				double rsq = x4_h[i + NBS].x*x4_h[i + NBS].x + x4_h[i + NBS].y*x4_h[i + NBS].y + x4_h[i + NBS].z*x4_h[i + NBS].z;
 				if(rsq > Rcut_h[st] * Rcut_h[st] && x4_h[i + NBS].w >= 0){
@@ -2022,8 +2018,6 @@ __host__ int Data::freeOrbit(){
 	free(elementsSA_h);
 	free(elementsI_h);
 	free(elementsM_h);
-
-	free(vcom_h);
 
 	free(groupIterate_h);
 

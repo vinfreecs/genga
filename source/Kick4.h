@@ -131,7 +131,7 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int N, const
 			double dz = fabs(a_d[id].z - ab_d[id].z);
 
 			if(dx + dy + dz > 1.0e-8){
-				printf("Comparison of a from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+				printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
 			}
 		}
 		ab_d[id] = a_d[id];

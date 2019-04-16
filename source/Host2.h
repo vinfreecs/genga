@@ -63,6 +63,8 @@ public:
 
 
 	//kernel tuning parameters
+	//FG kernel
+	int FTX;
 	//Rcrit kernel
 	int RTX;
 	//kick kernel
