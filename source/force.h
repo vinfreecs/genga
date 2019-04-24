@@ -6,10 +6,12 @@
 // non canonical perturbations are treated in a symplectic way by the implicicit midpoint
 // method, according to Mikkola 1997
 //
+// si = 0 is used in tunig step, and no global variables are updated
+//
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int Nstart){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int Nstart, int si){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -266,7 +268,9 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		v4.y += a3.y * dt;
 		v4.z += a3.z * dt;
 // printf("Force %d %g %g %g %g\n", id, x4.w, v4.x, v4.y, v4.z);
-		v4_d[id] = v4;
+		if(si == 1){
+			v4_d[id] = v4;
+		}
 	}
 }
 

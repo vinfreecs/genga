@@ -75,6 +75,8 @@ public:
 	int KP2;
 	int KTX2;
 	int KTY2;
+	//Force
+	int FrTX;
 
 	//data for irregular outputs
 	int bufferCount;

@@ -413,6 +413,82 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		}
 	}
 }
+
+__global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, const double dt, const double dtC, const double dtCiMsun, const double Msun, double *test_d, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, int si, int UseForce){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	double3 a = {0.0, 0.0, 0.0};
+	double4 x4i, v4i;
+
+	// --------------------------------------
+	// HC part
+	if(id < N){
+		x4i = x4_d[id];
+		v4i = v4_d[id];
+		if(x4i.w > 0.0){
+			a.x = x4i.w * v4i.x;
+			a.y = x4i.w * v4i.y;
+			a.z = x4i.w * v4i.z;
+		}
+
+	}
+
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+		//a.x += __shfld_xor(a.x, i);
+		//a.y += __shfld_xor(a.y, i);
+		//a.z += __shfld_xor(a.z, i);
+//printf("HC %d %d %.20g %.20g %.20g\n", i, id, a.x, a.y, a.z);
+
+	}
+
+	__syncthreads();
+	if(id < N){
+		x4i.x += a.x * dtCiMsun;
+		x4i.y += a.y * dtCiMsun;
+		x4i.z += a.z * dtCiMsun;
+//printf("HC %d %.20e %.20e %.20e\n", id, x4i[idy].x, a1_s[0].x, dtCiMsun);
+		if(UseForce & 1){
+			double c2 = def_cm * def_cm;
+			double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+			double vcdt = 2.0 * vsq / c2 * dtC;
+			x4i.x -= __dmul_rn(v4i.x, vcdt);
+			x4i.y -= __dmul_rn(v4i.y, vcdt);
+			x4i.z -= __dmul_rn(v4i.z, vcdt);
+		}
+
+	// ------------------------------------------------
+	// FG part
+		unsigned int aecount = 0u;
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		int index = index_d[id];
+// printf("FGA %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+		double test;
+		float4 aelimits = aelimits_d[id];
+		//fastfg(x4i, v4i, dt, def_ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
+		fgfull(x4i, v4i, dt, def_ksq * Msun, test, test, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseForce);
+		//BSSinglestep(x4i, v4i, Msun, dt, test, test); //GR not included here
+		__syncthreads();
+		if(si >= 0){
+			//dont update arrays during tunig process
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+		}
+// printf("FGB %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+		if(si == 0){
+			aecount_d[id] += aecount;
+		}
+	}
+}
+
+
 // *****************************************************
 // Version of the FG kernel which is called from the recursive symplectic sub step method
 // calls fg only if there are close encounter candidates in the current recursion level

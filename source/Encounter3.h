@@ -5,6 +5,24 @@
 #if G3 ==1
 #include "Encounter3G3.h"
 #endif
+
+
+__global__ void setNencpairs(int *Nencpairs_d){
+
+	Nencpairs_d[0] = 0;
+}
+
+__global__ void setNencpairs2(int *Nencpairs2_d, int *Nenc_d){
+	int idy = threadIdx.x;
+	if(idy == 0){
+		Nencpairs2_d[0] = 0;            //this variable is needed in the Encounter kernel
+	}
+	if(idy < def_GMax){
+		Nenc_d[idy] = 0;
+	}
+}
+
+
 // **************************************
 //This function estimates the minimal separation of two bodies
 //during a time step, using a third order interpolation. 
@@ -544,8 +562,8 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 //Author: Simon Grimm
 //March  2016
 // ****************************************
-template <int bn, int Bl, int E>
-__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, int *groupIndex_d, const int NT, const int N){
+template <int bn, int Bl>
+__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, const int NT, const int N){
 
 	int idy = threadIdx.x;
 
@@ -554,6 +572,27 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	__shared__ int start_s[1];
 
 	int Ne = *Nencpairs2_d;
+	
+	int E;
+
+	if(NT < 1024){
+		if(Ne < 512){
+			E = 1;
+		}
+		else{
+			E = 2;
+		}
+	}
+	else{
+		if(Ne < 512){
+			E = 3;
+		}
+		else{
+			E = 4;
+		}
+	}
+
+
 	int BN2 = NT * NT -1;
 	if(NT > 46340) BN2 = 2147483647;	//prevent from overflow
 
@@ -743,13 +782,6 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 //	}
 //}
 
-#if G3 > 0
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			groupIndex_d[idy + i] = B[idy + i].y;
-		}
-	}
-#endif
 #if SERIAL_GROUPING == 0
 	for(int i = 0; i < NT; i += Bl){
 		if(idy + i < NT){

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.84
+#define def_Version 3.85
 
 //Default parameter values
 #define def_TimeStep 6
@@ -225,6 +225,10 @@ __constant__ int  StopAtCollision_c[1];
 __constant__ double  StopMinMass_c[1];
 __constant__ double CollisionPrecision_c[1]; 
 __constant__ double CollTshift_c[1]; 
+__constant__ int WriteEncounters_c[1]; 
+__constant__ double WriteEncountersRadius_c[1]; 
+__constant__ int StopAtEncounter_c[1]; 
+__constant__ double StopAtEncounterRadius_c[1]; 
 
 
 struct Parameter{

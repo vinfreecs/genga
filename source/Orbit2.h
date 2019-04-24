@@ -198,9 +198,9 @@ public:
 	__host__ int tuneFG(int &);
 	__host__ int tuneRcrit(int &);
 	__host__ int tuneKick(int, int &, int &, int &);
+	__host__ int tuneForce(int &);
 
 	__host__ void firstKick_16();
-	__host__ void firstKick_32();
 	__host__ void firstKick_64();
 	__host__ void firstKick_largeN();
 	__host__ void firstKick_small();
@@ -211,13 +211,9 @@ public:
 
 	__host__ int step();
 	__host__ int step_16();
-	__host__ int step_32();
 	__host__ int step_64();
 	__host__ int step_128();
 	__host__ int step_256();
-	__host__ int step_512();
-	__host__ int step_1024();
-	__host__ int step_2048();
 	__host__ int step_largeN();
 	__host__ int step_small();
 	__host__ int step_M();
@@ -253,7 +249,7 @@ public:
 	int *PFlag_d;
 	char poincarefilename[160];
 	FILE *poincarefile;
-	__host__ int PoincareSectionCall(int, double);
+	__host__ int PoincareSectionCall(double);
 # endif
 private:
 	//Total sizes

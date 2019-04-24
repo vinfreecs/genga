@@ -809,102 +809,72 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //The Kernel is launched with N blocks a NB theads.
 //
 //Authors: Simon Grimm
-//August 2016
+//April 2019
 //****************************************
-template <int Bl2, int E>
-__global__ void kick16b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NencMax, double t, int N){
+template <int E>
+__global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, const double t, const int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	__shared__ double3 ab1_s[Bl2]; 		//the b1_s array is here stored in ab1_s[idy + 16]
-	__shared__ int NencpairsI_s;
+	if(idx < N){
 
-	double4 x4i = x4_d[idx];
-	double rcritvi = rcritv_d[idx];
+		__shared__ int NencpairsI_s;
 
-	double4 x4j;
-	double rcritvj;
+		double4 x4i = x4_d[idx];
+		double rcritvi = rcritv_d[idx];
 
-	if(idy < N){
-		x4j = x4_d[idy];
-		rcritvj = rcritv_d[idy];
-	}
-	else{
-		x4j.x = 0.0;
-		x4j.y = 0.0;
-		x4j.z = 0.0;
-		x4j.w = 0.0;
-		rcritvj = 0.0;
-	}
+		double3 a = {0.0, 0.0, 0.0};
+		double3 b = {0.0, 0.0, 0.0};
 
-	double test;
+		double test;
 
-	if(idy == 0){
-		NencpairsI_s = 0;
-	}
-
-	__syncthreads();
-
-	ab1_s[idy].x = 0.0;
-	ab1_s[idy].y = 0.0;
-	ab1_s[idy].z = 0.0;
-
-	ab1_s[idy + 8].x = 0.0;
-	ab1_s[idy + 8].y = 0.0;
-	ab1_s[idy + 8].z = 0.0;
-
-	__syncthreads();
-
-	if(idy < N){
-#if G3 == 0
-		acc_d<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
-#else
-		//accG3<E>(ab1_s[idy], ab1_s[idy + 16], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t);
-#endif
-	}
-
-	__syncthreads();
-	volatile double3 *ab1 = ab1_s;
-
-	ab1[idy].x += ab1[idy + 8].x;
-	ab1[idy].x += ab1[idy + 4].x;
-	ab1[idy].x += ab1[idy + 2].x;
-	ab1[idy].x += ab1[idy + 1].x;
-
-	ab1[idy].y += ab1[idy + 8].y;
-	ab1[idy].y += ab1[idy + 4].y;
-	ab1[idy].y += ab1[idy + 2].y;
-	ab1[idy].y += ab1[idy + 1].y;
-
-	ab1[idy].z += ab1[idy + 8].z;
-	ab1[idy].z += ab1[idy + 4].z;
-	ab1[idy].z += ab1[idy + 2].z;
-	ab1[idy].z += ab1[idy + 1].z;
-
-	__syncthreads();
-
-	if(idy == 0){
-		if(E >= 1){
-			v4_d[idx].x += __dmul_rn(ab1[0].x, dtksq);
-			v4_d[idx].y += __dmul_rn(ab1[0].y, dtksq);
-			v4_d[idx].z += __dmul_rn(ab1[0].z, dtksq);
-		}
-		if(E <= 1){
-			acck_d[idx].x = ab1[16].x;
-			acck_d[idx].y = ab1[16].y;
-			acck_d[idx].z = ab1[16].z;
-		}
-	}
-	if(E <= 2){
 		if(idy == 0){
-			Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			NencpairsI_s = 0;
 		}
-		if(idy < NencpairsI_s){
-			int jj = Encpairs2_d[idx * NencMax + idy].y;
-			if(idx < jj){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = idx;
-				Encpairs_d[Ne].y = jj;
+
+		__syncthreads();
+
+
+		if(idy < N){
+			double4 x4j = x4_d[idy];
+			double rcritvj = rcritv_d[idy];
+			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		}
+
+
+		for(int i = 16; i >= 1; i/=2){
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+		}
+
+		if(idy == 0){
+			if(E >= 1){
+				v4_d[idx].x += __dmul_rn(a.x, dtksq);
+				v4_d[idx].y += __dmul_rn(a.y, dtksq);
+				v4_d[idx].z += __dmul_rn(a.z, dtksq);
+			}
+			if(E <= 1){
+				acck_d[idx].x = b.x;
+				acck_d[idx].y = b.y;
+				acck_d[idx].z = b.z;
+			}
+		}
+		if(E <= 2){
+			if(idy == 0){
+				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			}
+			if(idy < NencpairsI_s){
+				int jj = Encpairs2_d[idx * NencMax + idy].y;
+				if(idx < jj){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = idx;
+					Encpairs_d[Ne].y = jj;
+				}
 			}
 		}
 	}
