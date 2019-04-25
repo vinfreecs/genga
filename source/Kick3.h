@@ -83,7 +83,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 			if(rsq < def_pc * rcritv2){  //prechecker
 				int Ni = atomicAdd(NencpairsI, 1);
 				Encpairs2_d[NencMax * i + Ni].y = j;
-//printf("Precheck %d %d %d %d\n", i, j, Ni, NencMax);
+//printf("Precheck %d %d %d %d %g %g %g\n", i, j, Ni, NencMax, rsq, rcritvi, rcritvj);
 			}
 		}
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode

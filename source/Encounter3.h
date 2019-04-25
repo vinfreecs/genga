@@ -12,16 +12,6 @@ __global__ void setNencpairs(int *Nencpairs_d){
 	Nencpairs_d[0] = 0;
 }
 
-__global__ void setNencpairs2(int *Nencpairs2_d, int *Nenc_d){
-	int idy = threadIdx.x;
-	if(idy == 0){
-		Nencpairs2_d[0] = 0;            //this variable is needed in the Encounter kernel
-	}
-	if(idy < def_GMax){
-		Nenc_d[idy] = 0;
-	}
-}
-
 
 // **************************************
 //This function estimates the minimal separation of two bodies
@@ -475,11 +465,11 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //All close encounter pairs are stored in the array Encpairs2_d. 
 //The number of close encounter pairs is stored in Nencpairs2_d.
 //
-//Authors: Simon Grimm, Joachim Stadel
-//March 2014
+//Authors: Simon Grimm
+//April 2019
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -487,14 +477,14 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 
 	int ii = 0;
 	int jj = 0;
-	if(id < *Nencpairs_d){
+	if(id < Nencpairs){
 		ii = Encpairs_d[id].x;
 		jj = Encpairs_d[id].y;
 //printf("%d %d %d\n", ii, jj, id);
 	}
 	__syncthreads();
 	int enccount = 0;	
-	if(id < *Nencpairs_d){
+	if(id < Nencpairs){
 #if G3 == 0
 		enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, time, MinMass);
 #elif G3 == 1
@@ -538,6 +528,9 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		if(si == 0 && enccount > 0){
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);
+		}
+		if(id == 0){
+			Nencpairs_d[0] = 0;
 		}
 	}
 }
