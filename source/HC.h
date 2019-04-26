@@ -104,6 +104,185 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 	}
 }
 
+//multiple blocks
+//must be followed by another kernel
+__global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int idx = blockIdx.y;
+
+	double a = 0.0;
+	double vi;
+
+	__shared__ double a_s[32];
+	int lane = threadIdx.x % warpSize;
+	int warp = threadIdx.x / warpSize;
+
+	if(warp == 0){
+		a_s[threadIdx.x] = 0.0;
+	}
+
+
+	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple bock reduce
+		if(id + i < N){
+			double m = x4_d[id + i].w;
+			if(idx == 0){
+				vi = v4_d[id + i].x;
+			}
+			if(idx == 1){
+				vi = v4_d[id + i].y;
+			}
+			if(idx == 2){
+				vi = v4_d[id + i].z;
+			}
+			if(m > 0.0){
+				a += m * vi;
+//if(idx == 0) printf("HCax %d %d %.20g\n", i, id, a);
+//if(idx == 1) printf("HCay %d %d %.20g\n", i, id, a);
+//if(idx == 2) printf("HCaz %d %d %.20g\n", i, id, a);
+			}
+		}
+	}
+
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		a += __shfl_xor_sync(0xffffffff, a, i, 32);
+//if(idx == 0) printf("HCbx %d %d %.20g\n", i, id, a);
+//if(idx == 1) printf("HCby %d %d %.20g\n", i, id, a);
+//if(idx == 2) printf("HCbz %d %d %.20g\n", i, id, a);
+	}
+	__syncthreads();
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		if(lane == 0){
+			a_s[warp] = a;
+		}
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			a = a_s[threadIdx.x];
+//if(idx == 0) printf("HCcx %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
+//if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
+//if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
+			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+				a += __shfl_xor_sync(0xffffffff, a, i, 32);
+//if(idx == 0) printf("HCdx %d %d %.20g\n", i, id, a);
+//if(idx == 1) printf("HCdy %d %d %.20g\n", i, id, a);
+//if(idx == 2) printf("HCdz %d %d %.20g\n", i, id, a);
+			}
+			if(lane == 0){
+				if(idx == 0){
+					a_d[blockIdx.x].x = a;
+				}
+				if(idx == 1){
+					a_d[blockIdx.x].y = a;
+				}
+				if(idx == 2){
+					a_d[blockIdx.x].z = a;
+				}
+			}
+		}
+	}
+}
+//single trhead block
+__global__ void HC32d2_kernel(double3 *a_d, int N){
+
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	double a = 0.0;
+
+	__shared__ double a_s[32];
+	int lane = threadIdx.x % warpSize;
+	int warp = threadIdx.x / warpSize;
+
+	if(warp == 0){
+		a_s[threadIdx.x] = 0.0;
+	}
+
+
+	if(idy < N){
+		if(idx == 0){
+			a = a_d[idy].x;
+		}
+		if(idx == 1){
+			a = a_d[idy].y;
+		}
+		if(idx == 2){
+			a = a_d[idy].z;
+		}
+//if(idx == 0) printf("HCax %d %d %.20g\n", i, idy, a);
+//if(idx == 1) printf("HCay %d %d %.20g\n", i, idy, a);
+//if(idx == 2) printf("HCaz %d %d %.20g\n", i, idy, a);
+	}
+
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		a += __shfl_xor_sync(0xffffffff, a, i, 32);
+//if(idx == 0) printf("HC2bx %d %d %.20g\n", i, idy, a);
+//if(idx == 1) printf("HC2by %d %d %.20g\n", i, idy, a);
+//if(idx == 2) printf("HC2bz %d %d %.20g\n", i, idy, a);
+	}
+	__syncthreads();
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		if(lane == 0){
+			a_s[warp] = a;
+		}
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			a = a_s[threadIdx.x];
+//if(idx == 0) printf("HC2cx %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
+//if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
+//if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
+			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+				a += __shfl_xor_sync(0xffffffff, a, i, 32);
+//if(idx == 0) printf("HC2dx %d %d %.20g\n", i, idy, a);
+//if(idx == 1) printf("HCdy %d %d %.20g\n", i, idy, a);
+//if(idx == 2) printf("HCdz %d %d %.20g\n", i, idy, a);
+			}
+			if(lane == 0){
+				if(idx == 0){
+					a_d[blockIdx.x].x = a;
+				}
+				if(idx == 1){
+					a_d[blockIdx.x].y = a;
+				}
+				if(idx == 2){
+					a_d[blockIdx.x].z = a;
+				}
+			}
+		}
+	}
+}
+__global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, int N, int UseForce){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id< N){
+		double3 a = a_d[0];
+		x4_d[id].x += a.x * dtiMsun;
+		x4_d[id].y += a.y * dtiMsun;
+		x4_d[id].z += a.z * dtiMsun;
+//printf("HC %d %.20e %.20e %.20e\n", id, x4_d[id].x, a1_s[0].x, dtiMsun);
+		if(UseForce & 1){
+			double c2 = def_cm * def_cm;
+			double4 v4 = v4_d[id];
+			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+			double vcdt = 2.0 * vsq / c2 * dt;
+			x4_d[id].x -= __dmul_rn(v4.x, vcdt);
+			x4_d[id].y -= __dmul_rn(v4.y, vcdt);
+			x4_d[id].z -= __dmul_rn(v4.z, vcdt);
+		}
+	}
+}
 
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
@@ -115,95 +294,6 @@ __global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, con
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32b_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, int N, int UseForce){
-
-	int idy = threadIdx.x;
-
-	double3 a = {0.0, 0.0, 0.0};
-	double4 v4;
-
-	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple bock reduce
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			v4 = v4_d[idy + i];
-			if(m > 0.0){
-				a.x += m * v4.x;
-				a.y += m * v4.y;
-				a.z += m * v4.z;
-//printf("HCa %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
-			}
-		}
-	}
-
-	__syncthreads();
-
-	for(int i = 16; i >= 1; i/=2){
-		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
-//printf("HCb %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
-	}
-	__syncthreads();
-
-	if(blockDim.x > warpSize){
-		//reduce across warps
-		__shared__ double3 a_s[32];
-		int lane = threadIdx.x % warpSize;
-		int warp = threadIdx.x / warpSize;
-		if(warp == 0){
-			a_s[threadIdx.x] = {0.0, 0.0, 0.0};
-		}
-		__syncthreads(); 
-
-		if(lane == 0){
-			a_s[warp] = a;
-		}
-
-		__syncthreads();
-		//reduce previous warp results in the first warp
-		if(warp == 0){
-			a = a_s[threadIdx.x];
-//printf("HCc %d %d %.20g %.20g %.20g %d %d\n", 0, idy, a.x, a.y, a.z, blockDim.x, warpSize);
-			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
-				a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-				a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-				a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
-//printf("HCd %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
-			}
-			if(lane == 0){
-				a_s[0] = a;
-			}
-		}
-		__syncthreads();
-		
-		a = a_s[0];
-//printf("HCe %d %.20g %.20g %.20g\n", idy, a.x, a.y, a.z);
-/*	
-		if(gridDim.x > 0 && threadIdx.x == 0){
-			a_d[blockIdx.x].x = a;
-		}
-*/
-	}
-	__syncthreads();
-	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
-			x4_d[idy + i].x += a.x * dtiMsun;
-			x4_d[idy + i].y += a.y * dtiMsun;
-			x4_d[idy + i].z += a.z * dtiMsun;
-//printf("HC %d %.20e %.20e %.20g %.20g %.20e\n", idy + i, x4_d[idy + i].x, a.x, a.y, a.z, dtiMsun);
-			if(UseForce & 1){
-				double c2 = def_cm * def_cm;
-				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-				double vcdt = 2.0 * vsq / c2 * dt;
-				x4_d[idy + i].x -= __dmul_rn(v4.x, vcdt);
-				x4_d[idy + i].y -= __dmul_rn(v4.y, vcdt);
-				x4_d[idy + i].z -= __dmul_rn(v4.z, vcdt);
-			}
-		}
-	}
-}
-
-//three blocks for the three dimensions
 __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, int N, int UseForce){
 
 	int idy = threadIdx.x;

@@ -420,6 +420,7 @@ __host__ void Host::Halloc(){
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	P.setElements = 0;
 	sprintf(P.setElementsfilename, "%s", "-");
+	P.setElementsN = 0;
 	P.UseTransits = 0;
 	P.TransitSteps = 1;
 	sprintf(P.Transitsfilename, "%s", "-");
@@ -2547,8 +2548,8 @@ __host__ int Host::readSetElements(){
 	
 	
 	//read the number of planets
-	int nbodies = 1;
-	int er = fscanf(Efile, "%d", &nbodies);
+	P.setElementsN = 1;
+	int er = fscanf(Efile, "%d", &P.setElementsN);
 	if(er <= 0) return 0;
 	
 	int nelements = 0;
@@ -2648,7 +2649,7 @@ __host__ int Host::readSetElements(){
 		er = fscanf(Efile, "%s", c);
 	}
 	int nlines;
-	int ncolumns = (nelements - 1) * nbodies + 1;
+	int ncolumns = (nelements - 1) * P.setElementsN + 1;
 	for(int j = 0; j < 1000000; ++j){
 		for(int i = 0; i < ncolumns; ++i){
 			er = fscanf(Efile, "%lf", &t);
@@ -2660,9 +2661,9 @@ __host__ int Host::readSetElements(){
 		}
 	}
 	fclose(Efile);
-	printf("%d lines, %d bodies %d elements %d columns\n", nlines, nbodies, nelements, ncolumns);
+	printf("%d lines, %d bodies %d elements %d columns\n", nlines, P.setElementsN, nelements, ncolumns);
 	
-	constantCopy3(Elements, nelements, nbodies, nlines, ncolumns);
+	constantCopy3(Elements, nelements, P.setElementsN, nlines, ncolumns);
 	//allocate memory
 	setElementsData_h = (double*)malloc(ncolumns * nlines * sizeof(double));	
 	cudaMalloc((void **) &setElementsData_d, ncolumns * nlines * sizeof(double));

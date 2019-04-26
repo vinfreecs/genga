@@ -568,7 +568,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 	
 	int E;
 
-	if(NT < 1024){
+	if(NT <= 512){
 		if(Ne < 512){
 			E = 1;
 		}

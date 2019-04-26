@@ -578,7 +578,7 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 //Authors: Simon Grimm
 //December 2016
 // ****************************************
-__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, int N, int NencMax){
+__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, int N, int NencMax, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;	
@@ -610,17 +610,21 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 				aa.y = a.y + acck_d[id].y;
 				aa.z = a.z + acck_d[id].z;
 
-				v4_d[id].x += __dmul_rn(aa.x, dtksq);
-				v4_d[id].y += __dmul_rn(aa.y, dtksq);
-				v4_d[id].z += __dmul_rn(aa.z, dtksq);
+				if(EE >= 1){
+					v4_d[id].x += __dmul_rn(aa.x, dtksq);
+					v4_d[id].y += __dmul_rn(aa.y, dtksq);
+					v4_d[id].z += __dmul_rn(aa.z, dtksq);
+				}
 				ab_d[id] = aa;
 			}
 			else{
 			
 				double3 a = acck_d[id];
-				v4_d[id].x += __dmul_rn(a.x, dtksq);
-				v4_d[id].y += __dmul_rn(a.y, dtksq);
-				v4_d[id].z += __dmul_rn(a.z, dtksq);
+				if(EE >= 1){
+					v4_d[id].x += __dmul_rn(a.x, dtksq);
+					v4_d[id].y += __dmul_rn(a.y, dtksq);
+					v4_d[id].z += __dmul_rn(a.z, dtksq);
+				}
 //printf("KickB %d %.16e %.16e %.16e %.16e %.16e %.16e\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
 				ab_d[id] = a;
 			}
@@ -896,136 +900,116 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 //The Kernel is launched with N blocks a NB theads.
 
 //Authors: Simon Grimm
-//August 2016
+//April 2019
 //
 //****************************************
-template < int Bl, int Bl2, int E>
-__global__ void kick32b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int NconstT, int NencMax, double t, int N){
+template <int E>
+__global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, const double t, const int N){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	__shared__ double3 a1_s[Bl2];
-	__shared__ double3 b1_s[Bl2];
-	__shared__ int NencpairsI_s;
+	if(idx < N){
 
-	double4 x4i = x4_d[idx];
-	double rcritvi = rcritv_d[idx];
+		__shared__ int NencpairsI_s;
 
-	double4 x4j;
-	double rcritvj;
-	if(idy < N){
-		x4j = x4_d[idy];
-		rcritvj = rcritv_d[idy];
-	}
-	else{
-		x4j.x = 0.0;
-		x4j.y = 0.0;
-		x4j.z = 0.0;
-		x4j.w = 0.0;
-		rcritvj = 0.0;
-	}
+		double4 x4i = x4_d[idx];
+		double rcritvi = rcritv_d[idx];
 
-	double test;
+		double3 a = {0.0, 0.0, 0.0};
+		double3 b = {0.0, 0.0, 0.0};
 
-	if(idy == 0){
-		NencpairsI_s = 0;
-	}
-	__syncthreads();
-	a1_s[idy].x = 0.0;
-	a1_s[idy].y = 0.0;
-	a1_s[idy].z = 0.0;
+		double test;
 
-	b1_s[idy].x = 0.0;
-	b1_s[idy].y = 0.0;
-	b1_s[idy].z = 0.0;
-
-	__syncthreads();
-	if(idy < N){
-#if G3 == 0
-		acc_d<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
-#else
-		//accG3<E>(a1_s[idy], b1_s[idy], x4i, x4j, rcritvi, rcritvj, groupIndexi, groupIndexj, &NencpairsI_s, &NencpairsJ_s, Encpairs2_d, idy, idx, NconstT, NencMax, test, t); 
-
-#endif
-	}
-
-	__syncthreads();
-	volatile double3 *a1 = a1_s;
-	volatile double3 *b1 = b1_s;
-
-	if(idy < 32){
-		if(Bl >= 64) a1[idy].x += a1[idy + 32].x;
-		if(Bl >= 32) a1[idy].x += a1[idy + 16].x;
-		a1[idy].x += a1[idy + 8].x;
-		a1[idy].x += a1[idy + 4].x;
-		a1[idy].x += a1[idy + 2].x;
-		a1[idy].x += a1[idy + 1].x;
-
-		if(Bl >= 64) a1[idy].y += a1[idy + 32].y;
-		if(Bl >= 32) a1[idy].y += a1[idy + 16].y;
-		a1[idy].y += a1[idy + 8].y;
-		a1[idy].y += a1[idy + 4].y;
-		a1[idy].y += a1[idy + 2].y;
-		a1[idy].y += a1[idy + 1].y;
-
-		if(Bl >= 64) a1[idy].z += a1[idy + 32].z;
-		if(Bl >= 32) a1[idy].z += a1[idy + 16].z;
-		a1[idy].z += a1[idy + 8].z;
-		a1[idy].z += a1[idy + 4].z;
-		a1[idy].z += a1[idy + 2].z;
-		a1[idy].z += a1[idy + 1].z;
-	}
-	else{
-		if(E <= 1){
-			if(Bl >= 64) b1[idy-32].x += b1[idy + 32-32].x;
-			if(Bl >= 32) b1[idy-32].x += b1[idy + 16-32].x;
-			b1[idy-32].x += b1[idy + 8-32].x;
-			b1[idy-32].x += b1[idy + 4-32].x;
-			b1[idy-32].x += b1[idy + 2-32].x;
-			b1[idy-32].x += b1[idy + 1-32].x;
-
-			if(Bl >= 64) b1[idy-32].y += b1[idy + 32-32].y;
-			if(Bl >= 32) b1[idy-32].y += b1[idy + 16-32].y;
-			b1[idy-32].y += b1[idy + 8-32].y;
-			b1[idy-32].y += b1[idy + 4-32].y;
-			b1[idy-32].y += b1[idy + 2-32].y;
-			b1[idy-32].y += b1[idy + 1-32].y;
-
-			if(Bl >= 64) b1[idy-32].z += b1[idy + 32-32].z;
-			if(Bl >= 32) b1[idy-32].z += b1[idy + 16-32].z;
-			b1[idy-32].z += b1[idy + 8-32].z;
-			b1[idy-32].z += b1[idy + 4-32].z;
-			b1[idy-32].z += b1[idy + 2-32].z;
-			b1[idy-32].z += b1[idy + 1-32].z;
-		}
-	}
-
-	__syncthreads();
-
-	if(idy == 0){
-
-		if(E >= 1){
-			v4_d[idx].x += __dmul_rn(a1[0].x, dtksq);
-			v4_d[idx].y += __dmul_rn(a1[0].y, dtksq);
-			v4_d[idx].z += __dmul_rn(a1[0].z, dtksq);
-		}
-		if(E <= 1){
-			acck_d[idx].x = b1[0].x;
-			acck_d[idx].y = b1[0].y;
-			acck_d[idx].z = b1[0].z;
-		}
-	}
-
-	if(E <= 2){
 		if(idy == 0){
-			Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			NencpairsI_s = 0;
 		}
-		if(idy < NencpairsI_s){
-			int jj = Encpairs2_d[idx * NencMax + idy].y;
-			if(idx < jj){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = idx;
-				Encpairs_d[Ne].y = jj;
+
+		__syncthreads();
+
+
+		if(idy < N){
+			double4 x4j = x4_d[idy];
+			double rcritvj = rcritv_d[idy];
+			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		}
+
+
+		for(int i = 16; i >= 1; i/=2){
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+		}
+
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			__shared__ double3 a_s[32];
+			__shared__ double3 b_s[32];
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				a_s[threadIdx.x] = {0.0, 0.0, 0.0};
+				b_s[threadIdx.x] = {0.0, 0.0, 0.0};
+			}
+			__syncthreads();
+
+			if(lane == 0){
+				a_s[warp] = a;
+				b_s[warp] = b;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				a = a_s[threadIdx.x];
+				b = b_s[threadIdx.x];
+				for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+		
+					b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+					b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+					b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+				}
+				if(lane == 0){
+					a_s[0] = a;
+					b_s[0] = b;
+				}
+			}
+			__syncthreads();
+
+			a = a_s[0];
+			b = b_s[0];
+		}
+
+
+		if(idy == 0){
+			if(E >= 1){
+				v4_d[idx].x += __dmul_rn(a.x, dtksq);
+				v4_d[idx].y += __dmul_rn(a.y, dtksq);
+				v4_d[idx].z += __dmul_rn(a.z, dtksq);
+			}
+			if(E <= 1){
+				acck_d[idx].x = b.x;
+				acck_d[idx].y = b.y;
+				acck_d[idx].z = b.z;
+			}
+		}
+		if(E <= 2){
+			if(idy == 0){
+				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			}
+			if(idy < NencpairsI_s){
+				int jj = Encpairs2_d[idx * NencMax + idy].y;
+				if(idx < jj){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = idx;
+					Encpairs_d[Ne].y = jj;
+				}
 			}
 		}
 	}

@@ -213,7 +213,6 @@ public:
 	__host__ int step_16();
 	__host__ int step_64();
 	__host__ int step_128();
-	__host__ int step_256();
 	__host__ int step_largeN();
 	__host__ int step_small();
 	__host__ int step_M();

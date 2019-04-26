@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.86
+#define def_Version 3.87
 
 //Default parameter values
 #define def_TimeStep 6
@@ -266,6 +266,7 @@ struct Parameter{
 	int mcmcRestart;
 	int setElements;
 	char setElementsfilename[128];
+	int setElementsN;
 	char Gasfilename[128];
 	int WriteEncounters;
 	double WriteEncountersRadius;

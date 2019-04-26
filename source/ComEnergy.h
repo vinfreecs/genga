@@ -109,6 +109,94 @@ __global__ void com_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double
 	}
 }
 
+__global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
+
+	int idy = threadIdx.x;
+	double4 p = {0.0, 0.0, 0.0, 0.0};
+
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m > 0.0){
+				p.x += m * v4_d[idy + i].x;
+				p.y += m * v4_d[idy + i].y;
+				p.z += m * v4_d[idy + i].z;
+				p.w += m;
+			}
+		}
+	}
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+	}
+
+	__syncthreads();
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		__shared__ double4 p_s[32];
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			p_s[threadIdx.x] = {0.0, 0.0, 0.0, 0.0};
+		}
+		__syncthreads();
+
+		if(lane == 0){
+			p_s[warp] = p;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			p = p_s[threadIdx.x];
+			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+			}
+			if(lane == 0){
+				p_s[0] = p;
+			}
+		}
+		__syncthreads();
+
+		p = p_s[0];
+	}
+	__syncthreads();
+
+	double iMsun = 1.0 / Msun;
+
+	if(idy == 0){
+		if(f == 0){
+			vcom_d[0].x = p.x;
+			vcom_d[0].y = p.y;
+			vcom_d[0].z = p.z;
+		}
+	}
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m >= 0.0 && f == 1){
+				//Convert to Heliocentric coordinates
+				v4_d[idy + i].x += p.x * iMsun;
+				v4_d[idy + i].y += p.y * iMsun;
+				v4_d[idy + i].z += p.z * iMsun;
+			}
+			if(m >= 0.0 && f == -1){
+				//Convert to Democratic coordinates
+				double iMsunp = 1.0 / (Msun + p.w);
+				v4_d[idy + i].x -= p.x * iMsunp;
+				v4_d[idy + i].y -= p.y * iMsunp;
+				v4_d[idy + i].z -= p.z * iMsunp;
+			}
+		}
+	}
+}
 __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
