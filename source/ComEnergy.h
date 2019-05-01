@@ -6,108 +6,162 @@
 // it converts the velocities between heliocentric and democratic coordinates
 //
 //Author: Simon Grimm
-//August 2016
+//May 2019
 // ***********************************************************
-template < int Bl>
-__global__ void com_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
+
+//using v4old as temporary storage
+__global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, int N){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	double4 p = {0.0, 0.0, 0.0, 0.0};
+
+	__shared__ double4 p_s[32];
+	int lane = threadIdx.x % warpSize;
+	int warp = threadIdx.x / warpSize;
+
+	if(warp == 0){
+		p_s[threadIdx.x].x = 0.0;
+		p_s[threadIdx.x].y = 0.0;
+		p_s[threadIdx.x].z = 0.0;
+		p_s[threadIdx.x].w = 0.0;
+	}
+
+
+	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple bock reduce
+		if(id + i < N){
+			double m = x4_d[id + i].w;
+			double4 v4i = v4_d[id + i];
+			if(m > 0.0){
+				p.x += m * v4i.x;
+				p.y += m * v4i.y;
+				p.z += m * v4i.z;
+				p.w += m;
+			}
+		}
+	}
+
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+	}
+	__syncthreads();
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		if(lane == 0){
+			p_s[warp] = p;
+		}
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			p = p_s[threadIdx.x];
+			for(int i = 16; i >= 1; i/=2){
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+			}
+		}
+	}
+	__syncthreads();
+	if(threadIdx.x == 0){
+		v4old_d[blockIdx.x] = p;
+	}
+}
+//single trhead block
+__global__ void comd2_kernel(double4 *v4old_d, int N){
 
 	int idy = threadIdx.x;
 
-	__shared__ double4 p_s[Bl];
+	double4 p = {0.0, 0.0, 0.0, 0.0};
 
-	for(int i = 0; i < Bl; i += blockDim.x){
-		p_s[idy + i].x = 0.0;
-		p_s[idy + i].y = 0.0;
-		p_s[idy + i].z = 0.0;
-		p_s[idy + i].w = 0.0;
+	__shared__ double4 p_s[32];
+	int lane = threadIdx.x % warpSize;
+	int warp = threadIdx.x / warpSize;
+
+	if(warp == 0){
+		p_s[threadIdx.x].x = 0.0;
+		p_s[threadIdx.x].y = 0.0;
+		p_s[threadIdx.x].z = 0.0;
+		p_s[threadIdx.x].w = 0.0;
 	}
 
-	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			if(m > 0.0){
-				p_s[idy].x += m * v4_d[idy + i].x;
-				p_s[idy].y += m * v4_d[idy + i].y;
-				p_s[idy].z += m * v4_d[idy + i].z;
-				p_s[idy].w += m;
-			}
-		}
+
+	if(idy < N){
+		p = v4old_d[idy];
+	}
+
+	__syncthreads();
+
+	for(int i = 16; i >= 1; i/=2){
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
 	}
 	__syncthreads();
 
-
-	int s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			p_s[idy].x += p_s[idy + s].x;
-			p_s[idy].y += p_s[idy + s].y;
-			p_s[idy].z += p_s[idy + s].z;
-			p_s[idy].w += p_s[idy + s].w;
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		if(lane == 0){
+			p_s[warp] = p;
 		}
 		__syncthreads();
-		s /= 2;
-	}
-
-	if(idy < 32){
-		volatile double4*p = p_s;
-		if(blockDim.x >= 64) p[idy].x += p[idy + 32].x;
-		if(blockDim.x >= 32) p[idy].x += p[idy + 16].x;
-		if(blockDim.x >= 16) p[idy].x += p[idy + 8].x;
-		if(blockDim.x >= 8) p[idy].x += p[idy + 4].x;
-		if(blockDim.x >= 4) p[idy].x += p[idy + 2].x;
-		if(blockDim.x >= 2) p[idy].x += p[idy + 1].x;
-
-		if(blockDim.x >= 64) p[idy].y += p[idy + 32].y;
-		if(blockDim.x >= 32) p[idy].y += p[idy + 16].y;
-		if(blockDim.x >= 16) p[idy].y += p[idy + 8].y;
-		if(blockDim.x >= 8) p[idy].y += p[idy + 4].y;
-		if(blockDim.x >= 4) p[idy].y += p[idy + 2].y;
-		if(blockDim.x >= 2) p[idy].y += p[idy + 1].y;
-
-		if(blockDim.x >= 64) p[idy].z += p[idy + 32].z;
-		if(blockDim.x >= 32) p[idy].z += p[idy + 16].z;
-		if(blockDim.x >= 16) p[idy].z += p[idy + 8].z;
-		if(blockDim.x >= 8) p[idy].z += p[idy + 4].z;
-		if(blockDim.x >= 4) p[idy].z += p[idy + 2].z;
-		if(blockDim.x >= 2) p[idy].z += p[idy + 1].z;
-
-		if(blockDim.x >= 64) p[idy].w += p[idy + 32].w;
-		if(blockDim.x >= 32) p[idy].w += p[idy + 16].w;
-		if(blockDim.x >= 16) p[idy].w += p[idy + 8].w;
-		if(blockDim.x >= 8) p[idy].w += p[idy + 4].w;
-		if(blockDim.x >= 4) p[idy].w += p[idy + 2].w;
-		if(blockDim.x >= 2) p[idy].w += p[idy + 1].w;
-	}
-	__syncthreads();
-
-	double iMsun = 1.0 / Msun;
-
-	if(idy == 0){
-		if(f == 0){
-			vcom_d[0].x = p_s[0].x;
-			vcom_d[0].y = p_s[0].y;
-			vcom_d[0].z = p_s[0].z;
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			p = p_s[threadIdx.x];
+			for(int i = 16; i >= 1; i/=2){
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+			}
 		}
 	}
-	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			if(m >= 0.0 && f == 1){
-				//Convert to Heliocentric coordinates
-				v4_d[idy + i].x += p_s[0].x * iMsun;
-				v4_d[idy + i].y += p_s[0].y * iMsun;
-				v4_d[idy + i].z += p_s[0].z * iMsun;
-			}
-			if(m >= 0.0 && f == -1){
-				//Convert to Democratic coordinates
-				double iMsunp = 1.0 / (Msun + p_s[0].w);
-				v4_d[idy + i].x -= p_s[0].x * iMsunp;
-				v4_d[idy + i].y -= p_s[0].y * iMsunp;
-				v4_d[idy + i].z -= p_s[0].z * iMsunp;
-			}
+	__syncthreads();
+	if(threadIdx.x == 0){
+		v4old_d[0] = p;
+	}
+}
+__global__ void comd3_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, double3 *vcom_d, double Msun, int N, int f){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	double4 p = v4old_d[0];
+	double iMsun = 1.0 / Msun;
+
+
+	if(id == 0 && f == 0){
+		vcom_d[0].x = p.x;
+		vcom_d[0].y = p.y;
+		vcom_d[0].z = p.z;
+	}
+//if(id == 0) printf("comd3 %d %.20g %.20g %.20g %.20g\n", id, p.x, p.y, p.z, p.w);
+
+	if(id < N){
+		double m = x4_d[id].w;
+		if(m >= 0.0 && f == 1){
+			//Convert to Heliocentric coordinates
+			v4_d[id].x += p.x * iMsun;
+			v4_d[id].y += p.y * iMsun;
+			v4_d[id].z += p.z * iMsun;
+		}
+		if(m >= 0.0 && f == -1){
+			//Convert to Democratic coordinates
+			double iMsunp = 1.0 / (Msun + p.w);
+			v4_d[id].x -= p.x * iMsunp;
+			v4_d[id].y -= p.y * iMsunp;
+			v4_d[id].z -= p.z * iMsunp;
 		}
 	}
 }
+
+
 
 __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
@@ -153,7 +207,7 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			p = p_s[threadIdx.x];
-			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+			for(int i = 16; i >= 1; i/=2){
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -178,6 +232,7 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 			vcom_d[0].z = p.z;
 		}
 	}
+//if(idy == 0) printf("comB %d %.20g %.20g %.20g %.20g\n", idy, p.x, p.y, p.z, p.w);
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
@@ -233,6 +288,7 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 			vcom_d[0].z = p.z;
 		}
 	}
+//if(idy == 0) printf("comC %d %.20g %.20g %.20g %.20g\n", idy, p.x, p.y, p.z, p.w);
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;

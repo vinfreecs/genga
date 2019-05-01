@@ -201,7 +201,6 @@ public:
 	__host__ int tuneForce(int &);
 
 	__host__ void firstKick_16();
-	__host__ void firstKick_64();
 	__host__ void firstKick_largeN();
 	__host__ void firstKick_small();
 	__host__ void firstKick_M(long long);
@@ -211,8 +210,6 @@ public:
 
 	__host__ int step();
 	__host__ int step_16();
-	__host__ int step_64();
-	__host__ int step_128();
 	__host__ int step_largeN();
 	__host__ int step_small();
 	__host__ int step_M();

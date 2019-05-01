@@ -966,7 +966,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			if(warp == 0){
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
-				for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+				for(int i = 16; i >= 1; i/=2){
 					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);

@@ -71,6 +71,7 @@ public:
 	int KP;
 	int KTX;
 	int KTY;
+	int UseAcc;
 	//kick TP 2
 	int KP2;
 	int KTX2;

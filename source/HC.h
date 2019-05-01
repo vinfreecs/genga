@@ -1,111 +1,16 @@
 #include "define.h"
 
-// **************************************
+//**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
 //
-//It works for the case of more than 65 bodies.
-//Each Kernel is launched with 3 blocks, one for each dimension.
+//It works for the case of multiple blocks
+//must be followed by HC32d2 and HC32d3
 //
-//E = 1 : perform C Kick.
-//E = 2 : perform C Kick + reset Nencpairs 
-//
+//Uses shuffle instructions
 //Authors: Simon Grimm
-//July 2016
-//*****************************************
-template <int Bl, int E>
-__global__ void HC128b_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int N, double t, int UseForce){
-
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-
-	if(E == 1){
-		if(idy == 0 && idx == 0){
-			Nencpairs2_d[0] = 0;		//this variable is needed in the Encounter kernel
-	}
-	if(idy < def_GMax && idx == 0) Nenc_d[idy] = 0;
-	}
-	if(E == 2){
-		if(idy == 0 && idx == 0){
-			Nencpairs_d[0] = 0;	//This variable is needed in the Kick_kernel
-		}
-	}
-	__shared__ double a1_s[Bl];
-
-	a1_s[idy] = 0.0;
-
-	__syncthreads(); 
-	for (int i = 0; i < N; i+= Bl){
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			if(m > 0.0){
-				if(idx == 0){
-					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].x);
-				}
-				if(idx == 1){
-					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].y);
-				}
-				if(idx == 2){
-					a1_s[idy] += __dmul_rn(m, v4_d[idy + i].z);
-				}
-			}
-		}
-	}
-	__syncthreads();
-
-	if(Bl >= 512){
-		if(idy < 256){
-			a1_s[idy] += a1_s[idy + 256];
-
-		}
-	}
-	__syncthreads();
-
-	if(Bl >= 256){
-		if(idy < 128){
-			a1_s[idy] += a1_s[idy + 128];
-
-		}
-	}
-	__syncthreads();
-
-	if(Bl >= 128){
-		if(idy < 64){
-			a1_s[idy] += a1_s[idy + 64];
-		}
-	}
-	__syncthreads();
-
-	if(idy < 32){
-		volatile double *a = a1_s;
-		a[idy] += a[idy + 32];
-		a[idy] += a[idy + 16];
-		a[idy] += a[idy + 8];
-		a[idy] += a[idy + 4];
-		a[idy] += a[idy + 2];
-		a[idy] += a[idy + 1];
-	}
-	__syncthreads();
-	for(int i = 0; i < N; i += Bl){
-		if(idy + i < N){
-			if(idx == 0) x4_d[idy + i].x += __dmul_rn(a1_s[0], dtiMsun);
-			if(idx == 1) x4_d[idy + i].y += __dmul_rn(a1_s[0], dtiMsun);
-			if(idx == 2) x4_d[idy + i].z += __dmul_rn(a1_s[0], dtiMsun);
-			if(UseForce & 1){
-				double c2 = def_cm * def_cm;
-				double4 v4 = v4_d[idy + i];
-				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-				double vcdt = 2.0 * vsq / c2 * dt;
-				if(idx == 0) x4_d[idy + i].x -= __dmul_rn(v4.x, vcdt);
-				if(idx == 1) x4_d[idy + i].y -= __dmul_rn(v4.y, vcdt);
-				if(idx == 2) x4_d[idy + i].z -= __dmul_rn(v4.z, vcdt);
-			}
-		}
-	}
-}
-
-//multiple blocks
-//must be followed by another kernel
+//April 2019
+//  *****************************************
 __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N){
 
 	int idy = threadIdx.x;
@@ -165,26 +70,28 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N)
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			a = a_s[threadIdx.x];
-//if(idx == 0) printf("HCcx %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
-//if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
-//if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, id, a, blockDim.x, warpSize);
-			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+//if(idx == 0) printf("HCcx %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
+//if(idx == 1) printf("HCcy %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
+//if(idx == 2) printf("HCcz %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
+			for(int i = 16; i >= 1; i/=2){
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 //if(idx == 0) printf("HCdx %d %d %.20g\n", i, id, a);
 //if(idx == 1) printf("HCdy %d %d %.20g\n", i, id, a);
 //if(idx == 2) printf("HCdz %d %d %.20g\n", i, id, a);
 			}
-			if(lane == 0){
-				if(idx == 0){
-					a_d[blockIdx.x].x = a;
-				}
-				if(idx == 1){
-					a_d[blockIdx.x].y = a;
-				}
-				if(idx == 2){
-					a_d[blockIdx.x].z = a;
-				}
-			}
+		}
+	}
+	__syncthreads();
+	if(threadIdx.x == 0){
+		if(idx == 0){
+			a_d[blockIdx.x].x = a;
+		}
+		if(idx == 1){
+//if(idx == 1) printf("HCey %d %.20g\n", blockIdx.x, a);
+			a_d[blockIdx.x].y = a;
+		}
+		if(idx == 2){
+			a_d[blockIdx.x].z = a;
 		}
 	}
 }
@@ -215,10 +122,10 @@ __global__ void HC32d2_kernel(double3 *a_d, int N){
 		if(idx == 2){
 			a = a_d[idy].z;
 		}
-//if(idx == 0) printf("HCax %d %d %.20g\n", i, idy, a);
-//if(idx == 1) printf("HCay %d %d %.20g\n", i, idy, a);
-//if(idx == 2) printf("HCaz %d %d %.20g\n", i, idy, a);
 	}
+//if(idx == 0) printf("HC2ax %d %.20g\n", idy, a);
+//if(idx == 1) printf("HC2ay %d %.20g\n", idy, a);
+//if(idx == 2) printf("HC2az %d %.20g\n", idy, a);
 
 	__syncthreads();
 
@@ -240,25 +147,27 @@ __global__ void HC32d2_kernel(double3 *a_d, int N){
 		if(warp == 0){
 			a = a_s[threadIdx.x];
 //if(idx == 0) printf("HC2cx %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
-//if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
-//if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
-			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+//if(idx == 1) printf("HC2cy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
+//if(idx == 2) printf("HC2cz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
+			for(int i = 16; i >= 1; i/=2){
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 //if(idx == 0) printf("HC2dx %d %d %.20g\n", i, idy, a);
-//if(idx == 1) printf("HCdy %d %d %.20g\n", i, idy, a);
-//if(idx == 2) printf("HCdz %d %d %.20g\n", i, idy, a);
+//if(idx == 1) printf("HC2dy %d %d %.20g\n", i, idy, a);
+//if(idx == 2) printf("HC2dz %d %d %.20g\n", i, idy, a);
 			}
-			if(lane == 0){
-				if(idx == 0){
-					a_d[blockIdx.x].x = a;
-				}
-				if(idx == 1){
-					a_d[blockIdx.x].y = a;
-				}
-				if(idx == 2){
-					a_d[blockIdx.x].z = a;
-				}
-			}
+		}
+	}
+	__syncthreads();
+	if(threadIdx.x == 0){
+//if(idx == 1) printf("HCey %d %.20g\n", idy, a);
+		if(idx == 0){
+			a_d[0].x = a;
+		}
+		if(idx == 1){
+			a_d[0].y = a;
+		}
+		if(idx == 2){
+			a_d[0].z = a;
 		}
 	}
 }
@@ -268,6 +177,7 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 
 	if(id< N){
 		double3 a = a_d[0];
+//if(id == 0) printf("HC %.20g %.20g %.20g\n", a.x, a.y, a.z);
 		x4_d[id].x += a.x * dtiMsun;
 		x4_d[id].y += a.y * dtiMsun;
 		x4_d[id].z += a.z * dtiMsun;
@@ -354,7 +264,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 0) printf("HCcx %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
-			for(int i = blockDim.x / 64 ; i >= 1; i/=2){
+			for(int i = 16; i >= 1; i/=2){
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 //if(idx == 0) printf("HCdx %d %d %.20g\n", i, idy, a);
 //if(idx == 1) printf("HCdy %d %d %.20g\n", i, idy, a);
@@ -370,11 +280,6 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 0) printf("HCex %d %.20g\n", idy, a);
 //if(idx == 1) printf("HCey %d %.20g\n", idy, a);
 //if(idx == 2) printf("HCez %d %.20g\n", idy, a);
-/*	
-		if(gridDim.x > 0 && threadIdx.x == 0){
-			a_d[blockIdx.x].x = a;
-		}
-*/
 	}
 	__syncthreads();
 	for(int i = 0; i < N; i += blockDim.x){
@@ -382,7 +287,9 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 			if(idx == 0) x4_d[idy + i].x += a * dtiMsun;
 			if(idx == 1) x4_d[idy + i].y += a * dtiMsun;
 			if(idx == 2) x4_d[idy + i].z += a * dtiMsun;
-//printf("HC %d %.20e %.20e %.20g %.20g %.20e\n", idy + i, x4_d[idy + i].x, a.x, a.y, a.z, dtiMsun);
+//if(idx == 0 && idy + i == 0) printf("HCx %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
+//if(idx == 1 && idy + i == 0) printf("HCy %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
+//if(idx == 2 && idy + i == 0) printf("HCz %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
 			if(UseForce & 1){
 				double c2 = def_cm * def_cm;
 				double4 v4 = v4_d[idy];
@@ -449,7 +356,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 		x4_d[idy].x += a.x * dtiMsun;
 		x4_d[idy].y += a.y * dtiMsun;
 		x4_d[idy].z += a.z * dtiMsun;
-//printf("HC %d %.20e %.20e %.20e\n", idy, x4_d[idy].x, a1_s[0].x, dtiMsun);
+//printf("HC %d %.20e %.20e %.20e %.20e %.20e\n", idy, x4_d[idy].x, a.x, a.y, a.z, dtiMsun);
 		if(UseForce & 1){
 			double c2 = def_cm * def_cm;
 			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
