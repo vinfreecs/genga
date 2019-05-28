@@ -195,7 +195,10 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 		int lane = threadIdx.x % warpSize;
 		int warp = threadIdx.x / warpSize;
 		if(warp == 0){
-			p_s[threadIdx.x] = {0.0, 0.0, 0.0, 0.0};
+			p_s[threadIdx.x].x = 0.0;
+			p_s[threadIdx.x].y = 0.0;
+			p_s[threadIdx.x].z = 0.0;
+			p_s[threadIdx.x].w = 0.0;
 		}
 		__syncthreads();
 

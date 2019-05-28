@@ -1701,8 +1701,11 @@ __host__ int Data::remove(){
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		resize(N_h[st], NB[st]);
 
-		if(N_h[st] < Nmin[st]){
+		if(N_h[st] < Nmin[st].x){
 			NminFlag = 1;
+		}
+		if(Nsmall_h[st] < Nmin[st].y){
+			NminFlag = 2;
 		}
 
 	}
@@ -1829,7 +1832,10 @@ __host__ void Data::stopSimulations(){
 	for(int st = 0; st < Nst; ++st){
 
 		//In the following, set N_h to zero for all simulations which should be stopped
-		if(N_h[st] < Nmin[st]){
+		if(N_h[st] < Nmin[st].x){
+			N_h[st] = 0;
+		}
+		if(Nsmall_h[st] < Nmin[st].y){
 			N_h[st] = 0;
 		}
 
@@ -1866,7 +1872,7 @@ __host__ void Data::stopSimulations(){
 
 	for(int st = 0; st < Nst; ++st){
 
-//printf("stop simulations  %d %d %d Nst %d Ntot %d\n", st, N_h[st], Nmin[st], Nst, NT);
+//printf("stop simulations  %d %d %d %d Nst %d Ntot %d\n", st, N_h[st], Nmin[st].x, Nmin[st].y, Nst, NT);
 		int s = 0;
 		if(timeStep >= delta_h[st]){
 			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);
@@ -1876,7 +1882,7 @@ __host__ void Data::stopSimulations(){
 			fclose(GSF[st].logfile);
 			s = 1;
 		}
-		else if(N_h[st] < Nmin[st]){
+		else if(N_h[st] < Nmin[st].x){
 			if(P.StopAtEncounter > 0 && n1_h[st] < 0){
 				if(Nst > 1){
 					printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
@@ -1897,19 +1903,37 @@ __host__ void Data::stopSimulations(){
 			}
 			else{
 				if(Nst > 1){
-					printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
-					fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
-					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-					fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-					fclose(GSF[st].logfile);
+					if(Nsmall_h[st] < Nmin[st].y){
+						printf("In Simulation %s: Number of test particles smaller than NminTP, simulation stopped\n", GSF[st].path);
+						fprintf(masterfile,"In Simulation %s: Number of test particles smaller than NminTP, simulation stopped\n", GSF[st].path);
+						GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+						fprintf(GSF[st].logfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						fclose(GSF[st].logfile);
+					}
+					else{
+						printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
+						fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
+						GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+						fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						fclose(GSF[st].logfile);
+					}
 					s = 1;
 				}
 				else{
-					printf("Number of bodies smaller than Nmin, simulation stopped\n");
-					fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-					GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-					fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
-					fclose(GSF[0].logfile);
+					if(Nsmall_h[st] < Nmin[st].y){
+						printf("Number of test particles smaller than NminTP, simulation stopped\n");
+						fprintf(masterfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+						fprintf(GSF[0].logfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						fclose(GSF[0].logfile);
+					}
+					else{
+						printf("Number of bodies smaller than Nmin, simulation stopped\n");
+						fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+						fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						fclose(GSF[0].logfile);
+					}
 					s = 1;
 				}
 			}
@@ -1919,7 +1943,8 @@ __host__ void Data::stopSimulations(){
 				GSF[sst] = GSF[sst + 1];
 
 				NB[sst] = NB[sst + 1];
-				Nmin[sst] = Nmin[sst + 1];
+				Nmin[sst].x = Nmin[sst + 1].x;
+				Nmin[sst].y = Nmin[sst + 1].y;
 				rho[sst] = rho[sst + 1];
 				n1_h[sst] = n1_h[sst + 1];
 				n2_h[sst] = n2_h[sst + 1];

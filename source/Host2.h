@@ -28,7 +28,7 @@ public:
 	int interrupt;				//signal handling
 
 	int *NB;				//number of bodies increased to integer block size
-	int *Nmin;				//minimal number of bodies
+	int2 *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta_h, *delta_d;		//number of timesteps
 	int MaxIndex;				//highest index of all bodies and test particles

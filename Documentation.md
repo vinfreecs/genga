@@ -94,6 +94,8 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * Particle minimum Mass:  Minimal Mass for massive particles in test particle mode, lighter or equal sized particles are treated as test particles.
  * The Restart time step. If it's set to a value bigger than 0, then the simulation will continue at the specified time step.
  * The minimal number of bodies in the simulation, not counting test particles. If the number of bodies gets smaller than Nmin, then the simulation will stop.
+ * The minimal number of test particles in the simulation. If the number of test particles gets smaller than NminTP, then the simulation will stop.
+ * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
  * The inner truncation radius in AU, bodies with a separation to the Sun smaller than this are taken out of the simulation. (RcutSun in older versions)
  * The outer truncation radius in AU, bodies with a separation to the Sun larger than this are taken out of the simulation. (Rcut in older versions)
  * The Order of the symplectic integrator. The options are 2, 4 or 6
@@ -149,6 +151,7 @@ Instead of using the parameter file, some arguments can also be passed as consol
  * \-TP i Test Particle mode i = 0, treat all bodies the same way, i = 1: small bodies don't affect big bodies.
  * \-M s name of file, containing a list of the directories for the multi simulation mode.
  * \-Nmin i Minimal number of bodies in the simulation, not including test particles.
+ * \-NminTP i Minimal number of test particles in the simulation.
  * \-SIO i Order of symplectic integrator, The options are 2, 4 or 6.
  * \-aeN s Name of the aeCount grid
  * \-t f Start time of the simulation in years 
@@ -257,6 +260,11 @@ In this format, at each coordinate output interval, a new file is created which 
 
  * t is the time in years.
  * i is the particle index. If two particles collide, then the new index is the one from the more massive particle. If both particles have the same mass, then the smaller index is taken.
+ * m is the mass of the body in Solar masses.
+ * r is the physical radius of the body in AU.
+ * x, y, z are the heliocentric positions in AU.
+ * vx, vy, vz are the heliocentric velocities in AU/day * 0.0172020989.
+ * Sx, Sy, Sz are the spin components in Solar masses AU^2 * day / 0.0172020989.
  * amin, amax, emin and emax are the specified boundaries for the aeCount box, see [here](#markdown-header-aelimits) for more details. At a collision, the same rules as for the index are applied to these values.
  * aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits. See [here](#markdown-header-aelimits) for more details.
  * aecountT is the integrated value of all previous aecount values.

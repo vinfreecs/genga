@@ -16,6 +16,8 @@ pairs.
 
  ** News: **
 
+ * Version 3.90: Includes minimal number of test particles option.
+ * Version 3.84: Requires at least CUDA 9, because of warp shuffle operations.
  * Version 3.83: Performs self tuning for kernel parameters.
  * Version 3.78: Moved stop-at-collision parameters to the param.dat file.
  * Version 3.77: Stop at Encounter arguments are included in the param.dat file.

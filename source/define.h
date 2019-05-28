@@ -7,7 +7,9 @@
 #include <math.h>
 
 
-#define def_Version 3.88
+#define def_Version 3.90
+
+#define OldShuffle 0 		//set this to 1 when onld cuda version is used which doesn have shfl_sync operations
 
 //Default parameter values
 #define def_TimeStep 6
@@ -31,6 +33,7 @@
 #define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
 #define def_RestartTimeStep 0
 #define def_MinimumNumberOfBodies 0
+#define def_MinimumNumberOfTestParticles 0
 #define def_Rcut 50.0
 #define def_RcutSun 0.2
 #define def_OderOfIntegrator 2			//2, 4  or 6

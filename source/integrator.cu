@@ -103,11 +103,11 @@ __host__ int Data::beforeTimeStepLoop1(){
 
 	//remove ghost particles and reorder arrays//
 	int NminFlag = remove();
-
 	//remove stopped simulations//
-	if(NminFlag == 1){
+	if(NminFlag > 0){
 		stopSimulations();
 		NminFlag = 0;
+		if(Nst == 0)  return 0;
 	}
 
 	cudaDeviceSynchronize();
@@ -1649,6 +1649,11 @@ __host__ int Data::RemoveCall(){
 		printf("Number of bodies smaller than Nmin, simulation stopped\n");
 		return 0;
 	}
+	if(NminFlag == 2){
+		fprintf(masterfile, "Number of test particles smaller than NminTP, simulation stopped\n");
+		printf("Number of test particles smaller than NminTP, simulation stopped\n");
+		return 0;
+	}
 	CollisionFlag = 0;
 	return 1;
 }
@@ -1726,7 +1731,7 @@ __host__ int Data::CollisionMCall(){
 	printCollisions(Coltime);
 	CollisionFlag = 1;
 	int NminFlag = remove();
-	if(NminFlag == 1){
+	if(NminFlag > 0){
 		stopSimulations();
 	}
 	Ncoll_m[0] = 0;
@@ -1750,7 +1755,7 @@ __host__ int Data::EjectionCall(){
 	EjectionFlag2 = 1;
 	
 	int NminFlag = remove();
-	if(NminFlag == 1){
+	if(NminFlag > 0){
 		//at least one simulation has less bodies than Nmin and must be stopped
 		
 		if(P.ci != 0){

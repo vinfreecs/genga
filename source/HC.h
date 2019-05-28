@@ -303,6 +303,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 	}
 }
 
+#if OldShuffle == 1
 //Use this for older CUDA version where shfl_xor is not available in double precision
 __device__ inline
 double __shfld_xor(double x, int k) {
@@ -311,6 +312,8 @@ double __shfld_xor(double x, int k) {
 	a.y = __shfl_xor(a.y, k);
         return *reinterpret_cast<double*>(&a);
 }
+#endif
+
 
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.

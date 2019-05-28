@@ -432,7 +432,8 @@ __host__ void Data::CoordinateOutput(int irregular){
 			int s = 0;
 		
 			if(irregular < 3) s = 1;	
-			if(N_h[st] < Nmin[st]) s = 1;
+			if(N_h[st] < Nmin[st].x) s = 1;
+			if(Nsmall_h[st] < Nmin[st].y) s = 1;
 			if(n1_h[st] < 0) s = 1;
 			if(timeStep >= delta_h[st]) s = 1;
 			//print only simulations which must be stopped by StopAtEncounter
@@ -554,7 +555,8 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			int s = 0;
 
 			if(irregular < 3) s = 1;	
-			if(N_h[st] < Nmin[st]) s = 1;
+			if(N_h[st] < Nmin[st].x) s = 1;
+			if(Nsmall_h[st] < Nmin[st].y) s = 1;
 			if(n1_h[st] < 0) s = 1;
 			if(timeStep >= delta_h[st]) s = 1;
 			//print only simulations which must be stopped by StopAtEncounter

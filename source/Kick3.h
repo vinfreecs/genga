@@ -951,8 +951,12 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			int lane = threadIdx.x % warpSize;
 			int warp = threadIdx.x / warpSize;
 			if(warp == 0){
-				a_s[threadIdx.x] = {0.0, 0.0, 0.0};
-				b_s[threadIdx.x] = {0.0, 0.0, 0.0};
+				a_s[threadIdx.x].x = 0.0;
+				a_s[threadIdx.x].y = 0.0;
+				a_s[threadIdx.x].z = 0.0;
+				b_s[threadIdx.x].x = 0.0;
+				b_s[threadIdx.x].y = 0.0;
+				b_s[threadIdx.x].z = 0.0;
 			}
 			__syncthreads();
 

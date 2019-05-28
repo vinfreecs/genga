@@ -343,7 +343,7 @@ __host__ int assignInformat(char *ff, int &format){
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
-	Nmin = (int*)malloc(Nst*sizeof(int));
+	Nmin = (int2*)malloc(Nst*sizeof(int2));				// x: masive particles, y: test particles
 	rho = (double*)malloc(Nst*sizeof(double));	
 	
 	P.dev = 0;
@@ -472,7 +472,8 @@ __host__ void Host::Halloc(){
 		delta_h[st] = def_IntegrationSteps;
 		
 		NB[st] = N_h[st];
-		Nmin[st] = def_MinimumNumberOfBodies;
+		Nmin[st].x = def_MinimumNumberOfBodies;
+		Nmin[st].y = def_MinimumNumberOfTestParticles;
 		rho[st] = def_rho;
 		sprintf(GSF[st].X, def_Name);
 		sprintf(GSF[st].inputfilename, def_InputFile);
@@ -920,16 +921,24 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Minimum number of bodies =") == 0){
-			er = fscanf (paramfile, "%d", &Nmin[st]);
-			if(er <= 0 || Nmin < 0){
+			er = fscanf (paramfile, "%d", &Nmin[st].x);
+			if(er <= 0 || Nmin[st].x < 0){
 				printf("Error: Minimal number of bodies not valid\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Minimum number of test particles =") == 0){
+			er = fscanf (paramfile, "%d", &Nmin[st].y);
+			if(er <= 0 || Nmin[st].y < 0){
+				printf("Error: Minimal number of test particles not valid\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Inner truncation radius =") == 0){
 			er = fscanf (paramfile, "%lf", &RcutSun_h[st]);
-			if(er <= 0 || Nmin < 0){
+			if(er <= 0 || RcutSun_h[st] < 0){
 				printf("Error: Inner truncation radius not valid\n");
 				return 0;
 			}
@@ -937,7 +946,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Outer truncation radius =") == 0){
 			er = fscanf (paramfile, "%lf", &Rcut_h[st]);
-			if(er <= 0 || Nmin < 0){
+			if(er <= 0 || Rcut_h[st] < 0){
 				printf("Error: Outer truncation radius not valid\n");
 				return 0;
 			}
@@ -1648,7 +1657,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-M") == 0){
 		}
 		else if(strcmp(argv[i], "-Nmin") == 0){
-			Nmin[st] = atoi(argv[i + 1]);
+			Nmin[st].x = atoi(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-NminTP") == 0){
+			Nmin[st].y = atoi(argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-SIO") == 0){
 			P.SIO = atoi(argv[i + 1]);
@@ -1697,6 +1709,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 	if(P.UseTestParticles == 0){
 		P.MinMass = 0.0;
+		Nmin[st].y = 0;
 	}
 	
 	
@@ -2280,7 +2293,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "cef: %g\n", def_cef);
 			fprintf(infofile, "Number of bodies: %d\n", N_h[st]);
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
-			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st]);
+			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st].x);
+			fprintf(infofile, "Minimal number of test particles: %d\n", Nmin[st].y);
 			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
 			fprintf(infofile, "Particle Minimum Mass : %g\n", P.MinMass);			// use only argument in simulation 0
 			fprintf(infofile, "Symplectic recursion Max levels : %d\n", def_SLevelsMax);	// use only argument in simulation 0
