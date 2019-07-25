@@ -2057,7 +2057,7 @@ __host__ int Data::step_16(){
 			}
 			else{
 				if(Nencpairs2_h[0] > 0){
-					if(N_h[0] < 32){
+					if(NB[0] < 32){
 						group_kernel < 16, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0]);
 					}
 					else{
@@ -2232,16 +2232,16 @@ __host__ int Data::step_largeN(){
 			}
 			else{
 				if(Nencpairs2_h[0] > 0){
-					if(N_h[0] < 128){
+					if(NB[0] < 128){
 						group_kernel < 64, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0]);
 					}
-					else if(N_h[0] < 256){
+					else if(NB[0] < 256){
 						group_kernel < 128, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0]);
 					}
-					else if(N_h[0] < 512){
+					else if(NB[0] < 512){
 						group_kernel < 256, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0]);
 					}
-					else if(N_h[0] < 1024){
+					else if(NB[0] < 1024){
 						group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0]);
 					}
 					else{
