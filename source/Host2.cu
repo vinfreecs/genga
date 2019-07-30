@@ -129,7 +129,11 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 __host__ int Host::DeviceInfo(){
 	
 	cudaError_t error;
-	cudaGetDeviceCount(&devCount);
+	error = cudaGetDeviceCount(&devCount);
+	if(error > 0){
+		printf("device error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 	if(devCount == 0){
 		fprintf(masterfile, "Error: No valid cuda device!\n");
 		printf("Error: No valid cuda device!\n");
@@ -419,6 +423,7 @@ __host__ void Host::Halloc(){
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	P.setElements = 0;
+	P.setElementsV = 0;
 	sprintf(P.setElementsfilename, "%s", "-");
 	P.setElementsN = 0;
 	P.UseTransits = 0;
@@ -1982,7 +1987,7 @@ __host__ int Host::icSize(int st){
 						else ++Nsmall_h[st];
 					}
 				}
-				else if(index / 100 == st){
+				else if(index / def_MaxIndex == st){
 					if(Et == time){
 						if(m > P.MinMass) ++NN;
 						else ++Nsmall_h[st];
@@ -2555,11 +2560,10 @@ __host__ int Host::readSetElements(){
 		return 0;
 	}
 	
-	int Elements[15];
-	for(int i = 0; i < 15; ++i){
+	int Elements[25];
+	for(int i = 0; i < 25; ++i){
 		Elements[i] = 0;
 	}
-	
 	
 	//read the number of planets
 	P.setElementsN = 1;
@@ -2567,83 +2571,133 @@ __host__ int Host::readSetElements(){
 	if(er <= 0) return 0;
 	
 	int nelements = 0;
-	char sp[16];
-	fgets(sp, 2, Efile);
+	char sp[64];
 	//determine the specified elements
-	for(int i = 0; i < 15; ++i){
-		int c = fgetc(Efile);
+	for(int i = 0; i < 25; ++i){
+		//m r a e i W w M are set after the drift
+		// x y z vy vy vz before the drift
+		fscanf (Efile, "%s", sp);
 		
-		if(c == 't'){
+		if(strcmp(sp, "t") == 0){	
 			Elements[i] = 1;
 			printf("t ");
 			++nelements;
 		}
-		else if(c == 'j'){		//index
+		else if(strcmp(sp, "j") == 0){
+			//index
 			Elements[i] = 2;
 			printf("j ");
 			++nelements;
 		}
-		else if(c == 'a'){
+		else if(strcmp(sp, "a") == 0){	
 			Elements[i] = 3;
 			printf("a ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'e'){
+		else if(strcmp(sp, "e") == 0){	
 			Elements[i] = 4;
 			printf("e ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'i'){
+		else if(strcmp(sp, "i") == 0){	
 			Elements[i] = 5;
 			printf("i ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'O'){
+		else if(strcmp(sp, "O") == 0){	
 			Elements[i] = 6;
 			printf("O ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'w'){
+		else if(strcmp(sp, "w") == 0){	
 			Elements[i] = 7;
 			printf("w ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'm'){
+		else if(strcmp(sp, "m") == 0){	
 			Elements[i] = 8;
 			printf("m ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'r'){
+		else if(strcmp(sp, "r") == 0){	
 			Elements[i] = 9;
 			printf("r ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'T'){
+		else if(strcmp(sp, "T") == 0){	
 			Elements[i] = 10;
 			printf("T ");
 			++nelements;
+			P.setElements = 2;
 		}
-		else if(c == 'x'){
+		else if(strcmp(sp, "x") == 0){	
 			Elements[i] = 11;
 			printf("x ");
 			++nelements;
 		}
-		else if(c == 'y'){
+		else if(strcmp(sp, "y") == 0){	
 			Elements[i] = 12;
 			printf("y ");
 			++nelements;
 		}
-		else if(c == 'z'){
+		else if(strcmp(sp, "z") == 0){	
 			Elements[i] = 13;
 			printf("z ");
 			++nelements;
+		}
+		else if(strcmp(sp, "-") == 0){	
+			Elements[i] = 14;
+			printf("- ");
+			++nelements;
+		}
+		else if(strcmp(sp, "vx") == 0){	
+			Elements[i] = 15;
+			printf("vx ");
+			++nelements;
+			P.setElementsV = 2;
+		}
+		else if(strcmp(sp, "vy") == 0){	
+			Elements[i] = 16;
+			printf("vy ");
+			++nelements;
+			P.setElementsV = 2;
+		}
+		else if(strcmp(sp, "vz") == 0){	
+			Elements[i] = 17;
+			printf("vz ");
+			++nelements;
+			P.setElementsV = 2;
+		}
+		else if(strcmp(sp, "vxb") == 0){	//barycentric velocities
+			Elements[i] = 18;
+			printf("vxb ");
+			++nelements;
+			P.setElementsV = 3;
+		}
+		else if(strcmp(sp, "vyb") == 0){	
+			Elements[i] = 19;
+			printf("vyb ");
+			++nelements;
+			P.setElementsV = 3;
+		}
+		else if(strcmp(sp, "vzb") == 0){	
+			Elements[i] = 20;
+			printf("vzb ");
+			++nelements;
+			P.setElementsV = 3;
 		}
 		else{
 			printf("\n");
 			break;
 		}
 		
-		fgets(sp, 2, Efile);
 	}
 	er = 0;
 	if(Elements[0] != 1) er = 1;
@@ -2659,45 +2713,109 @@ __host__ int Host::readSetElements(){
 	double t;
 	fscanf(Efile, "%lf", &t);
 	for(int i = 0; i < nelements; ++i){
-		char c[16];
+		char c[64];
 		er = fscanf(Efile, "%s", c);
 	}
-	int nlines;
-	int ncolumns = (nelements - 1) * P.setElementsN + 1;
+	int nlines = 0;
+	int nlinesToSkip = 0;
+	double time = -2.0e10;
+	double timeOld = -1.0e10;
+	double timeOld2 = time;
+	//start time
+	double time0 = ict_h[0] + P.tRestart * idt_h[0] / 365.25;
+	//end time
+	double time1 = ict_h[0] + P.deltaT * idt_h[0] / 365.25;
 	for(int j = 0; j < 1000000; ++j){
-		for(int i = 0; i < ncolumns; ++i){
+		for(int i = 0; i < nelements; ++i){
 			er = fscanf(Efile, "%lf", &t);
 			if(er <= 0) break;
+			//find starting time of the simulation
+			if(Elements[i] == 1){
+				if(j % P.setElementsN == 0){
+					timeOld2 = timeOld;
+					timeOld = time;
+				}
+				time = t;
+//printf("time %.10g %.10g start time %.10g| end time %.10g | %d %d\n", time, timeOld2, time0, time1, nlinesToSkip, nlines);
+
+				//cubic interpolation
+				if(j < P.setElementsN  && time > time0){
+					printf("Error, set Elements start time smaller than time in datafile\n");
+					return 0;
+				}
+			}
+
 		}
 		if(er <= 0){
-			nlines = j;
 			break;
 		}
-	}
-	fclose(Efile);
-	printf("%d lines, %d bodies %d elements %d columns\n", nlines, P.setElementsN, nelements, ncolumns);
-	
-	constantCopy3(Elements, nelements, P.setElementsN, nlines, ncolumns);
-	//allocate memory
-	setElementsData_h = (double*)malloc(ncolumns * nlines * sizeof(double));	
-	cudaMalloc((void **) &setElementsData_d, ncolumns * nlines * sizeof(double));
-	Efile = fopen(P.setElementsfilename, "r");
-	
-	//skip header
-	fscanf(Efile, "%lf", &t);
-	for(int i = 0; i < nelements; ++i){
-		char c[16];
-		er = fscanf(Efile, "%s", c);
-	}
-	for(int j = 0; j < nlines; ++j){
-		for(int i = 0; i < ncolumns; ++i){
-			er = fscanf(Efile, "%lf", &setElementsData_h[j * ncolumns + i]);
+		if((time >= ict_h[0] && timeOld2 <= time1) || nlines < 4){	//need at least 4 lines for cubic interpolation
+			++nlines;
+		}
+		if(time < ict_h[0] && j >= P.setElementsN){
+			++nlinesToSkip;
 		}
 	}
-	cudaMemcpy(setElementsData_d, setElementsData_h, ncolumns * nlines * sizeof(double), cudaMemcpyHostToDevice);
+	if(nlines < 4){
+		printf("Error, set Elements less than 4 data points, need at least 4\n");
+		return 0;
+	}
+	//cubic interpolation
+	if(time < time1){
+		printf("Error, set Elements end time larger than time in datafile\n");
+		return 0;
+	}
+
+	fclose(Efile);
+	printf("%d lines, %d linesToSkip %d bodies %d elements\n", nlines, nlinesToSkip, P.setElementsN, nelements);
+	
+	constantCopy3(Elements, nelements, P.setElementsN, nlines);
+	//allocate memory
+	setElementsData_h = (double*)malloc(nelements * nlines * sizeof(double));	
+	cudaMalloc((void **) &setElementsData_d, nelements * nlines * sizeof(double));
+
+	cudaError_t error = cudaGetLastError();
+	if(error != 0){
+		printf("read set elements error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(masterfile, "read set elements error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
+
+
+	Efile = fopen(P.setElementsfilename, "r");
+	//read file	
+	//skip header and linesToSkip
+	fscanf(Efile, "%lf", &t);
+	for(int j = 0; j < nlinesToSkip + 1; ++j){
+		for(int i = 0; i < nelements; ++i){
+			char c[64];
+			er = fscanf(Efile, "%s", c);
+                        if(Elements[i] == 1){
+//printf("skip time %d %s start time %g\n", j, c, ict_h[0]);
+                        }
+
+		}
+	}
+
+	for(int j = 0; j < nlines; ++j){
+		for(int i = 0; i < nelements; ++i){
+			er = fscanf(Efile, "%lf", &setElementsData_h[j * nelements + i]);
+                        if(Elements[i] == 1){
+//printf("read time %d %g start time %g\n", j, setElementsData_h[j * nelements + i], ict_h[0]);
+                        }
+		}
+	}
+	cudaMemcpy(setElementsData_d, setElementsData_h, nelements * nlines * sizeof(double), cudaMemcpyHostToDevice);
+	error = cudaGetLastError();
+	if(error != 0){
+		printf("read set elements error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(masterfile, "read set elements error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 	
 	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
 	cudaMemset(setElementsLine_d, 0, sizeof(int));
+
 	return 1;
 }
 

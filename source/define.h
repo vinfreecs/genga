@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.91
+#define def_Version 3.92
 
 #define OldShuffle 0 		//set this to 1 when onld cuda version is used which doesn have shfl_sync operations
 
@@ -130,6 +130,8 @@
 
 #define KM_Bl 128
 #define KM_Bl2 (KM_Bl - NmaxM)
+
+#define def_MaxIndex 100			//this is the maximum id for the multi simulation mode
 
 
 //Maximum close encounter group size  = 2^(def_GMax)
@@ -268,6 +270,7 @@ struct Parameter{
 	int mcmcNE;
 	int mcmcRestart;
 	int setElements;
+	int setElementsV;
 	char setElementsfilename[128];
 	int setElementsN;
 	char Gasfilename[128];

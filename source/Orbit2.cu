@@ -525,7 +525,7 @@ __host__ int Data::init(){
 	for(int st = 0; st < Nst; ++st){
 		EjectionFlag_m[st + 1] = 0;
 		for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
-			index_h[NBS_h[st] + i] = i+st*100;
+			index_h[NBS_h[st] + i] = i + st * def_MaxIndex;
 		}
 	}
 	for(int i = 0; i < P.Buffer * 21 * NconstT; ++i){
@@ -720,7 +720,7 @@ __host__ int Data::readic(int st){
 			spin = spin_h[i + NBS];
 			love = love_h[i + NBS];
 			//index = index_h[i + NBS];
-			index = i+st*100;
+			index = i + st * def_MaxIndex;
 			aelimits = aelimits_h[i + NBS];
 			int keplerian = 0;
 			int convertPToA = 0;
@@ -941,7 +941,7 @@ __host__ int Data::readic(int st){
 			spin_h[ii + NBSN] = spin;
 			love_h[ii + NBSN] = love;
 			if(Nst == 1) index_h[ii + NBSN] = index;
-			else index_h[ii + NBSN] = index % 100 + 100*st;
+			else index_h[ii + NBSN] = index % def_MaxIndex + def_MaxIndex * st;
 			aelimits_h[ii + NBSN] = aelimits;
 #if def_TTV > 0
 			elementsA_h[ii + NBSN] = elementsA;
@@ -1013,7 +1013,7 @@ __host__ int Data::readic(int st){
 				fscanf (infile, "%lld",&enccountT_h[i + NBS]);
 				fscanf (infile, "%lf",&ttest);
 
-				if(P.FormatS == 0) index_h[i + NBS] += 100*st;
+				if(P.FormatS == 0) index_h[i + NBS] += def_MaxIndex * st;
 				aecountT_h[i + NBS] = (unsigned long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index_h[i + NBS]);
 				++ii;
@@ -1083,7 +1083,7 @@ __host__ int Data::readic(int st){
 				fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
 				fscanf (infile, "%lf",&ttest);
 
-				if(P.FormatS == 0) index_h[ii + NBS] += 100*st;
+				if(P.FormatS == 0) index_h[ii + NBS] += def_MaxIndex * st;
 				aecountT_h[ii + NBS] = (unsigned long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index);
 				++ii;
@@ -1640,12 +1640,12 @@ __host__ void Data::Ejection(){
 					}
 					else{
 						if(x4_h[i + NBS].w > 0.0){
-							printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
-							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % 100);
+							printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
+							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % def_MaxIndex);
 						}
 						else{
-							printf("In Simulation %s: Test Particle %d ejected \n", GSF[st].path, index_h[i + NBS] % 100);
-							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS] % 100);
+							printf("In Simulation %s: Test Particle %d ejected \n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
+							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS] % def_MaxIndex);
 						}
 					}
 				}
@@ -1663,18 +1663,18 @@ __host__ void Data::Ejection(){
 					}
 					else{
 						if(x4_h[i + NBS].w > 0.0){
-							printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
-							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
+							printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
+							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % def_MaxIndex);
 						}
 						else{
-							printf("In Simulation %s: Test Particle %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % 100);
-							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS] % 100);
+							printf("In Simulation %s: Test Particle %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
+							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS] % def_MaxIndex);
 						}
 					}
 				}
 				if(c < 0){
 					if(Nst == 1) fprintf(ejectfile, "%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %d\n", time_h[0]/365.25, index_h[i + NBS], x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
-					else fprintf(ejectfile, "%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %d\n", time_h[st]/365.25, index_h[i + NBS] % 100, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
+					else fprintf(ejectfile, "%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %d\n", time_h[st]/365.25, index_h[i + NBS] % def_MaxIndex, x4_h[i + NBS].w, v4_h[i + NBS].w, x4_h[i + NBS].x, x4_h[i + NBS].y, x4_h[i + NBS].z, v4_h[i + NBS].x, v4_h[i + NBS].y, v4_h[i + NBS].z, spin_h[i + NBS].x, spin_h[i + NBS].y, spin_h[i + NBS].z, c);
 					
 					EjectionEnergyCall(NB[st], x4_d + NBS , v4_d + NBS, spin_d + NBS, Msun_h[st].x, i, U_d + st, LI_d + st, vcom_d + st, N_h[st], Nsmall_h[st]);
 				}
@@ -1789,9 +1789,9 @@ __global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
 
 	if(idy < N){
 
-		int index = index_d[idy + NBS] % 100;
-		index_d[idy + NBS] = index + st * 100;
-//printf("index %d %d %d\n", st, index + st * 100, N);
+		int index = index_d[idy + NBS] % def_MaxIndex;
+		index_d[idy + NBS] = index + st * def_MaxIndex;
+//printf("index %d %d %d\n", st, index + st * def_MaxIndex, N);
 	}
 }
 

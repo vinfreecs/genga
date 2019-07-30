@@ -317,36 +317,12 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //Authors: Simon Grimm
 //November 2016
 // ****************************************
-__global__ void kick32B_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int N, double dtksq){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-	if(id < N){
-		double3 a = acck_d[id];
-		if(x4_d[id].w >= 0.0){
-			v4_d[id].x += __dmul_rn(a.x, dtksq);
-			v4_d[id].y += __dmul_rn(a.y, dtksq);
-			v4_d[id].z += __dmul_rn(a.z, dtksq);
-//printf("KickB %d %.16e %.16e %.16e %.16e %.16e %.16e\n", id, acck_d[id].x, acck_d[id].y, acck_d[id].z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
-		}
-		ab_d[id].x = a.x;
-		ab_d[id].y = a.y;
-		ab_d[id].z = a.z;
-	}
-}
-// **************************************
-//This kernel performs the first kick of the time step, in the case of no close encounters.
-//It reuses the values from the second kick in the previous time step.
-
-//Authors: Simon Grimm
-//November 2016
-// ****************************************
 __global__ void kick32BM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	if(id < N + Nstart){
-		int st = index_d[id] / 100;
+		int st = index_d[id] / def_MaxIndex;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 
 		double3 a = acck_d[id];
@@ -366,7 +342,7 @@ __global__ void kick32BMSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *acc
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	if(id < N + Nstart){
-		int st = index_d[id] / 100;
+		int st = index_d[id] / def_MaxIndex;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 
 		double3 a = acck_d[id];
@@ -410,7 +386,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	if(id < N + Nstart){
-		int st = index_d[id] / 100;
+		int st = index_d[id] / def_MaxIndex;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 		double dt = dt_d[st];
 		double Msun = Msun_d[st].x;
@@ -472,7 +448,7 @@ __global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	if(id < N + Nstart){
-		int st = index_d[id] / 100;
+		int st = index_d[id] / def_MaxIndex;
 		double dtksqKt = dt_d[st] * Kt * def_ksq;
 		double dt = dt_d[st];
 		double Msun = Msun_d[st].x;
@@ -883,6 +859,78 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		}
 	}
 }
+template <int E>
+__global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, int *N_d, int *NBS_d){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+	int st = blockIdx.y;
+
+	int NBS = NBS_d[st];
+	int N = N_d[st]; 
+
+	if(idx < N){
+
+		__shared__ int NencpairsI_s;
+
+		double4 x4i = x4_d[idx + NBS];
+		double rcritvi = rcritv_d[idx + NBS];
+
+		double3 a = {0.0, 0.0, 0.0};
+		double3 b = {0.0, 0.0, 0.0};
+
+		double test;
+
+		if(idy == 0){
+			NencpairsI_s = 0;
+		}
+
+		__syncthreads();
+
+
+		if(idy < N){
+			double4 x4j = x4_d[idy + NBS];
+			double rcritvj = rcritv_d[idy + NBS];
+			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		}
+
+
+		for(int i = 16; i >= 1; i/=2){
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+		}
+
+		if(idy == 0){
+			if(E >= 1){
+				v4_d[idx + NBS].x += __dmul_rn(a.x, dtksq);
+				v4_d[idx + NBS].y += __dmul_rn(a.y, dtksq);
+				v4_d[idx + NBS].z += __dmul_rn(a.z, dtksq);
+			}
+			if(E <= 1){
+				acck_d[idx + NBS].x = b.x;
+				acck_d[idx + NBS].y = b.y;
+				acck_d[idx + NBS].z = b.z;
+			}
+		}
+		if(E <= 2){
+			if(idy == 0){
+				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			}
+			if(idy < NencpairsI_s){
+				int jj = Encpairs2_d[idx * NencMax + idy].y;
+				if(idx < jj){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = idx;
+					Encpairs_d[Ne].y = jj;
+				}
+			}
+		}
+	}
+}
 
 // **************************************
 //This kernel performs the second kick of the time step, in the case 32 <= NB < 128. NB is the next bigger number of N
@@ -1059,7 +1107,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	double dtksqKt = 0.0;
 
 	if(id < NT + Nstart && id >= Nstart){
-		st_s[idy] = index_d[id] / 100;
+		st_s[idy] = index_d[id] / def_MaxIndex;
 		x4_s[idy] = x4_d[id];
 		rcritv_s[idy] = rcritv_d[id];
 		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
@@ -1083,7 +1131,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		b_s[idy + Bl].z = 0.0;	
 		//right
 		if(id + Bl < NT + Nstart){
-			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			st_s[idy + Bl] = index_d[id + Bl] / def_MaxIndex;
 			x4_s[idy + Bl] = x4_d[id + Bl];
 			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
 		}
@@ -1195,7 +1243,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 	double dtksqKt = 0.0;
 
 	if(id < NT + Nstart && id >= Nstart){
-		st_s[idy] = index_d[id] / 100;
+		st_s[idy] = index_d[id] / def_MaxIndex;
 		x4_s[idy] = x4_d[id];
 		dtksqKt = dt_d[st_s[idy]] * Kt * def_ksq;
 	}
@@ -1216,7 +1264,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 		b_s[idy + Bl].z = 0.0;	
 		//right
 		if(id + Bl < NT + Nstart){
-			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			st_s[idy + Bl] = index_d[id + Bl] / def_MaxIndex;
 			x4_s[idy + Bl] = x4_d[id + Bl];
 		}
 		else{
@@ -1307,7 +1355,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	double Rsun = 0.0;
 
 	if(id < NT + Nstart && id >= Nstart){
-		st_s[idy] = index_d[id] / 100;
+		st_s[idy] = index_d[id] / def_MaxIndex;
 		x4_s[idy] = x4_d[id];
 		v4i = v4_d[id];
 		rcritv_s[idy] = rcritv_d[id];
@@ -1335,7 +1383,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		b_s[idy + Bl].z = 0.0;	
 		//right
 		if(id + Bl < NT + Nstart){
-			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			st_s[idy + Bl] = index_d[id + Bl] / def_MaxIndex;
 			x4_s[idy + Bl] = x4_d[id + Bl];
 			rcritv_s[idy + Bl] = rcritv_d[id + Bl];
 		}

@@ -19,7 +19,23 @@ We strongly recommend to use the driver version 5.0 or higher to get the full pe
 
 
 # Compilation #
-GENGA can be compiled with the given Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. A list of all GPUS can be found here: https://developer.nvidia.com/cuda-gpus .
+GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, and a list of all Nvidia GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
+
+GENGA can then be compiled with the given Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. 
+
+For example use:
+make SM=35 for Tesla K20 
+make SM=52 for GeForce GTX 980
+make SM=60 for Tesla P100
+make SM=61 for GeForce GTX 1080 ti
+
+When GENGA is compiled for a newer compute capability then the GPU is able to run, the the following error message will appear by running GENGA:
+`FGAlloc  error = 13 = invalid device symbol`.
+
+## GCC version ##
+It can happen that the used CUDA version needs an alder GCC version than the current one on the system. In that case, either a newer CUDA version, or an older gcc version should be installed. Use the following compile option to tell CUDA to use an older GCC version (in that example 7.0):
+`-ccbin=g++-7`.
+
 
 # Starting GENGA #
 GENGA can be startet with
@@ -177,7 +193,7 @@ Here it can also be chosen if the gas disc is included or not.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.
  * Asteroid_eps f: Emissivity factor
- * Asteroid_rho f: Density of body in kg/m^3
+ * Asteroid_rho f: Density of body in kg/m^3, This is only used when the mass is 0. When the mass is greater than 0, then the density is taken from the initial conditions file.
  * Asteroid_C f: Specific Heat Capacity in J/kgK
  * Asteroid_A f: Bond albedo
  * Asteroid_K f: Thermal conductivity in W/mK
@@ -528,15 +544,27 @@ The following parameters are relevant for the Poynting-Robertson drag and can be
 When the mass of a particle is zero, then the density `Asteroid_rho`, specified in the `define.h` file, is used to calculate its mass.
 
 # Set Elements function #
-This option can be used to modiy the orbital parameters of a body according to a precomputed data table. To enable this option, the file name must be set with the 
-'Set Elements file name' parameter in the 'param.dat' file. The structure of the data file must be the following:
+*(Attention: Update since version 3.92, units and data structure changed)*
+This option can be used to modiy the orbital parameters of a body according to a precomputed data table. To enable this option, the file name must be set with the 'Set Elements file name' parameter in the 'param.dat' file. 
+It orbital parameters can either be Keplerian elements (a e i Omega, omega M) or cartesian coordinates (x y z vx, vy, vz). The two sets can not be mixed. If cartesian coordinates are used, then the positions must be given in helioscentric coordinates, and the velocities in barycentric coordinates, because these are the units, which the codes uses internally.  
+The elements are interpolated with a cubic interpolation scheme from that data table.
 
 
-    numer of bodies to modify, 't', element to modify
-    time, body 1 element 1, body 2 element 1, ..., body 1 element 2, body 2 element 2, ...
+The structure of the data file must be the following:
+
+
+    numer of bodies to modify, 't', element symbol 1, elements symbol 2, ...
+    time 1, body 1 element 1, body 1 element 2, ..., 
+    time 1, body 2 element 1, body 2 element 2, ...,
     .
     .
     .
+    time 2, body 1 element 1, body 1 element 2, ..., 
+    time 2, body 2 element 1, body 2 element 2, ...,
+    .
+    .
+    .
+
  * The number of bodies 'n', indicates how many bodies will be modified. They are the first 'n' massive bodies in the initial condition file
  * time is the time of the elements in years
  * elements can be:
@@ -546,19 +574,26 @@ This option can be used to modiy the orbital parameters of a body according to a
     * O, (Omega) longitude of the ascending node in radians 
     * w, (omega) argument of periapsis in radians
     * T, epoch time in days
-    * m, mass in Earth masses
-    * r, radius in cm
-    * x, X-position in AU
-    * y, Y-position in AU
-    * z, Z-position in AU
+    * m, mass in Solar masses
+    * r, radius in AU
+    * x, X-position in AU (helioscentric)
+    * y, Y-position in AU (helioscentric)
+    * z, Z-position in AU (helioscentric)
+    * vx, X-velocity in AU/day * 0.0172020989 (heliocentric)
+    * vy, Y-velocity in AU/day * 0.0172020989 (heliocentric)
+    * vz, Z-velocity in AU/day * 0.0172020989 (heliocentric)
+    * vxb, X-velocity in AU/day * 0.0172020989 (barycentric)
+    * vyb, Y-velocity in AU/day * 0.0172020989 (barycentric)
+    * vzb, Z-velocity in AU/day * 0.0172020989 (barycentric)
+    * -, skip that column
 
 An example data file to modiy the mass and radius of a body looks like this:
 
     1 t m r
-    0.0000000000000000 0.10000000001999999 412630952.56160003
-    2.2000000476840000 0.10000546643490001 412634212.92830002
-    5.3680003681180004 0.10001333851890000 412642830.73379999
-    9.9299211920929995 0.10002467524580000 412655240.51260000
+    0.0000000000000000 3.0024584e-7  2.7582675517426333e-5
+    2.2000000476840000 3.00262253e-7 2.75828934594789e-5
+    5.3680003681180004 3.00285888e-7 2.758346952419557e-5
+    9.9299211920929995 3.00319926e-7 2.7584299066671142e-5
     .
     .
     .
@@ -567,9 +602,18 @@ An example data file to modiy the semi-major axis, eccentricity and inclination 
 the columns are, time, a0, a1, a2, a3, e0, e1, e2, e3, i0, i1, i2, i3, for the bodies 0-3:
 
     4 t a e i
-    0   5.49973 5.70011 9.9999  11.25   3.17077e-05 3.10758e-05 3.09719e-06 2.33299e-06 1.03555e-06 0.00546965 0.000956204 0.00194193
-    100 5.49963 5.70002 9.99984 11.2499 3.09278e-05 3.01496e-05 6.81447e-06 7.15947e-06 1.00262e-06 0.00527889 0.000935937 0.00190979
-    200 5.49954 5.69991 9.99975 11.2498 9.73926e-05 9.89094e-05 7.85054e-06 7.8151e-06  4.8273e-06  0.00507701 0.000913772 0.00187511
+    0    5.49973  3.17077e-05  1.03555e-06
+    0    5.70011  3.10758e-05  0.00546965
+    0    9.9999   3.09719e-06  0.000956204
+    0    11.25    2.33299e-06  0.00194193
+    100  5.49963  3.09278e-05  1.00262e-06 
+    100  5.70002  3.01496e-05  0.00527889
+    100  9.99984  6.81447e-06  0.000935937
+    100  11.2499  7.15947e-06  0.00190979
+    200  5.49954  9.73926e-05  4.8273e-06
+    200  5.69991  9.89094e-05  0.00507701
+    200  9.99975  7.85054e-06  0.000913772
+    200  11.2498  7.8151e-06   0.00187511
     .
     .
     . 

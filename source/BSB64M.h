@@ -61,7 +61,7 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	else idi = 0;
 
 	if(idy == 0){
-		sstt = index_d[idi] / 100;
+		sstt = index_d[idi] / def_MaxIndex;
 	}
 	__syncthreads();
 

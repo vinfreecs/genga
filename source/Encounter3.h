@@ -416,7 +416,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 		ii = Encpairs_d[id].x;
 		jj = Encpairs_d[id].y;
 		if(ii >= 0 && jj >= 0){
-			st = index_d[ii] / 100;
+			st = index_d[ii] / def_MaxIndex;
 			NBS = NBS_d[st];
 			dt = dt_d[st];
 			time = time_d[st];

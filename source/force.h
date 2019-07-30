@@ -20,7 +20,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 	
 		int st = 0;
 		int index = index_d[id];
-		if(Nst > 1) st = index / 100;	//st is the sub simulation index
+		if(Nst > 1) st = index / def_MaxIndex;	//st is the sub simulation index
 
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
@@ -170,9 +170,18 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 			volatile double tsun = 3.0 * def_ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
 			volatile double t = 3.0 * def_ksq * Msun2 * R5 * ir8 * love / x4.w;
+//volatile double tt = 3.0 * def_ksq * Msun2 * R5 * ir7 * love * tau;
+
+//in SI units
+//double Msun2si = Msun2 * def_Solarmass * def_Solarmass;
+//double tausi = tau * 60.0 * 60.0 * 24.0 / 0.017;
+//double G = 6.674E-11;
+//volatile double ttsi = 3.0 * G * Msun2si * R5 * ir7 * love * tausi / (def_AU * def_AU);     //R5 * AU^5 * ir7 / AU^7 = R5 * ir7 / AU^2
+//printf("%d %g %g %g %g %g %g %g %g\n", id, tausi, Msun, v4.w, 1.0/ir, love, tau, tt, ttsi);
 
 			Psun = tsun * tausun;
 			P = t * tau;
+//printf("P %d %g | %g %g %g | %g %g %g\n", id, love, P, t, tau, Psun, tsun, tausun);
 			F1 = -tsun - t;
 	
 			t2.x = ( omega3.y * x4.z) - (omega3.z * x4.y);
@@ -182,6 +191,9 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			t3.x = ( omegasun3.y * x4.z) - (omegasun3.z * x4.y);
 			t3.y = (-omegasun3.x * x4.z) + (omegasun3.z * x4.x);
 			t3.z = ( omegasun3.x * x4.y) - (omegasun3.y * x4.x);
+
+//printf("F1 %d %g %g %g %g %g %g\n", id, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z); 
+
 		}
 		if((UseForce >> 2 & 1) && x4.w > 0.0){
 			//Rotational Force see Bolmont et al 2015 equation 15
@@ -239,13 +251,14 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 				}
 	*/
 				if(UseForce >> 1 & 1){
-					//Tidal Force see Bolmont et al 2015 equation 15
+					//Tidal Force see Bolmont et al 2015 equation 6
 					double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
-					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);
+					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);  // -3 + 1 = -2
 
-					a3t.x += F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x;
-					a3t.y += F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y;
-					a3t.z += F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z;
+
+					a3t.x += (F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x);
+					a3t.y += (F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y);
+					a3t.z += (F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z);
 				}
 				v4t.x = v4.x + 0.5 * dt * a3t.x;
 				v4t.y = v4.y + 0.5 * dt * a3t.y;
@@ -274,19 +287,19 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 	}
 }
 
-__constant__ int setElementsNumbers_c[4];
-__constant__ int setElements_c[15];
+__constant__ int setElementsNumbers_c[3];
+__constant__ int setElements_c[25];
 //**************************************
-// This function copies the setElements parameters to constant memor. This functions must be in
+// This function copies the setElements parameters to constant memory. This functions must be in
 // the same file as the use of the constant memory
 //
 //June 2015
 //Authors: Simon Grimm
 //***************************************/
-__host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines, int ncolumns){
-	int setElementsNumbers[4] = {nelements, nbodies, nlines, ncolumns};	
-	cudaMemcpyToSymbol(setElements_c, Elements, 15 * sizeof(int), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 4 * sizeof(int), 0, cudaMemcpyHostToDevice);
+__host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines){
+	int setElementsNumbers[3] = {nelements, nbodies, nlines};	
+	cudaMemcpyToSymbol(setElements_c, Elements, 25 * sizeof(int), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
 // ***************************************************************
@@ -294,10 +307,11 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
 // modifies the Keplerian elements according to the setElementsData_d data and
 // converts back to heliocentric coordinates.
 //
+// EE 0 = only x v, 1 Kepler elements + m, r
 // March 2017
 // Authors: Simon Grimm
 // *****************************************************************
-__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double4 *Msun_d, double *dt_d, double *time_d, int N, int Nst){
+__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double4 *Msun_d, double *dt_d, double *time_d, int N, int Nst, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -306,15 +320,16 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 	int nelements = setElementsNumbers_c[0];
 	int nbodies = setElementsNumbers_c[1];
 	int nlines = setElementsNumbers_c[2];
-	int ncolumns = setElementsNumbers_c[3];
+
 
 	if(id < nbodies){
 
+	//printf("id %d, line %d, nelements %d, nbodies %d\n", id, line, nelements, nbodies);
 
 		//Compute the Kepler Elements
 		int st = 0;
 
-		if(Nst > 1 && id < N) st = index_d[id] / 100;	//st is the sub simulation index
+		if(Nst > 1 && id < N) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
 
 		//check if one of the Keplerian elements will be modified
@@ -360,12 +375,19 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
-			//double dt = dt_d[st];
-			double time = time_d[st] / 365.25;		//time in years
+			double dt = dt_d[st];
+			double time;
+			if(EE == 0){
+				time = (time_d[st] - dt / dayUnit) / 365.25;//time at beginning of the time step in years
+			}
+			else{
+				time = time_d[st] / 365.25;//time at end of the time step in years
+			}
 			double mu = def_ksq * (Msun + x4i.w);
 
 			double a, e, inc, Omega, w, Theta, E;
-		
+			double x, y, z;
+			double vx, vy, vz;
 			if(doConversion == 1){
 
 				double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
@@ -464,124 +486,147 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 				}
 
-	//printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+//printf("K0 %.10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
 			}
 			//modify Elements
 
-			int line1 = line + 1;
-			if(line1 >= nlines - 1) line1 = nlines - 1;
-			double time0, time1;
-			double m0, m1;
-			double r0, r1;
-			double a0, a1;
-			double e0, e1;
-			double i0, i1;
-			double Omega0, Omega1;
-			double w0, w1;
-			double T0, T1, M, T;
-			double x0, x1;
-			double y0, y1;
-			double z0, z1;
+			int line1 = line + nbodies;
+			int line2 = line1 + nbodies;
+			int line3 = line2 + nbodies;
+			double time0, time1, time2, time3;
+			double T, M;
+			double xx0, xx1, xx2, xx3;
+
 
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 1){
-					time0 = setElementsData_d[line * ncolumns + i];
-					time1 = setElementsData_d[line1 * ncolumns + i];
-	//printf("t %g %g %g %d %d\n", time0, time1, time, line, line1);
-					if(time >= time1 && line < nlines - 1){
-						++line;
-						if(line1 < nlines - 1){
-							++line1;
-						}
-						i = -1;
+					time0 = setElementsData_d[line * nelements + i];
+					time1 = setElementsData_d[line1 * nelements + i];
+					time2 = setElementsData_d[line2 * nelements + i];
+					time3 = setElementsData_d[line3 * nelements + i];
+//printf("i %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
+					if(time >= time2 && line3 < nlines - nbodies){
+						line += nbodies;
+						line1 += nbodies;
+						line2 += nbodies;
+						line3 += nbodies;
+						i -= 1;
 					}
-				}
-				if(setElements_c[i] == 3){
-					a0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					a1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("a %g %g\n", a0, a1);
-				}
-				if(setElements_c[i] == 4){
-					e0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					e1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-				}
-				if(setElements_c[i] == 5){
-					i0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					i1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-				}
-				if(setElements_c[i] == 6){
-					Omega0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					Omega1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-				}
-				if(setElements_c[i] == 7){
-					w0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					w1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-				}
-				if(setElements_c[i] == 8){
-					m0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					m1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("m %g %g\n", m0, m1);
-				}
-				if(setElements_c[i] == 9){
-					r0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					r1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("r %g %g\n", r0, r1);
-				}
-				if(setElements_c[i] == 10){
-					T0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					T1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("T %g %g\n", T0, T1);
-				}
-				if(setElements_c[i] == 11){
-					x0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					x1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("x %g %g\n", x0, x1);
-				}
-				if(setElements_c[i] == 12){
-					y0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					y1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("y %g %g\n", y0, y1);
-				}
-				if(setElements_c[i] == 13){
-					z0 = setElementsData_d[line * ncolumns + 1 + (i - 1) * nbodies + id];
-					z1 = setElementsData_d[line1 * ncolumns + 1 + (i - 1) * nbodies + id];
-	//printf("x %g %g\n", x0, x1);
 				}
 
 			}
+
 			setElementsLine_d[0] = line;
 			
-			double xx = (time - time0) / (time1 - time0);
-			if(time1 - time0 == 0 || time < time0) xx = 0.0;
+
 
 			for(int i = 0; i < nelements; ++i){
-				if(setElements_c[i] == 3){
-					a = (a0 + (a1 - a0) * xx);
+		
+				//keep that inside for loop because of boundary corrections
+				double xx = (time - time1) / (time2 - time1);
+				if(time1 - time0 == 0 || time < time0) xx = 0.0;
+
+				xx0 = setElementsData_d[(line + id) * nelements + i];
+				xx1 = setElementsData_d[(line1 + id) * nelements + i];
+				xx2 = setElementsData_d[(line2 + id) * nelements + i];
+				xx3 = setElementsData_d[(line3 + id) * nelements + i];
+
+				double f0 = (time2 - time1) / (time2 - time0);
+				double f1 = (time2 - time1) / (time3 - time1);
+
+//if(i == 0) printf("id %d xxA %g \n", id, xx);
+
+				if(xx < 0){
+					//first point
+					xx3 = xx2;
+					xx2 = xx1;
+					xx1 = xx0;
+					xx = (time - time0) / (time1 - time0);
+					f0 = (time1 - time0) / (2.0 * (time1 - time0));
+					f1 = (time1 - time0) / (time2 - time0);
 				}
-				if(setElements_c[i] == 4){
-					e = (e0 + (e1 - e0) * xx);
+				if(xx > 1){
+					//last point
+					xx0 = xx1;
+					xx1 = xx2;
+					xx2 = xx3;
+					xx = (time - time2) / (time3 - time2);
+					f0 = (time3 - time2) / (time3 - time1);
+					f1 = (time3 - time2) / (2.0 * (time3 - time2));
 				}
-				if(setElements_c[i] == 5){
-					inc = (i0 + (i1 - i0) * xx);
+
+//if(i == 0) printf("id %d xxB %g %.10g %.10g\n", id, xx, f0, f1);
+
+
+//f0 = 0.5;
+//f1 = 0.5;				
+
+				//cubic interpolation
+				double aa = -f0 * xx0 + 2.0 * xx1 - f1 * xx1 - 2.0 * xx2 + f0 * xx2 + f1 * xx3;
+				double bb = 2.0 * f0 * xx0 - 3.0 * xx1 + f1 * xx1 + 3.0 * xx2 - 2.0 * f0 * xx2 - f1 * xx3;
+				double cc = -f0 * xx0 + f0 * xx2;
+				double dd = xx1;
+
+				//cubic interpolation
+		//		double aa = -0.5 * xx0 + 1.5 * xx1 - 1.5 * xx2 + 0.5 * xx3;
+		//		double bb = xx0 - 2.5 * xx1 + 2.0 * xx2 - 0.5 * xx3;
+		//		double cc = -0.5 * xx0 + 0.5 * xx2;
+		//		double dd = xx1;
+
+				double xx22 = xx * xx;
+
+				double f = aa * xx22 * xx + bb * xx22 + cc * xx + dd;
+
+
+				//if(setElements_c[i] == 11){
+//printf("id %d %d x0 %g x1 %g x2 %g x3 %g\n", id, i, xx0, xx1, xx2, xx3);
+				//}
+
+				if(setElements_c[i] == 3 && EE == 1){
+					a = f;
 				}
-				if(setElements_c[i] == 6){
-					Omega = (Omega0 + (Omega1 - Omega0) * xx);
+				if(setElements_c[i] == 4 && EE == 1){
+					e = f;
 				}
-				if(setElements_c[i] == 7){
-					w = (w0 + (w1 - w0) * xx);
+				if(setElements_c[i] == 5 && EE == 1){
+					inc = f;
 				}
-				if(setElements_c[i] == 8){
-					x4i.w = (m0 + (m1 - m0) * xx) * 3.0024584e-6; //convert Earth masses to Solar masses
+				if(setElements_c[i] == 6 && EE == 1){
+					Omega = f;
 				}
-				if(setElements_c[i] == 9){
-					v4i.w = (r0 + (r1 - r0) * xx) * 6.68458712e-14; //convert cm in AU
+				if(setElements_c[i] == 7 && EE == 1){
+					w = f;
 				}
-				if(setElements_c[i] == 10){
-					T = (T0 + (T1 - T0) * xx) * dayUnit;	//t0 epoch time day to day'
+				if(setElements_c[i] == 8 && EE == 1){
+					x4i.w = f;
+				}
+				if(setElements_c[i] == 9 && EE == 1){
+					v4i.w = f;
+				}
+				if(setElements_c[i] == 10 && EE == 1){
+					T = f * dayUnit;	//t0 epoch time day to day'
 					M = T * sqrt(mu / (a * a * a));		//Mean anomaly
 					M = fmod(M, 2.0*M_PI);
 				}
 				//do  x y z after conversion from Kepler elements
+				if(setElements_c[i] == 11 && EE == 0){
+					x = f;
+				}
+				if(setElements_c[i] == 12 && EE == 0){
+					y = f;
+				}
+				if(setElements_c[i] == 13 && EE == 0){
+					z = f;
+				}
+				if((setElements_c[i] == 15 || setElements_c[i] == 18) && EE == 0){	//heliocentric or barycentric
+					vx = f;
+				}
+				if((setElements_c[i] == 16 || setElements_c[i] == 19) && EE == 0){
+					vy = f;
+				}
+				if((setElements_c[i] == 17 || setElements_c[i] == 20) && EE == 0){
+					vz = f;
+				}
 			}
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 10){
@@ -594,8 +639,10 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					}
 				}
 			}
+			mu = def_ksq * (Msun + x4i.w);
 
 			if(doConversion == 1){
+//printf("K1 %10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
 				//Convert to Cartesian Coordinates
 
 				double cw = cos(w);
@@ -633,19 +680,28 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 11){
-					x4i.x = (x0 + (x1 - x0) * xx);
+					x4i.x = x;
 				}
 				if(setElements_c[i] == 12){
-					x4i.y = (y0 + (y1 - y0) * xx);
+					x4i.y = y;
 				}
 				if(setElements_c[i] == 13){
-					x4i.z = (z0 + (z1 - z0) * xx);
+					x4i.z = z;
+				}
+				if(setElements_c[i] == 15 || setElements_c[i] == 18){
+					v4i.x = vx;
+				}
+				if(setElements_c[i] == 16 || setElements_c[i] == 19){
+					v4i.y = vy;
+				}
+				if(setElements_c[i] == 17 || setElements_c[i] == 20){
+					v4i.z = vz;
 				}
 			}
 
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-	//printf("%g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+//printf("%d %.20g %.20g %.20g %g %g %g %g %g\n", id, x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 		}	
 	}
 }
@@ -1013,7 +1069,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 	if(id < N + Nstart){
 
-		if(Nst > 1) st = index_d[id] / 100;	//st is the sub simulation index
+		if(Nst > 1) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
@@ -1331,7 +1387,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 	//Compute the Kepler Elements
 	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;	//st is the sub simulation index
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
 	if(id < N + Nstart && x4_d[id].w >= 0.0){
 
@@ -1451,7 +1507,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			}
 
 
-//if(id < 100) printf("K1 %d %g %g %g %g %g %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta);
+//if(id < 10) printf("K1 %d %g %g %g %g %g %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta);
 
 			//modify elements
 			//BURNS, LAMY, AND SOTER, 1979 equation 47 and 48
@@ -1462,7 +1518,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 
 			a += dadt * dt;
 			e += dedt * dt;
-//if(id < 100) printf("K2 %d %g %g %g %g %g %g %g %g %g | %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta, Qpr, eta, dadt, dedt);
+//if(id < 10) printf("K2 %d %g %g %g %g %g %g %g %g %g | %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta, Qpr, eta, dadt, dedt);
 
 			//Convert to Cartesian Coordinates
 
@@ -1495,7 +1551,6 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
 			t1 = -sE;
 			t2 = sqrt(1.0 - e * e) * cE;
-
 			v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
 			v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
 			v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
@@ -1503,7 +1558,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
 		}
-//printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+//if(id < 10) printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 	}	
 }
 // ***************************************************************
@@ -1523,7 +1578,7 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 	//Compute the Kepler Elements
 	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;	//st is the sub simulation index
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
 	if(id < N + Nstart && x4_d[id].w >= 0.0){
 

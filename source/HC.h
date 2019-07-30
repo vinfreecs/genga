@@ -409,7 +409,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 		}
 	}
 	if(id < NT + Nstart && id >= Nstart){
-		st_s[idy] = index_d[id] / 100;
+		st_s[idy] = index_d[id] / def_MaxIndex;
 		volatile double m = x4_d[id].w;
 		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
@@ -429,7 +429,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, co
 	if(idy < Nmax / 2){
 		//right
 		if(id + Bl < NT + Nstart){
-			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			st_s[idy + Bl] = index_d[id + Bl] / def_MaxIndex;
 			volatile double m = x4_d[id + Bl].w;
 			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
 			p_s[idy + Bl].y = m * v4_d[id + Bl].y;

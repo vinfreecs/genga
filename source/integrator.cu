@@ -176,7 +176,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 			er = tuneKick(2, KP2, KTX2, KTY2);
 			if(er == 0) return 0;
 		}
-		if(P.UseForce > 0){
+		if(ForceFlag > 0){
 			er = tuneForce(FrTX);
 			if(er == 0) return 0;
 		}
@@ -214,6 +214,13 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 
 	int er;
 
+
+	if(P.setElements > 0){
+		er = readSetElements();
+		if(er == 0){
+			return 0;
+		}
+	}
 
 	if(Nst > 1){
 #if def_TTV != 2
@@ -280,13 +287,6 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 	}
 
 
-
-	if(P.setElements == 1){
-		er = readSetElements();
-		if(er == 0){
-			return 0;
-		}
-	}
 	if(P.Usegas == 2){
 		er = readGasFile();
 		er = readGasFile2(time_h[0] / 365.25);
@@ -979,7 +979,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	int st = 0;
 	
-	if(id < NT + Nstart) st = index_d[id] / 100;
+	if(id < NT + Nstart) st = index_d[id] / def_MaxIndex;
 	if(id < Nst + Nstart) time_d[id - Nstart] = timeStep * idt_d[id - Nstart] + ict_d[id - Nstart] * 365.25;
 	
 	double4 x4i;
@@ -1503,18 +1503,58 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 
 
 __host__ void Data::firstKick_16(){
+	//use last time information, the beginning of the time step
+	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
 	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
-	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
+	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time, EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+	}
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV == 2){
+		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+	}
 	kick16c_kernel < 0 > <<< N_h[0], 32 >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, P.NencMax, time_h[0], N_h[0]);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_largeN(){
+	//use last time information, the beginning of the time step
+	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
 	cudaMemset(a_d, 0, NconstT * sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
-	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
+	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time, EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		//COM
+		if(N_h[0] < 512){
+			int nn = (N_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x, N_h[0], 1);
+		}
+	}
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElements == 2){
+		//COM
+		if(N_h[0] < 512){
+			int nn = (N_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x, N_h[0], -1);
+		}
+	}
 	if(UseAcc == 0){
 		kick32c_kernel < 0 > <<< N_h[0] , NB[0] >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, P.NencMax, time_h[0], N_h[0]);
 	}
@@ -1524,10 +1564,47 @@ __host__ void Data::firstKick_largeN(){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 __host__ void Data::firstKick_small(){
+	//use last time information, the beginning of the time step
+	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
-	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0] + Nsmall_h[0], 0);
+	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time, EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0] + Nsmall_h[0], 0);
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		//COM
+		if(N_h[0] + Nsmall_h[0] < 32){
+			comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
+		}
+		else if(N_h[0] + Nsmall_h[0] < 512){
+			int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], 1);
+		}
+	}	
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV == 2){
+		//COM
+		if(N_h[0] + Nsmall_h[0] < 32){
+			comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
+		}
+		else if(N_h[0] + Nsmall_h[0] < 512){
+			int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], -1);
+		}
+	}
 
 	acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 
@@ -1540,6 +1617,7 @@ __host__ void Data::firstKick_small(){
 	Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>>(Encpairs2_d, N_h[0] + Nsmall_h[0], P.NencMax);
 #endif
 }
+
 __host__ void Data::firstKick_M(long long ts){
 #if def_TTV != 2
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
@@ -1550,7 +1628,6 @@ __host__ void Data::firstKick_M(long long ts){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 #endif
 }
-
 
 cudaStream_t stream[12];
 __host__ void Data::BSCall(int si, double time, int noColl, double ll){
@@ -1977,11 +2054,20 @@ __host__ int Data::bStep(int noColl){
 __host__ int Data::step_16(){
 	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
 	//Rcritb_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, N_h[0], 0);
+
+	//use last time step information for setElements function, the beginning of the time step
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+	}
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV == 1){
+		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+	}
+
 #if SERIAL_GROUPING == 1
 	Sortb_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (Encpairs2_d, N_h[0], P.NencMax);
 #endif
-#if G3 == 0
-  #if def_TTV != 1
+#if def_TTV != 1
 	if(EjectionFlag2 == 0){
 		kick32Ab_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, N_h[0], P.NencMax, 1);
 	}
@@ -1991,7 +2077,7 @@ __host__ int Data::step_16(){
 		cudaStreamWaitEvent(copyStream, KickEvent, 0);
 		cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
 	}
-  #else
+#else
 	if(EjectionFlag2 == 0){
 		kick32ATTV_kernel <<<1, 32 >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, N_h[0], P.NencMax, time_h[0], dt_h[0], Msun_h[0].x, Msun_h[0].y, Ntransit_d, Transit_d);
 	}
@@ -2011,13 +2097,10 @@ __host__ int Data::step_16(){
 		BSTTVStep_kernel < 8, 8 > <<< Ntransit_m[0], 64 >>> (x4_d, v4b_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, NBS_d, P.UseForce, P.MinMass, P.UseTestParticles, Nst, TransitTime_d, NtransitsT_d);
 		Ntransit_m[0] = 0;
 	}
-  #endif
-#else
-	kick32B_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
 #endif
-	if(ForceFlag > 0 || P.setElements > 0){
+	if(ForceFlag > 0  || P.setElements > 1){
 		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
-		if(P.setElements > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], P.SolarConstant, N_h[0], Nst, 0);
@@ -2133,10 +2216,39 @@ __host__ int Data::step_16(){
 
 __host__ int Data::step_largeN(){
 	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0], 0);
+	//use last time step information for setElements function, the beginning of the time step
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		//COM
+		if(N_h[0] < 512){
+			int nn = (N_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], 1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x, N_h[0], 1);
+		}
+	}
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV == 2){
+		//COM
+		if(N_h[0] < 512){
+			int nn = (N_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0], -1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x, N_h[0], -1);
+		}
+	}
 #if SERIAL_GROUPING == 1
 	Sortb_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (Encpairs2_d, N_h[0], P.NencMax);
 #endif
-#if G3 == 0
 	if(EjectionFlag2 == 0){
 		kick32Ab_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, N_h[0], P.NencMax, 1);
 	}
@@ -2158,10 +2270,7 @@ __host__ int Data::step_largeN(){
 			kick32Ab_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, N_h[0], P.NencMax, 1);
 		}
 	}
-#else
-	kick32B_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, N_h[0], dt_h[0] * Kt[SIn - 1] * def_ksq);
-#endif
-	if(ForceFlag > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 1){
 		//COM
 		if(N_h[0] < 512){
 			int nn = (N_h[0] + 31) / 32;
@@ -2174,7 +2283,7 @@ __host__ int Data::step_largeN(){
 			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
 			comd3_kernel <<<(N_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x, N_h[0], 1);
 		}
-		if(P.setElements > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseForce > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], P.SolarConstant, N_h[0], Nst, 0);
@@ -2398,6 +2507,42 @@ __host__ int Data::step_largeN(){
 
 __host__ int Data::step_small(){
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, Msun_h[0].x, rcrit_d, rcritv_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], Rcut_h[0], RcutSun_h[0], time_d, time_h[0], EjectionFlag_d, P.WriteEncounters, P.WriteEncountersRadius, P.StopAtEncounter, P.StopAtEncounterRadius, N_h[0] + Nsmall_h[0], 0);
+	//use last time step information for setElements function, the beginning of the time step
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		//COM
+		if(N_h[0] + Nsmall_h[0] < 32){
+			comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
+		}
+		else if(N_h[0] + Nsmall_h[0] < 512){
+			int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], 1);
+		}
+	}	
+	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV == 2){
+		//COM
+		if(N_h[0] + Nsmall_h[0] < 32){
+			comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
+		}
+		else if(N_h[0] + Nsmall_h[0] < 512){
+			int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
+			comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], -1);
+		}
+		else{
+			int nct = 512;
+			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+			comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
+			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+			comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], -1);
+		}
+	}
 #if SERIAL_GROUPING == 1
 	Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, N_h[0] + Nsmall_h[0], P.NencMax);
 #endif
@@ -2419,7 +2564,7 @@ __host__ int Data::step_small(){
 		kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, N_h[0] + Nsmall_h[0], P.NencMax, 1);
 
 	}
-	if(ForceFlag > 0 || P.setElements > 0){
+	if(ForceFlag > 0 || P.setElements > 1){
 		//COM
 		if(N_h[0] + Nsmall_h[0] < 32){
 			comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], 1);
@@ -2435,7 +2580,7 @@ __host__ int Data::step_small(){
 			comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
 			comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], 1);
 		}
-		if(P.setElements > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst);
+		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1){
 			GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall_small(time_d, dt_d, Kt[SIn - 1]);
@@ -2878,4 +3023,6 @@ __host__ int Data::step_BS(){
 #endif
 	return 1;
 }
+
+
 

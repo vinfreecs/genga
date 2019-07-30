@@ -200,7 +200,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 	int st = 0;
 
 	for(int j = 0; j < N + Nsmall; j+=1){
-		if(Nst > 1) st = index_h[j] / 100;
+		if(Nst > 1) st = index_h[j] / def_MaxIndex;
 		if(P.FormatP == 0){
 			char outputfilename[300];
 			if(Nst == 1){
@@ -213,10 +213,10 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 			}
 			else{
 				if(irregular == 0 || irregular == 3){
-					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+					sprintf(outputfilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % def_MaxIndex);
 				}
 				else{
-					sprintf(outputfilename, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % 100);
+					sprintf(outputfilename, "%sOutIrr%s_p%.6d.dat", GSF[st].path, GSF[st].X, index_h[j] % def_MaxIndex);
 
 				}
 			}
@@ -225,7 +225,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 		}
 
 		if(Nst == 1 || P.FormatS == 1) index = index_h[j];
-		else index = index_h[j] % 100;
+		else index = index_h[j] % def_MaxIndex;
 
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
@@ -362,7 +362,7 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 			coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id] = time_d[0] + dTau * idt_d[0];
 		}
 		else{
-			int st = index_d[id] / 100;
+			int st = index_d[id] / def_MaxIndex;
 			coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id] = time_d[st] + dTau * idt_d[st];
 		}
 		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 1] = index_d[id];
@@ -821,7 +821,7 @@ __host__ int Data::printCollisions(double &Coltime){
 	for(int nc = 0; nc < Ncoll_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Coll_h[nc * 25 + 1]) / 100;
+		else st = (int)(Coll_h[nc * 25 + 1]) / def_MaxIndex;
 		collisionfile = fopen(GSF[st].collisionfilename, "a");
 
 
@@ -830,7 +830,7 @@ __host__ int Data::printCollisions(double &Coltime){
 		for(int in = 0; in < 25; ++in){
 			if(in == 1 || in == 13){
 				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * 25 + in]));
-				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * 25 + in])) % 100);
+				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * 25 + in])) % def_MaxIndex);
 			}
 			else fprintf(collisionfile, "%.20g ", Coll_h[nc * 25 + in]);
 		}
@@ -839,8 +839,8 @@ __host__ int Data::printCollisions(double &Coltime){
 			printf("Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]), (int)(Coll_h[nc * 25 + 13]));
 		}
 		else{
-			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]) % 100 , (int)(Coll_h[nc * 25 + 13]) % 100);
-			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * 25 + 1]) % 100 , (int)(Coll_h[nc * 25 + 13]) % 100);
+			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]) % def_MaxIndex , (int)(Coll_h[nc * 25 + 13]) % def_MaxIndex);
+			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * 25 + 1]) % def_MaxIndex , (int)(Coll_h[nc * 25 + 13]) % def_MaxIndex);
 		}
 	
 		if(Coll_h[nc * 25 + 2] >= P.StopMinMass && Coll_h[nc * 25 + 14] >= P.StopMinMass){
@@ -874,13 +874,13 @@ __host__ int Data::printEncounters(){
 	for(int nc = 0; nc < NWriteEnc_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(writeEnc_h[nc * 25 + 1]) / 100;
+		else st = (int)(writeEnc_h[nc * 25 + 1]) / def_MaxIndex;
 		encounterfile = fopen(GSF[st].encounterfilename, "a");
 
 		for(int in = 0; in < 25; ++in){
 			if(in == 1 || in == 13){
 				if(Nst == 1) fprintf(encounterfile, "%d ", (int)(writeEnc_h[nc * 25 + in]));
-				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * 25 + in])) % 100);
+				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * 25 + in])) % def_MaxIndex);
 			}
 			else fprintf(encounterfile, "%.20g ", writeEnc_h[nc * 25 + in]);
 		}
@@ -923,13 +923,13 @@ __host__ int Data::printFragments(int nf){
 	for(int nc = 0; nc < nf + 1; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Fragments_h[nc * 25 + 1]) / 100;
+		else st = (int)(Fragments_h[nc * 25 + 1]) / def_MaxIndex;
 		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
 
 		for(int in = 0; in < 13; ++in){
 			if(in == 1 || in == 13){
 				if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[nc * 25 + in]));
-				else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[nc * 25 + in])) % 100);
+				else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[nc * 25 + in])) % def_MaxIndex);
 			}
 			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * 25 + in]);
 		}
@@ -955,13 +955,13 @@ __host__ int Data::printRotation(){
 
 	FILE *fragmentfile;
 	if(Nst == 1) st = 0;
-	else st = (int)(Fragments_h[1]) / 100;
+	else st = (int)(Fragments_h[1]) / def_MaxIndex;
 	fragmentfile = fopen(GSF[st].fragmentfilename, "a");
 
 	for(int in = 0; in < 13; ++in){
 		if(in == 1 || in == 13){
 			if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[in]));
-			else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[in])) % 100);
+			else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[in])) % def_MaxIndex);
 		}
 		else fprintf(fragmentfile, "%.20g ", Fragments_h[in]);
 	}
@@ -977,7 +977,7 @@ __host__ int Data::printTransits(){
 	FILE *Transitfile;
 	Transitfile = fopen("Transits.dat", "a");
 	for(int i = 0; i < NconstT; ++i){
-		int si = i / 100;
+		int si = i / def_MaxIndex;
 		if(elementsC_h[si + MCMC_NT].x >= 0){
 		int Epoch = 0;
 		int setEpoch = 0;
@@ -1061,7 +1061,7 @@ __host__ void Data::printMCMC(int E){
 
 #endif
 			int si = 0;
-			if(Nst > 1) si = index_h[id] / 100;
+			if(Nst > 1) si = index_h[id] / def_MaxIndex;
 			int iT = si / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 
 			int p = 0;
@@ -1106,7 +1106,7 @@ __host__ void Data::printMCMC(int E){
 		MCMCfile = fopen("MCMC_bak.dat", "w");
 		for(int id = 0; id < NconstT; ++id){
 			int si = 0;
-			if(Nst > 1) si = index_h[id] / 100;
+			if(Nst > 1) si = index_h[id] / def_MaxIndex;
 			double f = 1.0;
 			double time = ict_h[0];
 		

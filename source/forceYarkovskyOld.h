@@ -270,7 +270,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 	//Compute the Kepler Elements
 	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;	//st is the sub simulation index
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
 	double4 x4i = x4_d[id];
 	double4 v4i = v4_d[id];

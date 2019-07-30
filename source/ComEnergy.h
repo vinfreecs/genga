@@ -2,9 +2,9 @@
 #define COMENERGY_H
 
 // *********************************************************
-//This kernel computes the kinetic energy of the center of mass
-// it converts the velocities between heliocentric and democratic coordinates
-//
+//This kernel computes the kinetic energy of the center of mass.
+//It converts the velocities between heliocentric and democratic coordinates
+//Must be followed by comd2 and comd3
 //Author: Simon Grimm
 //May 2019
 // ***********************************************************
@@ -162,7 +162,7 @@ __global__ void comd3_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, dou
 }
 
 
-
+//multiple warps, but only 1 tread block
 __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
@@ -255,6 +255,7 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 		}
 	}
 }
+//only 1 single warp
 __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double Msun, double *test_d, int N, int f){
 
 	int idy = threadIdx.x;
@@ -329,7 +330,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	int NBS;
 
 	if(id < NT + Nstart && id >= Nstart){
-		st_s[idy] = index_d[id] / 100;
+		st_s[idy] = index_d[id] / def_MaxIndex;
 		volatile double m = x4_d[id].w;
 		p_s[idy].x = m * v4_d[id].x;
 		p_s[idy].y = m * v4_d[id].y;
@@ -353,7 +354,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	if(idy < Nmax / 2){
 		//right
 		if(id + Bl < NT + Nstart){
-			st_s[idy + Bl] = index_d[id + Bl] / 100;
+			st_s[idy + Bl] = index_d[id + Bl] / def_MaxIndex;
 			volatile double m = x4_d[id + Bl].w;
 			p_s[idy + Bl].x = m * v4_d[id + Bl].x;
 			p_s[idy + Bl].y = m * v4_d[id + Bl].y;

@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.92: Set Elements files have new format and cubic interpolation.
  * Version 3.90: Includes minimal number of test particles option.
  * Version 3.84: Requires at least CUDA 9, because of warp shuffle operations.
  * Version 3.83: Performs self tuning for kernel parameters.

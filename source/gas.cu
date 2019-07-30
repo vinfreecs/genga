@@ -332,7 +332,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;
 	double dt = dt_d[st] * Ct;
 	double dTime = time_d[st] / 365.25;
 
@@ -550,7 +550,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 	double rout = 1000.0;
 	double rs = log(rout / rin) / ((double)(nr - 1)); //slope in distance profile 
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / 100;
+	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;
 	double dt = dt_d[st] * Ct;
 	double dTime = time_d[st] / 365.25;
 

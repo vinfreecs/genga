@@ -116,7 +116,7 @@ public:
 	__host__ int freeHost();
 
 	//force
-	__host__ void constantCopy3(int *, int, int, int, int);
+	__host__ void constantCopy3(int *, int, int, int);
 
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
