@@ -119,18 +119,126 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 // The Kernel is launched with 1 block 
 //
 //Authors: Simon Grimm
-//August 2016
+//September 2019
 // ****************************************
 template <int Bl>
 __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
 	int idy = threadIdx.x;
 
-	__shared__ volatile double V_s[Bl];
-	__shared__ volatile double T_s[Bl];
+
+	//separate shared memory reduction sums, because it would not been enough shared memory available to do all together
+
+	//--------------------------------------------
+	//calculate s_s and p_s first
+	//--------------------------------------------
+	double3 s0, p0;
 	__shared__ volatile double3 p_s[Bl];
 	__shared__ volatile double3 s_s[Bl];
+	{
+
+		for(int i = 0; i < Bl; i += blockDim.x){
+			p_s[idy + i].x = 0.0;
+			p_s[idy + i].y = 0.0;
+			p_s[idy + i].z = 0.0;
+			s_s[idy + i].x = 0.0;
+			s_s[idy + i].y = 0.0;
+			s_s[idy + i].z = 0.0;
+		}
+		__syncthreads();
+
+
+		for(int i = 0; i < N; i += blockDim.x){
+			if(idy + i < N){
+				double m = x4_d[idy + i].w;
+				if(m >= 0.0){
+					p_s[idy].x += m * v4_d[idy + i].x;
+					p_s[idy].y += m * v4_d[idy + i].y;
+					p_s[idy].z += m * v4_d[idy + i].z;
+					s_s[idy].x += m * x4_d[idy + i].x;
+					s_s[idy].y += m * x4_d[idy + i].y;
+					s_s[idy].z += m * x4_d[idy + i].z;
+				}
+			}
+		}
+
+		__syncthreads();
+
+		int s = blockDim.x/2;
+		for(int i = 6; i < log2f(blockDim.x); ++i){
+			if( idy < s ) {
+				p_s[idy].x += p_s[idy + s].x;
+				p_s[idy].y += p_s[idy + s].y;
+				p_s[idy].z += p_s[idy + s].z;
+				s_s[idy].x += s_s[idy + s].x;
+				s_s[idy].y += s_s[idy + s].y;
+				s_s[idy].z += s_s[idy + s].z;
+			}
+			__syncthreads();
+			s /= 2;
+		}
+
+		if(idy < 32){
+			if(blockDim.x >= 64) p_s[idy].x += p_s[idy + 32].x;
+			if(blockDim.x >= 32) p_s[idy].x += p_s[idy + 16].x;
+			if(blockDim.x >= 16) p_s[idy].x += p_s[idy + 8].x;
+			if(blockDim.x >= 8) p_s[idy].x += p_s[idy + 4].x;
+			if(blockDim.x >= 4) p_s[idy].x += p_s[idy + 2].x;
+			if(blockDim.x >= 2) p_s[idy].x += p_s[idy + 1].x;
+
+			if(blockDim.x >= 64) p_s[idy].y += p_s[idy + 32].y;
+			if(blockDim.x >= 32) p_s[idy].y += p_s[idy + 16].y;
+			if(blockDim.x >= 16) p_s[idy].y += p_s[idy + 8].y;
+			if(blockDim.x >= 8) p_s[idy].y += p_s[idy + 4].y;
+			if(blockDim.x >= 4) p_s[idy].y += p_s[idy + 2].y;
+			if(blockDim.x >= 2) p_s[idy].y += p_s[idy + 1].y;
+
+			if(blockDim.x >= 64) p_s[idy].z += p_s[idy + 32].z;
+			if(blockDim.x >= 32) p_s[idy].z += p_s[idy + 16].z;
+			if(blockDim.x >= 16) p_s[idy].z += p_s[idy + 8].z;
+			if(blockDim.x >= 8) p_s[idy].z += p_s[idy + 4].z;
+			if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
+			if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
+
+			if(blockDim.x >= 64) s_s[idy].x += s_s[idy + 32].x;
+			if(blockDim.x >= 32) s_s[idy].x += s_s[idy + 16].x;
+			if(blockDim.x >= 16) s_s[idy].x += s_s[idy + 8].x;
+			if(blockDim.x >= 8) s_s[idy].x += s_s[idy + 4].x;
+			if(blockDim.x >= 4) s_s[idy].x += s_s[idy + 2].x;
+			if(blockDim.x >= 2) s_s[idy].x += s_s[idy + 1].x;
+
+			if(blockDim.x >= 64) s_s[idy].y += s_s[idy + 32].y;
+			if(blockDim.x >= 32) s_s[idy].y += s_s[idy + 16].y;
+			if(blockDim.x >= 16) s_s[idy].y += s_s[idy + 8].y;
+			if(blockDim.x >= 8) s_s[idy].y += s_s[idy + 4].y;
+			if(blockDim.x >= 4) s_s[idy].y += s_s[idy + 2].y;
+			if(blockDim.x >= 2) s_s[idy].y += s_s[idy + 1].y;
+
+			if(blockDim.x >= 64) s_s[idy].z += s_s[idy + 32].z;
+			if(blockDim.x >= 32) s_s[idy].z += s_s[idy + 16].z;
+			if(blockDim.x >= 16) s_s[idy].z += s_s[idy + 8].z;
+			if(blockDim.x >= 8) s_s[idy].z += s_s[idy + 4].z;
+			if(blockDim.x >= 4) s_s[idy].z += s_s[idy + 2].z;
+			if(blockDim.x >= 2) s_s[idy].z += s_s[idy + 1].z;
+
+		}
+		__syncthreads();
+		s0.x = s_s[0].x;	
+		s0.y = s_s[0].y;	
+		s0.z = s_s[0].z;	
+		p0.x = p_s[0].x;	
+		p0.y = p_s[0].y;	
+		p0.z = p_s[0].z;
+
+	}
+	//--------------------------------------------
+	__syncthreads();
+	__shared__ volatile double V_s[Bl];
+	__shared__ volatile double T_s[Bl];
 	__shared__ volatile double m_s[Bl];
 	__shared__ volatile double mtot;
+
+	//reuse shared memory allocation 
+	volatile double3 *L_s = s_s;
 	double test;
 	
 	mtot = 0.0;
@@ -139,13 +247,11 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		V_s[idy + i] = 0.0;
 		T_s[idy + i] = 0.0;
 		m_s[idy + i] = 0.0;
-		p_s[idy + i].x = 0.0;
-		p_s[idy + i].y = 0.0;
-		p_s[idy + i].z = 0.0;
-		s_s[idy + i].x = 0.0;
-		s_s[idy + i].y = 0.0;
-		s_s[idy + i].z = 0.0;
+		L_s[idy + i].x = 0.0;
+		L_s[idy + i].y = 0.0;
+		L_s[idy + i].z = 0.0;
 	}
+
 	__syncthreads();
 
 	for(int i = 0; i < N; i += blockDim.x){
@@ -155,12 +261,16 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 				m_s[idy] += m;
 				V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
 				T_s[idy] += 0.5 * m * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
-				p_s[idy].x += m * v4_d[idy + i].x;
-				p_s[idy].y += m * v4_d[idy + i].y;
-				p_s[idy].z += m * v4_d[idy + i].z;
-				s_s[idy].x += m * x4_d[idy + i].x;
-				s_s[idy].y += m * x4_d[idy + i].y;
-				s_s[idy].z += m * x4_d[idy + i].z;
+				//convert to barycentric positions
+				double3 x4h;
+				x4h.x = x4_d[idy + i].x - s0.x / Msun;
+				x4h.y = x4_d[idy + i].y - s0.y / Msun;
+				x4h.z = x4_d[idy + i].z - s0.z / Msun;
+				L_s[idy].x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
+				L_s[idy].y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
+				L_s[idy].z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
+//printf("L ejection 1 %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
+
 			}
 		}
 	}
@@ -172,12 +282,9 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 			m_s[idy] += m_s[idy + s];
 			V_s[idy] += V_s[idy + s];
 			T_s[idy] += T_s[idy + s];
-			p_s[idy].x += p_s[idy + s].x;
-			p_s[idy].y += p_s[idy + s].y;
-			p_s[idy].z += p_s[idy + s].z;
-			s_s[idy].x += s_s[idy + s].x;
-			s_s[idy].y += s_s[idy + s].y;
-			s_s[idy].z += s_s[idy + s].z;
+			L_s[idy].x += L_s[idy + s].x;
+			L_s[idy].y += L_s[idy + s].y;
+			L_s[idy].z += L_s[idy + s].z;
 		}
 		__syncthreads();
 		s /= 2;
@@ -204,49 +311,27 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		if(blockDim.x >= 8) m_s[idy] += m_s[idy + 4];
 		if(blockDim.x >= 4) m_s[idy] += m_s[idy + 2];
 		if(blockDim.x >= 2) m_s[idy] += m_s[idy + 1];
-		
-		if(blockDim.x >= 64) p_s[idy].x += p_s[idy + 32].x;
-		if(blockDim.x >= 32) p_s[idy].x += p_s[idy + 16].x;
-		if(blockDim.x >= 16) p_s[idy].x += p_s[idy + 8].x;
-		if(blockDim.x >= 8) p_s[idy].x += p_s[idy + 4].x;
-		if(blockDim.x >= 4) p_s[idy].x += p_s[idy + 2].x;
-		if(blockDim.x >= 2) p_s[idy].x += p_s[idy + 1].x;
 
-		if(blockDim.x >= 64) p_s[idy].y += p_s[idy + 32].y;
-		if(blockDim.x >= 32) p_s[idy].y += p_s[idy + 16].y;
-		if(blockDim.x >= 16) p_s[idy].y += p_s[idy + 8].y;
-		if(blockDim.x >= 8) p_s[idy].y += p_s[idy + 4].y;
-		if(blockDim.x >= 4) p_s[idy].y += p_s[idy + 2].y;
-		if(blockDim.x >= 2) p_s[idy].y += p_s[idy + 1].y;
+		if(blockDim.x >= 64) L_s[idy].x += L_s[idy + 32].x;
+		if(blockDim.x >= 32) L_s[idy].x += L_s[idy + 16].x;
+		if(blockDim.x >= 16) L_s[idy].x += L_s[idy + 8].x;
+		if(blockDim.x >= 8) L_s[idy].x += L_s[idy + 4].x;
+		if(blockDim.x >= 4) L_s[idy].x += L_s[idy + 2].x;
+		if(blockDim.x >= 2) L_s[idy].x += L_s[idy + 1].x;
 
-		if(blockDim.x >= 64) p_s[idy].z += p_s[idy + 32].z;
-		if(blockDim.x >= 32) p_s[idy].z += p_s[idy + 16].z;
-		if(blockDim.x >= 16) p_s[idy].z += p_s[idy + 8].z;
-		if(blockDim.x >= 8) p_s[idy].z += p_s[idy + 4].z;
-		if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
-		if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
+		if(blockDim.x >= 64) L_s[idy].y += L_s[idy + 32].y;
+		if(blockDim.x >= 32) L_s[idy].y += L_s[idy + 16].y;
+		if(blockDim.x >= 16) L_s[idy].y += L_s[idy + 8].y;
+		if(blockDim.x >= 8) L_s[idy].y += L_s[idy + 4].y;
+		if(blockDim.x >= 4) L_s[idy].y += L_s[idy + 2].y;
+		if(blockDim.x >= 2) L_s[idy].y += L_s[idy + 1].y;
 
-		if(blockDim.x >= 64) s_s[idy].x += s_s[idy + 32].x;
-		if(blockDim.x >= 32) s_s[idy].x += s_s[idy + 16].x;
-		if(blockDim.x >= 16) s_s[idy].x += s_s[idy + 8].x;
-		if(blockDim.x >= 8) s_s[idy].x += s_s[idy + 4].x;
-		if(blockDim.x >= 4) s_s[idy].x += s_s[idy + 2].x;
-		if(blockDim.x >= 2) s_s[idy].x += s_s[idy + 1].x;
-
-		if(blockDim.x >= 64) s_s[idy].y += s_s[idy + 32].y;
-		if(blockDim.x >= 32) s_s[idy].y += s_s[idy + 16].y;
-		if(blockDim.x >= 16) s_s[idy].y += s_s[idy + 8].y;
-		if(blockDim.x >= 8) s_s[idy].y += s_s[idy + 4].y;
-		if(blockDim.x >= 4) s_s[idy].y += s_s[idy + 2].y;
-		if(blockDim.x >= 2) s_s[idy].y += s_s[idy + 1].y;
-
-		if(blockDim.x >= 64) s_s[idy].z += s_s[idy + 32].z;
-		if(blockDim.x >= 32) s_s[idy].z += s_s[idy + 16].z;
-		if(blockDim.x >= 16) s_s[idy].z += s_s[idy + 8].z;
-		if(blockDim.x >= 8) s_s[idy].z += s_s[idy + 4].z;
-		if(blockDim.x >= 4) s_s[idy].z += s_s[idy + 2].z;
-		if(blockDim.x >= 2) s_s[idy].z += s_s[idy + 1].z;
-
+		if(blockDim.x >= 64) L_s[idy].z += L_s[idy + 32].z;
+		if(blockDim.x >= 32) L_s[idy].z += L_s[idy + 16].z;
+		if(blockDim.x >= 16) L_s[idy].z += L_s[idy + 8].z;
+		if(blockDim.x >= 8) L_s[idy].z += L_s[idy + 4].z;
+		if(blockDim.x >= 4) L_s[idy].z += L_s[idy + 2].z;
+		if(blockDim.x >= 2) L_s[idy].z += L_s[idy + 1].z;
 	}
 
 	__syncthreads();
@@ -254,39 +339,40 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		V_s[0] *= def_ksq * x4_d[idx].w;
 
 		V_s[0] += PESun(x4_d[idx], def_ksq * Msun, test);
-		double Tsun0 = 0.5 / Msun * ( p_s[0].x * p_s[0].x + p_s[0].y * p_s[0].y + p_s[0].z * p_s[0].z);
+		double Tsun0 = 0.5 / Msun * ( p0.x * p0.x + p0.y * p0.y + p0.z * p0.z);
 		
 		mtot = Msun + m_s[0] - x4_d[idx].w;
 		
 		double3 Vsun;
-		Vsun.x = -p_s[0].x / Msun + x4_d[idx].w * v4_d[idx].x/mtot;
-		Vsun.y = -p_s[0].y / Msun + x4_d[idx].w * v4_d[idx].y/mtot;
-		Vsun.z = -p_s[0].z / Msun + x4_d[idx].w * v4_d[idx].z/mtot;
+		Vsun.x = -p0.x / Msun + x4_d[idx].w * v4_d[idx].x/mtot;
+		Vsun.y = -p0.y / Msun + x4_d[idx].w * v4_d[idx].y/mtot;
+		Vsun.z = -p0.z / Msun + x4_d[idx].w * v4_d[idx].z/mtot;
 		
 		double Tsun1 = 0.5 * Msun * (Vsun.x * Vsun.x + Vsun.y * Vsun.y + Vsun.z * Vsun.z);
 		
 		*U_d += -Tsun1 + Tsun0 + T_s[0] + V_s[0];
 
-		//convert to barycentric positions
-		double4 x4i;
-		x4i.x = x4_d[idx].x - s_s[0].x / Msun;
-		x4i.y = x4_d[idx].y - s_s[0].y / Msun;
-		x4i.z = x4_d[idx].z - s_s[0].z / Msun;
-		x4i.w = x4_d[idx].w;
-		double3 Li;
-		Li.x = x4i.w * (x4i.y * v4_d[idx].z - x4i.z * v4_d[idx].y) + spin_d[idx].x;
-		Li.y = x4i.w * (x4i.z * v4_d[idx].x - x4i.x * v4_d[idx].z) + spin_d[idx].y;
-		Li.z = x4i.w * (x4i.x * v4_d[idx].y - x4i.y * v4_d[idx].x) + spin_d[idx].z;
 
-		*LI_d += sqrt(Li.x * Li.x + Li.y * Li.y + Li.z * Li.z);
+		L_s[0].x += (s0.y * p0.z - s0.z * p0.y) / Msun;
+		L_s[0].y += (s0.z * p0.x - s0.x * p0.z) / Msun;
+		L_s[0].z += (s0.x * p0.y - s0.y * p0.x) / Msun;
+		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+//printf("Ltot ejection 1 %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
+		LI_d[0] += Ltot;
+
 	}
 	__syncthreads();	
+
+
+	s0.x -= x4_d[idx].w * x4_d[idx].x;
+	s0.y -= x4_d[idx].w * x4_d[idx].y;
+	s0.z -= x4_d[idx].w * x4_d[idx].z;
+
 
 	double3 vcom;
 	vcom.x = x4_d[idx].w * v4_d[idx].x / mtot;
 	vcom.y = x4_d[idx].w * v4_d[idx].y / mtot;
 	vcom.z = x4_d[idx].w * v4_d[idx].z / mtot;
-
 
 
 	if(idy == 0){
@@ -309,30 +395,117 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 
 	//mark here the particle as ghost particle	
 	x4_d[idx].w = -1.0e-12;
+
+	// ---------------------------------------------
+	//redo p_s now
+	// ---------------------------------------------
 	for(int i = 0; i < Bl; i += blockDim.x){
-		T_s[idy + i] = 0.0;
+		p_s[idy + i].x = 0.0;
+		p_s[idy + i].y = 0.0;
+		p_s[idy + i].z = 0.0;
 	}
-	
-	__syncthreads();
-	for (int i = 0; i < N; i += blockDim.x){
+		__syncthreads();
+
+
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
-			if(x4_d[idy + i].w > 0 && idy + i < N){
-				T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+			double m = x4_d[idy + i].w;
+			if(m >= 0.0){
+				p_s[idy].x += m * v4_d[idy + i].x;
+				p_s[idy].y += m * v4_d[idy + i].y;
+				p_s[idy].z += m * v4_d[idy + i].z;
 			}
 		}
 	}
-	
+
 	__syncthreads();
-	
+
 	s = blockDim.x/2;
 	for(int i = 6; i < log2f(blockDim.x); ++i){
 		if( idy < s ) {
-			T_s[idy] += T_s[idy + s];
+			p_s[idy].x += p_s[idy + s].x;
+			p_s[idy].y += p_s[idy + s].y;
+			p_s[idy].z += p_s[idy + s].z;
 		}
 		__syncthreads();
 		s /= 2;
 	}
-	
+
+	if(idy < 32){
+		if(blockDim.x >= 64) p_s[idy].x += p_s[idy + 32].x;
+		if(blockDim.x >= 32) p_s[idy].x += p_s[idy + 16].x;
+		if(blockDim.x >= 16) p_s[idy].x += p_s[idy + 8].x;
+		if(blockDim.x >= 8) p_s[idy].x += p_s[idy + 4].x;
+		if(blockDim.x >= 4) p_s[idy].x += p_s[idy + 2].x;
+		if(blockDim.x >= 2) p_s[idy].x += p_s[idy + 1].x;
+
+		if(blockDim.x >= 64) p_s[idy].y += p_s[idy + 32].y;
+		if(blockDim.x >= 32) p_s[idy].y += p_s[idy + 16].y;
+		if(blockDim.x >= 16) p_s[idy].y += p_s[idy + 8].y;
+		if(blockDim.x >= 8) p_s[idy].y += p_s[idy + 4].y;
+		if(blockDim.x >= 4) p_s[idy].y += p_s[idy + 2].y;
+		if(blockDim.x >= 2) p_s[idy].y += p_s[idy + 1].y;
+
+		if(blockDim.x >= 64) p_s[idy].z += p_s[idy + 32].z;
+		if(blockDim.x >= 32) p_s[idy].z += p_s[idy + 16].z;
+		if(blockDim.x >= 16) p_s[idy].z += p_s[idy + 8].z;
+		if(blockDim.x >= 8) p_s[idy].z += p_s[idy + 4].z;
+		if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
+		if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
+
+	}
+	__syncthreads();
+	p0.x = p_s[0].x;	
+	p0.y = p_s[0].y;	
+	p0.z = p_s[0].z;
+	// ------------------------------------------------------
+
+	// ------------------------------------------------------
+	//redo now L calculation without the ejected particle
+	// ------------------------------------------------------
+	for(int i = 0; i < Bl; i += blockDim.x){
+		T_s[idy + i] = 0.0;
+		L_s[idy + i].x = 0.0;
+		L_s[idy + i].y = 0.0;
+		L_s[idy + i].z = 0.0;
+	}
+
+	__syncthreads();
+
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m >= 0.0){
+				T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+				//convert to barycentric positions
+				double3 x4h;
+				x4h.x = x4_d[idy + i].x - s0.x / Msun;
+				x4h.y = x4_d[idy + i].y - s0.y / Msun;
+				x4h.z = x4_d[idy + i].z - s0.z / Msun;
+				L_s[idy].x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
+				L_s[idy].y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
+				L_s[idy].z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
+//printf("L ejection 2 %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
+
+			}
+		}
+	}
+
+	__syncthreads();
+
+	s = blockDim.x/2;
+	for(int i = 6; i < log2f(blockDim.x); ++i){
+		if( idy < s ) {
+			T_s[idy] += T_s[idy + s];
+			L_s[idy].x += L_s[idy + s].x;
+			L_s[idy].y += L_s[idy + s].y;
+			L_s[idy].z += L_s[idy + s].z;
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+
 	if(idy < 32){
 		if(blockDim.x >= 64) T_s[idy] += T_s[idy + 32];
 		if(blockDim.x >= 32) T_s[idy] += T_s[idy + 16];
@@ -340,11 +513,39 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 		if(blockDim.x >= 8) T_s[idy] += T_s[idy + 4];
 		if(blockDim.x >= 4) T_s[idy] += T_s[idy + 2];
 		if(blockDim.x >= 2) T_s[idy] += T_s[idy + 1];
+
+		if(blockDim.x >= 64) L_s[idy].x += L_s[idy + 32].x;
+		if(blockDim.x >= 32) L_s[idy].x += L_s[idy + 16].x;
+		if(blockDim.x >= 16) L_s[idy].x += L_s[idy + 8].x;
+		if(blockDim.x >= 8) L_s[idy].x += L_s[idy + 4].x;
+		if(blockDim.x >= 4) L_s[idy].x += L_s[idy + 2].x;
+		if(blockDim.x >= 2) L_s[idy].x += L_s[idy + 1].x;
+
+		if(blockDim.x >= 64) L_s[idy].y += L_s[idy + 32].y;
+		if(blockDim.x >= 32) L_s[idy].y += L_s[idy + 16].y;
+		if(blockDim.x >= 16) L_s[idy].y += L_s[idy + 8].y;
+		if(blockDim.x >= 8) L_s[idy].y += L_s[idy + 4].y;
+		if(blockDim.x >= 4) L_s[idy].y += L_s[idy + 2].y;
+		if(blockDim.x >= 2) L_s[idy].y += L_s[idy + 1].y;
+
+		if(blockDim.x >= 64) L_s[idy].z += L_s[idy + 32].z;
+		if(blockDim.x >= 32) L_s[idy].z += L_s[idy + 16].z;
+		if(blockDim.x >= 16) L_s[idy].z += L_s[idy + 8].z;
+		if(blockDim.x >= 8) L_s[idy].z += L_s[idy + 4].z;
+		if(blockDim.x >= 4) L_s[idy].z += L_s[idy + 2].z;
+		if(blockDim.x >= 2) L_s[idy].z += L_s[idy + 1].z;
 	}
+
 	__syncthreads();
-	
 	if(idy == 0){
+		L_s[0].x += (s0.y * p0.z - s0.z * p0.y) / Msun;
+		L_s[0].y += (s0.z * p0.x - s0.x * p0.z) / Msun;
+		L_s[0].z += (s0.x * p0.y - s0.y * p0.x) / Msun;
+		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+//printf("Ltot ejection 2 %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
+		LI_d[0] -= Ltot;
 		*U_d -= T_s[0];
+
 	}
 }
 
@@ -484,7 +685,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin
 			L_s[idy].x += x4.w * (x4h.y * v4.z - x4h.z * v4.y) + spin_d[idy + i].x;
 			L_s[idy].y += x4.w * (x4h.z * v4.x - x4h.x * v4.z) + spin_d[idy + i].y;
 			L_s[idy].z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_d[idy + i].z;
-
+//printf("L %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
 		}
 	}
 	E_s[idy] = V_s[idy] + T_s[idy];
@@ -556,10 +757,14 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin
 	if(idy == 0){
 		volatile double Tsun = 0.5 / Msun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);  
 		//Lsun
+//printf("Lsum %d %.20g %.20g %.20g\n", idy, L_s[0].x, L_s[0].y, L_s[0].z);
 		L_s[0].x += (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun;
 		L_s[0].y += (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun;
 		L_s[0].z += (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun;
+//printf("LSun %.20g %.20g %.20g\n", (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun, (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun, (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun);
+//printf("Lsum+ %d %.20g %.20g %.20g\n", idy, L_s[0].x, L_s[0].y, L_s[0].z);
 		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+//printf("Ltot %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
 		V_s[0] *= def_Kg;
 		T_s[0] *= def_Kg;
 		E_s[0] *= def_Kg;
@@ -571,7 +776,8 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin
 		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
 		Energy_d[5] = (Ltot + LI_d[st]) * def_Kg;
 
-		if(E == 0){ 
+		if(E == 0){
+
 			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
 			LI0_d[st] = (Ltot + LI_d[st]) * def_Kg;
 			Energy_d[7] = 0.0;

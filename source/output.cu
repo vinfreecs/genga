@@ -170,6 +170,7 @@ __host__ int Data::firstoutput(int irregular){
 			}
 
 			U_h[st] /= def_Kg;
+			LI_h[st] /= def_Kg;
 
 			fclose(GSF[st].Energyfile);
 
