@@ -1,5 +1,6 @@
 #include "define.h"
 
+
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
@@ -54,7 +55,11 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N)
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+		a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HCbx %d %d %.20g\n", i, id, a);
 //if(idx == 1) printf("HCby %d %d %.20g\n", i, id, a);
 //if(idx == 2) printf("HCbz %d %d %.20g\n", i, id, a);
@@ -74,7 +79,11 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N)
 //if(idx == 1) printf("HCcy %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HCcz %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+				a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HCdx %d %d %.20g\n", i, id, a);
 //if(idx == 1) printf("HCdy %d %d %.20g\n", i, id, a);
 //if(idx == 2) printf("HCdz %d %d %.20g\n", i, id, a);
@@ -130,7 +139,11 @@ __global__ void HC32d2_kernel(double3 *a_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+		a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HC2bx %d %d %.20g\n", i, idy, a);
 //if(idx == 1) printf("HC2by %d %d %.20g\n", i, idy, a);
 //if(idx == 2) printf("HC2bz %d %d %.20g\n", i, idy, a);
@@ -150,7 +163,11 @@ __global__ void HC32d2_kernel(double3 *a_d, int N){
 //if(idx == 1) printf("HC2cy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HC2cz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+				a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HC2dx %d %d %.20g\n", i, idy, a);
 //if(idx == 1) printf("HC2dy %d %d %.20g\n", i, idy, a);
 //if(idx == 2) printf("HC2dz %d %d %.20g\n", i, idy, a);
@@ -236,7 +253,11 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+		a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HCbx %d %d %.20g\n", i, idy, a);
 //if(idx == 1) printf("HCby %d %d %.20g\n", i, idy, a);
 //if(idx == 2) printf("HCbz %d %d %.20g\n", i, idy, a);
@@ -265,7 +286,11 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
+#else
+				a += __shfld_xor(a, i);
+#endif
 //if(idx == 0) printf("HCdx %d %d %.20g\n", i, idy, a);
 //if(idx == 1) printf("HCdy %d %d %.20g\n", i, idy, a);
 //if(idx == 2) printf("HCdz %d %d %.20g\n", i, idy, a);
@@ -303,17 +328,6 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 	}
 }
 
-#if OldShuffle == 1
-//Use this for older CUDA version where shfl_xor is not available in double precision
-__device__ inline
-double __shfld_xor(double x, int k) {
-	int2 a = *reinterpret_cast<int2*>(&x);
-	a.x = __shfl_xor(a.x, k);
-	a.y = __shfl_xor(a.y, k);
-        return *reinterpret_cast<double*>(&a);
-}
-#endif
-
 
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
@@ -344,12 +358,15 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
-		//a.x += __shfld_xor(a.x, i);
-		//a.y += __shfld_xor(a.y, i);
-		//a.z += __shfld_xor(a.z, i);
+#else
+		a.x += __shfld_xor(a.x, i);
+		a.y += __shfld_xor(a.y, i);
+		a.z += __shfld_xor(a.z, i);
+#endif
 //printf("HC %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
 	}		
 

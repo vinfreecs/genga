@@ -823,6 +823,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 		for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -830,6 +831,15 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
 			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
 			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+
+			b.x += __shfld_xor(b.x, i);
+			b.y += __shfld_xor(b.y, i);
+			b.z += __shfld_xor(b.z, i);
+#endif
 		}
 
 		if(idy == 0){
@@ -895,6 +905,7 @@ __global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 
 		for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -902,6 +913,15 @@ __global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
 			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
 			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+
+			b.x += __shfld_xor(b.x, i);
+			b.y += __shfld_xor(b.y, i);
+			b.z += __shfld_xor(b.z, i);
+#endif
 		}
 
 		if(idy == 0){
@@ -983,6 +1003,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 		for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -990,6 +1011,15 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
 			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
 			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+
+			b.x += __shfld_xor(b.x, i);
+			b.y += __shfld_xor(b.y, i);
+			b.z += __shfld_xor(b.z, i);
+#endif
 		}
 
 		if(blockDim.x > warpSize){
@@ -1019,6 +1049,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
 				for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1026,6 +1057,16 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 					b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
 					b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
 					b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+					a.x += __shfld_xor(a.x, i);
+					a.y += __shfld_xor(a.y, i);
+					a.z += __shfld_xor(a.z, i);
+
+					b.x += __shfld_xor(b.x, i);
+					b.y += __shfld_xor(b.y, i);
+					b.z += __shfld_xor(b.z, i);
+#endif
+
 				}
 				if(lane == 0){
 					a_s[0] = a;

@@ -1,5 +1,8 @@
+#include "define.h"
+
 #ifndef COMENERGY_H
 #define COMENERGY_H
+
 
 // *********************************************************
 //This kernel computes the kinetic energy of the center of mass.
@@ -45,10 +48,17 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, int
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+		p.w += __shfld_xor(p.w, i);
+#endif
 	}
 	__syncthreads();
 
@@ -62,10 +72,17 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, int
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+				p.w += __shfld_xor(p.w, i);
+#endif
 			}
 		}
 	}
@@ -100,10 +117,17 @@ __global__ void comd2_kernel(double4 *v4old_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+		p.w += __shfld_xor(p.w, i);
+#endif
 	}
 	__syncthreads();
 
@@ -117,10 +141,17 @@ __global__ void comd2_kernel(double4 *v4old_d, int N){
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+				p.w += __shfld_xor(p.w, i);
+#endif
 			}
 		}
 	}
@@ -182,10 +213,17 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+		p.w += __shfld_xor(p.w, i);
+#endif
 	}
 
 	__syncthreads();
@@ -211,10 +249,17 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+				p.w += __shfld_xor(p.w, i);
+#endif
 			}
 			if(lane == 0){
 				p_s[0] = p;
@@ -275,10 +320,17 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, doubl
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
 		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+#else
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+		p.w += __shfld_xor(p.w, i);
+#endif
 	}
 
 	__syncthreads();

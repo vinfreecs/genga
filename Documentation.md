@@ -21,7 +21,7 @@ We strongly recommend to use the driver version 5.0 or higher to get the full pe
 # Compilation #
 GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, and a list of all Nvidia GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
 
-GENGA can then be compiled with the given Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. 
+All files needed for compilation are located in the source directory. GENGA can then be compiled in the source directory with the given Makefile by typing 'make SM=xx' to the terminal, where xx corresponds to the compute capability. For example use 'make SM=20' for compute capability of 2.0, or 'make SM=35' for 3.5. 
 
 For example use:
 make SM=35 for Tesla K20 
@@ -29,8 +29,10 @@ make SM=52 for GeForce GTX 980
 make SM=60 for Tesla P100
 make SM=61 for GeForce GTX 1080 ti
 
+When compiling GENGA with the openGL real time visualization, go to the GengaGL directory. 
 When GENGA is compiled for a newer compute capability then the GPU is able to run, the the following error message will appear by running GENGA:
 `FGAlloc  error = 13 = invalid device symbol`.
+When GENGA is used with an old CUDA version (<9), then in the 'define.h' file the option 'OldShuffle' needs to be set to 1.
 
 ## GCC version ##
 It can happen that the used CUDA version needs an alder GCC version than the current one on the system. In that case, either a newer CUDA version, or an older gcc version should be installed. Use the following compile option to tell CUDA to use an older GCC version (in that example 7.0):

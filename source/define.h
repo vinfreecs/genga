@@ -7,9 +7,10 @@
 #include <math.h>
 
 
-#define def_Version 3.93
+#define def_Version 3.94
 
-#define OldShuffle 0 		//set this to 1 when onld cuda version is used which doesn have shfl_sync operations
+#define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
+
 
 //Default parameter values
 #define def_TimeStep 6
@@ -225,6 +226,17 @@
 
 #ifndef STRUCT_H
 #define STRUCT_H
+
+#if OldShuffle == 1
+//Use this for older CUDA version where shfl_xor is not available in double precision
+__device__ inline
+double __shfld_xor(double x, int k) {
+	int2 a = *reinterpret_cast<int2*>(&x);
+	a.x = __shfl_xor(a.x, k);
+	a.y = __shfl_xor(a.y, k);
+        return *reinterpret_cast<double*>(&a);
+}
+#endif
 
 __constant__ int  StopAtCollision_c[1];
 __constant__ double  StopMinMass_c[1];
