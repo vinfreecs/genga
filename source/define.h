@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.94
+#define def_Version 3.95
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
@@ -78,7 +78,7 @@
 #define def_NencMax 512
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
-
+#define def_Ninformat 50		//number of entries in informat array
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
@@ -180,13 +180,16 @@
 //only here for testing
 #define USE_NAF 0
 
+//------------------------------
+//only for TTV or RV sampling
 #define def_TTV 0			//1: to transit detection and MCMC sampling, 2: use only BS integrator
-#define def_NtransitMax 4000
-#define def_NtransitTimeMax 4000		//Maximum number of transit times per object
+#define def_NtransitMax 6000
+#define def_NtransitTimeMax 6000	//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
-#define MCMC_BLOCK 4			//0 update all elements per mcmc step
-					//1 update only one set of Keplerian elements but all planets per mcmc step
-					//2 update only one set of Keplerian elements and only 1 planet per mcmc step
+
+#define def_RV 0			
+#define def_NRVMax 6000			//Maximum number of RV data
+#define MCMC_BLOCK 4			
 					//3 affine invariant ensemble walkers
 					//4 DEMCMC
 
@@ -197,6 +200,7 @@
 #define MCMC_NE 5 			//2: a M; 3: a M m; 5: a M m e w; 7: a m M e w inc Omega,; 8: + r
 #define MCMC_NT 1			//number of temperature levels in parallel tempering
 #define NoEncounters 0			
+//----------------------------
 
 
 #define USE_RANDOM 1
@@ -275,9 +279,12 @@ struct Parameter{
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 	int UseTransits;
+	int UseRV;
 	char Transitsfilename[128];
+	char RVfilename[128];
 	int TransitSteps;
 	int PrintTransits;
+	int PrintRV;
 	int PrintMCMC;
 	int mcmcNE;
 	int mcmcRestart;
@@ -321,7 +328,7 @@ struct GSFiles{
 	char encounterfilename[128];
 	char fragmentfilename[128];
 	char X[128];
-	int informat[50];
+	int informat[def_Ninformat];
 	char path[128];
 };
 

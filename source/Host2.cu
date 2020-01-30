@@ -110,6 +110,10 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 		if(strcmp(argv[i], "-MT") == 0){
 			Nst = atoi(argv[i + 1]);
 			MTFlag = 1;
+			if(Nst <= 2){
+				printf("Error, needed at least 3 chains for DEMCMC runs\n");
+				return 0;
+			}
 		}
 	}
 	if(Nst <= 0){
@@ -179,7 +183,6 @@ __host__ int Host::DeviceInfo(){
 
 
 __host__ int assignInformat(char *ff, int &format){
-
 	int cartesian = 0;
 	int keplerian = 0;
 
@@ -321,6 +324,9 @@ __host__ int assignInformat(char *ff, int &format){
 	else if(strcmp(ff, "Rc") == 0){		//Rcrit
 		format = 42;
 	}
+	else if(strcmp(ff, "gw") == 0){		//gamma w
+		format = 43;
+	}
 	else if(strcmp(ff, ">>") == 0){
 		return 2;
 	}
@@ -347,6 +353,7 @@ __host__ int assignInformat(char *ff, int &format){
 // ************************************************
 __host__ void Host::Halloc(){
 	NB = (int*)malloc(Nst*sizeof(int));
+	NBT = (int*)malloc(Nst*sizeof(int));
 	Nmin = (int2*)malloc(Nst*sizeof(int2));				// x: masive particles, y: test particles
 	rho = (double*)malloc(Nst*sizeof(double));	
 	
@@ -427,24 +434,27 @@ __host__ void Host::Halloc(){
 	sprintf(P.setElementsfilename, "%s", "-");
 	P.setElementsN = 0;
 	P.UseTransits = 0;
+	P.UseRV = 0;
 	P.TransitSteps = 1;
 	sprintf(P.Transitsfilename, "%s", "-");
+	sprintf(P.RVfilename, "%s", "-");
 	P.PrintTransits = 0;
+	P.PrintRV = 0;
 	P.PrintMCMC = 0;
 	P.mcmcNE = MCMC_NE;
 	P.mcmcRestart = 0;
 	sprintf(P.Gasfilename, "%s", "-");
 	
-	char format[50];
+	char format[def_Ninformat];
 	sprintf(format, def_InputFileFormat);
 	
 	for(int st = 0; st < Nst; ++st){
-		for(int i = 0; i < 50; ++i){
+		for(int i = 0; i < def_Ninformat; ++i){
 			GSF[st].informat[i] = 0;
 		}
 
 		int pos = 0;		
-		for(int f = -1; f < 50; ++f){
+		for(int f = -1; f < def_Ninformat; ++f){
 			char ff[5];
 			int n = 0;
 			int er = sscanf(format + pos, "%s%n", ff, &n);
@@ -477,6 +487,7 @@ __host__ void Host::Halloc(){
 		delta_h[st] = def_IntegrationSteps;
 		
 		NB[st] = N_h[st];
+		NBT[st] = N_h[st] + Nsmall_h[st];
 		Nmin[st].x = def_MinimumNumberOfBodies;
 		Nmin[st].y = def_MinimumNumberOfTestParticles;
 		rho[st] = def_rho;
@@ -621,6 +632,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "RV file name =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%s", P.RVfilename);
+				
+				if(er <= 0){
+					printf("Error: RV filename is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "TTV steps =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.TransitSteps);
@@ -642,6 +668,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 				if(er <= 0){
 					printf("Error: Print Transits is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				char t;
+				er = fscanf (paramfile, "%s", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Print RV =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.PrintRV);
+				
+				if(er <= 0){
+					printf("Error: Print RV is not valid!\n");
 					return 0;
 				}
 			}
@@ -829,7 +870,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 		}
 		else if(strcmp(sp, "Input file Format:") == 0){
-			for(int i = 0; i < 50; ++i){
+			for(int i = 0; i < def_Ninformat; ++i){
 				GSF[st].informat[i] = 0;
 			}
 			//Read input file Format
@@ -1702,6 +1743,14 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		
 		#endif
 	}
+	if(strcmp(P.RVfilename, "-") != 0){
+		P.UseRV = 1;
+		#if def_RV == 0
+		printf("Error: RV file not allowed for def_RV = 0!\n");
+		return 0;
+		
+		#endif
+	}
 	if(strcmp(P.setElementsfilename, "-") != 0){
 		P.setElements = 1;
 	}
@@ -1921,7 +1970,7 @@ __host__ int Host::icSize(int st){
 	
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
-	for(int f = 0; f < 50; ++f){
+	for(int f = 0; f < def_Ninformat; ++f){
 		if(GSF[st].informat[f] > 0) ++Nformat;
 	}
 	
@@ -2125,7 +2174,22 @@ __host__ int Host::size(){
 		if( N_h[st] > 65536) NB[st] = 131072;
 		if( N_h[st] > 131072) NB[st] = 262144;
 		
-		
+		NBT[st] = 16;
+		if( (N_h[st] + Nsmall_h[st]) > 16) NBT[st] = 32;
+		if( (N_h[st] + Nsmall_h[st]) > 32) NBT[st] = 64;
+		if( (N_h[st] + Nsmall_h[st]) > 64) NBT[st] = 128;
+		if( (N_h[st] + Nsmall_h[st]) > 128) NBT[st] = 256;
+		if( (N_h[st] + Nsmall_h[st]) > 256) NBT[st] = 512;
+		if( (N_h[st] + Nsmall_h[st]) > 512) NBT[st] = 1024;
+		if( (N_h[st] + Nsmall_h[st]) > 1024) NBT[st] = 2048;
+		if( (N_h[st] + Nsmall_h[st]) > 2048) NBT[st] = 4096;
+		if( (N_h[st] + Nsmall_h[st]) > 4096) NBT[st] = 8192;
+		if( (N_h[st] + Nsmall_h[st]) > 8192) NBT[st] = 16384;
+		if( (N_h[st] + Nsmall_h[st]) > 16384) NBT[st] = 32768;
+		if( (N_h[st] + Nsmall_h[st]) > 32768) NBT[st] = 65536;
+		if( (N_h[st] + Nsmall_h[st]) > 65536) NBT[st] = 131072;
+		if( (N_h[st] + Nsmall_h[st]) > 131072) NBT[st] = 262144;
+
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		fclose(GSF[st].logfile);
 		if(MTFlag == 1){
@@ -2219,8 +2283,11 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Irregular outputs: %d\n", P.IrregularOutputs);			// use only argument in simulation 0
 			fprintf(infofile, "Irregular output calendar: %s\n", P.IrregularOutputsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Use Transits: %d\n", P.UseTransits);					// use only argument in simulation 0
+			fprintf(infofile, "Use RV: %d\n", P.UseRV);						// use only argument in simulation 0
 			fprintf(infofile, "TTV file name: %s\n", P.Transitsfilename);				// use only argument in simulation 0
+			fprintf(infofile, "RV file name: %s\n", P.RVfilename);					// use only argument in simulation 0
 			fprintf(infofile, "Print Transits: %d\n", P.PrintTransits);				// use only argument in simulation 0
+			fprintf(infofile, "Print RV: %d\n", P.PrintRV);						// use only argument in simulation 0
 			fprintf(infofile, "Print MCMC: %d\n", P.PrintMCMC);					// use only argument in simulation 0
 			fprintf(infofile, "MCMC NE: %d\n", P.mcmcNE);						// use only argument in simulation 0
 			fprintf(infofile, "MCMC Restart: %d\n", P.mcmcRestart);					// use only argument in simulation 0
@@ -2242,7 +2309,7 @@ __host__ void Host::Info(){
 			#endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
-			for(int f = 0; f < 40; ++f){
+			for(int f = 0; f < def_Ninformat; ++f){
 				if(GSF[st].informat[f] == 1) fprintf(infofile, "x ");
 				else if(GSF[st].informat[f] == 2) fprintf(infofile, "y ");
 				else if(GSF[st].informat[f] == 3) fprintf(infofile, "z ");
@@ -2284,7 +2351,8 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 39) fprintf(infofile, "PL ");
 				else if(GSF[st].informat[f] == 40) fprintf(infofile, "T ");
 				else if(GSF[st].informat[f] == 41) fprintf(infofile, "TL ");
-				else if(GSF[st].informat[f] == 42) fprintf(infofile, "Rc ");
+				else if(GSF[st].informat[f] == 42) fprintf(infofile, "Rc "); //critical radius
+				else if(GSF[st].informat[f] == 43) fprintf(infofile, "gw "); //gamma w in MCMC
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -2451,7 +2519,7 @@ __host__ int Host::readTransits(){
 		er = fscanf(Transitfile, "%d", &t);
 		er = fscanf(Transitfile, "%lf", &t1);
 		er = fscanf(Transitfile, "%lf", &t2);
-//printf("file a %d %d %g %g %g\n", i, er, t, t1, t2); 
+//printf("file a %d %d %d %g %g\n", i, er, t, t1, t2); 
 		if(er <= 0){
 			n += i;
 			break;
@@ -2504,32 +2572,51 @@ __host__ int Host::readTransits(){
 	er = fscanf(Transitfile, "%s", skip);
 	er = fscanf(Transitfile, "%s", skip);
 	er = fscanf(Transitfile, "%s", skip);
-	
+
+	int index = -1;
+	int indexOld = -1;
+	double T = -1E10;	
+	double TOld = -1E10;
+	int Epoch;
 	for(int i = 0; i < n; ++i){
-		int index;
-		double T, error;
+
+		TOld = T;
+		indexOld = index;
+		double error;
 		er = fscanf(Transitfile, "%d", &index);
 		er = fscanf(Transitfile, "%lf", &T);
 		er = fscanf(Transitfile, "%lf", &error);
+
+		if(index > indexOld){
+			Epoch = 0;
+		}
 		
 		if(er <= 0){
 			n = i;
 			break;
 		}
-		
 		double T0 = TransitTimeObs_h[index * def_NtransitTimeMax].x;
-
 		double P = TransitTimeObs_h[index * def_NtransitTimeMax].y;
-		int Epoch = (int)((T - T0 + 0.5 * P) / P);
 
+		int dEpoch = 0;
+		if(Epoch > 0){
+			dEpoch = (T - TOld + 0.5 * P) / P;
+			Epoch += dEpoch;
+		}
+		if(Epoch == 0){
+			Epoch = (T - T0 + 0.5 * P) / P;
+
+		}
+	
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x = T; //time
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].y = error; //error
 		NtransitsTObs_h[index] = max(NtransitsTObs_h[index], Epoch);
+//printf("A %d %d %g %g %d %d\n", index, i, T, TOld, dEpoch, Epoch); 
+//printf("read NTobs %d %d | %d %d %.20g\n", index, NtransitsTObs_h[index], Epoch,  index * def_NtransitTimeMax + Epoch + 1, TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x);
 		
 	}
 	fclose(Transitfile);
-
-	//copy first sub-sumulation to all the others
+	//copy first sub-simulation to all the others
 	for(int st = 1; st < Nst; ++st){
 		for(int i = 0; i < N_h[0]; ++i){
 			//assume that all sub simulations are of equal size
@@ -2539,12 +2626,93 @@ __host__ int Host::readTransits(){
 			}
 		}
 	}
-
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
 	
 	return 1;
 }
+
+// **************************************
+// This function reads the RV data 
+// Authors: Simon Grimm
+// November 2019
+// ******************************************
+__host__ int Host::readRV(){
+	
+	FILE *RVfile;
+	RVfile = fopen(P.RVfilename, "r");
+	if(RVfile == NULL){
+		printf("Error: RV file not found: %s\n", P.RVfilename);		
+		fprintf(masterfile, "Error: RV file not found: %s\n", P.RVfilename);		
+		return 0;
+	}
+	//determine the lengh of the file
+	double time;
+	double t1, t2;
+	int er;
+	int n = 0;
+
+	//read RV data
+	for(int i = 0; i < 1000000; ++i){
+		er = fscanf(RVfile, "%lf", &time);
+		er = fscanf(RVfile, "%lf", &t1);
+		er = fscanf(RVfile, "%lf", &t2);
+//printf("file b %d %d %d %g %g\n", i, er, t, t1, t2); 
+		if(er <= 0){
+			n += i;
+			break;
+		}
+	}
+	fclose(RVfile);
+	RVfile = fopen(P.RVfilename, "r");
+	
+	for(int i = 0; i < Nst; ++i){
+		NRVTObs_h[i] = 0;
+		
+	}
+	for(int i = 0; i < def_NRVMax * Nst; ++i){
+		RVObs_h[i].x = 0.0;
+		RVObs_h[i].y = 0.0;
+		RVObs_h[i].z = 1.0;
+	}
+
+	//read RV data
+	for(int i = 0; i < n; ++i){
+		double T, error;
+		er = fscanf(RVfile, "%lf", &time);
+		er = fscanf(RVfile, "%lf", &T);
+		er = fscanf(RVfile, "%lf", &error);
+		
+		if(er <= 0){
+			n = i;
+			break;
+		}
+
+		RVObs_h[i].x = time; //RV
+		RVObs_h[i].y = T; //RV
+		RVObs_h[i].z = error; //error
+printf("read RV %d %.20g %g %g\n", i, time, T, error);
+		
+	}
+	NRVTObs_h[0] = n;
+	fclose(RVfile);
+
+	//copy first sub-simulation to all the others
+	for(int st = 1; st < Nst; ++st){
+		//assume that all sub simulations are of equal size
+		NRVTObs_h[st] = NRVTObs_h[0];
+		for(int i = 0; i < n; ++i){
+			RVObs_h[st * def_NRVMax + i] = RVObs_h[i];
+		}
+	}
+
+	cudaMemcpy(RVObs_d, RVObs_h, def_NRVMax * Nst * sizeof(double3), cudaMemcpyHostToDevice);
+	cudaMemcpy(NRVTObs_d, NRVTObs_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
+	
+	return 1;
+}
+
+
 // **************************************
 // This function reads the Set Elements file with the Kepler elements
 // Authors: Simon Grimm
@@ -2572,6 +2740,8 @@ __host__ int Host::readSetElements(){
 	
 	int nelements = 0;
 	char sp[64];
+	int useKeplerElements = 0;
+	int useXYZ = 0;
 	//determine the specified elements
 	for(int i = 0; i < 25; ++i){
 		//m r a e i W w M are set after the drift
@@ -2594,30 +2764,35 @@ __host__ int Host::readSetElements(){
 			printf("a ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "e") == 0){	
 			Elements[i] = 4;
 			printf("e ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "i") == 0){	
 			Elements[i] = 5;
 			printf("i ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "O") == 0){	
 			Elements[i] = 6;
 			printf("O ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "w") == 0){	
 			Elements[i] = 7;
 			printf("w ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "m") == 0){	
 			Elements[i] = 8;
@@ -2636,62 +2811,72 @@ __host__ int Host::readSetElements(){
 			printf("T ");
 			++nelements;
 			P.setElements = 2;
+			useKeplerElements = 1;
 		}
 		else if(strcmp(sp, "x") == 0){	
 			Elements[i] = 11;
 			printf("x ");
 			++nelements;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "y") == 0){	
 			Elements[i] = 12;
 			printf("y ");
 			++nelements;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "z") == 0){	
 			Elements[i] = 13;
 			printf("z ");
 			++nelements;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "-") == 0){	
 			Elements[i] = 14;
 			printf("- ");
 			++nelements;
 		}
-		else if(strcmp(sp, "vx") == 0){	
+		else if(strcmp(sp, "vx") == 0){		//heliocentric velocities	
 			Elements[i] = 15;
 			printf("vx ");
 			++nelements;
 			P.setElementsV = 2;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "vy") == 0){	
 			Elements[i] = 16;
 			printf("vy ");
 			++nelements;
 			P.setElementsV = 2;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "vz") == 0){	
 			Elements[i] = 17;
 			printf("vz ");
 			++nelements;
 			P.setElementsV = 2;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "vxb") == 0){	//barycentric velocities
 			Elements[i] = 18;
 			printf("vxb ");
 			++nelements;
 			P.setElementsV = 3;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "vyb") == 0){	
 			Elements[i] = 19;
 			printf("vyb ");
 			++nelements;
 			P.setElementsV = 3;
+			useXYZ = 1;
 		}
 		else if(strcmp(sp, "vzb") == 0){	
 			Elements[i] = 20;
 			printf("vzb ");
 			++nelements;
 			P.setElementsV = 3;
+			useXYZ = 1;
 		}
 		else{
 			printf("\n");
@@ -2699,6 +2884,9 @@ __host__ int Host::readSetElements(){
 		}
 		
 	}
+	if(useXYZ == 1 && useKeplerElements == 0 && P.setElements == 2){
+		P.setElements = 1;
+	} 
 	er = 0;
 	if(Elements[0] != 1) er = 1;
 	if(er == 1){
@@ -2762,7 +2950,7 @@ __host__ int Host::readSetElements(){
 	}
 	//cubic interpolation
 	if(time < time1){
-		printf("Error, set Elements end time larger than time in datafile\n");
+		printf("Error, set Elements end time larger than time in datafile: %g %g\n", time1, time);
 		return 0;
 	}
 
@@ -2790,9 +2978,9 @@ __host__ int Host::readSetElements(){
 		for(int i = 0; i < nelements; ++i){
 			char c[64];
 			er = fscanf(Efile, "%s", c);
-                        if(Elements[i] == 1){
+			if(Elements[i] == 1){
 //printf("skip time %d %s start time %g\n", j, c, ict_h[0]);
-                        }
+			}
 
 		}
 	}
@@ -2800,9 +2988,9 @@ __host__ int Host::readSetElements(){
 	for(int j = 0; j < nlines; ++j){
 		for(int i = 0; i < nelements; ++i){
 			er = fscanf(Efile, "%lf", &setElementsData_h[j * nelements + i]);
-                        if(Elements[i] == 1){
+			if(Elements[i] == 1){
 //printf("read time %d %g start time %g\n", j, setElementsData_h[j * nelements + i], ict_h[0]);
-                        }
+			}
 		}
 	}
 	cudaMemcpy(setElementsData_d, setElementsData_h, nelements * nlines * sizeof(double), cudaMemcpyHostToDevice);

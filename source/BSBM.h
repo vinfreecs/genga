@@ -526,7 +526,7 @@ __global__ void BSBMStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 						if(idy < N2){
 							x4_s[idy] = xt_s[idy];
 							v4_s[idy] = vt_s[idy];
-	//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
+//printf("update %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, t, dt1);
 						}
 					}
 					else{

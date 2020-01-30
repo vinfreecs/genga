@@ -970,6 +970,7 @@ __host__ int Data::printRotation(){
 	fclose(fragmentfile);
 	return 1;
 }
+
 //This function prints the transit times
 __host__ int Data::printTransits(){
 	cudaMemcpy(TransitTime_h, TransitTime_d, def_NtransitTimeMax * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
@@ -980,11 +981,11 @@ __host__ int Data::printTransits(){
 	for(int i = 0; i < NconstT; ++i){
 		int si = i / def_MaxIndex;
 		if(elementsC_h[si + MCMC_NT].x >= 0){
-		int Epoch = 0;
-		int setEpoch = 0;
-		double P = TransitTimeObs_h[i * def_NtransitTimeMax].y; //period
+			int Epoch = 0;
+			int setEpoch = 0;
 			for(int EpochObs = 0; EpochObs <= NtransitsT_h[i].x; ++EpochObs){
 				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch + 1]; 
+				double T1 = TransitTime_h[i * def_NtransitTimeMax + Epoch + 2];
 				double2 TObs;
 				if(EpochObs <= NtransitsTObs_h[i]){
 					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
@@ -994,19 +995,28 @@ __host__ int Data::printTransits(){
 					TObs.y = 0.0;
 				}
 
-				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (T - TObs.x) > 0.5 * P){
-//if(i == 0) printf("***** %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
+
+				if(fabs(TObs.x - T) < fabs(TObs.x - T1) && T != 0.0 && TObs.x != 0.0){
+					setEpoch = 1;
+				}
+
+
+				if(setEpoch == 0 && T != 0 && TObs.x != 0 && fabs(TObs.x - T) < fabs(TObs.x - T1)){
+//if(i == 0) printf("***** %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
 					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
 				}
-				if(setEpoch == 0 && T != 0 && TObs.x != 0 && (TObs.x - T) > 0.5 * P){
-//if(i == 0) printf("#####  %d %g %.20g %.20g %d %d\n", i, P, T, TObs.x, Epoch, EpochObs);
+
+				if(fabs(TObs.x - T) < fabs(TObs.x - T1) && T != 0.0 && TObs.x != 0.0){
+					setEpoch = 1;
+				}
+
+				if(setEpoch == 0 && T != 0 && TObs.x != 0 && fabs(TObs.x - T) >= fabs(TObs.x - T1)){
+//if(i == 0) printf("#####  %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 					++Epoch;
 					--EpochObs;
 					continue;
 				}
-
-				if((TObs.x - T) <= 0.5 * P && T != 0.0 && TObs.x != 0.0) setEpoch = 1;
 				
 				if(setEpoch == 1) fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
 
@@ -1020,6 +1030,63 @@ __host__ int Data::printTransits(){
 	}
 
 	fclose(Transitfile);
+	return 1;
+}
+
+//This function prints the RV data at the obervation times
+__host__ int Data::printRV(){
+	cudaMemcpy(RV_h, RV_d, def_NRVMax * Nst * sizeof(double2), cudaMemcpyDeviceToHost);
+
+	FILE *RVfile;
+	RVfile = fopen("RVs.dat", "a");
+	for(int si = 0; si < Nst; ++si){
+//printf("NVRT %d %d %d\n", si, NRVT_h[si].x, NRVTObs_h[si]);
+		for(int i = 0; i < NRVT_h[si].x; ++i){
+			double2 T = RV_h[si * def_NRVMax + i]; 
+			double3 TObs;
+			if(i <= NRVTObs_h[si]){
+				TObs = RVObs_h[si * def_NRVMax + i];
+			}
+			else{
+				TObs.x = 0.0;
+				TObs.y = 0.0;
+				TObs.z = 1.0;
+			}
+
+			
+			fprintf(RVfile, "%d %d %.25g %25.20g %25.20g %25.20g\n", si, i, T.x, T.y, TObs.y, TObs.z);
+
+			if(NRVTObs_h[si] >= def_NRVMax -1){
+				printf("Error: more RV data than def_NRVMax: %d %d\n", NRVTObs_h[si], def_NRVMax);
+				return 0;
+			}
+		}
+	}
+
+	fclose(RVfile);
+	return 1;
+}
+//This function prints the RV data at all time steps and no observation data
+__host__ int Data::printRV2(){
+	cudaMemcpy(RV_h, RV_d, def_NRVMax * Nst * sizeof(double2), cudaMemcpyDeviceToHost);
+
+	FILE *RVfile;
+	RVfile = fopen("RVall.dat", "a");
+	for(int si = 0; si < Nst; ++si){
+//printf("NVRT %d %d %d\n", si, NRVT_h[si].x, NRVTObs_h[si]);
+		for(int i = 0; i < NRVT_h[si].x; ++i){
+			double2 T = RV_h[si * def_NRVMax + i]; 
+			
+			fprintf(RVfile, "%d %d %.25g %25.20g\n", si, i, T.x, T.y);
+
+			if(NRVTObs_h[si] >= def_NRVMax -1){
+				printf("Error: more RV data than def_NRVMax: %d %d\n", NRVTObs_h[si], def_NRVMax);
+				return 0;
+			}
+		}
+	}
+
+	fclose(RVfile);
 	return 1;
 }
 
@@ -1063,17 +1130,12 @@ __host__ void Data::printMCMC(int E){
 #endif
 			int si = 0;
 			if(Nst > 1) si = index_h[id] / def_MaxIndex;
-			int iT = si / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 
 			int p = 0;
 			double pp = elementsP_h[si].z;
 			if(P.PrintMCMC == 1){
 
-#if MCMC_BLOCK < 3
-				if(elementsC_h[si + MCMC_NT].x == 0) p = 1;
-#else
 				if(elementsC_h[si + MCMC_NT].x >= 0) p = 1;
-#endif
 			}
 			if(P.PrintMCMC == 2){
 				pp = elementsP_h[si].x;
@@ -1091,13 +1153,9 @@ __host__ void Data::printMCMC(int E){
 
 			if(p == 1){
 				double f = 1.0;
-				if(MCMC_BLOCK >= 3) f = 1.0;
 				double time = ict_h[0];
 		
 				int ii = id;
-				if (MCMC_BLOCK < 3){
-					ii = iT * N_h[0] + id % N_h[0];
-				}
 				fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, pp * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
 			}
 		}

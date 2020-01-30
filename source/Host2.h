@@ -28,6 +28,7 @@ public:
 	int interrupt;				//signal handling
 
 	int *NB;				//number of bodies increased to integer block size
+	int *NBT;				//number of bodies + number of test particles, increased to integer block size
 	int2 *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta_h, *delta_d;		//number of timesteps
@@ -88,11 +89,21 @@ public:
 	double *IrrOutputs;
 	
 	//Transits Data
+	int doTransits;						//1: do transits in step(), 0: don't do transits in step
 	int2 *NtransitsT_h, *NtransitsT_d;			//Total number of computed transits per planet, old number
 	int *NtransitsTObs_h, *NtransitsTObs_d;			//Total number of observed transits per planet
-	double2 *TransitTimeObs_h, *TransitTimeObs_d;		//contains all observed transit times
+	double2 *TransitTimeObs_h, *TransitTimeObs_d;		//contains all observed transit times and uncertainties
 	double *TransitTime_h, *TransitTime_d;			//contains all computed transit times
 	__host__ int readTransits();
+	__host__ int readRV();
+
+	//RV Data
+	int2 *NRVT_h, *NRVT_d;					//Total number of computed RV data, old number
+	int *NRVTObs_h, *NRVTObs_d;				//Total number of observed RV data
+	double2 *RV_h, *RV_d;					//contains all times and computed RV data
+	double3 *RVObs_h, *RVObs_d;				//contains all times and observed RV data and uncertainties
+	int RVTimeStep;
+	double *RVP_d;						//RV probability
 
 	double *setElementsData_h, *setElementsData_d;
 	int *setElementsLine_d;

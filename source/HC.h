@@ -3,7 +3,7 @@
 
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
-//It uses a parallel reduction fomula to calculate the sum in log(N) steps.
+//It uses a parallel reduction formula to calculate the sum in log(N) steps.
 //
 //It works for the case of multiple blocks
 //must be followed by HC32d2 and HC32d3
@@ -12,7 +12,7 @@
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N){
+__global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -104,8 +104,19 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int N)
 		}
 	}
 }
-//single trhead block
-__global__ void HC32d2_kernel(double3 *a_d, int N){
+
+//**************************************
+//This kernel reads the result from the multiple thread block kernel HC32d1
+//and performs the last summation step in
+// --a single thread block --
+//
+//must be followed by HC32d3
+//
+//Uses shuffle instructions
+//Authors: Simon Grimm
+//April 2019
+//  *****************************************
+__global__ void HC32d2_kernel(double3 *a_d, const int N){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -188,7 +199,17 @@ __global__ void HC32d2_kernel(double3 *a_d, int N){
 		}
 	}
 }
-__global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, int N, int UseForce){
+
+//**************************************
+//This kernel distributes the result from the multiple thread block kernel
+//HC32d1 and HC32d2.
+// --a single thread block --
+//
+//
+//Authors: Simon Grimm
+//April 2019
+//  *****************************************
+__global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseForce){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -221,7 +242,7 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, int N, int UseForce){
+__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseForce){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -339,7 +360,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, int N, int UseForce){
+__global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseForce){
 
 	int idy = threadIdx.x;
 
@@ -367,7 +388,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 		a.y += __shfld_xor(a.y, i);
 		a.z += __shfld_xor(a.z, i);
 #endif
-//printf("HC %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
+//printf("HCa %d %d %.20g %.20g %.20g\n", i, idy, a.x, a.y, a.z);
 	}		
 
 	__syncthreads();
@@ -388,6 +409,140 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 	}
 }
 
+
+//**************************************
+//This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
+//It uses a parallel reduction fomula to calculate the sum in log(N) steps.
+//
+//It used old CUDA style ( < CUDA8 )
+//
+//Uses shared memory
+//Authors: Simon Grimm
+//December 2019
+//  *****************************************
+__global__ void HCshared_kernel(double4 *x4_d, double4 *v4_d, const int Bl, const double dt, const double dtiMsun, const int N, const int UseForce){
+
+	int idy = threadIdx.x;
+
+	extern __shared__ double3 a3_s[];
+
+	for(int i = 0; i < Bl; i += blockDim.x){
+		a3_s[idy + i].x = 0.0;
+		a3_s[idy + i].y = 0.0;
+		a3_s[idy + i].z = 0.0;
+	}
+
+	__syncthreads();
+
+
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			double4 v4 = v4_d[idy + i];
+			if(m > 0.0){
+				a3_s[idy].x += m * v4.x;
+				a3_s[idy].y += m * v4.y;
+				a3_s[idy].z += m * v4.z;
+			}
+		}
+	}
+	__syncthreads();
+
+
+	int s = blockDim.x/2;
+	for(int i = 6; i < log2f(blockDim.x); ++i){
+		if( idy < s ) {
+			a3_s[idy].x += a3_s[idy + s].x;
+			a3_s[idy].y += a3_s[idy + s].y;
+			a3_s[idy].z += a3_s[idy + s].z;
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+
+	if(idy < 32){
+		volatile double3 *a = a3_s;
+		if(blockDim.x >= 64) a[idy].x += a[idy + 32].x;
+		if(blockDim.x >= 32) a[idy].x += a[idy + 16].x;
+		if(blockDim.x >= 16) a[idy].x += a[idy + 8].x;
+		if(blockDim.x >= 8) a[idy].x += a[idy + 4].x;
+		if(blockDim.x >= 4) a[idy].x += a[idy + 2].x;
+		if(blockDim.x >= 2) a[idy].x += a[idy + 1].x;
+
+		if(blockDim.x >= 64) a[idy].y += a[idy + 32].y;
+		if(blockDim.x >= 32) a[idy].y += a[idy + 16].y;
+		if(blockDim.x >= 16) a[idy].y += a[idy + 8].y;
+		if(blockDim.x >= 8) a[idy].y += a[idy + 4].y;
+		if(blockDim.x >= 4) a[idy].y += a[idy + 2].y;
+		if(blockDim.x >= 2) a[idy].y += a[idy + 1].y;
+
+		if(blockDim.x >= 64) a[idy].z += a[idy + 32].z;
+		if(blockDim.x >= 32) a[idy].z += a[idy + 16].z;
+		if(blockDim.x >= 16) a[idy].z += a[idy + 8].z;
+		if(blockDim.x >= 8) a[idy].z += a[idy + 4].z;
+		if(blockDim.x >= 4) a[idy].z += a[idy + 2].z;
+		if(blockDim.x >= 2) a[idy].z += a[idy + 1].z;
+	}
+
+	__syncthreads();
+
+
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			x4_d[idy + i].x += a3_s[0].x * dtiMsun;
+			x4_d[idy + i].y += a3_s[0].y * dtiMsun;
+			x4_d[idy + i].z += a3_s[0].z * dtiMsun;
+			if(UseForce & 1){
+				double4 v4 = v4_d[idy + i];
+				double c2 = def_cm * def_cm;
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dt;
+				x4_d[idy + i].x -= __dmul_rn(v4.x, vcdt);
+				x4_d[idy + i].y -= __dmul_rn(v4.y, vcdt);
+				x4_d[idy + i].z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+	}
+}
+
+
+__host__ void Data::HCCall(const double Ct){
+	//HC
+	if(N_h[0] + Nsmall_h[0] <= 32){
+#if OldShuffle < 2
+		HC32c_kernel <<< 1, 32 >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+
+#else
+		HCshared_kernel <<< 1, NBT[0], 2 * NBT[0] * sizeof(double3) >>> (x4_d, v4_d, 2 * NBT[0], dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+
+#endif
+	}
+	else if(N_h[0] + Nsmall_h[0] <= 512){
+#if OldShuffle < 2
+		int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
+		HC32a_kernel <<< 3, nn * 32 >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+#else
+		HCshared_kernel <<< 1, NBT[0], NBT[0] * sizeof(double3) >>> (x4_d, v4_d, NBT[0], dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+
+#endif
+	}
+	else{
+#if OldShuffle < 2
+		int nct = 512;
+		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
+		HC32d2_kernel <<< 3, ((ncb + 31) / 32) * 32  >>> (a_d, ncb);
+		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+#else
+		HCshared_kernel <<< 1, 512, 512 * sizeof(double3) >>> (x4_d, v4_d, 512, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+
+#endif
+	}
+
+}
+
+
 // **************************************
 //Used for Multi Simulation Mode
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
@@ -403,7 +558,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, const double *dt_d, const double4 *Msun_d, int *index_d, int NT, double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, int Nst, int UseForce, int Nstart){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 *Msun_d, int *index_d, const int NT, const double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, const int Nst, const int UseForce, const int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;

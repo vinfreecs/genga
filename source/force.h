@@ -324,7 +324,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 	if(id < nbodies){
 
-	//printf("id %d, line %d, nelements %d, nbodies %d\n", id, line, nelements, nbodies);
+//printf("id %d, line %d, nelements %d, nbodies %d EE %d\n", id, line, nelements, nbodies, EE);
 
 		//Compute the Kepler Elements
 		int st = 0;
@@ -335,6 +335,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 		//check if one of the Keplerian elements will be modified
 		int doConversion = 0;
 		for(int i = 0; i < nelements; ++i){
+//printf("elements %d %d\n", i, setElements_c[i]);
 			if(setElements_c[i] == 3){
 				//a
 				doConversion = 1;
@@ -577,11 +578,23 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 				double f = aa * xx22 * xx + bb * xx22 + cc * xx + dd;
 
-
-				//if(setElements_c[i] == 11){
-//printf("id %d %d x0 %g x1 %g x2 %g x3 %g\n", id, i, xx0, xx1, xx2, xx3);
-				//}
-
+/*
+if(setElements_c[i] == 8){
+	printf("id %d %d m0 %g m1 %g m2 %g m3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+}
+if(setElements_c[i] == 9){
+	printf("id %d %d r0 %g r1 %g r2 %g r3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+}
+if(setElements_c[i] == 11){
+	printf("id %d %d x0 %g x1 %g x2 %g x3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+}
+if(setElements_c[i] == 12){
+	printf("id %d %d y0 %g y1 %g y2 %g y3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+}
+if(setElements_c[i] == 13){
+	printf("id %d %d z0 %g z1 %g z2 %g z3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+}
+*/
 				if(setElements_c[i] == 3 && EE == 1){
 					a = f;
 				}
@@ -701,7 +714,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-//printf("%d %.20g %.20g %.20g %g %g %g %g %g\n", id, x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+//printf("SE %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", id, x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 		}	
 	}
 }

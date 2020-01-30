@@ -416,7 +416,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 			double v = sqrt(v4i.x * v4i.x + v4i.y * v4i.y);
 			double R = Rsun + v4i.w;
 
-//printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
+//if(id % 8 == 6) printf("TTV %d g %g gd %g g/gd %.20g x %.10g y %.10g z %.10g dt %.20g rsky %g R %g R+ %g\n", id, g, gd, -g / gd, x4i.x, x4i.y, x4i.z, dt, rsky, R, R + v * dt);
 			if(dt > 0){
 				if(x4i.z > 0.0 && gd > 0.0 && fabs(g / gd) < 3.5 * fabs(dt) && rsky < R + v * fabs(dt)){
 
@@ -424,6 +424,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 						int Nt = atomicAdd(Ntransit_d, 1);
 						Nt = min(Nt, def_NtransitMax - 1);
 						Transit_d[Nt] = id;
+//if(id % 8 == 6) printf("check Transit %d %d\n", id, Nt);
 					}
 				}
 			}

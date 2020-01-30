@@ -106,8 +106,6 @@ public:
 	double4 *elementsTOld_d, *elementsTOld2_d;
 	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
 	double4 *elementsLB_h, *elementsLB_d;			
-	int4 *elementsCA_h, *elementsCA_d;			//counts per elements
-	int4 *elementsCB_h, *elementsCB_d;
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
 	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
@@ -183,6 +181,8 @@ public:
 	__host__ int printFragments(int);
 	__host__ int printRotation();
 	__host__ int printTransits();
+	__host__ int printRV();
+	__host__ int printRV2();
 	__host__ void printMCMC(int);
 	__host__ int firstEnergy();
 	__host__ int EnergyOutput(int);
@@ -215,6 +215,9 @@ public:
 	__host__ int step_M();
 	__host__ int step_MSimple();
 	__host__ int step_BS();
+	
+	__host__ void comCall(const int);
+	__host__ void HCCall(const double);
 
 	__host__ int CollisionCall();
 	__host__ int CollisionMCall();
@@ -252,7 +255,7 @@ private:
 	int GridNae;
 	int GridNai;
 	__host__ int readic(int);
-	__host__ void resize(int &, int &);
+	__host__ void resize(int, int &);
 
 	//output
 	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
