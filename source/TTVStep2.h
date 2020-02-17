@@ -1023,7 +1023,7 @@ printf("dx m %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 
 			Dx = beta1 * elementsDA_d[id * N0 + ii].y + (1.0 - beta1) * gx;
 			elementsGA_d[id * N0 + ii].y = Gx;
 			elementsDA_d[id * N0 + ii].y = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-4;
+			dx1 = -eta / Gx * Dx * 1.0e-3;
 			elementsLA_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
 				elementsAOld_d[j * N0 + ii].y += dx1;

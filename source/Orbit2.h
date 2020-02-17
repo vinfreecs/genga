@@ -106,12 +106,11 @@ public:
 	double4 *elementsTOld_d, *elementsTOld2_d;
 	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
 	double4 *elementsLB_h, *elementsLB_d;			
-#if MCMC_BLOCK == 5
 	double4 *elementsGA_d;					//gradient for adadelta
 	double4 *elementsGB_d;			
 	double4 *elementsDA_d;					//gradient for adadelta		
 	double4 *elementsDB_d;			
-#endif
+
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
 	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
