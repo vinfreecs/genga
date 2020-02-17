@@ -2509,7 +2509,7 @@ __host__ int Host::readTransits(){
 		fprintf(masterfile, "Error: TTV file not found: %s\n", P.Transitsfilename);		
 		return 0;
 	}
-	//determine the lengh of the file
+	//determine the length of the file
 	int t;
 	double t1, t2;
 	int er;

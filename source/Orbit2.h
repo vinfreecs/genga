@@ -106,11 +106,18 @@ public:
 	double4 *elementsTOld_d, *elementsTOld2_d;
 	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
 	double4 *elementsLB_h, *elementsLB_d;			
+#if MCMC_BLOCK == 5
+	double4 *elementsGA_d;					//gradient for adadelta
+	double4 *elementsGB_d;			
+	double4 *elementsDA_d;					//gradient for adadelta		
+	double4 *elementsDB_d;			
+#endif
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
 	double *elementsSA_h, *elementsSA_d;			//Temperature for simulated annealing
 	int4 *elementsI_h, *elementsI_d;			//indizes for proposals
 	double *elementsM_h, *elementsM_d;			//Stellar mass
+	double *elementsCOV_h, *elementsCOV_d;			//Covariance matrix 
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall(int, int);
@@ -144,6 +151,7 @@ public:
 	__host__ int FGAlloc();
 	__host__ int readGridae();
 	__host__ int copyGridae();
+	__host__ int readMCMC_COV();
 	__host__ int init();
 	__host__ int ic();
 	__host__ void KepToCart(double4 &, double4 &, double);

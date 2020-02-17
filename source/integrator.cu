@@ -87,6 +87,13 @@ __host__ int Data::beforeTimeStepLoop1(){
 	er = init();
 	printf("\nInitialize Memory\n");
 
+#if def_TTV > 0
+  #if MCMC_NCOV > 0
+	er = readMCMC_COV();
+	if(er == 0) return 0;
+  #endif
+#endif
+
 	cudaDeviceSynchronize();
 	//read initial conditions//
 	printf("\nRead Initial Conditions\n");
@@ -995,14 +1002,14 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	double rsq, vsq, r, v;
 	
 	if(id < NT + Nstart){
-//printf("Rcrit %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
+//printf("Rcrit %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
 		double Msun = Msun_d[st].x;
 		double n1 = n1_d[st];
 		double n2 = n2_d[st];
 		double Rcut = Rcut_d[st];
 		double RcutSun = RcutSun_d[st];
 		double dt = dt_d[st];
-		
+//printf("Rcrit %d %g %g %g %g %g %g %g %g\n", id, Msun, n1, n2, Rcut, RcutSun, dt, rcrit_d[id], rcritv_d[id]);		
 		if(StopAtCollision_c[0] != 0){
 			if(f == 0){
 				x4i = x4_d[id];
@@ -1677,6 +1684,7 @@ __host__ void Data::BSBMCall(int si, int noColl, double ll){
 }
 
 __host__ int Data::RemoveCall(){
+#if def_TTV == 0
 	int NminFlag = remove();
 	if(NminFlag == 1){
 		fprintf(masterfile, "Number of bodies smaller than Nmin, simulation stopped\n");
@@ -1689,10 +1697,12 @@ __host__ int Data::RemoveCall(){
 		return 0;
 	}
 	CollisionFlag = 0;
+#endif
 	return 1;
 }
 
 __host__ int Data::CollisionCall(){
+#if def_TTV == 0
 	if(Ncoll_m[0] > def_MaxColl){
 		fprintf(masterfile, "Error: More Collisions than def_MaxColl, simulation stopped\n");
 		printf("Error: More Collisions than def_MaxColl, simulation stopped\n");
@@ -1751,9 +1761,14 @@ printf("Backup step2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0
 		Ncoll_m[0] = 0;
 		return 1;
 	}
+#else
+
+	return 1;
+#endif
 }
 
 __host__ int Data::CollisionMCall(){
+#if def_TTV == 0
 	
 	
 	if(Ncoll_m[0] > def_MaxColl){
@@ -1769,6 +1784,7 @@ __host__ int Data::CollisionMCall(){
 		stopSimulations();
 	}
 	Ncoll_m[0] = 0;
+#endif
 	return 1;
 }
 
@@ -1806,6 +1822,7 @@ __host__ int Data::EjectionCall(){
 }
 
 __host__ int Data::StopAtEncounterCall(){
+#if def_TTV == 0
 	
 	if(Nst == 1){
 		n1_h[0] = -1;
@@ -1821,6 +1838,7 @@ __host__ int Data::StopAtEncounterCall(){
 	if(Nst == 0){
 		return 0;
 	}
+#endif
 	return 1;
 }
 

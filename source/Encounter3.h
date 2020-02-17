@@ -882,6 +882,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		encpairs_s[idy].x = Encpairs2_d[idy + NBS * NmaxM].x - NBS;
 		encpairs_s[idy].y = Encpairs2_d[idy + NBS * NmaxM].y - NBS;
 		A_s[idy] = encpairs_s[idy].x;
+//printf("encpairs %d %d %d %d\n", Ne, idy, encpairs_s[idy].x, encpairs_s[idy].y);
 	}
 	//encpairs_s[idy] contains the two close encounter pairs//
 	else{

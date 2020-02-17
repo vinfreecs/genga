@@ -1216,7 +1216,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 						atomicAdd(Nencpairs_d + st_s[idy] + 1, 1);
 						ij.x = id;
 						ij.y = id + j;
-//printf("precheck %d %d %d %d %d\n", st_s[idy], id, id + j, index_d[id], index_d[id + j]);	
+//printf("precheck E %d %d %d %d %d %d\n", E, st_s[idy], id, id + j, index_d[id], index_d[id + j]);	
 						Encpairs_d[Ne] = ij;
 					}
 				}

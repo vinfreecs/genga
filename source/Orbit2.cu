@@ -80,6 +80,11 @@ __host__ void Data::AllocateOrbit(){
 	elementsSA_h = (double*)malloc(Nst * sizeof(double));
 	elementsI_h = (int4*)malloc(NconstT * sizeof(int4));
 	elementsM_h = (double*)malloc(Nst * sizeof(double));
+  #if MCMC_NCOV > 0
+	elementsCOV_h = (double*)malloc(NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV * sizeof(double));
+  #else
+	elementsCOV_h = NULL;
+  #endif
 #else
 	elementsA_h = NULL;
 	elementsB_h = NULL;
@@ -91,6 +96,7 @@ __host__ void Data::AllocateOrbit(){
 	elementsSA_h = NULL;
 	elementsI_h = NULL;
 	elementsM_h = NULL;
+	elementsCOV_h = NULL;
 #endif
 
 	groupIterate_h = (int*)malloc(sizeof(int));
@@ -184,6 +190,23 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &elementsSA_d, Nst * sizeof(double));
 	cudaMalloc((void **) &elementsI_d, NconstT * sizeof(int4));
 	cudaMalloc((void **) &elementsM_d, Nst * sizeof(double));
+  #if MCMC_BLOCK == 5
+	cudaMalloc((void **) &elementsGA_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsGB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsDA_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsDB_d, NconstT * sizeof(double4));
+  #else
+	elementsGA_d = NULL;
+	elementsGB_d = NULL;
+	elementsDA_d = NULL;
+	elementsDB_d = NULL;
+  #endif
+
+  #if MCMC_NCOV > 0
+	cudaMalloc((void **) &elementsCOV_d, NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV * sizeof(double));
+  #else
+	elementsCOV_d = NULL;
+  #endif
 #else
 	elementsA_d = NULL;
 	elementsB_d = NULL;
@@ -201,6 +224,7 @@ __host__ void Data::AllocateOrbit(){
 	elementsSA_d = NULL;
 	elementsI_d = NULL;
 	elementsM_d = NULL;
+	elementsCOV_d = NULL;
 #endif
 
 	//arrays for backup step
@@ -370,7 +394,7 @@ __host__ int Data::FGAlloc(){
 }
 
 
-//This function reads at a restart the corrspondent Gridae file
+//This function reads at a restart the correspondent Gridae file
 __host__ int Data::readGridae(){
 	if(P.tRestart > 0){
 		sprintf(Gridae.filename, "aeCount%s_%.12lld.dat", Gridae.X, P.tRestart);
@@ -436,6 +460,35 @@ __host__ int Data::copyGridae(){
 		return 0;
 	}
 
+	return 1;
+}
+
+
+//This function reads the covariance matrix for MCMC sampling
+//The file must contain the Cholesky decompoistion part L from COV = L L^T
+__host__ int Data::readMCMC_COV(){
+	FILE *COVfile;
+
+	COVfile = fopen("MCMCL.dat", "r");
+	if(COVfile == NULL){
+		fprintf(masterfile, "Error: MCMCL.dat file not found\n");
+		printf("Error: MCMCL.dat file not found\n");
+		return 0;
+	}
+	int ii, jj;
+	for(int i = 0; i < NconstT * MCMC_NCOV; ++i){
+		for(int j = 0; j < N_h[0] * MCMC_NCOV; ++j){
+			fscanf(COVfile, "%d",&ii);
+			fscanf(COVfile, "%d",&jj);
+			fscanf(COVfile, "%lf",&elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
+//printf("MCMCL %d %d %d %g\n", i, i % N_h[0], j, elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
+			if(ii != (i % (N_h[0] * MCMC_NCOV)) || jj != j){
+				fprintf(masterfile, "Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
+				printf("Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
+				return 0;
+			}
+		}
+	}
 	return 1;
 }
 
@@ -541,6 +594,13 @@ __host__ int Data::init(){
 		}
 #endif
 	}
+#if def_TTV > 0
+  #if MCMC_NCOV > 0
+	for(int j = 0; j < NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV; ++j){
+		elementsCOV_h[j] = 0.0;
+	}
+  #endif
+#endif
 	for(int st = 0; st < Nst; ++st){
 		EjectionFlag_m[st + 1] = 0;
 		for(int i = 0; i < N_h[st] + Nsmall_h[st]; ++i){
@@ -677,6 +737,16 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsP_d, elementsP_h, sizeof(double4) * Nst, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsI_d, elementsI_h, sizeof(int4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsM_d, elementsM_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
+
+  #if MCMC_BLOCK == 5
+	cudaMemset(elementsGA_d, 0, NconstT * sizeof(double4));
+	cudaMemset(elementsGB_d, 0, NconstT * sizeof(double4));
+	cudaMemset(elementsDA_d, 0, NconstT * sizeof(double4));
+	cudaMemset(elementsDB_d, 0, NconstT * sizeof(double4));
+  #endif
+  #if MCMC_NCOV > 0
+	cudaMemcpy(elementsCOV_d, elementsCOV_h, sizeof(double) * NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV, cudaMemcpyHostToDevice);
+  #endif
 #endif
 
 	cudaError_t error;
@@ -1857,7 +1927,7 @@ __global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpai
 
 
 
-// This function stopps simulations with less than the minimal number of bodies 
+// This function stops simulations with less than the minimal number of bodies 
 // or if the simulation has ended.
 // it rearanges the memory
 __host__ void Data::stopSimulations(){
@@ -2081,6 +2151,7 @@ __host__ int Data::freeOrbit(){
 	free(elementsSA_h);
 	free(elementsI_h);
 	free(elementsM_h);
+	free(elementsCOV_h);
 
 	free(groupIterate_h);
 
@@ -2201,6 +2272,11 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsSA_d);
 	cudaFree(elementsI_d);
 	cudaFree(elementsM_d);
+	cudaFree(elementsCOV_d);
+	cudaFree(elementsGA_d);
+	cudaFree(elementsGA_d);
+	cudaFree(elementsDA_d);
+	cudaFree(elementsDA_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

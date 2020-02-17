@@ -1,0 +1,462 @@
+#include "directAcc.h"
+#include "Encounter3.h"
+
+// **************************************
+// For less than 64 bodies
+//This Kernel intergrates full simulations for one time step 
+//using a Bulirsh Stoer method with nb threads.
+//The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
+//
+//Authors: Simon Grimm
+//November 2016
+// ****************************************
+
+template< int NN, int nb>
+__global__ void BSRVStep_kernel(double4 *xold_d, double4 *vold_d, int *N_d, double dt, double4 *Msun_d, int *index_d, double time, int *NBS_d, const int UseForce, const double MinMass, const int UseTestParticles, int Nst, double2 *RV_d, int2 *NRVT_d){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	int ii = idy / nb;
+	int jj = idy % nb;
+
+	__shared__ double4 x4_s[NN];
+	__shared__ double4 v4_s[NN];
+	__shared__ double3 a0_s[nb * NN +NN];
+	__shared__ double3 a_s[nb * NN + NN];
+	__shared__ double4 xp_s[NN];
+	__shared__ double4 vp_s[NN];
+	__shared__ double4 xt_s[NN];
+	__shared__ double4 vt_s[NN];
+	__shared__ double3 dx_s[NN][8];
+	__shared__ double3 dv_s[NN][8];
+
+	__shared__ int N2; 
+	__shared__ int sgnt;
+
+
+	double3 scalex;
+	double3 scalev;
+
+	__shared__ double error_s[2*NN];
+	double test;
+	volatile int idi;
+	volatile int si = 0;
+
+	if(Nst > 0){
+		si = idx;
+	}
+	N2 = N_d[si]; //Number of bodies in current BS simulation
+//printf("BS %d %d %d %d\n", idx, si, N2, NBS_d[si]);
+	if(idy < N2){
+		idi = NBS_d[si] + idy;
+//printf("BS2 %d %d %d %d %d %d %g\n", idx, idy, si, idi, index_d[idi], N2, time_d[si]);
+	}
+	else idi = 0;
+	
+	double Msun = Msun_d[si].x;
+	double Rsun = Msun_d[si].y;
+	volatile double dt1 = dt; 
+	volatile double dt2, dt22;
+	volatile double t = 0.0;
+	volatile double dtgr = 1.0;
+
+	if(dt < 0.0){
+		sgnt = -1;
+	}
+	else sgnt = 1;
+
+ 	__syncthreads();
+	if(idy < N2){
+		x4_s[idy] = xold_d[idi];  
+		v4_s[idy] = vold_d[idi];  
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
+		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			double c2 = def_cm * def_cm;
+			double mu = def_ksq * Msun;
+			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
+			double vsq = v4_s[idy].x * v4_s[idy].x + v4_s[idy].y * v4_s[idy].y + v4_s[idy].z * v4_s[idy].z;
+			double ir = 1.0/sqrt(rsq);
+			double ia = 2.0*ir-vsq/mu;
+			dtgr = 1.0 - 1.5 * mu * ia / c2;
+		}
+	}
+	else if(idy < NN){
+		x4_s[idy].x = 0.0;
+		x4_s[idy].y = 0.0;
+		x4_s[idy].z = 0.0;
+		x4_s[idy].w = -1.0e-12;
+		v4_s[idy].x = 0.0;
+		v4_s[idy].y = 0.0;
+		v4_s[idy].z = 0.0;
+		v4_s[idy].w = 0.0;
+	}
+	if(idy < NN){
+		a0_s[idy + nb*NN].x = 0.0;
+		a0_s[idy + nb*NN].y = 0.0;
+		a0_s[idy + nb*NN].z = 0.0;
+
+		a_s[idy + nb*NN].x = 0.0;
+		a_s[idy + nb*NN].y = 0.0;
+		a_s[idy + nb*NN].z = 0.0;
+	}
+	if(idy < 2 * NN) error_s[idy] = 0.0;
+
+	__syncthreads();
+	for(int tt = 0; tt < 10000; ++tt){
+		__syncthreads();
+
+		if(idy < N2){
+			scalex.x = 1.0 / (x4_s[idy].x * x4_s[idy].x + 1.0e-20);
+			scalex.y = 1.0 / (x4_s[idy].y * x4_s[idy].y + 1.0e-20);
+			scalex.z = 1.0 / (x4_s[idy].z * x4_s[idy].z + 1.0e-20);
+
+			scalev.x = 1.0 / (v4_s[idy].x * v4_s[idy].x + 1.0e-20);
+			scalev.y = 1.0 / (v4_s[idy].y * v4_s[idy].y + 1.0e-20);
+			scalev.z = 1.0 / (v4_s[idy].z * v4_s[idy].z + 1.0e-20);
+		}
+
+		a0_s[idy].x = 0.0;
+		a0_s[idy].y = 0.0;
+		a0_s[idy].z = 0.0;
+		__syncthreads();
+		for(int l = 0; l < NN; l += nb){
+			accEncFull(x4_s[ii], x4_s[jj + l], a0_s[idy], test, ii, jj + l, MinMass, UseTestParticles);
+		}
+		__syncthreads();
+		{
+			volatile double3 *a = a0_s;
+			if(nb >= 16) a[idy].x += a[idy + 8].x;
+			if(nb >= 8) a[idy].x += a[idy + 4].x;
+			if(nb >= 4) a[idy].x += a[idy + 2].x;
+			if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+			if(nb >= 16) a[idy].y += a[idy + 8].y;
+			if(nb >= 8) a[idy].y += a[idy + 4].y;
+			if(nb >= 4) a[idy].y += a[idy + 2].y;
+			if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+			if(nb >= 16) a[idy].z += a[idy + 8].z;
+			if(nb >= 8) a[idy].z += a[idy + 4].z;
+			if(nb >= 4) a[idy].z += a[idy + 2].z;
+			if(nb >= 2) a[idy].z += a[idy + 1].z;
+		}
+		__syncthreads();
+		if(idy < N2){
+			accEncSun(x4_s[idy], a0_s[idy * nb], def_ksq * Msun * dtgr);
+		}
+
+		volatile int f = 1;
+		__syncthreads();
+		for(int ff = 0; ff < 1e6; ++ff){
+			__syncthreads();
+
+			for(int n = 1; n <= 8; ++n){
+
+				dt2 = dt1 / (2.0 * n);
+				dt22 = dt2 * 2.0;
+
+				if(idy < NN){
+					xp_s[idy].x = x4_s[idy].x + __dmul_rn(dt2 * dtgr, v4_s[idy].x);
+					xp_s[idy].y = x4_s[idy].y + __dmul_rn(dt2 * dtgr, v4_s[idy].y);
+					xp_s[idy].z = x4_s[idy].z + __dmul_rn(dt2 * dtgr, v4_s[idy].z);
+					xp_s[idy].w = x4_s[idy].w;
+
+					vp_s[idy].x = v4_s[idy].x + __dmul_rn(dt2, a0_s[idy * nb].x);  
+					vp_s[idy].y = v4_s[idy].y + __dmul_rn(dt2, a0_s[idy * nb].y);  
+					vp_s[idy].z = v4_s[idy].z + __dmul_rn(dt2, a0_s[idy * nb].z); 
+					vp_s[idy].w = v4_s[idy].w;
+//printf("xp0 %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g\n", idx, idy, xp_s[idy].x, xp_s[idy].y, xp_s[idy].z, vp_s[idy].x, vp_s[idy].y, vp_s[idy].z, dt2, a0_s[idy * nb].x, a0_s[idy * nb].x);
+				}
+
+				a_s[idy].x = 0.0;
+				a_s[idy].y = 0.0;
+				a_s[idy].z = 0.0;
+
+				__syncthreads();
+				for(int l = 0; l < NN; l += nb){
+					accEncFull(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, MinMass, UseTestParticles);
+				}
+				__syncthreads();
+				{
+					volatile double3 *a = a_s;
+					if(nb >= 16) a[idy].x += a[idy + 8].x;
+					if(nb >= 8) a[idy].x += a[idy + 4].x;
+					if(nb >= 4) a[idy].x += a[idy + 2].x;
+					if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+					if(nb >= 16) a[idy].y += a[idy + 8].y;
+					if(nb >= 8) a[idy].y += a[idy + 4].y;
+					if(nb >= 4) a[idy].y += a[idy + 2].y;
+					if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+					if(nb >= 16) a[idy].z += a[idy + 8].z;
+					if(nb >= 8) a[idy].z += a[idy + 4].z;
+					if(nb >= 4) a[idy].z += a[idy + 2].z;
+					if(nb >= 2) a[idy].z += a[idy + 1].z;
+				}
+				__syncthreads();
+				if(idy < NN){
+					accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+					xt_s[idy].x = x4_s[idy].x + __dmul_rn(dt22 * dtgr, vp_s[idy].x);
+					xt_s[idy].y = x4_s[idy].y + __dmul_rn(dt22 * dtgr, vp_s[idy].y);
+					xt_s[idy].z = x4_s[idy].z + __dmul_rn(dt22 * dtgr, vp_s[idy].z);
+					xt_s[idy].w = x4_s[idy].w;
+
+					vt_s[idy].x = v4_s[idy].x + __dmul_rn(dt22, a_s[idy * nb].x);
+					vt_s[idy].y = v4_s[idy].y + __dmul_rn(dt22, a_s[idy * nb].y);
+					vt_s[idy].z = v4_s[idy].z + __dmul_rn(dt22, a_s[idy * nb].z);
+					vt_s[idy].w = v4_s[idy].w;
+//printf("xt0 %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt_s[idy].x, vt_s[idy].y, vt_s[idy].z);
+				}
+				__syncthreads();
+				
+				for(int m = 2; m <= n; ++m){
+					a_s[idy].x = 0.0;
+					a_s[idy].y = 0.0;
+					a_s[idy].z = 0.0;
+
+					__syncthreads();
+					for(int l = 0; l < NN; l += nb){
+						accEncFull(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, MinMass, UseTestParticles);
+					}
+					__syncthreads();
+					{
+						volatile double3 *a = a_s;
+						if(nb >= 16) a[idy].x += a[idy + 8].x;
+						if(nb >= 8) a[idy].x += a[idy + 4].x;
+						if(nb >= 4) a[idy].x += a[idy + 2].x;
+						if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+						if(nb >= 16) a[idy].y += a[idy + 8].y;
+						if(nb >= 8) a[idy].y += a[idy + 4].y;
+						if(nb >= 4) a[idy].y += a[idy + 2].y;
+						if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+						if(nb >= 16) a[idy].z += a[idy + 8].z;
+						if(nb >= 8) a[idy].z += a[idy + 4].z;
+						if(nb >= 4) a[idy].z += a[idy + 2].z;
+						if(nb >= 2) a[idy].z += a[idy + 1].z; 
+					}
+					__syncthreads();
+					if(idy < N2){
+						accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+
+						xp_s[idy].x += __dmul_rn(dt22, dtgr * vt_s[idy].x);
+						xp_s[idy].y += __dmul_rn(dt22, dtgr * vt_s[idy].y);
+						xp_s[idy].z += __dmul_rn(dt22, dtgr * vt_s[idy].z);
+
+						vp_s[idy].x += __dmul_rn(dt22, a_s[idy * nb].x);
+						vp_s[idy].y += __dmul_rn(dt22, a_s[idy * nb].y);
+						vp_s[idy].z += __dmul_rn(dt22, a_s[idy * nb].z);
+					}
+					__syncthreads();
+					a_s[idy].x = 0.0;
+					a_s[idy].y = 0.0;
+					a_s[idy].z = 0.0;
+
+					__syncthreads();
+					for(int l = 0; l < NN; l += nb){
+						accEncFull(xp_s[ii], xp_s[jj + l], a_s[idy], test, ii, jj + l, MinMass, UseTestParticles);
+					}
+					__syncthreads();
+					{
+						volatile double3 *a = a_s;
+						if(nb >= 16) a[idy].x += a[idy + 8].x;
+						if(nb >= 8) a[idy].x += a[idy + 4].x;
+						if(nb >= 4) a[idy].x += a[idy + 2].x;
+						if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+						if(nb >= 16) a[idy].y += a[idy + 8].y;
+						if(nb >= 8) a[idy].y += a[idy + 4].y;
+						if(nb >= 4) a[idy].y += a[idy + 2].y;
+						if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+						if(nb >= 16) a[idy].z += a[idy + 8].z;
+						if(nb >= 8) a[idy].z += a[idy + 4].z;
+						if(nb >= 4) a[idy].z += a[idy + 2].z;
+						if(nb >= 2) a[idy].z += a[idy + 1].z;
+					}
+					__syncthreads();
+					if(idy < N2){
+						accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+
+						xt_s[idy].x += __dmul_rn(dt22, dtgr * vp_s[idy].x);
+						xt_s[idy].y += __dmul_rn(dt22, dtgr * vp_s[idy].y);
+						xt_s[idy].z += __dmul_rn(dt22, dtgr * vp_s[idy].z);
+
+						vt_s[idy].x += __dmul_rn(dt22, a_s[idy * nb].x);
+						vt_s[idy].y += __dmul_rn(dt22, a_s[idy * nb].y);
+						vt_s[idy].z += __dmul_rn(dt22, a_s[idy * nb].z);
+//printf("xt %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt_s[idy].x, vt_s[idy].y, vt_s[idy].z);
+					}
+					__syncthreads();
+				}//end of m loop
+				a_s[idy].x = 0.0;
+				a_s[idy].y = 0.0;
+				a_s[idy].z = 0.0;
+
+				__syncthreads();
+				for(int l = 0; l < NN; l += nb){
+					accEncFull(xt_s[ii], xt_s[jj + l], a_s[idy], test, ii, jj + l, MinMass, UseTestParticles);
+				}
+				__syncthreads();
+				{
+					volatile double3 *a = a_s;
+					if(nb >= 16) a[idy].x += a[idy + 8].x;
+					if(nb >= 8) a[idy].x += a[idy + 4].x;
+					if(nb >= 4) a[idy].x += a[idy + 2].x;
+					if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+					if(nb >= 16) a[idy].y += a[idy + 8].y;
+					if(nb >= 8) a[idy].y += a[idy + 4].y;
+					if(nb >= 4) a[idy].y += a[idy + 2].y;
+					if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+					if(nb >= 16) a[idy].z += a[idy + 8].z;
+					if(nb >= 8) a[idy].z += a[idy + 4].z;
+					if(nb >= 4) a[idy].z += a[idy + 2].z;
+					if(nb >= 2) a[idy].z += a[idy + 1].z; 
+				}
+				__syncthreads();
+
+				if(idy < N2){
+					accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+
+					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + (xp_s[idy].x + (dt2 * dtgr * vt_s[idy].x)));
+					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + (xp_s[idy].y + (dt2 * dtgr * vt_s[idy].y)));
+					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + (xp_s[idy].z + (dt2 * dtgr * vt_s[idy].z)));
+
+					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy * nb].x)));
+					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy * nb].y)));
+					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy * nb].z)));	
+				}
+				
+				if(idy < N2){
+					double ddt0 = 0.25 / (n*n);
+					for(int j = n-1; j >= 1; --j){
+						double ddt1 = 0.25 / (j*j);
+						double t0 = 1.0 / (ddt1 - ddt0);
+						double t1 = t0 * 0.25 / ((j+1)*(j+1));
+						double t2 = t0 * ddt0;
+						
+						dx_s[idy][j-1].x = t1 * dx_s[idy][j].x - t2 * dx_s[idy][j-1].x;	
+						dx_s[idy][j-1].y = t1 * dx_s[idy][j].y - t2 * dx_s[idy][j-1].y;
+						dx_s[idy][j-1].z = t1 * dx_s[idy][j].z - t2 * dx_s[idy][j-1].z;
+
+						dv_s[idy][j-1].x = t1 * dv_s[idy][j].x - t2 * dv_s[idy][j-1].x;
+						dv_s[idy][j-1].y = t1 * dv_s[idy][j].y - t2 * dv_s[idy][j-1].y;
+						dv_s[idy][j-1].z = t1 * dv_s[idy][j].z - t2 * dv_s[idy][j-1].z;
+					}
+					double errorx = dx_s[idy][0].x * dx_s[idy][0].x * scalex.x;
+					double errorv = dv_s[idy][0].x * dv_s[idy][0].x * scalev.x;
+//printf("dx %d %d %d %d %g %g %g %g %g %g | %g %g \n", idy, tt, ff, n, dx_s[idy][0].x, dx_s[idy][0].y, dx_s[idy][0].z, dv_s[idy][0].x, dv_s[idy][0].y, dv_s[idy][0].z, t, dt1); 
+					errorx = fmax(errorx, dx_s[idy][0].y * dx_s[idy][0].y * scalex.y);
+					errorv = fmax(errorv, dv_s[idy][0].y * dv_s[idy][0].y * scalev.y);
+
+					errorx = fmax(errorx, dx_s[idy][0].z * dx_s[idy][0].z * scalex.z);
+					errorv = fmax(errorv, dv_s[idy][0].z * dv_s[idy][0].z * scalev.z);
+
+					error_s[idy] = fmax(errorx, errorv);
+				}
+				__syncthreads();
+				if(idy < N2){
+					volatile  double *error = error_s;
+					if(NN >= 32) error[idy] = fmax(error[idy], error[idy + 16]);
+					if(NN >= 16) error[idy] = fmax(error[idy], error[idy + 8]); 
+					if(NN >= 8) error[idy] = fmax(error[idy], error[idy + 4]);
+					if(NN >= 4) error[idy] = fmax(error[idy], error[idy + 2]);
+					if(NN >= 2) error[idy] = fmax(error[idy], error[idy + 1]);
+				}
+				__syncthreads();
+				if(error_s[0] < def_tol * def_tol || fabs(dt1) < def_dtmin){
+
+					if(idy < N2){
+						xt_s[idy].x = dx_s[idy][0].x;
+						xt_s[idy].y = dx_s[idy][0].y;
+						xt_s[idy].z = dx_s[idy][0].z;
+
+						vt_s[idy].x = dv_s[idy][0].x;
+						vt_s[idy].y = dv_s[idy][0].y;
+						vt_s[idy].z = dv_s[idy][0].z;		
+
+						for(int j = 1; j < n; ++j){
+							xt_s[idy].x += dx_s[idy][j].x;
+							xt_s[idy].y += dx_s[idy][j].y;
+							xt_s[idy].z += dx_s[idy][j].z;
+
+							vt_s[idy].x += dv_s[idy][j].x;
+							vt_s[idy].y += dv_s[idy][j].y;
+							vt_s[idy].z += dv_s[idy][j].z;
+						}
+					}
+					__syncthreads();
+					t += dt1;
+					if(n >= 8) dt1 *= 0.55;
+					if(n < 7) dt1 *= 1.3;
+					if(sgnt * dt1 > sgnt * dt) dt1 = dt;
+					if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+					if(sgnt * dt1 < def_dtmin) dt1 = sgnt * def_dtmin;
+
+					if(idy < N2){
+						x4_s[idy] = xt_s[idy];
+						v4_s[idy] = vt_s[idy];
+//printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %d %d %d\n", idy, idx, index_d[idi], x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, x4_s[idy].w, v4_s[idy].w, t, dt1, tt, ff, n);
+					}
+					f = 0;
+
+					__syncthreads();
+					break;
+				}
+			}//end of n loop
+			if(f == 0) break;
+			__syncthreads();
+			dt1 *= 0.5;
+		}//end of ff loop
+		if(sgnt * t >= sgnt * dt) break;
+		__syncthreads();
+	}//end of tt loop
+
+	a_s[idy].x = 0.0;
+	a_s[idy].y = 0.0;
+	a_s[idy].z = 0.0;
+	__syncthreads();
+
+	if(idy < N2){
+		//calculate RV signal
+		a_s[idy].x = x4_s[idy].w * v4_s[idy].x;
+		a_s[idy].y = x4_s[idy].w * v4_s[idy].y;
+		a_s[idy].z = x4_s[idy].w * v4_s[idy].z;
+
+		__syncthreads();
+		{
+			volatile double3 *a = a_s;
+			if(nb >= 16) a[idy].x += a[idy + 8].x;
+			if(nb >= 8) a[idy].x += a[idy + 4].x;
+			if(nb >= 4) a[idy].x += a[idy + 2].x;
+			if(nb >= 2) a[idy].x += a[idy + 1].x;
+
+			if(nb >= 16) a[idy].y += a[idy + 8].y;
+			if(nb >= 8) a[idy].y += a[idy + 4].y;
+			if(nb >= 4) a[idy].y += a[idy + 2].y;
+			if(nb >= 2) a[idy].y += a[idy + 1].y;
+
+			if(nb >= 16) a[idy].z += a[idy + 8].z;
+			if(nb >= 8) a[idy].z += a[idy + 4].z;
+			if(nb >= 4) a[idy].z += a[idy + 2].z;
+			if(nb >= 2) a[idy].z += a[idy + 1].z; 
+		}
+		__syncthreads();
+
+		if(idy == 0){
+			double3 RV;
+			RV.x = - a_s[0].x / Msun * def_AU / 86400.0 * dayUnit;
+			RV.y = - a_s[0].y / Msun * def_AU / 86400.0 * dayUnit;
+			RV.z = - a_s[0].z / Msun * def_AU / 86400.0 * dayUnit;
+			int Nrv = atomicAdd(&NRVT_d[si].x, 1);
+			Nrv = min(Nrv, def_NRVMax); 
+			RV_d[si * def_NRVMax + Nrv].x = time + t / dayUnit;
+			RV_d[si * def_NRVMax + Nrv].y = RV.z;
+//printf("BSRV %d %.20g %d %.20g %.20g %.20g\n", idx, time + t / dayUnit, Nrv, RV.x, RV.y, RV.z);
+		}
+	}
+}

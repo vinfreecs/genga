@@ -65,7 +65,12 @@ __host__ int Data::firstoutput(int irregular){
 		
 						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
 						if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+#if def_TTV == 0
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+#else
+						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+#endif
 					}
 					else{
 						//clear Irregular output files
@@ -224,9 +229,12 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 			if(time > ict_h[st]) outputfile = fopen(outputfilename, "a");
 			else outputfile = fopen(outputfilename, "w");
 		}
-
+#if def_TTV == 0
 		if(Nst == 1 || P.FormatS == 1) index = index_h[j];
 		else index = index_h[j] % def_MaxIndex;
+#else
+		index = index_h[j];
+#endif
 
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
@@ -462,7 +470,13 @@ __host__ void Data::CoordinateOutput(int irregular){
 					else if(irregular == 1){
 						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
 					}
+#if def_TTV == 0
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+#else
+					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
+					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
+
+#endif	
 				}
 				if(P.FormatT == 1){
 					if(irregular == 0 || irregular == 3){
@@ -995,6 +1009,7 @@ __host__ int Data::printTransits(){
 					TObs.y = 0.0;
 				}
 
+//printf("---- %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 
 				if(fabs(TObs.x - T) < fabs(TObs.x - T1) && T != 0.0 && TObs.x != 0.0){
 					setEpoch = 1;
@@ -1002,7 +1017,7 @@ __host__ int Data::printTransits(){
 
 
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && fabs(TObs.x - T) < fabs(TObs.x - T1)){
-//if(i == 0) printf("***** %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
+//printf("***** %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
 					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
 				}
@@ -1011,14 +1026,23 @@ __host__ int Data::printTransits(){
 					setEpoch = 1;
 				}
 
+				if(P.PrintTransits == 2){				
+					 if(setEpoch == 0) fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, Epoch, T, 0.0, 0.0);
+				}
+
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && fabs(TObs.x - T) >= fabs(TObs.x - T1)){
-//if(i == 0) printf("#####  %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
+//printf("#####  %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 					++Epoch;
 					--EpochObs;
 					continue;
 				}
-				
-				if(setEpoch == 1) fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
+
+				if(P.PrintTransits == 1){				
+					if(setEpoch == 1) fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, EpochObs, T, TObs.x, TObs.y);
+				}
+				if(P.PrintTransits == 2){				
+					 if(setEpoch == 1)fprintf(Transitfile, "%d %d %25.20g %25.20g %25.20g\n", i, Epoch, T, TObs.x, TObs.y);
+				}
 
 				++Epoch;
 				if(NtransitsTObs_h[i] >= def_NtransitTimeMax -1){
