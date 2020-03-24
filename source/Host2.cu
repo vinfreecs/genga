@@ -1895,29 +1895,41 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(GSF[st].Energyfilename, "%sEnergy%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].EnergyIrrfilename, "%sEnergyIrr%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].collisionfilename, "%sCollisions%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].collisionTshiftfilename, "%sCollisionsTShift%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].ejectfilename, "%sEjections%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].encounterfilename, "%sEncounters%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].fragmentfilename, "%sFragments%s.dat", GSF[st].path, GSF[st].X);
 		
 		//create files or erase content//
 		if(P.tRestart == 0){
+			FILE *tfile;
 			GSF[st].logfile = fopen(GSF[st].logfilename, "w");
 			fclose(GSF[st].logfile);
-			GSF[st].timefile = fopen(GSF[st].timefilename, "w");
-			fclose(GSF[st].timefile);
-			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "w");
-			fclose(GSF[st].Energyfile);
-			GSF[st].collisionfile = fopen(GSF[st].collisionfilename, "w");
-			fclose(GSF[st].collisionfile);  
-			GSF[st].ejectfile = fopen(GSF[st].ejectfilename, "w");
-			fclose(GSF[st].ejectfile);
+
+			tfile = fopen(GSF[st].timefilename, "w");
+			fclose(tfile);
+
+			tfile = fopen(GSF[st].Energyfilename, "w");
+			fclose(tfile);
+
+			tfile = fopen(GSF[st].collisionfilename, "w");
+			fclose(tfile);  
+
+			if(P.CollTshift > 1.0){
+				tfile = fopen(GSF[st].collisionTshiftfilename, "w");
+				fclose(tfile); 
+			}
+
+			tfile = fopen(GSF[st].ejectfilename, "w");
+			fclose(tfile);
+
 			if(P.WriteEncounters > 0){
-				GSF[st].encounterfile = fopen(GSF[st].encounterfilename, "w");
-				fclose(GSF[st].encounterfile);  
+				tfile = fopen(GSF[st].encounterfilename, "w");
+				fclose(tfile);  
 			}
 			if(P.UseSmallCollisions > 0){
-				GSF[st].fragmentfile = fopen(GSF[st].fragmentfilename, "w");
-				fclose(GSF[st].fragmentfile);  
+				tfile = fopen(GSF[st].fragmentfilename, "w");
+				fclose(tfile);  
 			}
 		}
 		
@@ -2132,6 +2144,13 @@ __host__ int Host::icSize(int st){
 	}
 	NN = min(NN, 262144);
 	N_h[st] = NN;
+
+	if(N_h[st] + Nsmall_h[st] >= 1024 * 1024){
+
+		printf("Error More particles than 1024 * 104: scan call not implemented\n");
+
+		return 0;
+	}
 	
 	if(Nst == 0){
 		P.NencMax = min(P.NencMax, N_h[0] + Nsmall_h[0]);

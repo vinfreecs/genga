@@ -513,7 +513,7 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 			xold_d[id] = x4i;
 			vold_d[id] = v4i;
 			int index = index_d[id];
-//printf("FGA %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//printf("FGA %d %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", idd, id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 			double test;
 			float4 aelimits = aelimits_d[id];
 			//fastfg(x4i, v4i, dt, def_ksq * Msun, test, Msun, aelimits, aecount, Gridaecount_d, si, id, UseForce);
@@ -522,7 +522,7 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 			__syncthreads();
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-//printf("FGB %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+//printf("FGB %d %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", idd, id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 			if(si == 0){
 				aecount_d[id] += aecount;
 			}

@@ -14,7 +14,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int WriteEncounters, double WriteEncountersRadius, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, const int SLevels, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -421,11 +421,15 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 						double enct = 100.0;
 						double colt = 100.0;
 						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
-
+						if(noColl == 1 && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].y){
+							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
+						}
 						if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
 							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass);
 						}
-			
+						if(noColl == 1 && colt == 100.0){
+							delta = 100.0;
+						}
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
 							if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
@@ -457,11 +461,11 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 
 
 						//write Encounters to file
-						if(WriteEncounters > 0){
+						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
-							if(WriteEncounters == 1){
+							if(WriteEncounters_c[0] == 1){
 								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius * fmax(vt_s[ii].w, vt_s[jj + l].w);
+								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
 							}
 							if(delta < writeRadius * writeRadius){
 
@@ -493,26 +497,17 @@ __global__ void BSBMStep64_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 							for(int c = 0; c < Ncol_s[0]; ++c){
 								int i = Colpairs_s[c].x;
 								int j = Colpairs_s[c].y;
-								if(noColl == 0){
-									if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
-										int nc = atomicAdd(Ncoll_d, 1);
+								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
+									int nc = 0;
+									if(noColl == 0 || (noColl == 1 && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y)){
+										nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
-										collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels);
-									}
-								}
-								if(Coltime_s[0] < 10.0 && (noColl == 1 || noColl == -1)){
-									for(int cc = 0; cc < min(Ncoll_d[0], def_MaxColl); ++cc){
-										int ci = (int)(Coll_d[cc * 25 + 1]);
-										int cj = (int)(Coll_d[cc * 25 + 13]);
-//printf("cc %d %d | %d %d | %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, ci, cj, Ncoll_d[0]);
-										if(ci == Encpairs_d[(si * NmaxM) + i].x && cj == Encpairs_d[(si * NmaxM) + j].x && Coll_d[cc * 25 + 2] >= StopMinMass_c[0] && Coll_d[cc * 25 + 14] >= StopMinMass_c[0]){
-										if(Coltime_s[0] < 10) Coll_d[cc * 25 + 0] = (time + (t + dt1) / dayUnit) / 365.25;
-//printf("cTime nocoll %g %g %g %.20g %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, cc);
+										if(noColl == 1){
+											noColl = 2;
 										}
 									}
-									noColl = 2;
+									collide(xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
 								}
-
 							}
 						}
 

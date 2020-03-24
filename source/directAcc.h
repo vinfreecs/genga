@@ -253,37 +253,40 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels){
+__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
 
 	double3 vij;
 	double3 rij;
 	double3 L;
+	if(noColl != 1){
+//printf("collide %d %d %g\n", (index[indexi]), (index[indexj]), time);
 
-	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexi]);
-	Coll[nc * 25 + 2] = x4[i].w;
-	Coll[nc * 25 + 3] = v4[i].w;
-	Coll[nc * 25 + 4] = x4[i].x;
-	Coll[nc * 25 + 5] = x4[i].y;
-	Coll[nc * 25 + 6] = x4[i].z;
-	Coll[nc * 25 + 7] = v4[i].x;
-	Coll[nc * 25 + 8] = v4[i].y;
-	Coll[nc * 25 + 9] = v4[i].z;
-	Coll[nc * 25 + 10] = spin[indexi].x;
-	Coll[nc * 25 + 11] = spin[indexi].y;
-	Coll[nc * 25 + 12] = spin[indexi].z;
-	Coll[nc * 25 + 13] = (double)(index[indexj]);
-	Coll[nc * 25 + 14] = x4[j].w;
-	Coll[nc * 25 + 15] = v4[j].w;
-	Coll[nc * 25 + 16] = x4[j].x;
-	Coll[nc * 25 + 17] = x4[j].y;
-	Coll[nc * 25 + 18] = x4[j].z;
-	Coll[nc * 25 + 19] = v4[j].x;
-	Coll[nc * 25 + 20] = v4[j].y;
-	Coll[nc * 25 + 21] = v4[j].z;
-	Coll[nc * 25 + 22] = spin[indexj].x;
-	Coll[nc * 25 + 23] = spin[indexj].y;
-	Coll[nc * 25 + 24] = spin[indexj].z;
+		Coll[nc * def_NColl + 0] = time/365.25;
+		Coll[nc * def_NColl + 1] = (double)(index[indexi]);
+		Coll[nc * def_NColl + 2] = x4[i].w;
+		Coll[nc * def_NColl + 3] = v4[i].w;
+		Coll[nc * def_NColl + 4] = x4[i].x;
+		Coll[nc * def_NColl + 5] = x4[i].y;
+		Coll[nc * def_NColl + 6] = x4[i].z;
+		Coll[nc * def_NColl + 7] = v4[i].x;
+		Coll[nc * def_NColl + 8] = v4[i].y;
+		Coll[nc * def_NColl + 9] = v4[i].z;
+		Coll[nc * def_NColl + 10] = spin[indexi].x;
+		Coll[nc * def_NColl + 11] = spin[indexi].y;
+		Coll[nc * def_NColl + 12] = spin[indexi].z;
+		Coll[nc * def_NColl + 13] = (double)(index[indexj]);
+		Coll[nc * def_NColl + 14] = x4[j].w;
+		Coll[nc * def_NColl + 15] = v4[j].w;
+		Coll[nc * def_NColl + 16] = x4[j].x;
+		Coll[nc * def_NColl + 17] = x4[j].y;
+		Coll[nc * def_NColl + 18] = x4[j].z;
+		Coll[nc * def_NColl + 19] = v4[j].x;
+		Coll[nc * def_NColl + 20] = v4[j].y;
+		Coll[nc * def_NColl + 21] = v4[j].z;
+		Coll[nc * def_NColl + 22] = spin[indexj].x;
+		Coll[nc * def_NColl + 23] = spin[indexj].y;
+		Coll[nc * def_NColl + 24] = spin[indexj].z;
+	}
 
 	double mimj = x4[i].w * x4[j].w;
 	double mtot = x4[i].w + x4[j].w;
@@ -303,7 +306,9 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	double rsq = rij.x * rij.x + rij.y * rij.y + rij.z * rij.z + 1.0e-30;
 	double vsq = vij.x * vij.x + vij.y * vij.y + vij.z * vij.z + 1.0e-30;
 
-	*U_d += 0.5 * mimj / mtot * vsq - mimj * def_ksq / sqrt(rsq);
+	if(noColl == 0){
+		*U_d += 0.5 * mimj / mtot * vsq - mimj * def_ksq / sqrt(rsq);
+	}
 
 	x4[i].x = (x4[i].x * x4[i].w + x4[j].x * x4[j].w) / mtot;
 	x4[i].y = (x4[i].y * x4[i].w + x4[j].y * x4[j].w) / mtot;
@@ -340,35 +345,39 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 
 	if(x4[i].w < x4[j].w){
 		index[indexi] = index[indexj];
-		aelimits[indexi] = aelimits[indexj];
-		aecount[indexi] = aecount[indexj];
-		enccount[indexi] = enccount[indexj];
-		aecountT[indexi] = aecountT[indexj];
-		enccountT[indexi] = enccountT[indexj];
+		if(noColl == 0){
+			aelimits[indexi] = aelimits[indexj];
+			aecount[indexi] = aecount[indexj];
+			enccount[indexi] = enccount[indexj];
+			aecountT[indexi] = aecountT[indexj];
+			enccountT[indexi] = enccountT[indexj];
+		}
 	}
 	if(x4[i].w == x4[j].w){
 		index[indexi] = min(index[indexi], index[indexj]);
-		aelimits[indexi] = aelimits[min(indexi, indexj)];
-		aecount[indexi] = aecount[min(indexi, indexj)];
-		enccount[indexi] = enccount[min(indexi, indexj)];
-		aecountT[indexi] = aecountT[min(indexi, indexj)];
-		enccountT[indexi] = enccountT[min(indexi, indexj)];
+		if(noColl == 0){
+			aelimits[indexi] = aelimits[min(indexi, indexj)];
+			aecount[indexi] = aecount[min(indexi, indexj)];
+			enccount[indexi] = enccount[min(indexi, indexj)];
+			aecountT[indexi] = aecountT[min(indexi, indexj)];
+			enccountT[indexi] = enccountT[min(indexi, indexj)];
+		}
 	}
 	index[indexj] = -1;
 
-	if(StopAtCollision_c[0] == 0){
+//	if((StopAtCollision_c[0] == 0 && CollTshift_c[0] == 1.0) || noColl == 3){
 		x4[i].w = mtot;
-	}
-	else{
+//	}
+//	else{
 		//prevent from following collisions in the same time step
-		if(x4[j].w >= StopMinMass_c[0] && x4[i].w >= StopMinMass_c[0]){
-			x4[i].w = -1.0e-12;
-printf("Stop At Collision %d %g\n", StopAtCollision_c[0], StopMinMass_c[0]);
-		}
-		else{
-			x4[i].w = mtot;
-		}
-	}
+//		if(x4[j].w >= StopMinMass_c[0] && x4[i].w >= StopMinMass_c[0]){
+//			x4[i].w = -1.0e-12;
+//printf("Stop At Collision %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], time);
+//		}
+//		else{
+//			x4[i].w = mtot;
+//		}
+//	}
 	x4[j].w = -1.0e-12;
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;

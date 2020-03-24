@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.96
+#define def_Version 3.97
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
@@ -79,6 +79,7 @@
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
 #define def_Ninformat 50		//number of entries in informat array
+#define def_NColl 25			//number of parameters in Coll array
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
@@ -192,6 +193,8 @@
 #define MCMC_BLOCK 4			
 					//4 DEMCMC
 					//5 ADAGRAD
+					//6 Nelder Mead
+					//7 lbfgs
 
 #define MCMC_Q 0			//1 quadratic estimator
 					//2 iterative adjustment of P
@@ -247,6 +250,7 @@ __constant__ int  StopAtCollision_c[1];
 __constant__ double  StopMinMass_c[1];
 __constant__ double CollisionPrecision_c[1]; 
 __constant__ double CollTshift_c[1]; 
+__constant__ int2 CollTshiftpairs_c[1]; 
 __constant__ int WriteEncounters_c[1]; 
 __constant__ double WriteEncountersRadius_c[1]; 
 __constant__ int StopAtEncounter_c[1]; 
@@ -314,9 +318,78 @@ struct Parameter{
 	int SLSteps;
 };
 
+struct elements{
+	double P;
+	double T;
+	double m;
+	double e;
+	double w;
+	double f;
+};
+struct elements8{
+	double P;
+	double T;
+	double m;
+	double e;
+	double w;
+	double inc;
+	double O;
+	double r;
+};
+struct elements10{
+	double P;
+	double T;
+	double m;
+	double e;
+	double w;
+	double inc;
+	double O;
+	double r;
+	double a;
+	double M;
+};
+
+struct elementsS{
+	double pP;	//direction
+	double pT;
+	double pm;
+	double pe;
+	double pw;
+	double pf;
+	double gP;	//old derivatives
+	double gT;
+	double gm;
+	double ge;
+	double gw;
+	double gf;
+	double P0;	//old derivatives
+	double T0;
+	double m0;
+	double e0;
+	double w0;
+	double f0;
+	double alpha;	//step length
+	int count;
+};
+
+#define MCMC_NH 30
+struct elementsH{	//History
+	double sP;
+	double sT;
+	double sm;
+	double se;
+	double sw;
+	double yP;
+	double yT;
+	double ym;
+	double ye;
+	double yw;
+};
+
+
 //File names of Simulations
 struct GSFiles{
-	FILE *outputfile, *Energyfile, *logfile, *timefile, *collisionfile, *ejectfile, *encounterfile, *fragmentfile;
+	FILE *outputfile, *logfile;
 	char outputfilename[128];
 	char inputfilename[128];
 	char Originputfilename[128];
@@ -325,6 +398,7 @@ struct GSFiles{
 	char logfilename[128];
 	char timefilename[128];
 	char collisionfilename[128];
+	char collisionTshiftfilename[128];
 	char ejectfilename[128];
 	char encounterfilename[128];
 	char fragmentfilename[128];

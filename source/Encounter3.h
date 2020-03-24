@@ -29,7 +29,8 @@ __global__ void setNencpairs(int *Nencpairs_d){
 // ****************************************
 __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, double &time, const double MinMass){
 
-//printf("E %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g %.20g %.20g | m %.20g %.20g\n", i ,j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z, x4i.w, x4j.w);
+//printf("E0 %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g %.20g %.20g | m %.20g %.20g\n", i ,j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z, x4oldi.w, x4oldj.w);
+//printf("E1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g %.20g %.20g | m %.20g %.20g\n", i ,j, x4i.x, x4i.y, x4i.z, v4i.x, v4i.y, v4i.z, x4j.x, x4j.y, x4j.z, v4j.x, v4j.y, v4j.z, x4i.w, x4j.w);
 	int Enc = 0;
 	if(i != j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double d0, d1, dd0, dd1;
@@ -672,7 +673,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 				Nj = atomicAdd(&Encpairs_d[jj].y, 1);
 				Encpairs_d[jj * NencMax + Nj].x = ii;
 			}
-			//Encpairs_d[i].y contains the number of direct encounter paris of body i
+			//Encpairs_d[i].y contains the number of direct encounter pairs of body i
 			//Encpairs_d[i * NencMax + j].x contains the indeces j of the direct encounter pairs
 //printf("%d %d %d %d\n", ii, jj, Ni, Nj);
 		}
@@ -998,9 +999,12 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 	}
 }
 
-
+// **********************************************************
 // This kernel writes a list of close encounter pairs needed for the symplectic sub step
-__global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax){
+// Date: March 2020
+// Author: Simon Grimm
+// **********************************************************
+__global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, int *EncpairsScan_d, const int NencMax){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -1009,27 +1013,30 @@ __global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, const
 	}
 
 	if(id < N){
-		Encpairs3_d[id * NencMax] = 0;		//Encpunter pairs per body
+		Encpairs3_d[id * NencMax] = 0;		//Encounter pairs per body
 		Encpairs3_d[id * NencMax + 1] = -1;	//list of indices 
 		Encpairs3_d[id * NencMax + 2] = 0;	//number of pairs with real gravitational influence
+		Encpairs3_d[id * NencMax + 3] = 0;	//helper array for stream compation
+	}
+	if(id < (N + 1023) / 1024){
+		EncpairsScan_d[id] = 0;
 	}
 }
 
-__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N){
+__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N, const int SLevel){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	int Ne = *Nencpairs2_d;
-
+	int Ne = Nencpairs2_d[0];
 	if(id < Ne){
 		int ii = Encpairs2_d[id].x;
 		int jj = Encpairs2_d[id].y;
 
-//printf("%d %d %d\n", id, ii, jj);
 		//count encounter pairs per body
 		int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
 		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+//printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);
 
 		//count total number of close encounters
 		if(NI == 0){
@@ -1044,14 +1051,50 @@ __global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpai
 
 		if(jj < N || (UseTestParticles == 2 && ii < N)){
 			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);
-			Encpairs3_d[ii * NencMax + Ni + 3] = jj;
+			Encpairs3_d[ii * NencMax + Ni + 4] = jj;
 		}
 
 		if(ii < N || (UseTestParticles == 2 && jj < N)){
 			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 2], 1);
-			Encpairs3_d[jj * NencMax + Nj + 3] = ii;
+			Encpairs3_d[jj * NencMax + Nj + 4] = ii;
 		}
 	}
+}
 
+// **********************************************************
+// This kernel writes lists of encounter pairs for each bodies.
+// It prepares the helper array for stream compation, for a list of all involved particles
+// Date: March 2020
+// Author: Simon Grimm
+// **********************************************************
+__global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N, const int SLevel){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int Ne = Nencpairs2_d[0];
+	if(id < Ne){
+		int ii = Encpairs2_d[id].x;
+		int jj = Encpairs2_d[id].y;
+
+		//count encounter pairs per body
+		int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
+		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+//printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);
+
+		//fill helper array for stream compation
+		Encpairs3_d[ii * NencMax + 3] = 1;
+		Encpairs3_d[jj * NencMax + 3] = 1;
+
+		if(jj < N || (UseTestParticles == 2 && ii < N)){
+			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);
+			Encpairs3_d[ii * NencMax + Ni + 4] = jj;
+		}
+
+		if(ii < N || (UseTestParticles == 2 && jj < N)){
+			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 2], 1);
+			Encpairs3_d[jj * NencMax + Nj + 4] = ii;
+		}
+	}
 }
 #endif

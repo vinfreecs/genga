@@ -16,6 +16,7 @@ float times;				//elapsed time in milliseconds
 __host__ int Data::firstoutput(int irregular){
 	for(int st = 0; st < Nst; ++st){
 
+		FILE *Energyfile;
 
 		//check if EnergyIrrfile already exists
 		//This is needed for Gasolenga runs
@@ -34,19 +35,19 @@ __host__ int Data::firstoutput(int irregular){
 			int NBS = NBS_h[st];
 			if(P.ei > 0 || irregular == 1){
 				if(irregular == 0){
-					GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+					Energyfile = fopen(GSF[st].Energyfilename, "a");
 				}
 				else{
-					GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
+					Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
 
 				}
-				if(GSF[st].Energyfile == NULL){
+				if(Energyfile == NULL){
 					printf("Error, Energyfile not valid %d %s\n", st, GSF[st].timefilename);
 					return 0;
 				}
 				cudaMemcpy(Energy_h + NEnergy[st], Energy_d + NEnergy[st], sizeof(double)*8, cudaMemcpyDeviceToHost);
-				fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
-				fclose(GSF[st].Energyfile);
+				fprintf(Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ict_h[st], N_h[st] + Nsmall_h[st], Energy_h[0 + NEnergy[st]], Energy_h[1 + NEnergy[st]], Energy_h[2 + NEnergy[st]], Energy_h[3 + NEnergy[st]], Energy_h[4 + NEnergy[st]], Energy_h[5 + NEnergy[st]], Energy_h[6 + NEnergy[st]], Energy_h[7 + NEnergy[st]]);
+				fclose(Energyfile);
 			}
 			if(P.ci > 0){
 				if(P.FormatP == 1){
@@ -133,35 +134,35 @@ __host__ int Data::firstoutput(int irregular){
 			double Et;
 			char Ets[160];
 			if(readIrrEnergyFile == 0){
-				GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "r");
+				Energyfile = fopen(GSF[st].Energyfilename, "r");
 				sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 			}
 			else{
-				GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
+				Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
 				sprintf(Ets, "%.16g", (ict_h[st] * 365.25) / 365.25);
 			}
-			fscanf (GSF[st].Energyfile, "%lf",&Et);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
-			fscanf (GSF[st].Energyfile, "%lf",&LI_h[st]);
-			fscanf (GSF[st].Energyfile, "%lf",&U_h[st]);
-			fscanf (GSF[st].Energyfile, "%lf",&Energy0_h[st]);
-			fscanf (GSF[st].Energyfile, "%lf",&LI0_h[st]);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
-			fscanf (GSF[st].Energyfile, "%lf",&skip);
+			fscanf (Energyfile, "%lf",&Et);
+			fscanf (Energyfile, "%lf",&skip);
+			fscanf (Energyfile, "%lf",&skip);
+			fscanf (Energyfile, "%lf",&skip);
+			fscanf (Energyfile, "%lf",&LI_h[st]);
+			fscanf (Energyfile, "%lf",&U_h[st]);
+			fscanf (Energyfile, "%lf",&Energy0_h[st]);
+			fscanf (Energyfile, "%lf",&LI0_h[st]);
+			fscanf (Energyfile, "%lf",&skip);
+			fscanf (Energyfile, "%lf",&skip);
 			int er = 0;
 			while(Et * tsign <= atof(Ets) * tsign){
-				fscanf (GSF[st].Energyfile, "%lf",&Et);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&LI_h[st]);
-				fscanf (GSF[st].Energyfile, "%lf",&U_h[st]);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				fscanf (GSF[st].Energyfile, "%lf",&skip);
-				er = fscanf (GSF[st].Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&Et);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&LI_h[st]);
+				fscanf (Energyfile, "%lf",&U_h[st]);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
 				if(Et * tsign >= atof(Ets) * tsign) break;
 
 				if(er <= 0){
@@ -177,7 +178,7 @@ __host__ int Data::firstoutput(int irregular){
 			U_h[st] /= def_Kg;
 			LI_h[st] /= def_Kg;
 
-			fclose(GSF[st].Energyfile);
+			fclose(Energyfile);
 
 			cudaMemcpy(Energy0_d + st, Energy0_h + st, sizeof(double), cudaMemcpyHostToDevice);
 			cudaMemcpy(U_d + st, U_h + st, sizeof(double), cudaMemcpyHostToDevice);
@@ -277,6 +278,7 @@ __host__ int Data::firstEnergy(){
 //This function calls the Energy function and prints information
 __host__ int Data::EnergyOutput(int irregular){
 	cudaStream_t hstream[16];
+	FILE *Energyfile;
 	for(int hst = 0; hst < 16; ++hst){
 		cudaStreamCreate(&hstream[hst]);
 		error = cudaGetLastError();
@@ -313,18 +315,18 @@ __host__ int Data::EnergyOutput(int irregular){
 	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
 		if(irregular == 0){
-			GSF[st].Energyfile = fopen(GSF[st].Energyfilename, "a");
+			Energyfile = fopen(GSF[st].Energyfilename, "a");
 		}
 		else{
-			GSF[st].Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
+			Energyfile = fopen(GSF[st].EnergyIrrfilename, "a");
 		}
-		if(GSF[st].Energyfile == NULL){
+		if(Energyfile == NULL){
 			printf("Error, Energyfile not valid %d %s\n", st, GSF[st].Energyfilename);
 			return 0;
 		}
 		int NE = NEnergy[st];
-		fprintf(GSF[st].Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
-		fclose(GSF[st].Energyfile);
+		fprintf(Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
+		fclose(Energyfile);
 
 		if(irregular == 0 || interrupt == 1){
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -769,16 +771,17 @@ __host__ int Data::printTime(){
 	cudaEventRecord(tt3, 0);
 	cudaEventSynchronize(tt3);
 	cudaEventElapsedTime(&times, tt2, tt3);
+	FILE *timefile;
 	for(int st = 0; st < Nst; ++st){
 
-		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
-		if(GSF[st].timefile == NULL){
+		timefile = fopen(GSF[st].timefilename, "a");
+		if(timefile == NULL){
 			printf("Error, timefile not valid %d %s\n", st, GSF[st].timefilename);
 			return 0;
 		}
 
-		fprintf(GSF[st].timefile, "%lld %.20g\n", timeStep, times * 0.001);
-		fclose(GSF[st].timefile);
+		fprintf(timefile, "%lld %.20g\n", timeStep, times * 0.001);
+		fclose(timefile);
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		if(GSF[st].logfile == NULL){
 			printf("Error, infofile not valid %d %s\n", st, GSF[st].logfilename);
@@ -805,11 +808,12 @@ __host__ void Data::printLastTime(){
 	cudaEventRecord(tt4, 0);
 	cudaEventSynchronize(tt4);
 	cudaEventElapsedTime(&times, tt1, tt4);
+	FILE *timefile;
 	for(int st = 0; st < Nst; ++st){
-		GSF[st].timefile = fopen(GSF[st].timefilename, "a");
-		fprintf(GSF[st].timefile, "\n\n%lld %.20g\n", timeStep -1, times * 0.001);
+		timefile = fopen(GSF[st].timefilename, "a");
+		fprintf(timefile, "\n\n%lld %.20g\n", timeStep -1, times * 0.001);
 		if(st == 0) printf("Execution time: \n\n%g\n", times * 0.001);
-		fclose(GSF[st].timefile);
+		fclose(timefile);
 	}
 }
 
@@ -827,40 +831,38 @@ __host__ void Data::LastInfo(){
 
 //This function prints details of the Collisions
 //stopAtCollision checks if one of the 2 colliding bodies is large enough to resolve the collision externally.
-__host__ int Data::printCollisions(double &Coltime){
+__host__ int Data::printCollisions(){
   
-	cudaMemcpy(Coll_h, Coll_d, sizeof(double) * 25 * Ncoll_m[0], cudaMemcpyDeviceToHost);
+	cudaMemcpy(Coll_h, Coll_d, sizeof(double) * def_NColl * Ncoll_m[0], cudaMemcpyDeviceToHost);
 	FILE *collisionfile;
 	FILE *logfile;
 	int stopAtCollision = 0;
 	for(int nc = 0; nc < Ncoll_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Coll_h[nc * 25 + 1]) / def_MaxIndex;
+		else st = (int)(Coll_h[nc * def_NColl + 1]) / def_MaxIndex;
 		collisionfile = fopen(GSF[st].collisionfilename, "a");
-
 
 		logfile = fopen(GSF[st].logfilename, "a");
 
-		for(int in = 0; in < 25; ++in){
+		for(int in = 0; in < def_NColl; ++in){
 			if(in == 1 || in == 13){
-				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * 25 + in]));
-				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * 25 + in])) % def_MaxIndex);
+				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * def_NColl + in]));
+				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * def_NColl + in])) % def_MaxIndex);
 			}
-			else fprintf(collisionfile, "%.20g ", Coll_h[nc * 25 + in]);
+			else fprintf(collisionfile, "%.20g ", Coll_h[nc * def_NColl + in]);
 		}
 		if(Nst == 1){
-			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]), (int)(Coll_h[nc * 25 + 13]));
-			printf("Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]), (int)(Coll_h[nc * 25 + 13]));
+			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]));
+			printf("Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]));
 		}
 		else{
-			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * 25 + 1]) % def_MaxIndex , (int)(Coll_h[nc * 25 + 13]) % def_MaxIndex);
-			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * 25 + 1]) % def_MaxIndex , (int)(Coll_h[nc * 25 + 13]) % def_MaxIndex);
+			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex);
+			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex);
 		}
 	
-		if(Coll_h[nc * 25 + 2] >= P.StopMinMass && Coll_h[nc * 25 + 14] >= P.StopMinMass){
+		if(Coll_h[nc * def_NColl + 2] >= P.StopMinMass && Coll_h[nc * def_NColl + 14] >= P.StopMinMass){
 			stopAtCollision = 1;
-			Coltime = min(Coltime, Coll_h[nc * 25]);
 		}
 
 		fprintf(collisionfile, "\n");
@@ -868,6 +870,31 @@ __host__ int Data::printCollisions(double &Coltime){
 		fclose(logfile);
 	}
 	return stopAtCollision;
+}
+
+//This function prints details of the Collisions
+__host__ void Data::printCollisionsTshift(){
+  
+	FILE *collisionfile;
+	for(int nc = Ncoll_m[0] / 2; nc < Ncoll_m[0]; ++nc){
+		int st;
+		if(Nst == 1) st = 0;
+		else st = (int)(Coll_h[nc * def_NColl + 1]) / def_MaxIndex;
+		collisionfile = fopen(GSF[st].collisionTshiftfilename, "a");
+
+		int ii = int(Coll_h[nc * def_NColl + 1]);
+		int jj = int(Coll_h[nc * def_NColl + 13]);
+
+		for(int in = 0; in < def_NColl; ++in){
+			if(in == 1 || in == 13){
+				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * def_NColl + in]));
+				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * def_NColl + in])) % def_MaxIndex);
+			}
+			else fprintf(collisionfile, "%.20g ", Coll_h[nc * def_NColl + in]);
+		}
+		fprintf(collisionfile, "\n");
+		fclose(collisionfile);
+	}
 }
 
 //This function prints details of the Encounters
@@ -1136,8 +1163,7 @@ __host__ void Data::printMCMC(int E){
 		cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsT_h, elementsTOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	}
-	cudaMemcpy(elementsLA_h, elementsLA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
-	cudaMemcpy(elementsLB_h, elementsLB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+	cudaMemcpy(elementsL_h, elementsL_d, NconstT * sizeof(elements10), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsP_h, elementsP_d, Nst * sizeof(double4), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsSA_h, elementsSA_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsC_h, elementsC_d, (Nst + MCMC_NT) * sizeof(int2), cudaMemcpyDeviceToHost);
@@ -1180,7 +1206,7 @@ __host__ void Data::printMCMC(int E){
 				double time = ict_h[0];
 		
 				int ii = id;
-				fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, pp * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
+				fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsL_h[ii].m, f * elementsL_h[ii].r, f * elementsL_h[ii].P, f * elementsL_h[ii].e, f * elementsL_h[ii].inc, f * elementsL_h[ii].O, f * elementsL_h[ii].w, f * elementsL_h[ii].T, pp * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
 			}
 		}
 		fclose(MCMCfile);
@@ -1194,7 +1220,7 @@ __host__ void Data::printMCMC(int E){
 			double time = ict_h[0];
 		
 			int ii = id;
-			fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsLA_h[ii].w, f * elementsLB_h[ii].w, f * elementsLA_h[ii].x, f * elementsLA_h[ii].y, f * elementsLA_h[ii].z, f * elementsLB_h[ii].x, f * elementsLB_h[ii].y, f * elementsLB_h[ii].z, elementsP_h[si].x * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
+			fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsL_h[ii].m, f * elementsL_h[ii].r, f * elementsL_h[ii].P, f * elementsL_h[ii].e, f * elementsL_h[ii].inc, f * elementsL_h[ii].O, f * elementsL_h[ii].w, f * elementsL_h[ii].T, elementsP_h[si].x * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
 		}
 		fclose(MCMCfile);
 	}

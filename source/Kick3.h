@@ -544,6 +544,36 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 	}
 }
 
+__global__ void SortSb_kernel(int *Encpairs3_d, int *Nencpairs3_d, int N, int NencMax){
+
+	int idy = threadIdx.x;
+	int idd = blockIdx.x * blockDim.x + idy;	
+
+	if(idd < Nencpairs3_d[0]){
+		int id = Encpairs3_d[idd * NencMax + 1];
+		if(id >= 0 && id < N){
+			int NI = Encpairs3_d[id * NencMax + 2];
+
+			int stop = 0;
+			while(stop == 0){
+				stop = 1;
+				for(int i = 0; i < NI - 1; ++i){
+					int jj = Encpairs3_d[id * NencMax + i + 4];
+					int jjnext = Encpairs3_d[id * NencMax + i + 1 + 4];
+//printf("sortSb %d %d %d %d\n", id, NI, jj, jjnext);
+					if(jjnext < jj){
+						//swap
+						Encpairs3_d[id * NencMax + i + 4] = jjnext;
+						Encpairs3_d[id * NencMax + i + 1 + 4] = jj;
+						stop = 0;
+
+					}
+				}
+			}
+		}
+	}
+}
+
 
 
 // **************************************
@@ -632,18 +662,18 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 	if(idd < Nencpairs3_d[0]){
 		int id = Encpairs3_d[idd * NencMax + 1];
 		if(id >= 0 && id < N){
-//if(NI > 0) printf("NI %d %d\n", id, NI);
 			double4 x4i = xold_d[id];
 			double4 v4i = vold_d[id];
 			int NencpairsI = 0;
 			if(x4i.w >= 0.0){
 				__syncthreads();
 				int NI = Encpairs3_d[id * NencMax + 2];
+//if(NI > 0) printf("NI %d %d %d\n", idd, id, NI);
 				for(int i = 0; i < NI; ++i){
-					int jj = Encpairs3_d[id * NencMax + i + 3];
+					int jj = Encpairs3_d[id * NencMax + i + 4];
 					double4 x4j = xold_d[jj];
 					if(x4j.w >= 0.0){
-//if(E == 0) printf("AI %d %d %d %.40g %.40g %.40g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
+//if(E == 0) printf("AI %d %d %d %d %.40g %.40g %.40g %.40g\n", idd, id, jj, NI, x4i.x, x4j.x, v4_d[id].z, a.z);
 						accS(x4i, x4j, a, rcritv_d, test, NencpairsI, Encpairs2_d, id, jj, NconstT, NencMax, SLevel, SLevels, E);
 					}
 				}
@@ -661,7 +691,7 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 					x4_d[id] = x4i;
 				}
 				v4_d[id] = v4i;
-
+//printf("KickS %d %d %.20g %.20g %.20g\n", idd, id, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 				if(E == 0 || E == 2){
 					for(int i = 0; i < NencpairsI; ++i){
 						int jj = Encpairs2_d[id * NencMax + i].y;

@@ -21,7 +21,7 @@ __host__ void Data::AllocateOrbit(){
 	Energy_h = (double*)malloc(NEnergyT * sizeof(double));
 	Energy0_h = (double*)malloc(Nst * sizeof(double));
 	LI0_h = (double*)malloc(Nst * sizeof(double));
-	Coll_h = (double*)malloc(25 * def_MaxColl * Nst * sizeof(double));
+	Coll_h = (double*)malloc(def_NColl * def_MaxColl * Nst * sizeof(double));
 	writeEnc_h = (double*)malloc(25 * def_MaxWriteEnc * Nst * sizeof(double));
 	Fragments_h = (double*)malloc(25 * def_Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
@@ -73,13 +73,13 @@ __host__ void Data::AllocateOrbit(){
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsT_h = (double4*)malloc(NconstT * sizeof(double4));
-	elementsLA_h = (double4*)malloc(NconstT * sizeof(double4));
-	elementsLB_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsL_h = (elements10*)malloc(NconstT * sizeof(elements10));
 	elementsC_h = (int2*)malloc((Nst + MCMC_NT) * sizeof(int2));
 	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
 	elementsSA_h = (double*)malloc(Nst * sizeof(double));
 	elementsI_h = (int4*)malloc(NconstT * sizeof(int4));
 	elementsM_h = (double*)malloc(Nst * sizeof(double));
+
   #if MCMC_NCOV > 0
 	elementsCOV_h = (double*)malloc(NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV * sizeof(double));
   #else
@@ -89,8 +89,7 @@ __host__ void Data::AllocateOrbit(){
 	elementsA_h = NULL;
 	elementsB_h = NULL;
 	elementsT_h = NULL;
-	elementsLA_h = NULL;
-	elementsLB_h = NULL;
+	elementsL_h = NULL;
 	elementsC_h = NULL;
 	elementsP_h = NULL;
 	elementsSA_h = NULL;
@@ -118,9 +117,15 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &vold_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &rcrit_d, NconstT * P.SLevels * sizeof(double));
 	cudaMalloc((void **) &rcritv_d, NconstT * P.SLevels * sizeof(double));
+	cudaMalloc((void **) &rcritb_d, NconstT * P.SLevels * sizeof(double));
+	cudaMalloc((void **) &rcritvb_d, NconstT * P.SLevels * sizeof(double));
+	cudaMalloc((void **) &rcritbb_d, NconstT * P.SLevels * sizeof(double));
+	cudaMalloc((void **) &rcritvbb_d, NconstT * P.SLevels * sizeof(double));
 	cudaMalloc((void **) &test_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &index_d, NconstT * sizeof(int));
 	cudaMalloc((void **) &spin_d, NconstT * sizeof(double3));
+	cudaMalloc((void **) &spinb_d, NconstT * sizeof(double3));
+	cudaMalloc((void **) &spinbb_d, NconstT * sizeof(double3));
 	cudaMalloc((void **) &love_d, NconstT * sizeof(double3));
 	cudaMalloc((void **) &U_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI_d, Nst *sizeof(double));
@@ -135,7 +140,8 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
-	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * 25 * def_MaxColl);
+	cudaMalloc((void **) &EncpairsScan_d, sizeof(int) * (NconstT + 1023 / 1024));	//helper array for stream compation
+	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
@@ -183,23 +189,39 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &elementsBOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsTOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsTOld2_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsLA_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsLB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsL_d, NconstT * sizeof(elements10));
 	cudaMalloc((void **) &elementsC_d, (Nst + MCMC_NT) * sizeof(int2));
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
 	cudaMalloc((void **) &elementsSA_d, Nst * sizeof(double));
 	cudaMalloc((void **) &elementsI_d, NconstT * sizeof(int4));
 	cudaMalloc((void **) &elementsM_d, Nst * sizeof(double));
   #if MCMC_BLOCK == 5
-	cudaMalloc((void **) &elementsGA_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsGB_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsDA_d, NconstT * sizeof(double4));
-	cudaMalloc((void **) &elementsDB_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsG_d, NconstT * sizeof(elements8));
+	cudaMalloc((void **) &elementsGh_d, NconstT * sizeof(elements8));
+	cudaMalloc((void **) &elementsD_d, NconstT * sizeof(elements8));
+	cudaMalloc((void **) &elementsMean_d, NconstT * sizeof(elements8));
+	cudaMalloc((void **) &elementsVar_d, NconstT * sizeof(elements8));
   #else
-	elementsGA_d = NULL;
-	elementsGB_d = NULL;
-	elementsDA_d = NULL;
-	elementsDB_d = NULL;
+	elementsG_d = NULL;
+	elementsGh_d = NULL;
+	elementsD_d = NULL;
+	elementsMean_d = NULL;
+	elementsVar_d = NULL;
+  #endif
+  #if MCMC_BLOCK == 6
+printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1) * sizeof(elements));
+	cudaMalloc((void **) &Symplex_d, Nst * (N_h[0] * P.mcmcNE + 2) * N_h[0] * sizeof(elements));
+	cudaMalloc((void **) &SymplexCount_d, Nst * sizeof(int));
+  #else
+	Symplex_d = NULL;
+	SymplexCount_d = NULL;
+  #endif
+  #if MCMC_BLOCK == 7
+	cudaMalloc((void **) &elementsStep_d, NconstT * sizeof(elementsS));
+	cudaMalloc((void **) &elementsHist_d, (Nst + N_h[0] * P.mcmcNE) / (N_h[0] * P.mcmcNE + 1) * N_h[0] * MCMC_NH * sizeof(elementsH));
+  #else
+	elementsStep_d = NULL;
+	elementsHist_d = NULL;
   #endif
 
   #if MCMC_NCOV > 0
@@ -217,21 +239,26 @@ __host__ void Data::AllocateOrbit(){
 	elementsBOld2_d = NULL;
 	elementsTOld_d = NULL;
 	elementsTOld2_d = NULL;
-	elementsLA_d = NULL;
-	elementsLB_d = NULL;
+	elementsL_d = NULL;
 	elementsC_d = NULL;
 	elementsP_d = NULL;
 	elementsSA_d = NULL;
 	elementsI_d = NULL;
 	elementsM_d = NULL;
 	elementsCOV_d = NULL;
+	Symplex_d = NULL;
+	elementsStep_d = NULL;
+	elementsHist_d = NULL;
 #endif
 
 	//arrays for backup step
 	cudaMalloc((void **) &x4b_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &v4b_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &x4bb_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &v4bb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &ab_d, NconstT * sizeof(double3));
 	cudaMalloc((void **) &indexb_d, NconstT * sizeof(int));
+	cudaMalloc((void **) &indexbb_d, NconstT * sizeof(int));
 
 
 	//arrays for BSA
@@ -566,14 +593,16 @@ __host__ int Data::init(){
 		elementsT_h[i].y = 0.0;
 		elementsT_h[i].z = 0.0;
 		elementsT_h[i].w = 0.0;
-		elementsLA_h[i].x = 0.0;
-		elementsLA_h[i].y = 0.0;
-		elementsLA_h[i].z = 0.0;
-		elementsLA_h[i].w = 0.0;
-		elementsLB_h[i].x = 0.0;
-		elementsLB_h[i].y = 0.0;
-		elementsLB_h[i].z = 0.0;
-		elementsLB_h[i].w = 0.0;
+		elementsL_h[i].P = 0.0;
+		elementsL_h[i].T = 0.0;
+		elementsL_h[i].m = 0.0;
+		elementsL_h[i].e = 0.0;
+		elementsL_h[i].w = 0.0;
+		elementsL_h[i].inc = 0.0;
+		elementsL_h[i].O = 0.0;
+		elementsL_h[i].r = 0.0;
+		elementsL_h[i].a = 0.0;
+		elementsL_h[i].M = 0.0;
 		elementsI_h[i].x = 0;
 		elementsI_h[i].y = 0;
 		elementsI_h[i].z = 0;
@@ -626,7 +655,7 @@ __host__ int Data::init(){
 		Energy_h[i] = 0.0;
 	}
 
-	for(int i = 0; i < Nst * 25 * def_MaxColl; ++i){
+	for(int i = 0; i < Nst * def_NColl * def_MaxColl; ++i){
 		Coll_h[i] = 0.0;
 	}
 
@@ -710,7 +739,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs3_d, Nencpairs3_h, P.SLevels * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * 25 * def_MaxColl, cudaMemcpyHostToDevice);
+	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * def_NColl * def_MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * def_MaxWriteEnc, cudaMemcpyHostToDevice);
 	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * def_Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
@@ -730,8 +759,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsBOld2_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsTOld_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsTOld2_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(elementsLA_d, elementsLA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
-	cudaMemcpy(elementsLB_d, elementsLB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsL_d, elementsL_h, sizeof(elements10) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsC_d, elementsC_h, sizeof(int2) * (Nst + MCMC_NT), cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsSA_d, elementsSA_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsP_d, elementsP_h, sizeof(double4) * Nst, cudaMemcpyHostToDevice);
@@ -739,10 +767,15 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsM_d, elementsM_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
 
   #if MCMC_BLOCK == 5
-	cudaMemset(elementsGA_d, 0, NconstT * sizeof(double4));
-	cudaMemset(elementsGB_d, 0, NconstT * sizeof(double4));
-	cudaMemset(elementsDA_d, 0, NconstT * sizeof(double4));
-	cudaMemset(elementsDB_d, 0, NconstT * sizeof(double4));
+	cudaMemset(elementsG_d, 0, NconstT * sizeof(elements8));
+	cudaMemset(elementsGh_d, 0, NconstT * sizeof(elements8));
+	cudaMemset(elementsD_d, 0, NconstT * sizeof(elements8));
+	cudaMemset(elementsMean_d, 0, NconstT * sizeof(elements8));
+	cudaMemset(elementsVar_d, 0, NconstT * sizeof(elements8));
+  #endif
+  #if MCMC_BLOCK == 7
+	cudaMemset(elementsStep_d, 0, NconstT * sizeof(elementsS));
+	cudaMemset(elementsHist_d, 0, (Nst + N_h[0] * P.mcmcNE) / (N_h[0] * P.mcmcNE + 1) * N_h[0] * MCMC_NH * sizeof(elementsH));
   #endif
   #if MCMC_NCOV > 0
 	cudaMemcpy(elementsCOV_d, elementsCOV_h, sizeof(double) * NconstT * N_h[0] * MCMC_NCOV * MCMC_NCOV, cudaMemcpyHostToDevice);
@@ -825,8 +858,7 @@ __host__ int Data::readic(int st){
 			double4 elementsA = elementsA_h[i + NBS];
 			double4 elementsB = elementsB_h[i + NBS];
 			double4 elementsT = elementsT_h[i + NBS];
-			double4 elementsLA = elementsLA_h[i + NBS];
-			double4 elementsLB = elementsLB_h[i + NBS];
+			elements10  elementsL = elementsL_h[i + NBS];
 			double elementsSA = elementsSA_h[st];
 			double4 elementsP = elementsP_h[st];
 #endif
@@ -931,41 +963,41 @@ __host__ int Data::readic(int st){
 				}
 #if def_TTV > 0
 				else if (GSF[st].informat[f] == 29){
-					fscanf (infile, "%lf",&elementsLA.x);	//aL
+					fscanf (infile, "%lf",&elementsL.a);	//aL
 				}
 				else if (GSF[st].informat[f] == 30){
-					fscanf (infile, "%lf",&elementsLA.y);	//eL
+					fscanf (infile, "%lf",&elementsL.e);	//eL
 				}
 				else if (GSF[st].informat[f] == 31){
-					fscanf (infile, "%lf",&elementsLA.z);	//incL
-					if(P.AngleUnits == 1) elementsLA.z = elementsLA.z / 180.0 * M_PI;
+					fscanf (infile, "%lf",&elementsL.inc);	//incL
+					if(P.AngleUnits == 1) elementsL.inc = elementsL.inc / 180.0 * M_PI;
 				}
 				else if (GSF[st].informat[f] == 32){
-					 fscanf (infile, "%lf",&elementsLA.w);	//mL
+					 fscanf (infile, "%lf",&elementsL.m);	//mL
 				}
 				else if (GSF[st].informat[f] == 33){
-					fscanf (infile, "%lf",&elementsLB.x);	//OmegaL
-					if(P.AngleUnits == 1) elementsLB.x = elementsLB.x / 180.0 * M_PI;
+					fscanf (infile, "%lf",&elementsL.O);	//OmegaL
+					if(P.AngleUnits == 1) elementsL.O = elementsL.O / 180.0 * M_PI;
 				}
 				else if (GSF[st].informat[f] == 34){
-					fscanf (infile, "%lf",&elementsLB.y);	//wL
-					if(P.AngleUnits == 1) elementsLB.y = elementsLB.y / 180.0 * M_PI;
+					fscanf (infile, "%lf",&elementsL.w);	//wL
+					if(P.AngleUnits == 1) elementsL.w = elementsL.w / 180.0 * M_PI;
 				}
 				else if (GSF[st].informat[f] == 35){
-					fscanf (infile, "%lf",&elementsLB.z);	//ML
-					if(P.AngleUnits == 1) elementsLB.z = elementsLB.z / 180.0 * M_PI;
+					fscanf (infile, "%lf",&elementsL.M);	//ML
+					if(P.AngleUnits == 1) elementsL.M = elementsL.M / 180.0 * M_PI;
 				}
 				else if (GSF[st].informat[f] == 36){
-					fscanf (infile, "%lf",&elementsLB.w);	//rL
+					fscanf (infile, "%lf",&elementsL.r);	//rL
 				}
 				else if (GSF[st].informat[f] == 37){
 					fscanf (infile, "%lf",&elementsSA);	//SAT
 				}
 				else if (GSF[st].informat[f] == 39){
-					fscanf (infile, "%lf",&elementsLA.x);	//PL
+					fscanf (infile, "%lf",&elementsL.P);	//PL
 				}
 				else if (GSF[st].informat[f] == 41){
-					fscanf (infile, "%lf",&elementsLB.z);	//TL
+					fscanf (infile, "%lf",&elementsL.T);	//TL
 				}
 				else if (GSF[st].informat[f] == 43){
 					fscanf (infile, "%lf",&elementsP.w);	//gw
@@ -1000,6 +1032,15 @@ __host__ int Data::readic(int st){
 //printf("read a %d %.30g %.30g %.30g %.30g %.30g\n", i, p, mu, a, p * p * dayUnit * dayUnit * mu, a3);
 #endif
 			}
+			else{
+				// a to p
+				mJ += x.w;
+				double mu = def_ksq * (Msun_h[st].x + mJ);
+				double p2 = x.x * x.x * x.x * 4.0 * M_PI * M_PI / (dayUnit * dayUnit * mu);
+				p = sqrt(p2);
+
+			}
+
 			if(convertTToM == 1){
 
 				double w = v.y;
@@ -1012,9 +1053,10 @@ __host__ int Data::readic(int st){
 				double time = ict_h[0] * 365.25;
 				//compute Mean Anomaly of the first transit
 				double Mt = nu - 2.0 * e * sin(nu) + (3.0 * 0.25 * ee2 + 0.125 * ee4) * sin(2.0 * nu) - 1.0 / 3.0 * e * ee2 * sin(3.0 * nu) + 5.0/32.0 * ee4 * sin(4.0 * nu);
+//printf("T to M %g %g %g %g %g\n", time, nu, Mt, T, p);
 				double M = -(T - time) / p * 2.0 * M_PI + Mt;
 				M = fmod(M, 2.0 * M_PI);
-				if(M < 0.0) M+= 2.0 * M_PI;
+				if(M < 0.0) M += 2.0 * M_PI;
 
 				v.z = M;
 #if def_TTV > 0
@@ -1050,8 +1092,7 @@ __host__ int Data::readic(int st){
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
 			elementsT_h[ii + NBSN] = elementsT;
-			elementsLA_h[ii + NBSN] = elementsLA;
-			elementsLB_h[ii + NBSN] = elementsLB;
+			elementsL_h[ii + NBSN] = elementsL;
 			int iT = st / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 			 
 			elementsSA_h[st] = elementsSA * pow(sqrt(2.0), iT);
@@ -1954,11 +1995,11 @@ __host__ void Data::stopSimulations(){
 		}
 		//rearange arrays//
 #if USE_NAF == 1
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,  
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
 					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
 #else
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d, 
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
 					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, NULL, NULL, 0, Encpairs2_d, N_h[st]);
 #endif
@@ -2144,8 +2185,7 @@ __host__ int Data::freeOrbit(){
 	free(elementsA_h);
 	free(elementsB_h);
 	free(elementsT_h);
-	free(elementsLA_h);
-	free(elementsLB_h);
+	free(elementsL_h);
 	free(elementsC_h);
 	free(elementsP_h);
 	free(elementsSA_h);
@@ -2182,10 +2222,16 @@ __host__ int Data::freeOrbit(){
 	cudaFree(vold_d);
 	cudaFree(index_d);
 	cudaFree(spin_d);
+	cudaFree(spinb_d);
+	cudaFree(spinbb_d);
 	cudaFree(love_d);
 	cudaFree(a_d);
 	cudaFree(rcrit_d);
 	cudaFree(rcritv_d);
+	cudaFree(rcritb_d);
+	cudaFree(rcritvb_d);
+	cudaFree(rcritbb_d);
+	cudaFree(rcritvbb_d);
 	cudaFree(Nencpairs_d);
 	cudaFree(Nencpairs2_d);
 	cudaFree(Nencpairs3_d);
@@ -2193,6 +2239,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
 	cudaFree(Encpairs3_d);
+	cudaFree(EncpairsScan_d);
 
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);
@@ -2217,8 +2264,11 @@ __host__ int Data::freeOrbit(){
 
 	cudaFree(x4b_d);
 	cudaFree(v4b_d);
+	cudaFree(x4bb_d);
+	cudaFree(v4bb_d);
 	cudaFree(ab_d);
 	cudaFree(indexb_d);
+	cudaFree(indexbb_d);
 
 	cudaFree(vcom_d);
 	
@@ -2265,18 +2315,23 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsBOld2_d);
 	cudaFree(elementsTOld_d);
 	cudaFree(elementsTOld2_d);
-	cudaFree(elementsLA_d);
-	cudaFree(elementsLB_d);
+	cudaFree(elementsL_d);
 	cudaFree(elementsC_d);
 	cudaFree(elementsP_d);
 	cudaFree(elementsSA_d);
 	cudaFree(elementsI_d);
 	cudaFree(elementsM_d);
 	cudaFree(elementsCOV_d);
-	cudaFree(elementsGA_d);
-	cudaFree(elementsGA_d);
-	cudaFree(elementsDA_d);
-	cudaFree(elementsDA_d);
+	cudaFree(elementsG_d);
+	cudaFree(elementsGh_d);
+	cudaFree(elementsD_d);
+	cudaFree(elementsMean_d);
+	cudaFree(elementsVar_d);
+	cudaFree(elementsStep_d);
+	cudaFree(elementsHist_d);
+	cudaFree(Symplex_d);
+	cudaFree(SymplexCount_d);
+
 	
 	error = cudaGetLastError();
 	if(error != 0){

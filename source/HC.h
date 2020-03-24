@@ -215,11 +215,11 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 
 	if(id< N){
 		double3 a = a_d[0];
-//if(id == 0) printf("HC %.20g %.20g %.20g\n", a.x, a.y, a.z);
+//if(id == 0) printf("HC A %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a.x, a.y, a.z, x4_d[id].x, x4_d[id].y, x4_d[id].z);
 		x4_d[id].x += a.x * dtiMsun;
 		x4_d[id].y += a.y * dtiMsun;
 		x4_d[id].z += a.z * dtiMsun;
-//printf("HC %d %.20e %.20e %.20e\n", id, x4_d[id].x, a1_s[0].x, dtiMsun);
+//if(id == 0) printf("HC B %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a.x, a.y, a.z, x4_d[id].x, x4_d[id].y, x4_d[id].z);
 		if(UseForce & 1){
 			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];
@@ -394,9 +394,11 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 	__syncthreads();
 
 	if(idy< N){
+//printf("HC A %d %.20g %.20g %.20g %.20g %.20g %.20g %.29g %.20g %.20g %.20g %.20g\n", idy, a.x, a.y, a.z, x4_d[idy].x, x4_d[idy].y, x4_d[idy].z, v4_d[idy].x, v4_d[idy].y, v4_d[idy].z, x4_d[idy].w, dtiMsun);
 		x4_d[idy].x += a.x * dtiMsun;
 		x4_d[idy].y += a.y * dtiMsun;
 		x4_d[idy].z += a.z * dtiMsun;
+//if(idy == 12) printf("HC B %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, a.x, a.y, a.z, x4_d[idy].x, x4_d[idy].y, x4_d[idy].z, dtiMsun);
 //printf("HC %d %.20e %.20e %.20e %.20e %.20e\n", idy, x4_d[idy].x, a.x, a.y, a.z, dtiMsun);
 		if(UseForce & 1){
 			double c2 = def_cm * def_cm;

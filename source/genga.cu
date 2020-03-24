@@ -135,7 +135,7 @@ for(ittv = 0; ittv < D.P.TransitSteps; ++ittv){
 printf("*********** TTV Step %d *********** \n", ittv);
 
   #if MCMC_BLOCK == 4
-//sigma_kernel <<< 1, D.N_h[0] >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.time_h[0] - D.dt_h[0] / dayUnit, D.Msun_h[0].x, D.N_h[0], D.Nst);
+//sigma_kernel <<< 1, D.N_h[0] >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsL_d, D.time_h[0] - D.dt_h[0] / dayUnit, D.Msun_h[0].x, D.N_h[0], D.Nst);
     #if MCMC_Q == 1
 if(ittv % 16 == 0){
     #elif MCMC_Q == 2
@@ -167,21 +167,77 @@ if(ittv % MCMC_NQ == 0){
 //printf("-----\n");
   #endif
   #if MCMC_BLOCK == 5
-	//setJ_kernel <<< (Nst + 127) / 128, 128 >>> (D.random_d, D.elementsP_d, D.elementsI_d, D.elementsC_d, D.Nst, D.N_h[0], D.Msun_d, D.elementsM_d, ittv, D.P.mcmcNE, 4);
-	if(ittv < 2) setJ_kernel <<< (Nst + 127) / 128, 128 >>> (D.elementsP_d, D.Nst);
+	//periodic line search
+	//if(ittv == 0 || ittv % 50 == 1) setHyperParameters <<< (D.NT + 127) / 128, 128 >>> (D.elementsGh_d, D.NT, D.N_h[0], D.Nst);
+	//hypertune
+	if(ittv == 0) setHyperParameters <<< (D.NT + 127) / 128, 128 >>> (D.elementsGh_d, D.NT, D.N_h[0], D.Nst);
+
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
 		
-	if(ittv <= 0) D.modifyElementsCall(ittv, -1); //initialize ensemble walkers with no update
-	if(ittv % 2 == 1) D.modifyElementsCall(ittv, 5);
-	if(ittv > 0 && ittv % 2 == 0){
-		//adagrad <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.elementsGA_d, D.elementsGB_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
-		//adadelta <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.elementsGA_d, D.elementsGB_d, D.elementsDA_d, D.elementsDB_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
-		//adam <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.elementsGA_d, D.elementsGB_d, D.elementsDA_d, D.elementsDB_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
-		adaMax <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsLA_d, D.elementsLB_d, D.elementsGA_d, D.elementsGB_d, D.elementsDA_d, D.elementsDB_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+	//hypertune
+	if(ittv > 0 && ittv % 2 == 0) tuneHyperParameters <<< (D.Nst + 127) / 128, 128 >>>(D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst,ittv);
+
+	//periodic line search
+	//if((ittv > 0 && ittv % 50 == 2)  ||  ittv == 2) findMin <<<1, 1>>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsGh_d, D.elementsP_d, D.Nst, D.N_h[0]);
+	
+	if(ittv % 2 == 0 )D.modifyElementsCall(ittv, 5);
+	if(ittv % 2 == 1 )D.modifyElementsCall(ittv, -1); //no update
+
+
+	if(ittv % 2 == 1){
+
+		//Normalize <<< (D.NT + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsMean_d, D.elementsVar_d, D.NT,ittv);
+
+		rmsprop <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
+		//adam <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsD_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
+		//deNormalize <<< (D.NT + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsMean_d, D.elementsVar_d, D.NT,ittv);
+
+		D.modifyElementsCall(ittv, -1);
+
+	}
+    #if def_TTV == 1 
+	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+    #endif
+    #if def_TTV == 2  
+	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+    #endif
+  #endif
+  #if MCMC_BLOCK == 6
+
+	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
+	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+		
+	if(ittv == 0)D.modifyElementsCall(ittv, -1);
+
+	if(ittv > 0){
+		nelderMead <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsP_d, D.Symplex_d, D.SymplexCount_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
 		D.modifyElementsCall(ittv, -1);
 	}
+
+    #if def_TTV == 1 
+	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+    #endif
+    #if def_TTV == 2  
+	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
+    #endif
+  #endif
+  #if MCMC_BLOCK == 7
+
+	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
+	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+		
+	if(ittv == 0)D.modifyElementsCall(ittv, 5);
+
+	if(ittv > 0){
+		alpha <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsStep_d, D.elementsHist_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
+		gradstep <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsStep_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
+		D.modifyElementsCall(ittv, -1);
+	}
+
     #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
     #endif
@@ -237,13 +293,7 @@ if(ittv % MCMC_NQ == 0){
  #endif
 	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.RVP_d, D.elementsP_d, D.NtransitsT_d, D.n1_d, D.NT, D.N_h[0], D.Nst);
 
- #if MCMC_BLOCK != 5
 	TTVstep3 <<< (D.NT + 255) / 256, 256 >>> (D.index_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, D.P.mcmcNE);
- #else
-	if(ittv % 2 == 0){
-		TTVstep3 <<< (D.NT + 255) / 256, 256 >>> (D.index_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, D.P.mcmcNE);
-	}
- #endif
 
  #if MCMC_Q == 1
 	if(ittv % 16 == 15){

@@ -605,11 +605,11 @@ __global__ void SetSA_kernel(double* elementsSA_d, int Nst){
 // and computes Z = L X, where L is the Choleski decomposition part 
 // of the covariance matrix C
 
-// The kernels overwrites tuning lengths elementsLA and elementsLB
+// The kernels overwrites tuning lengths elementsL 
 //Date: February 2020
 //Author: Simon Grimm
 // *******************************************************
-__global__ void setCovarianceRandom1(curandState *random_d, double4 *elementsLA_d, double4 *elementsLB_d, int Nst, int N0){
+__global__ void setCovarianceRandom1(curandState *random_d, elements10 *elementsL_d, int Nst, int N0){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	curandState random;	
@@ -621,26 +621,26 @@ __global__ void setCovarianceRandom1(curandState *random_d, double4 *elementsLA_
 			//generate random number vector X
 			//P
 			double rd = curand_normal(&random);
-			elementsLA_d[idx * N0 + idy].x = rd;
+			elementsL_d[idx * N0 + idy].P = rd;
 #if MCMC_NCOV > 1
 			//T
 			rd = curand_normal(&random);
-			elementsLB_d[idx * N0 + idy].z = rd;
+			elementsL_d[idx * N0 + idy].T = rd;
 #endif
 #if MCMC_NCOV > 2
 			//m
 			rd = curand_normal(&random);
-			elementsLA_d[idx * N0 + idy].w = rd;
+			elementsL_d[idx * N0 + idy].m = rd;
 #endif
 #if MCMC_NCOV > 3
 			//e
 			rd = curand_normal(&random);
-			elementsLA_d[idx * N0 + idy].y = rd;
+			elementsL_d[idx * N0 + idy].e = rd;
 #endif
 #if MCMC_NCOV > 4
 			//w
 			rd = curand_normal(&random);
-			elementsLB_d[idx * N0 + idy].y = rd;
+			elementsL_d[idx * N0 + idy].w = rd;
 #endif
 			random_d[idx * N0 + idy] = random;
 
@@ -648,7 +648,7 @@ __global__ void setCovarianceRandom1(curandState *random_d, double4 *elementsLA_
 	}
 }
 
-__global__ void setCovarianceRandom(double *elementsCOV_d, double4 *elementsLA_d, double4 *elementsLB_d, int Nst, int N0){
+__global__ void setCovarianceRandom(double *elementsCOV_d, elements10 *elementsL_d, int Nst, int N0){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -670,11 +670,11 @@ __global__ void setCovarianceRandom(double *elementsCOV_d, double4 *elementsLA_d
 
 					for(int k = 0; k < MCMC_NCOV; ++k){
 						double rd;
-						if(k == 0) rd = elementsLA_d[idx * N0 + j].x; //P
-						if(k == 1) rd = elementsLB_d[idx * N0 + j].z; //T
-						if(k == 3) rd = elementsLA_d[idx * N0 + j].w; //m
-						if(k == 4) rd = elementsLA_d[idx * N0 + j].y; //e
-						if(k == 5) rd = elementsLB_d[idx * N0 + j].y; //w
+						if(k == 0) rd = elementsL_d[idx * N0 + j].P; //P
+						if(k == 1) rd = elementsL_d[idx * N0 + j].T; //T
+						if(k == 3) rd = elementsL_d[idx * N0 + j].m; //m
+						if(k == 4) rd = elementsL_d[idx * N0 + j].e; //e
+						if(k == 5) rd = elementsL_d[idx * N0 + j].w; //w
 
 
 						if(q == 0) zP += rd * elementsCOV_d[ii * N0 * MCMC_NCOV + jj + k];
@@ -689,269 +689,712 @@ __global__ void setCovarianceRandom(double *elementsCOV_d, double4 *elementsLA_d
 			}
 			__syncthreads();
 				
-			if(MCMC_NCOV > 0) elementsLA_d[idx * N0 + idy].x = zP;
-			if(MCMC_NCOV > 1) elementsLB_d[idx * N0 + idy].z = zT;
-			if(MCMC_NCOV > 2) elementsLA_d[idx * N0 + idy].w = zm;
-			if(MCMC_NCOV > 3) elementsLA_d[idx * N0 + idy].y = ze;
-			if(MCMC_NCOV > 4) elementsLB_d[idx * N0 + idy].y = zw;
+			if(MCMC_NCOV > 0) elementsL_d[idx * N0 + idy].P = zP;
+			if(MCMC_NCOV > 1) elementsL_d[idx * N0 + idy].T = zT;
+			if(MCMC_NCOV > 2) elementsL_d[idx * N0 + idy].m = zm;
+			if(MCMC_NCOV > 3) elementsL_d[idx * N0 + idy].e = ze;
+			if(MCMC_NCOV > 4) elementsL_d[idx * N0 + idy].w = zw;
 //printf("COV %d %d %g %g %g\n", idx * N0 + idy, idy, zP, elementsCOV_d[idy * N0 + 0], elementsCOV_d[(idx * N0 + idy) * N0 * MCMC_NCOV + 1]);
 		}
 	}
 }
 
 
-//adagrad
-__global__ void adagrad(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsGA_d, double4 *elementsGB_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+__global__ void setHyperParameters(elements8 *elementsGh_d, const int NT, const int N0, const int Nst){
+
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(id < Nst){
+	if(id < NT){
+
+		//P
+		elementsGh_d[id].P = 1.0e-5;
+		//T
+		elementsGh_d[id].T = 1.0e-4;
+		//m
+		elementsGh_d[id].m = 1.0e-5;
+		//e
+		elementsGh_d[id].e = 1.0e-3;
+		//w
+		elementsGh_d[id].w = 1.0e-1;
+		
+		
+/*
+		if(id < Nst){
+			int fi = id + 1;
+			double f = fi * fi * fi;
+printf("eta %d %d %g %g\n", id, fi, 1.0e-9 * f, f);
+			//P
+			elementsGh_d[id].P = 1.0e-9 * f;
+			//T
+			elementsGh_d[id].T = 1.0e-9 * f;
+			//m
+			elementsGh_d[id].m = 1.0e-9 * f;
+			//e
+			elementsGh_d[id].e = 1.0e-9 * f;
+			//w
+			elementsGh_d[id].w = 1.0e-9 * f;
+		}
+*/
+	}
+}
+
+__global__ void Normalize(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsMean_d, elements8 *elementsVar_d, const int NT, int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+
+	ittv += 1;
+	if(id < NT){
+
+		double dP = (elementsTOld_d[35].z - elementsMean_d[35].P);
+		double dT = (elementsTOld_d[35].x - elementsMean_d[35].T);
+		double dm = (elementsAOld_d[35].w - elementsMean_d[35].m);
+		double de = (elementsAOld_d[35].y - elementsMean_d[35].e);
+		double dw = (elementsBOld_d[35].y - elementsMean_d[35].w);
+
+		elementsMean_d[id].P += 1.0 / (ittv + 1.0) * dP; 
+		elementsMean_d[id].T += 1.0 / (ittv + 1.0) * dT; 
+		elementsMean_d[id].m += 1.0 / (ittv + 1.0) * dm; 
+		elementsMean_d[id].e += 1.0 / (ittv + 1.0) * de; 
+		elementsMean_d[id].w += 1.0 / (ittv + 1.0) * dw; 
+
+		elementsVar_d[id].P = (ittv - 1.0) / (ittv) * elementsVar_d[id].P + 1.0 / ittv * dP * dP + 1.0e-4; 
+		elementsVar_d[id].T = (ittv - 1.0) / (ittv) * elementsVar_d[id].T + 1.0 / ittv * dT * dT + 1.0e-4; 
+		elementsVar_d[id].m = (ittv - 1.0) / (ittv) * elementsVar_d[id].m + 1.0 / ittv * dm * dm + 1.0e-4; 
+		elementsVar_d[id].e = (ittv - 1.0) / (ittv) * elementsVar_d[id].e + 1.0 / ittv * de * de + 1.0e-4;  
+		elementsVar_d[id].w = (ittv - 1.0) / (ittv) * elementsVar_d[id].w + 1.0 / ittv * dw * dw + 1.0e-4; 
+
+
+		//xs = (x - mu) / sigma
+		elementsTOld_d[id].z = (elementsTOld_d[id].z - elementsMean_d[id].P) / (elementsVar_d[id].P); 
+		elementsTOld_d[id].x = (elementsTOld_d[id].x - elementsMean_d[id].T) / (elementsVar_d[id].T); 
+		elementsAOld_d[id].w = (elementsAOld_d[id].w - elementsMean_d[id].m) / (elementsVar_d[id].m); 
+		elementsAOld_d[id].y = (elementsAOld_d[id].y - elementsMean_d[id].e) / (elementsVar_d[id].e); 
+		elementsBOld_d[id].y = (elementsBOld_d[id].y - elementsMean_d[id].w) / (elementsVar_d[id].w); 
+
+		elementsL_d[id].P = (elementsL_d[id].P - elementsMean_d[id].P) / (elementsVar_d[id].P); 
+		elementsL_d[id].T = (elementsL_d[id].T - elementsMean_d[id].T) / (elementsVar_d[id].T); 
+		elementsL_d[id].m = (elementsL_d[id].m - elementsMean_d[id].m) / (elementsVar_d[id].m); 
+		elementsL_d[id].e = (elementsL_d[id].e - elementsMean_d[id].e) / (elementsVar_d[id].e); 
+		elementsL_d[id].w = (elementsL_d[id].w - elementsMean_d[id].w) / (elementsVar_d[id].w); 
+	}
+}
+
+__global__ void deNormalize(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsMean_d, elements8 *elementsVar_d, const int NT, int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+
+	ittv += 1;
+	if(id < NT){
+		//x = xs * sigma + mu)
+
+		elementsTOld_d[id].z = (elementsTOld_d[id].z * elementsVar_d[id].P) + elementsMean_d[id].P; 
+		elementsTOld_d[id].x = (elementsTOld_d[id].x * elementsVar_d[id].T) + elementsMean_d[id].T; 
+		elementsAOld_d[id].w = (elementsAOld_d[id].w * elementsVar_d[id].m) + elementsMean_d[id].m; 
+		elementsAOld_d[id].y = (elementsAOld_d[id].y * elementsVar_d[id].e) + elementsMean_d[id].e; 
+		elementsBOld_d[id].y = (elementsBOld_d[id].y * elementsVar_d[id].w) + elementsMean_d[id].w; 
+
+		elementsL_d[id].P = (elementsL_d[id].P * elementsVar_d[id].P) + elementsMean_d[id].P; 
+		elementsL_d[id].T = (elementsL_d[id].T * elementsVar_d[id].T) + elementsMean_d[id].T; 
+		elementsL_d[id].m = (elementsL_d[id].m * elementsVar_d[id].m) + elementsMean_d[id].m; 
+		elementsL_d[id].e = (elementsL_d[id].e * elementsVar_d[id].e) + elementsMean_d[id].e; 
+		elementsL_d[id].w = (elementsL_d[id].w * elementsVar_d[id].w) + elementsMean_d[id].w; 
+	}
+
+}
+
+__global__ void alpha(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elementsS *elementsStep_d, elementsH *elementsHist_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < 1){
+
+		double alpha = elementsStep_d[35 * N0].alpha;
+
+		double c1 = 1.0e-4;
+		double c2 = 0.9;	//Wolfe line search parameters
+
+
+		double dx, gx;
+
+		double t1 = 0.0;
+		double t2 = 0.0;
+
+		int accept = 0;
+
+		if(ittv == 1){
+			alpha = 2.0e-18;
+			for(int j = 0; j < Nst; ++j){
+				for(int ii = 0; ii < N0; ++ii){
+					elementsStep_d[j * N0 + ii].alpha = alpha;
+				}
+			}
+		}
+		else{
+			for(int j = 0; j < Nst - 1; ++j){
+				int jjj = j % Ne;
+				int iii = j / Ne;
+				if(jjj == 0){
+					t1 += elementsStep_d[35 * N0 + iii].pP * elementsStep_d[35 * N0 + iii].gP;
+					dx = elementsL_d[j * N0 + iii].P;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+					t2 += elementsStep_d[35 * N0 + iii].pP * gx;
+printf("tP %d %d %g %g %g %g | %g %g\n", j, iii, dx, gx, elementsStep_d[35 * N0 + iii].gP, elementsStep_d[35 * N0 + iii].pP, t1, t2);
+				}
+				if(jjj == 1){
+					t1 += elementsStep_d[35 * N0 + iii].pT * elementsStep_d[35 * N0 + iii].gT;
+					dx = elementsL_d[j * N0 + iii].T;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+					t2 += elementsStep_d[35 * N0 + iii].pT * gx;
+printf("tT %d %d %g %g %g %g | %g %g\n", j, iii, dx, gx, elementsStep_d[35 * N0 + iii].gT, elementsStep_d[35 * N0 + iii].pT, t1, t2);
+				}
+				if(jjj == 2){
+					t1 += elementsStep_d[35 * N0 + iii].pm * elementsStep_d[35 * N0 + iii].gm;
+					dx = elementsL_d[j * N0 + iii].m;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+					t2 += elementsStep_d[35 * N0 + iii].pm * gx;
+printf("tm %d %d %g %g %g %g | %g %g\n", j, iii, dx, gx, elementsStep_d[35 * N0 + iii].gm, elementsStep_d[35 * N0 + iii].pm, t1, t2);
+				}
+				if(jjj == 3){
+					t1 += elementsStep_d[35 * N0 + iii].pe * elementsStep_d[35 * N0 + iii].ge;
+					dx = elementsL_d[j * N0 + iii].e;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+					t2 += elementsStep_d[35 * N0 + iii].pe * gx;
+printf("te %d %d %g %g %g %g | %g %g\n", j, iii, dx, gx, elementsStep_d[35 * N0 + iii].ge, elementsStep_d[35 * N0 + iii].pe, t1, t2);
+				}
+				if(jjj == 4){
+					t1 += elementsStep_d[35 * N0 + iii].pw * elementsStep_d[35 * N0 + iii].gw;
+					dx = elementsL_d[j * N0 + iii].w;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+					t2 += elementsStep_d[35 * N0 + iii].pw * gx;
+printf("tw %d %d %g %g %g %g | %g %g\n", j, iii, dx, gx, elementsStep_d[35 * N0 + iii].gw, elementsStep_d[35 * N0 + iii].pw, t1, t2);
+				}
+			}
+			double f1 = 2.0 * elementsP_d[35].z;
+			double f0 = elementsStep_d[35 * N0].f0;
+
+			if(f1 > f0 + c1 * alpha * t1){
+				for(int j = 0; j < Nst; ++j){
+					elementsStep_d[j * N0].alpha = alpha * 0.5;
+				}
+printf("reduce alpha %d %g %.20g %.20g\n", id, elementsStep_d[0 * N0].alpha, f1, f0 + c1 * alpha * t1);
+			}	
+			else{
+				// --------------------------------------
+//				if(t2 < c2 * t1){
+//					for(int j = 0; j < Nst; ++j){
+//						elementsStep_d[j * N0].alpha = alpha * 2.1;
+//					}
+//printf("increase alpha %d %g %.20g %.20g %.20g %.20g\n", id, elementsStep_d[0 * N0].alpha, f1, f0 + c1 * alpha * t1, t2, c2 * t1);
+//				}
+//				else{
+printf("accept alpha %d %g %.20g %.20g %.20g %.20g | %d\n", id, elementsStep_d[0 * N0].alpha, f1, f0 + c1 * alpha * t1, t2, c2 * t1, elementsStep_d[0 * N0].count + 1);
+					for(int j = 0; j < Nst; ++j){
+						elementsStep_d[j * N0].alpha = 1.0;
+						accept = 1;
+						++elementsStep_d[j * N0].count; 
+					}
+//				}
+
+			}
+
+			if(elementsStep_d[0 * N0].alpha < 1.0e-6 && elementsStep_d[0 * N0].count > 0){
+printf("accept alpha B %d %g %.20g %.20g %.20g %.20g | %d\n", id, elementsStep_d[0 * N0].alpha, f1, f0 + c1 * alpha * t1, t2, c2 * t1, elementsStep_d[0 * N0].count + 1);
+				for(int j = 0; j < Nst; ++j){
+					elementsStep_d[j * N0].alpha = 1.0;
+					accept = 1;
+					++elementsStep_d[j * N0].count; 
+				}
+			}
+
+		}
+
+		int t = elementsStep_d[0 * N0].count - 1;
+		int tt = t % MCMC_NH;
+		int m = MCMC_NH;
+
+		if(ittv == 1 || accept == 1){
+
+
+			for(int j = 0; j < Nst - 1; ++j){
+				int jj = j % Ne;
+				int ii = j / Ne;
+				if(jj == 0){
+printf("store old step %d %d %d %d\n", j, ii, t, tt);
+					if(accept == 1){
+						elementsHist_d[tt * N0 + ii].sP = elementsTOld_d[35 * N0 + ii].z - elementsStep_d[35 * N0 + ii].P0;
+						elementsHist_d[tt * N0 + ii].sT = elementsTOld_d[35 * N0 + ii].x - elementsStep_d[35 * N0 + ii].T0;
+						elementsHist_d[tt * N0 + ii].sm = elementsAOld_d[35 * N0 + ii].w - elementsStep_d[35 * N0 + ii].m0;
+						elementsHist_d[tt * N0 + ii].se = elementsAOld_d[35 * N0 + ii].y - elementsStep_d[35 * N0 + ii].e0;
+						elementsHist_d[tt * N0 + ii].sw = elementsBOld_d[35 * N0 + ii].y - elementsStep_d[35 * N0 + ii].w0;
+					}
+	
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].f0 = 2.0 * elementsP_d[35].z;
+						elementsStep_d[jjj * N0 + ii].P0 = elementsTOld_d[35 * N0 + ii].z;
+						elementsStep_d[jjj * N0 + ii].T0 = elementsTOld_d[35 * N0 + ii].x;
+						elementsStep_d[jjj * N0 + ii].m0 = elementsAOld_d[35 * N0 + ii].w;
+						elementsStep_d[jjj * N0 + ii].e0 = elementsAOld_d[35 * N0 + ii].y;
+						elementsStep_d[jjj * N0 + ii].w0 = elementsBOld_d[35 * N0 + ii].y;
+					}
+				}
+
+				if(jj == 0){
+					//P
+					dx = elementsL_d[j * N0 + ii].P;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+printf("gP %d %d %g %.20g\n", j, ii, dx, gx);
+					if(accept == 1) elementsHist_d[tt * N0 + ii].yP = gx - elementsStep_d[35 * N0 + ii].gP;
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].gP = gx;
+						if(ittv == 1) elementsStep_d[jjj * N0 + ii].pP = -gx;
+					}
+				}
+				if(jj == 1){
+					//T
+					dx = elementsL_d[j * N0 + ii].T;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+printf("gT %d %d %g %.20g\n", j, ii, dx, gx);
+					if(accept == 1) elementsHist_d[tt * N0 + ii].yT = gx - elementsStep_d[35 * N0 + ii].gT;
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].gT = gx;
+						if(ittv == 1) elementsStep_d[jjj * N0 + ii].pT = -gx;
+					}
+				}
+				if(jj == 2){
+					//m
+					dx = elementsL_d[j * N0 + ii].m;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+printf("gm %d %d %g %.20g\n", j, ii, dx, gx);
+					if(accept == 1) elementsHist_d[tt * N0 + ii].ym = gx - elementsStep_d[35 * N0 + ii].gm;
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].gm = gx;
+						if(ittv == 1) elementsStep_d[jjj * N0 + ii].pm = -gx;
+					}
+				}
+				if(jj == 3){
+					//e
+					dx = elementsL_d[j * N0 + ii].e;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+printf("ge %d %d %g %.20g\n", j, ii, dx, gx);
+					if(accept == 1) elementsHist_d[tt * N0 + ii].ye = gx - elementsStep_d[35 * N0 + ii].ge;
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].ge = gx;
+						if(ittv == 1) elementsStep_d[jjj * N0 + ii].pe = -gx;
+					}
+				}
+				if(jj == 4){
+					//w
+					dx = elementsL_d[j * N0 + ii].w;
+					gx = -2.0 * (elementsP_d[35].z - elementsP_d[j].z) / dx;
+printf("gw %d %d %g %.20g\n", j, ii, dx, gx);
+					if(accept == 1) elementsHist_d[tt * N0 + ii].yw = gx - elementsStep_d[35 * N0 + ii].gw;
+					for(int jjj = 0; jjj < Nst; ++jjj){
+						elementsStep_d[jjj * N0 + ii].gw = gx;
+						if(ittv == 1) elementsStep_d[jjj * N0 + ii].pw = -gx;
+
+					}
+				}
+			}
+		}
+
+		if(accept == 1){
+			double alpha[MCMC_NH];
+			double irho[MCMC_NH];
+
+			for(int i = 0; i < N0; ++i){
+				elementsStep_d[35 * N0 + i].pP = -elementsStep_d[35 * N0 + i].gP;
+				elementsStep_d[35 * N0 + i].pT = -elementsStep_d[35 * N0 + i].gT;
+				elementsStep_d[35 * N0 + i].pm = -elementsStep_d[35 * N0 + i].gm;
+				elementsStep_d[35 * N0 + i].pe = -elementsStep_d[35 * N0 + i].ge;
+				elementsStep_d[35 * N0 + i].pw = -elementsStep_d[35 * N0 + i].gw;
+	
+			}
+
+			for(int k = t; k >= max(t - m + 1, 0); --k){
+				int kk = k % m;
+				irho[kk] = 0.0;
+				alpha[kk] = 0.0;
+				for(int i = 0; i < N0; ++i){
+//printf("SYP %d %d %g %g\n", k, i, elementsHist_d[kk * N0 + i].yP, elementsHist_d[kk * N0 + i].sP);
+//printf("SYT %d %d %g %g\n", k, i, elementsHist_d[kk * N0 + i].yT, elementsHist_d[kk * N0 + i].sT);
+//printf("SYm %d %d %g %g\n", k, i, elementsHist_d[kk * N0 + i].ym, elementsHist_d[kk * N0 + i].sm);
+//printf("SYe %d %d %g %g\n", k, i, elementsHist_d[kk * N0 + i].ye, elementsHist_d[kk * N0 + i].se);
+//printf("SYw %d %d %g %g\n", k, i, elementsHist_d[kk * N0 + i].yw, elementsHist_d[kk * N0 + i].sw);
+					irho[kk] += elementsHist_d[kk * N0 + i].yP * elementsHist_d[kk * N0 + i].sP; 
+					irho[kk] += elementsHist_d[kk * N0 + i].yT * elementsHist_d[kk * N0 + i].sT; 
+					irho[kk] += elementsHist_d[kk * N0 + i].ym * elementsHist_d[kk * N0 + i].sm; 
+					irho[kk] += elementsHist_d[kk * N0 + i].ye * elementsHist_d[kk * N0 + i].se; 
+					irho[kk] += elementsHist_d[kk * N0 + i].yw * elementsHist_d[kk * N0 + i].sw; 
+				}
+				for(int i = 0; i < N0; ++i){
+					alpha[kk] += elementsHist_d[kk * N0 + i].sP * elementsStep_d[35 * N0 + i].pP;	
+					alpha[kk] += elementsHist_d[kk * N0 + i].sT * elementsStep_d[35 * N0 + i].pT;	
+					alpha[kk] += elementsHist_d[kk * N0 + i].sm * elementsStep_d[35 * N0 + i].pm;	
+					alpha[kk] += elementsHist_d[kk * N0 + i].se * elementsStep_d[35 * N0 + i].pe;	
+					alpha[kk] += elementsHist_d[kk * N0 + i].sw * elementsStep_d[35 * N0 + i].pw;	
+				}
+				alpha[kk] /= irho[kk];
+//printf("alpha rho %d %d %d %d %g %g\n", id, t, k, kk, alpha[kk], irho[kk]);
+				for(int i = 0; i < N0; ++i){
+					elementsStep_d[35 * N0 + i].pP -= alpha[kk] * elementsHist_d[kk * N0 + i].yP;
+					elementsStep_d[35 * N0 + i].pT -= alpha[kk] * elementsHist_d[kk * N0 + i].yT;
+					elementsStep_d[35 * N0 + i].pm -= alpha[kk] * elementsHist_d[kk * N0 + i].ym;
+					elementsStep_d[35 * N0 + i].pe -= alpha[kk] * elementsHist_d[kk * N0 + i].ye;
+					elementsStep_d[35 * N0 + i].pw -= alpha[kk] * elementsHist_d[kk * N0 + i].yw;
+				}
+			}
+			double gammaSY = 0.0;
+			double gammaYY = 0.0;
+			for(int i = 0; i < N0; ++i){
+				gammaSY += elementsHist_d[tt * N0 + i].sP * elementsHist_d[tt * N0 + i].yP;
+				gammaYY += elementsHist_d[tt * N0 + i].yP * elementsHist_d[tt * N0 + i].yP;
+				gammaSY += elementsHist_d[tt * N0 + i].sT * elementsHist_d[tt * N0 + i].yT;
+				gammaYY += elementsHist_d[tt * N0 + i].yT * elementsHist_d[tt * N0 + i].yT;
+				gammaSY += elementsHist_d[tt * N0 + i].sm * elementsHist_d[tt * N0 + i].ym;
+				gammaYY += elementsHist_d[tt * N0 + i].ym * elementsHist_d[tt * N0 + i].ym;
+				gammaSY += elementsHist_d[tt * N0 + i].se * elementsHist_d[tt * N0 + i].ye;
+				gammaYY += elementsHist_d[tt * N0 + i].ye * elementsHist_d[tt * N0 + i].ye;
+				gammaSY += elementsHist_d[tt * N0 + i].sw * elementsHist_d[tt * N0 + i].yw;
+				gammaYY += elementsHist_d[tt * N0 + i].yw * elementsHist_d[tt * N0 + i].yw;
+			}
+			double gamma = gammaSY / gammaYY;
+printf("gamma %g\n", gamma);
+			for(int i = 0; i < N0; ++i){
+				elementsStep_d[35 * N0 + i].pP *= gamma;
+				elementsStep_d[35 * N0 + i].pT *= gamma;
+				elementsStep_d[35 * N0 + i].pm *= gamma;
+				elementsStep_d[35 * N0 + i].pe *= gamma;
+				elementsStep_d[35 * N0 + i].pw *= gamma;
+			}
+
+			for(int k = max(t - m + 1, 0); k <= t; ++k){
+				int kk = k % m;
+				double beta = 0.0;
+				for(int i = 0; i < N0; ++i){
+					beta += elementsHist_d[kk * N0 + i].yP * elementsStep_d[35 * N0 + i].pP;	
+					beta += elementsHist_d[kk * N0 + i].yT * elementsStep_d[35 * N0 + i].pT;	
+					beta += elementsHist_d[kk * N0 + i].ym * elementsStep_d[35 * N0 + i].pm;	
+					beta += elementsHist_d[kk * N0 + i].ye * elementsStep_d[35 * N0 + i].pe;	
+					beta += elementsHist_d[kk * N0 + i].yw * elementsStep_d[35 * N0 + i].pw;
+				}
+				beta /= irho[kk];
+				for(int i = 0; i < N0; ++i){
+					elementsStep_d[35 * N0 + i].pP += elementsHist_d[kk * N0 + i].sP * (alpha[kk] - beta);
+					elementsStep_d[35 * N0 + i].pT += elementsHist_d[kk * N0 + i].sT * (alpha[kk] - beta);
+					elementsStep_d[35 * N0 + i].pm += elementsHist_d[kk * N0 + i].sm * (alpha[kk] - beta);
+					elementsStep_d[35 * N0 + i].pe += elementsHist_d[kk * N0 + i].se * (alpha[kk] - beta);
+					elementsStep_d[35 * N0 + i].pw += elementsHist_d[kk * N0 + i].sw * (alpha[kk] - beta);
+				}
+			}
+for(int i = 0; i < N0; ++i){
+	printf("pP %d %d %.20g\n", id, i, elementsStep_d[35 * N0 + i].pP);
+	printf("pT %d %d %.20g\n", id, i, elementsStep_d[35 * N0 + i].pT);
+	printf("pm %d %d %.20g\n", id, i, elementsStep_d[35 * N0 + i].pm);
+	printf("pe %d %d %.20g\n", id, i, elementsStep_d[35 * N0 + i].pe);
+	printf("pw %d %d %.20g\n", id, i, elementsStep_d[35 * N0 + i].pw);
+}
+
+			for(int j = 0; j < Nst; ++j){
+				for(int i = 0; i < N0; ++i){
+					elementsStep_d[j * N0 + i].pP = elementsStep_d[35 * N0 + i].pP;
+					elementsStep_d[j * N0 + i].pT = elementsStep_d[35 * N0 + i].pT;
+					elementsStep_d[j * N0 + i].pm = elementsStep_d[35 * N0 + i].pm;
+					elementsStep_d[j * N0 + i].pe = elementsStep_d[35 * N0 + i].pe;
+					elementsStep_d[j * N0 + i].pw = elementsStep_d[35 * N0 + i].pw;
+				}
+			}
+		}
+
+	}
+}
+
+
+//__global__void lbfgs(){
+
+
+
+//}
+
+
+
+//lbfgs
+__global__ void gradstep(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elementsS *elementsStep_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < Nst - 1){
+
+		double dx;
+		int jj = id % Ne;
+		int ii = id / Ne;
+
+
+		//if(ittv == 1){
+			double alpha = elementsStep_d[id * N0].alpha;
+if(id == 0) printf("alpha %g\n", alpha);
+
+			if(jj == 0){
+				//P
+				dx = elementsL_d[id * N0 + ii].P;
+				for(int j = 0; j < Nst; ++j){
+					elementsTOld_d[j * N0 + ii].z = elementsStep_d[j * N0 + ii].P0 + alpha * elementsStep_d[35 * N0 + ii].pP;
+				}
+				elementsTOld_d[id * N0 + ii].z += dx;
+			}
+			if(jj == 1){
+				//T
+				dx = elementsL_d[id * N0 + ii].T;
+				for(int j = 0; j < Nst; ++j){
+					elementsTOld_d[j * N0 + ii].x = elementsStep_d[j * N0 + ii].T0 + alpha * elementsStep_d[35 * N0 + ii].pT;
+				}
+				elementsTOld_d[id * N0 + ii].x += dx;
+			}
+			if(jj == 2){
+				//m
+				dx = elementsL_d[id * N0 + ii].m;
+				for(int j = 0; j < Nst; ++j){
+					elementsAOld_d[j * N0 + ii].w = elementsStep_d[j * N0 + ii].m0 + alpha * elementsStep_d[35 * N0 + ii].pm;
+				}
+				elementsAOld_d[id * N0 + ii].w += dx;
+			}
+			if(jj == 3){
+				//e
+				dx = elementsL_d[id * N0 + ii].e;
+				for(int j = 0; j < Nst; ++j){
+					elementsAOld_d[j * N0 + ii].y = elementsStep_d[j * N0 + ii].e0 + alpha * elementsStep_d[35 * N0 + ii].pe;
+				}
+				elementsAOld_d[id * N0 + ii].y += dx;
+			}
+			if(jj == 4){
+				//w
+				dx = elementsL_d[id * N0 + ii].w;
+				for(int j = 0; j < Nst; ++j){
+					elementsBOld_d[j * N0 + ii].y = elementsStep_d[j * N0 + ii].w0 + alpha * elementsStep_d[35 * N0 + ii].pw;
+				}
+				elementsBOld_d[id * N0 + ii].y += dx;
+			}
+		//}
+		
+	}
+}
+
+
+//RMSprop
+__global__ void rmsprop(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < Nst -1){
 		double dx, dx1, gx, Gx;
 
-		//double eta = 0.1;
-		double eta = 0.2;
+		double eta = 0.01;
 		double eps = 1.0e-6;
-		int jj = id % Ne;
-		int ii = id / Ne;
-		if(jj == 0){
-			dx = elementsLA_d[id * N0 + ii].x;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = elementsGA_d[id * N0 + ii].x + gx * gx;
-			elementsGA_d[id * N0 + ii].x = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx *1.0e-9;
-			elementsLA_d[id * N0 + ii].x = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].x += dx1;
-			}
-printf("dx P %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
-		}
-		if(jj == 1){
-			dx = elementsLB_d[id * N0 + ii].z;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = elementsGB_d[id * N0 + ii].z + gx * gx;
-			elementsGB_d[id * N0 + ii].z = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx *1.0e-9;
-			elementsLB_d[id * N0 + ii].z = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].z += dx1;
-			}
-printf("dx T %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
-		}
-		if(jj == 2){
-			dx = elementsLA_d[id * N0 + ii].w;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = elementsGA_d[id * N0 + ii].w + gx * gx;
-			elementsGA_d[id * N0 + ii].w = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * 1.0e-9;
-			elementsLA_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].w += dx1;
-			}
-printf("dx m %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
-		}
-		if(jj == 3){
-			dx = elementsLA_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = elementsGA_d[id * N0 + ii].y + gx * gx;
-			elementsGA_d[id * N0 + ii].y = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * 1.0e-6;
-			elementsLA_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].y += dx1;
-			}
-printf("dx e %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
-		}
-		if(jj == 4){
-			dx = elementsLB_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = elementsGB_d[id * N0 + ii].y + gx * gx;
-			elementsGB_d[id * N0 + ii].y = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * 1.0e-6;
-			elementsLB_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].y += dx1;
-			}
-printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
-		}
-
-
-	}
-}
-
-//adadelta
-__global__ void adadelta(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsGA_d, double4 *elementsGB_d, double4 *elementsDA_d, double4 *elementsDB_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
-	if(id < Nst){
-		double dx, dx1, gx, Gx, Dx;
-
+		
 		double beta = 0.9;
-		double eps = 1.0e-6;
 		int jj = id % Ne;
 		int ii = id / Ne;
 		if(jj == 0){
-			dx = elementsLA_d[id * N0 + ii].x;
-			//eps = 1.0e-11 * dx;
-			eps = 1.0e-12 * dx;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta * elementsGA_d[id * N0 + ii].x + (1.0 - beta) * gx * gx;
-			Dx = elementsDA_d[id * N0 + ii].x;
-			elementsGA_d[id * N0 + ii].x = Gx;
-			dx1 = -sqrt(Dx + eps) / sqrt(Gx + eps) * gx;
-			elementsLA_d[id * N0 + ii].x = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			elementsDA_d[id * N0 + ii].x = beta * Dx + (1.0 - beta) * dx1 * dx1;
+			dx = elementsL_d[id * N0 + ii].P;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta * elementsG_d[id * N0 + ii].P + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].P = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].P;
+			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].P = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].x += dx1;
+				if(j % Ne == 0 && j / Ne == ii){
+					elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + 1.1 * dx1;
+				}
+				else elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + dx1;
+				//elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + dx1 * elementsGh_d[j].P;
 			}
-printf("dx P %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
+printf("dx P %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsTOld_d[id * N0 + ii].z, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].P);
+//printf("dx P %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].P);
 		}
 		if(jj == 1){
-			dx = elementsLB_d[id * N0 + ii].z;
-			eps = 1.0e-12 * dx;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta * elementsGB_d[id * N0 + ii].z + (1.0 - beta) * gx * gx;
-			Dx = elementsDB_d[id * N0 + ii].z;
-			elementsGB_d[id * N0 + ii].z = Gx;
-			dx1 = -sqrt(Dx + eps) / sqrt(Gx + eps) * gx;
-			elementsLB_d[id * N0 + ii].z = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			elementsDB_d[id * N0 + ii].z = beta * Dx + (1.0 - beta) * dx1 * dx1;
+			dx = elementsL_d[id * N0 + ii].T;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta * elementsG_d[id * N0 + ii].T + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].T = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].T;
+			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].T = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].z += dx1;
+				if(j % Ne == 1 && j / Ne == ii){
+					elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + 1.1 * dx1;
+				}
+				else elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + dx1;
+				//elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + dx1 * elementsGh_d[j].T;
 			}
-printf("dx T %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
+printf("dx T %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsTOld_d[id * N0 + ii].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].T);
+//printf("dx T %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].T);
 		}
 		if(jj == 2){
-			dx = elementsLA_d[id * N0 + ii].w;
-			eps = 1.0e-12 * dx;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta * elementsGA_d[id * N0 + ii].w + (1.0 - beta) * gx * gx;
-			Dx = elementsDA_d[id * N0 + ii].w;
-			elementsGA_d[id * N0 + ii].w = Gx;
-			dx1 = -sqrt(Dx + eps) / sqrt(Gx + eps) * gx;
-			elementsLA_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			elementsDA_d[id * N0 + ii].w = beta * Dx + (1.0 - beta) * dx1 * dx1;
+			dx = elementsL_d[id * N0 + ii].m;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta * elementsG_d[id * N0 + ii].m + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].m = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].m;
+			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].m = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].w += dx1;
+				if(j % Ne == 2 && j / Ne == ii){
+					elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + 1.1 * dx1;
+				}
+				else elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + dx1;
+				//elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + dx1 * elementsGh_d[j].m;
 			}
-printf("dx m %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
+printf("dx m %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, elementsAOld_d[id * N0 + ii].w, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].m);
+//printf("dx m %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].m);
 		}
 		if(jj == 3){
-			dx = elementsLA_d[id * N0 + ii].y;
-			eps = 1.0e-12 * dx;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta * elementsGA_d[id * N0 + ii].y + (1.0 - beta) * gx * gx;
-			Dx = elementsDA_d[id * N0 + ii].y;
-			elementsGA_d[id * N0 + ii].y = Gx;
-			dx1 = -sqrt(Dx + eps) / sqrt(Gx + eps) * gx;
-			elementsLA_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			elementsDA_d[id * N0 + ii].y = beta * Dx + (1.0 - beta) * dx1 * dx1;
+			dx = elementsL_d[id * N0 + ii].e;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta * elementsG_d[id * N0 + ii].e + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].e = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].e;
+			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].e = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].y += dx1;
+				if(j % Ne == 3 && j / Ne == ii){
+					elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + 1.1 * dx1;
+				}
+				else elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + dx1;
+				//elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].e;
 			}
-printf("dx e %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
+printf("dx e %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsAOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].e);
+//printf("dx e %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].e);
 		}
 		if(jj == 4){
-			dx = elementsLB_d[id * N0 + ii].y;
-			eps = 1.0e-12 * dx;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta * elementsGB_d[id * N0 + ii].y + (1.0 - beta) * gx * gx;
-			Dx = elementsDB_d[id * N0 + ii].y;
-			elementsGB_d[id * N0 + ii].y = Gx;
-			dx1 = -sqrt(Dx + eps) / sqrt(Gx + eps) * gx;
-			elementsLB_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			elementsDB_d[id * N0 + ii].y = beta * Dx + (1.0 - beta) * dx1 * dx1;
+			dx = elementsL_d[id * N0 + ii].w;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta * elementsG_d[id * N0 + ii].w + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].w = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].w;
+			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].y += dx1;
+				if(j % Ne == 4 && j / Ne == ii){
+					elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + 1.1 * dx1;
+				}
+				else elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + dx1;
+				//elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].w;
 			}
-printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps*dx), dx1);
+printf("dx w %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsBOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].w);
+//printf("dx w %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].w);
 		}
-
+	
 
 	}
 }
 
-//adam
-__global__ void adam(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsGA_d, double4 *elementsGB_d, double4 *elementsDA_d, double4 *elementsDB_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+//adamW
+__global__ void adam(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsD_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(id < Nst){
+	if(id < Nst - 1){
 		double dx, dx1, gx, Gx, Dx;
 
 		double beta1 = 0.9;
 		double beta2 = 0.999;
-		double eta = 0.01;
+		double beta1t = pow(beta1, ittv);
+		double beta2t = pow(beta2, ittv);
+		double eta = 0.1;
 		double eps = 1.0e-9;
+
 		int jj = id % Ne;
 		int ii = id / Ne;
 		if(jj == 0){
-			dx = elementsLA_d[id * N0 + ii].x;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta2 * elementsGA_d[id * N0 + ii].x + (1.0 - beta2) * gx * gx;
-			Dx = beta1 * elementsDA_d[id * N0 + ii].x + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].x = Gx;
-			elementsDA_d[id * N0 + ii].x = Dx;
-			dx1 = -eta / sqrt(Gx + eps) * Dx * 1.0e-8;
-			elementsLA_d[id * N0 + ii].x = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			dx = elementsL_d[id * N0 + ii].P;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta2 * elementsG_d[id * N0 + ii].P + (1.0 - beta2) * gx * gx;
+			Dx = beta1 * elementsD_d[id * N0 + ii].P + (1.0 - beta1) * gx;
+			double DDx = Dx / (1.0 - beta1t);
+			double GGx = Gx / (1.0 - beta2t);
+			elementsG_d[id * N0 + ii].P = Gx;
+			elementsD_d[id * N0 + ii].P = Dx;
+			dx1 = -eta / sqrt(GGx + eps) * DDx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].P = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].x += dx1;
+				elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + dx1 * elementsGh_d[j].P;
 			}
 printf("dx P %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps), dx1);
 		}
 		if(jj == 1){
-			dx = elementsLB_d[id * N0 + ii].z;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta2 * elementsGB_d[id * N0 + ii].z + (1.0 - beta2) * gx * gx;
-			Dx = beta1 * elementsDB_d[id * N0 + ii].z + (1.0 - beta1) * gx;
-			elementsGB_d[id * N0 + ii].z = Gx;
-			elementsDB_d[id * N0 + ii].z = Dx;
-			dx1 = -eta / sqrt(Gx + eps) * Dx * 1.0e-9;
-			elementsLB_d[id * N0 + ii].z = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			dx = elementsL_d[id * N0 + ii].T;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta2 * elementsG_d[id * N0 + ii].T + (1.0 - beta2) * gx * gx;
+			Dx = beta1 * elementsD_d[id * N0 + ii].T + (1.0 - beta1) * gx;
+			double DDx = Dx / (1.0 - beta1t);
+			double GGx = Gx / (1.0 - beta2t);
+			elementsG_d[id * N0 + ii].T = Gx;
+			elementsD_d[id * N0 + ii].T = Dx;
+			dx1 = -eta / sqrt(GGx + eps) * DDx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].T = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].z += dx1;
+				elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + dx1 * elementsGh_d[j].T;
 			}
 printf("dx T %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps), dx1);
 		}
 		if(jj == 2){
-			dx = elementsLA_d[id * N0 + ii].w;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta2 * elementsGA_d[id * N0 + ii].w + (1.0 - beta2) * gx * gx;
-			Dx = beta1 * elementsDA_d[id * N0 + ii].w + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].w = Gx;
-			elementsDA_d[id * N0 + ii].w = Dx;
-			dx1 = -eta / sqrt(Gx + eps) * Dx * 1.0e-7;
-			elementsLA_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			dx = elementsL_d[id * N0 + ii].m;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta2 * elementsG_d[id * N0 + ii].m + (1.0 - beta2) * gx * gx;
+			Dx = beta1 * elementsD_d[id * N0 + ii].m + (1.0 - beta1) * gx;
+			double DDx = Dx / (1.0 - beta1t);
+			double GGx = Gx / (1.0 - beta2t);
+			elementsG_d[id * N0 + ii].m = Gx;
+			elementsD_d[id * N0 + ii].m = Dx;
+			dx1 = -eta / sqrt(GGx + eps) * DDx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].m = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].w += dx1;
+				elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + dx1 * elementsGh_d[j].m;
 			}
 printf("dx m %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps), dx1);
 		}
 		if(jj == 3){
-			dx = elementsLA_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta2 * elementsGA_d[id * N0 + ii].y + (1.0 - beta2) * gx * gx;
-			Dx = beta1 * elementsDA_d[id * N0 + ii].y + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].y = Gx;
-			elementsDA_d[id * N0 + ii].y = Dx;
-			dx1 = -eta / sqrt(Gx + eps) * Dx * 1.0e-4;
-			elementsLA_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			dx = elementsL_d[id * N0 + ii].e;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta2 * elementsG_d[id * N0 + ii].e + (1.0 - beta2) * gx * gx;
+			Dx = beta1 * elementsD_d[id * N0 + ii].e + (1.0 - beta1) * gx;
+			double DDx = Dx / (1.0 - beta1t);
+			double GGx = Gx / (1.0 - beta2t);
+			elementsG_d[id * N0 + ii].e = Gx;
+			elementsD_d[id * N0 + ii].e = Dx;
+			dx1 = -eta / sqrt(GGx + eps) * DDx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].e = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].y += dx1;
+				elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].e;
 			}
 printf("dx e %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps), dx1);
 		}
 		if(jj == 4){
-			dx = elementsLB_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = beta2 * elementsGB_d[id * N0 + ii].y + (1.0 - beta2) * gx * gx;
-			Dx = beta1 * elementsDB_d[id * N0 + ii].y + (1.0 - beta1) * gx;
-			elementsGB_d[id * N0 + ii].y = Gx;
-			elementsDB_d[id * N0 + ii].y = Dx;
-			dx1 = -eta / sqrt(Gx + eps) * Dx * 1.0e-2;
-			elementsLB_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			dx = elementsL_d[id * N0 + ii].w;
+			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			Gx = beta2 * elementsG_d[id * N0 + ii].w + (1.0 - beta2) * gx * gx;
+			Dx = beta1 * elementsD_d[id * N0 + ii].w + (1.0 - beta1) * gx;
+			double DDx = Dx / (1.0 - beta1t);
+			double GGx = Gx / (1.0 - beta2t);
+			elementsG_d[id * N0 + ii].w = Gx;
+			elementsD_d[id * N0 + ii].w = Dx;
+			dx1 = -eta / sqrt(GGx + eps) * DDx;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
 			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].y += dx1;
+				elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].w;
 			}
 printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, sqrt(Gx + eps), dx1);
 		}
@@ -960,95 +1403,426 @@ printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 
 	}
 }
 
-//adaMax
-__global__ void adaMax(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsGA_d, double4 *elementsGB_d, double4 *elementsDA_d, double4 *elementsDB_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+
+__global__ void findMin(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements8 *elementsGh_d, double4 *elementsP_d, const int Nst, const int N0){
+	
+	double min = 1.0e300;
+	int imin = 0;
+	for(int i = 0; i < Nst; ++i){
+		if(elementsP_d[i].z < min){
+			imin = i;
+			min = elementsP_d[i].z;
+		}	
+printf("min %d %d %g %g \n", i, imin, min, elementsP_d[i].z);
+
+	}
+	imin = max(imin - 2, 0);
+
+	for(int i = 0; i < Nst; ++i){
+		for(int j = 0; j < N0; ++j){
+			elementsTOld_d[i * N0 + j].z = elementsTOld_d[imin * N0 + j].z;
+			elementsTOld_d[i * N0 + j].x = elementsTOld_d[imin * N0 + j].x;
+			elementsAOld_d[i * N0 + j].w = elementsAOld_d[imin * N0 + j].w;
+			elementsAOld_d[i * N0 + j].y = elementsAOld_d[imin * N0 + j].y;
+			elementsBOld_d[i * N0 + j].y = elementsBOld_d[imin * N0 + j].y;
+
+		}
+		elementsGh_d[i].P = elementsGh_d[imin].P;
+		elementsGh_d[i].T = elementsGh_d[imin].T;
+		elementsGh_d[i].m = elementsGh_d[imin].m;
+		elementsGh_d[i].e = elementsGh_d[imin].e;
+		elementsGh_d[i].w = elementsGh_d[imin].w;
+		elementsP_d[i].z = elementsP_d[imin].z;
+	}
+}
+
+
+__global__ void tuneHyperParameters(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(id < Nst){
-		double dx, dx1, gx, Gx, Dx;
+	if(id < Nst -1){
 
-		double beta1 = 0.9;
-		double beta2 = 0.999;
-		double eta = 0.01;
 		int jj = id % Ne;
 		int ii = id / Ne;
 		if(jj == 0){
-			dx = elementsLA_d[id * N0 + ii].x;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = fmax(beta2 * elementsGA_d[id * N0 + ii].x, fabs(gx));
-			Dx = beta1 * elementsDA_d[id * N0 + ii].x + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].x = Gx;
-			elementsDA_d[id * N0 + ii].x = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-7;
-			if(gx == 0.0) dx1 = 0.0;
-			elementsLA_d[id * N0 + ii].x = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].x += dx1;
+			if(elementsP_d[id].z < elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].P *= 1.1;
 			}
-printf("dx P %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, Gx, dx1);
+			if(elementsP_d[id].z > elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].P *= 0.9;
+			}
+			for(int j = 0; j < Nst; ++j){
+				elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z;
+			}
+printf("dh P %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].P, elementsTOld_d[id * N0 + ii].z);
 		}
 		if(jj == 1){
-			dx = elementsLB_d[id * N0 + ii].z;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = fmax(beta2 * elementsGB_d[id * N0 + ii].z, fabs(gx));
-			Dx = beta1 * elementsDB_d[id * N0 + ii].z + (1.0 - beta1) * gx;
-			elementsGB_d[id * N0 + ii].z = Gx;
-			elementsDB_d[id * N0 + ii].z = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-9;
-			elementsLB_d[id * N0 + ii].z = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].z += dx1;
+			if(elementsP_d[id].z < elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].T *= 1.1;
 			}
-printf("dx T %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, Gx, dx1);
+			if(elementsP_d[id].z > elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].T *= 0.9;
+			}
+			for(int j = 0; j < Nst; ++j){
+				elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x;
+			}
+printf("dh T %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].T, elementsTOld_d[id * N0 + ii].x);
 		}
 		if(jj == 2){
-			dx = elementsLA_d[id * N0 + ii].w;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = fmax(beta2 * elementsGA_d[id * N0 + ii].w, fabs(gx));
-			Dx = beta1 * elementsDA_d[id * N0 + ii].w + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].w = Gx;
-			elementsDA_d[id * N0 + ii].w = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-7;
-			elementsLA_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].w += dx1;
+			if(elementsP_d[id].z < elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].m *= 1.1;
 			}
-printf("dx m %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, Gx, dx1);
+			if(elementsP_d[id].z > elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].m *= 0.9;
+			}
+			for(int j = 0; j < Nst; ++j){
+				elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w;
+			}
+printf("dh m %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].m, elementsAOld_d[id * N0 + ii].w);
 		}
 		if(jj == 3){
-			dx = elementsLA_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = fmax(beta2 * elementsGA_d[id * N0 + ii].y, fabs(gx));
-			Dx = beta1 * elementsDA_d[id * N0 + ii].y + (1.0 - beta1) * gx;
-			elementsGA_d[id * N0 + ii].y = Gx;
-			elementsDA_d[id * N0 + ii].y = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-3;
-			elementsLA_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].y += dx1;
+			if(elementsP_d[id].z < elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].e *= 1.1;
 			}
-printf("dx e %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, Gx, dx1);
+			if(elementsP_d[id].z > elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].e *= 0.9;
+			}
+			for(int j = 0; j < Nst; ++j){
+				elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y;
+			}
+printf("dh e %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].e, elementsAOld_d[id * N0 + ii].y);
 		}
 		if(jj == 4){
-			dx = elementsLB_d[id * N0 + ii].y;
-			gx = -2.0 * (elementsP_d[id].z - elementsP_d[id].x) / dx;
-			Gx = fmax(beta2 * elementsGB_d[id * N0 + ii].y, fabs(gx));
-			Dx = beta1 * elementsDB_d[id * N0 + ii].y + (1.0 - beta1) * gx;
-			elementsGB_d[id * N0 + ii].y = Gx;
-			elementsDB_d[id * N0 + ii].y = Dx;
-			dx1 = -eta / Gx * Dx * 1.0e-2;
-			elementsLB_d[id * N0 + ii].y = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].y += dx1;
+			if(elementsP_d[id].z < elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].w *= 1.1;
 			}
-printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[id].z, dx, gx, Gx, dx1);
+			if(elementsP_d[id].z > elementsP_d[35].z){
+				elementsGh_d[id * N0 + ii].w *= 0.9;
+			}
+			for(int j = 0; j < Nst; ++j){
+				elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y;
+			}
+printf("dh w %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].w, elementsBOld_d[id * N0 + ii].y);
 		}
-
+		elementsP_d[id].z = elementsP_d[35].z;
 
 	}
 }
 
+//Nelder Mead
+__global__ void nelderMead(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, double4 *elementsP_d, elements *Symplex_d, int *SymplexCount_d, const int N0, const int Ne, const int Nst, const int ittv){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	double alpha = 1.0;
+	double gamma = 2.0;
+	double beta = 0.5;
+	double sigma = 0.5;
+
+	if(ittv == 1) SymplexCount_d[id] = 0;
+
+
+	if(id < Nst){
+	
+		if(SymplexCount_d[id] < N0 * Ne + 1){	
+printf("store f %d %.20g\n", SymplexCount_d[id], 2.0 * elementsP_d[id].z);
+			for(int i = 0; i < N0; ++i){
+				Symplex_d[SymplexCount_d[id] * (Nst * N0) + id * N0 + i].f = 2.0 * elementsP_d[id].z;
+			}
+		}
+
+
+		if(SymplexCount_d[id] == 1000){
+			SymplexCount_d[id] = 2000;
+printf("store reflect %d %.20g\n", N0 * Ne + 1, 2.0 * elementsP_d[id].z);
+			for(int i = 0; i < N0; ++i){
+				Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].f = 2.0 * elementsP_d[id].z;
+			}
+		}
+
+		if(SymplexCount_d[id] == N0 * Ne) SymplexCount_d[id] = 1000;
+
+		//build very first symplex
+		if(ittv < N0 * Ne + 1){
+			for(int i = 0; i < N0; ++i){
+				if(ittv == 1){
+					Symplex_d[(0) * (Nst * N0) + id * N0 + i].P = elementsTOld_d[id * N0 + i].z;
+					Symplex_d[(0) * (Nst * N0) + id * N0 + i].T = elementsTOld_d[id * N0 + i].x;
+					Symplex_d[(0) * (Nst * N0) + id * N0 + i].m = elementsAOld_d[id * N0 + i].w;
+					Symplex_d[(0) * (Nst * N0) + id * N0 + i].e = elementsAOld_d[id * N0 + i].y;
+					Symplex_d[(0) * (Nst * N0) + id * N0 + i].w = elementsBOld_d[id * N0 + i].y;
+				}
+				else{
+					//copy from first symplex
+					elementsTOld_d[id * N0 + i].z = Symplex_d[id * N0 + i].P;
+					elementsTOld_d[id * N0 + i].x = Symplex_d[id * N0 + i].T;
+					elementsAOld_d[id * N0 + i].w = Symplex_d[id * N0 + i].m;
+					elementsAOld_d[id * N0 + i].y = Symplex_d[id * N0 + i].e;
+					elementsBOld_d[id * N0 + i].y = Symplex_d[id * N0 + i].w;
+				}
+			}
+
+			double dx;
+			
+			int jj = (ittv - 1) % Ne;
+			int ii = (ittv - 1) / Ne;
+			if(jj == 0){
+				//P
+				dx = elementsL_d[id * N0 + ii].P;
+				elementsTOld_d[id * N0 + ii].z += dx;
+printf("dx P %d %d %d %.20g %.20g\n", ittv, id, ii, elementsTOld_d[id * N0 + ii].z, dx);
+			}
+			if(jj == 1){
+				//T
+				dx = elementsL_d[id * N0 + ii].T;
+				elementsTOld_d[id * N0 + ii].x += dx;
+printf("dx T %d %d %d %.20g %.20g\n", ittv, id, ii, elementsTOld_d[id * N0 + ii].x, dx);
+			}
+			if(jj == 2){
+				//m
+				dx = elementsL_d[id * N0 + ii].m;
+				elementsAOld_d[id * N0 + ii].w += dx;
+printf("dx m %d %d %d %.20g %.20g\n", ittv, id, ii, elementsAOld_d[id * N0 + ii].w, dx);
+			}
+			if(jj == 3){
+				//e
+				dx = elementsL_d[id * N0 + ii].e;
+				elementsAOld_d[id * N0 + ii].y += dx;
+printf("dx e %d %d %d %.20g %.20g\n", ittv, id, ii, elementsAOld_d[id * N0 + ii].y, dx);
+			}
+			if(jj == 4){
+				//w
+				dx = elementsL_d[id * N0 + ii].w;
+				elementsBOld_d[id * N0 + ii].y += dx;
+printf("dx w %d %d %d %.20g %.20g\n", ittv, id, ii, elementsBOld_d[id * N0 + ii].y, dx);
+			}
+
+			for(int i = 0; i < N0; ++i){
+				Symplex_d[(ittv) * (Nst * N0) + id * N0 + i].P = elementsTOld_d[id * N0 + i].z;
+				Symplex_d[(ittv) * (Nst * N0) + id * N0 + i].T = elementsTOld_d[id * N0 + i].x;
+				Symplex_d[(ittv) * (Nst * N0) + id * N0 + i].m = elementsAOld_d[id * N0 + i].w;
+				Symplex_d[(ittv) * (Nst * N0) + id * N0 + i].e = elementsAOld_d[id * N0 + i].y;
+				Symplex_d[(ittv) * (Nst * N0) + id * N0 + i].w = elementsBOld_d[id * N0 + i].y;
+			}
+			++SymplexCount_d[id];
+		}
+
+
+
+		if(SymplexCount_d[id] == 3000){
+					
+			int iM = 0;	//best solution
+			int im = 0;	//worst solution
+			int im2 = 0;	//second worst solution
+
+
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f < Symplex_d[(iM) * (Nst * N0) + id * N0].f){
+					iM = i;
+				}
+			}
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f > Symplex_d[(im) * (Nst * N0) + id * N0].f){
+					im = i;
+				}
+			}
+
+			if(im == 0) im2 = 1;
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f > Symplex_d[(im2) * (Nst * N0) + id * N0].f && i != im){
+					im2 = i;
+				}
+			}
+printf("min maxB %d %d %d %d %.20g %.20g %.20g | %.20g %.20g\n", ittv, iM, im2, im, Symplex_d[(iM) * (Nst * N0) + id * N0].f, Symplex_d[(im2) * (Nst * N0) + id * N0].f, Symplex_d[(im) * (Nst * N0) + id * N0].f, Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0].f, 2.0 * elementsP_d[id].z);
+
+			if(Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0].f < Symplex_d[iM * (Nst * N0) + id * N0].f){
+
+				if(2.0 * elementsP_d[id].z < Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0].f){
+					//replace xN with e
+printf("expandB replace with e\n");
+					for(int i = 0; i < N0; ++i){
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].P = elementsTOld_d[id * N0 + i].z;
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].T = elementsTOld_d[id * N0 + i].x;
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].m = elementsAOld_d[id * N0 + i].w;
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].e = elementsAOld_d[id * N0 + i].y;
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].w = elementsBOld_d[id * N0 + i].y;
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i].f = 2.0 * elementsP_d[id].z;
+
+					}
+				}
+				else{
+printf("expandB replace with r\n");
+					//replace xN with r
+					for(int i = 0; i < N0; ++i){
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i] = Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i];
+					}
+				}
+			}
+			else if(Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0].f < Symplex_d[im2 * (Nst * N0) + id * N0].f){
+printf("replaceB replace with r\n");
+					//replace xN with r
+					for(int i = 0; i < N0; ++i){
+						Symplex_d[(im) * (Nst * N0) + id * N0 + i] = Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i];
+					}
+
+			}
+			else if(2.0 * elementsP_d[id].z < Symplex_d[im * (Nst * N0) + id * N0].f){
+printf("contractB replace with c\n");
+				//replace xN with c
+				for(int i = 0; i < N0; ++i){
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].P = elementsTOld_d[id * N0 + i].z;
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].T = elementsTOld_d[id * N0 + i].x;
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].m = elementsAOld_d[id * N0 + i].w;
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].e = elementsAOld_d[id * N0 + i].y;
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].w = elementsBOld_d[id * N0 + i].y;
+					Symplex_d[(im) * (Nst * N0) + id * N0 + i].f = 2.0 * elementsP_d[id].z;
+				}
+
+			}
+			else{
+				//shrink
+//restart simplex build
+				for(int j = 0; j < N0 * Ne + 1; ++j){
+					for(int i = 0; i < N0; ++i){
+						Symplex_d[(j) * (Nst * N0) + id * N0 + i].P = sigma * Symplex_d[(iM) * (Nst * N0) + id * N0 + i].P + (1.0 - sigma) * Symplex_d[(j) * (Nst * N0) + id * N0 + i].P;
+						Symplex_d[(j) * (Nst * N0) + id * N0 + i].T = sigma * Symplex_d[(iM) * (Nst * N0) + id * N0 + i].T + (1.0 - sigma) * Symplex_d[(j) * (Nst * N0) + id * N0 + i].T;
+						Symplex_d[(j) * (Nst * N0) + id * N0 + i].m = sigma * Symplex_d[(iM) * (Nst * N0) + id * N0 + i].m + (1.0 - sigma) * Symplex_d[(j) * (Nst * N0) + id * N0 + i].m;
+						Symplex_d[(j) * (Nst * N0) + id * N0 + i].e = sigma * Symplex_d[(iM) * (Nst * N0) + id * N0 + i].e + (1.0 - sigma) * Symplex_d[(j) * (Nst * N0) + id * N0 + i].e;
+						Symplex_d[(j) * (Nst * N0) + id * N0 + i].w = sigma * Symplex_d[(iM) * (Nst * N0) + id * N0 + i].w + (1.0 - sigma) * Symplex_d[(j) * (Nst * N0) + id * N0 + i].w;
+					}
+				}
+printf("shrink\n");
+				SymplexCount_d[id] = -1;
+
+			}
+			if(SymplexCount_d[id] == 3000) SymplexCount_d[id] = 1000;
+
+		}
+
+		//rebuild symplex, after shrinking
+		if(ittv >= N0 * Ne + 2 && SymplexCount_d[id] < N0 * Ne){
+			int sc = SymplexCount_d[id] + 1;
+			for(int i = 0; i < N0; ++i){
+				elementsTOld_d[id * N0 + i].z = Symplex_d[sc * (Nst * N0) + id * N0 + i].P;
+				elementsTOld_d[id * N0 + i].x = Symplex_d[sc * (Nst * N0) + id * N0 + i].T;
+				elementsAOld_d[id * N0 + i].w = Symplex_d[sc * (Nst * N0) + id * N0 + i].m;
+				elementsAOld_d[id * N0 + i].y = Symplex_d[sc * (Nst * N0) + id * N0 + i].e;
+				elementsBOld_d[id * N0 + i].y = Symplex_d[sc * (Nst * N0) + id * N0 + i].w;
+			}
+			++SymplexCount_d[id];
+printf("rebuild symplex %d\n", SymplexCount_d[id]);
+
+		}
+
+		if(SymplexCount_d[id] == 1000 || SymplexCount_d[id] == 2000){
+			
+			int iM = 0;	//best solution
+			int im = 0;	//worst solution
+			int im2 = 0;	//second worst solution
+
+
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f < Symplex_d[(iM) * (Nst * N0) + id * N0].f){
+					iM = i;
+				}
+			}
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f > Symplex_d[(im) * (Nst * N0) + id * N0].f){
+					im = i;
+				}
+			}
+
+			if(im == 0) im2 = 1;
+			for(int i = 1; i < N0 * Ne + 1; ++i){
+				if(Symplex_d[(i) * (Nst * N0) + id * N0].f > Symplex_d[(im2) * (Nst * N0) + id * N0].f && i != im){
+					im2 = i;
+				}
+			}
+printf("min max %d %d %d %d %.20g %.20g %.20g | %.20g \n", ittv, iM, im2, im, Symplex_d[(iM) * (Nst * N0) + id * N0].f, Symplex_d[(im2) * (Nst * N0) + id * N0].f, Symplex_d[(im) * (Nst * N0) + id * N0].f, Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0].f);
+
+			for(int i = 0; i < N0; ++i){
+				double T = 0.0;
+				double P = 0.0;
+				double m = 0.0;
+				double e = 0.0;
+				double w = 0.0;
+				//calcualate average expect of worst point
+				for(int j = 0; j < N0 * Ne + 1; ++j){
+					if(j != im){
+						P += Symplex_d[j * (Nst * N0) + id * N0 + i].P;
+						T += Symplex_d[j * (Nst * N0) + id * N0 + i].T;
+						m += Symplex_d[j * (Nst * N0) + id * N0 + i].m;
+						e += Symplex_d[j * (Nst * N0) + id * N0 + i].e;
+						w += Symplex_d[j * (Nst * N0) + id * N0 + i].w;
+						
+					}
+				}
+				P = P / (double(N0 * Ne));
+				T = T / (double(N0 * Ne));
+				m = m / (double(N0 * Ne));
+				e = e / (double(N0 * Ne));
+				w = w / (double(N0 * Ne));
+//printf("average %d %.20g %.20g %.20g %.20g %.20g\n", i, P, T, m, e, w);
+				if(SymplexCount_d[id] == 1000){
+					//reflect worst point
+					elementsTOld_d[id * N0 + i].z = (1.0 + alpha) * P - alpha * Symplex_d[(im) * (Nst * N0) + id * N0 + i].P;
+					elementsTOld_d[id * N0 + i].x = (1.0 + alpha) * T - alpha * Symplex_d[(im) * (Nst * N0) + id * N0 + i].T;
+					elementsAOld_d[id * N0 + i].w = (1.0 + alpha) * m - alpha * Symplex_d[(im) * (Nst * N0) + id * N0 + i].m;
+					elementsAOld_d[id * N0 + i].y = (1.0 + alpha) * e - alpha * Symplex_d[(im) * (Nst * N0) + id * N0 + i].e;
+					elementsBOld_d[id * N0 + i].y = (1.0 + alpha) * w - alpha * Symplex_d[(im) * (Nst * N0) + id * N0 + i].w;
+if(i == 0) printf("reflect\n");
+//printf("reflect %d %.20g %.20g %.20g %.20g %.20g\n", i, elementsTOld_d[id * N0 + i].z, elementsTOld_d[id * N0 + i].x, elementsAOld_d[id * N0 + i].w, elementsAOld_d[id * N0 + i].y, elementsBOld_d[id * N0 + i].y);
+
+					Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].P = elementsTOld_d[id * N0 + i].z;
+					Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].T = elementsTOld_d[id * N0 + i].x;
+					Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].m = elementsAOld_d[id * N0 + i].w;
+					Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].e = elementsAOld_d[id * N0 + i].y;
+					Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].w = elementsBOld_d[id * N0 + i].y;
+				}
+				if(SymplexCount_d[id] == 2000){
+					SymplexCount_d[id] = 3000;
+					if(2.0 * elementsP_d[id].z < Symplex_d[iM * (Nst * N0) + id * N0].f){
+						//expand
+						elementsTOld_d[id * N0 + i].z = (1.0 + gamma) * P - gamma * Symplex_d[(im) * (Nst * N0) + id * N0 + i].P;
+						elementsTOld_d[id * N0 + i].x = (1.0 + gamma) * T - gamma * Symplex_d[(im) * (Nst * N0) + id * N0 + i].T;
+						elementsAOld_d[id * N0 + i].w = (1.0 + gamma) * m - gamma * Symplex_d[(im) * (Nst * N0) + id * N0 + i].m;
+						elementsAOld_d[id * N0 + i].y = (1.0 + gamma) * e - gamma * Symplex_d[(im) * (Nst * N0) + id * N0 + i].e;
+						elementsBOld_d[id * N0 + i].y = (1.0 + gamma) * w - gamma * Symplex_d[(im) * (Nst * N0) + id * N0 + i].w;
+if(i == 0) printf("expand\n");
+//printf("expand %d %.20g %.20g %.20g %.20g %.20g\n", i, elementsTOld_d[id * N0 + i].z, elementsTOld_d[id * N0 + i].x, elementsAOld_d[id * N0 + i].w, elementsAOld_d[id * N0 + i].y, elementsBOld_d[id * N0 + i].y);
+					}
+					else if(2.0 * elementsP_d[id].z < Symplex_d[im2 * (Nst * N0) + id * N0].f){
+						//replace
+if(i == 0) printf("replace\n");
+//printf("replace %d %.20g %.20g %.20g %.20g %.20g\n", i, elementsTOld_d[id * N0 + i].z, elementsTOld_d[id * N0 + i].x, elementsAOld_d[id * N0 + i].w, elementsAOld_d[id * N0 + i].y, elementsBOld_d[id * N0 + i].y);
+					}
+					else{
+						//contract
+						if(2.0 * elementsP_d[id].z < Symplex_d[im * (Nst * N0) + id * N0].f){
+							elementsTOld_d[id * N0 + i].z = beta * P + (1.0 - beta) * Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].P;
+							elementsTOld_d[id * N0 + i].x = beta * T + (1.0 - beta) * Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].T;
+							elementsAOld_d[id * N0 + i].w = beta * m + (1.0 - beta) * Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].m;
+							elementsAOld_d[id * N0 + i].y = beta * e + (1.0 - beta) * Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].e;
+							elementsBOld_d[id * N0 + i].y = beta * w + (1.0 - beta) * Symplex_d[(N0 * Ne + 1) * (Nst * N0) + id * N0 + i].w;
+if(i == 0) printf("contract1\n");
+//printf("contract1 %d %.20g %.20g %.20g %.20g %.20g\n", i, elementsTOld_d[id * N0 + i].z, elementsTOld_d[id * N0 + i].x, elementsAOld_d[id * N0 + i].w, elementsAOld_d[id * N0 + i].y, elementsBOld_d[id * N0 + i].y);
+						}
+						else{
+							elementsTOld_d[id * N0 + i].z = beta * P + (1.0 - beta) * Symplex_d[(im) * (Nst * N0) + id * N0 + i].P;
+							elementsTOld_d[id * N0 + i].x = beta * T + (1.0 - beta) * Symplex_d[(im) * (Nst * N0) + id * N0 + i].T;
+							elementsAOld_d[id * N0 + i].w = beta * m + (1.0 - beta) * Symplex_d[(im) * (Nst * N0) + id * N0 + i].m;
+							elementsAOld_d[id * N0 + i].y = beta * e + (1.0 - beta) * Symplex_d[(im) * (Nst * N0) + id * N0 + i].e;
+							elementsBOld_d[id * N0 + i].y = beta * w + (1.0 - beta) * Symplex_d[(im) * (Nst * N0) + id * N0 + i].w;
+if(i == 0) printf("contract2\n");
+//printf("contract2 %d %.20g %.20g %.20g %.20g %.20g\n", i, elementsTOld_d[id * N0 + i].z, elementsTOld_d[id * N0 + i].x, elementsAOld_d[id * N0 + i].w, elementsAOld_d[id * N0 + i].y, elementsBOld_d[id * N0 + i].y);
+						}
+					}
+				}
+			}
+		}
+	}
+}
 
 //use Jacoby mass
 //EE = -1: no change
@@ -1056,7 +1830,7 @@ printf("dx w %d %d %g %g | %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 
 //EE = 4: DEMCMC
 //EE = 5: ADAGRAD
 //EE = 10 Refine
-__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
+__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1135,6 +1909,12 @@ Msun = 0.0;
 			double P = elementsTOld_d[st0 * N0 + ii].z;		//period
 			double T = elementsTOld_d[st0 * N0 + ii].x;		//time of first transit
 
+			if(EE == 5 || EE == -1){
+				P = fmax(P, 1.0e-16);
+				e = fmax(e, 1.0e-16);
+				m = fmax(m, 1.0e-16);
+			}
+
 			if(EE == 10){
 			//Adjust M iteratively
 				a = elementsA_d[st0 * N0 + ii].x;		//semi major axis
@@ -1154,36 +1934,33 @@ Msun = 0.0;
 			if(EE == 0){
 				if(ne > 0){
 					rd = curand_normal(&random);
-					P += rd * elementsLA_d[st0 * N0 + ii].x;       //scale to standard deviation of tuning length
+					P += rd * elementsL_d[st0 * N0 + ii].P;       //scale to standard deviation of tuning length
 				}
 				if(ne > 1){
 					rd = curand_normal(&random);
-					T += rd * elementsLB_d[st0 * N0 + ii].z;
+					T += rd * elementsL_d[st0 * N0 + ii].T;
 				}
 				if(ne > 2){
 					rd = curand_normal(&random);
-					m += rd * elementsLA_d[st0 * N0 + ii].w;
+					m += rd * elementsL_d[st0 * N0 + ii].m;
 				}
 				if(ne > 3){
 					rd = curand_normal(&random);
-					e += rd * elementsLA_d[st0 * N0 + ii].y;
+					e += rd * elementsL_d[st0 * N0 + ii].e;
 				}
 				if(ne > 4){
 					rd = curand_normal(&random);
-					w += rd * elementsLB_d[st0 * N0 + ii].y;
-					//jump to other modes
-					//rd = curand_uniform(&random);
-					//if(rd < 0.5) w += M_PI;
+					w += rd * elementsL_d[st0 * N0 + ii].w;
 				}
 				if(ne > 5){
 					rd = curand_normal(&random);
-					inc += rd * elementsLA_d[st0 * N0 + ii].z;
+					inc += rd * elementsL_d[st0 * N0 + ii].inc;
 					rd = curand_normal(&random);
-					Omega += rd * elementsLB_d[st0 * N0 + ii].x;
+					Omega += rd * elementsL_d[st0 * N0 + ii].O;
 				}
 				if(ne > 7){
 					rd = curand_normal(&random);
-					r += rd * elementsLB_d[st0 * N0 + ii].w;
+					r += rd * elementsL_d[st0 * N0 + ii].r;
 				}
 			}
 			double P0 = P;
@@ -1197,12 +1974,12 @@ Msun = 0.0;
 			if(ne > 0){
 				rd = curand_uniform(&random) * 2.0 * eb;
 				P += z * (1.0 - eb + rd) * (P1 - P2);
-				rd = curand_normal(&random) * eps * elementsLA_d[st0 * N0 + ii].x;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].P;
 				P += P0 * rd;
 
-				P += elementsLA_d[st0 * N0 + ii].x * sc;
+				P += elementsL_d[st0 * N0 + ii].P * sc;
 				if(EE == 5 && id / ne == ii && id % ne == 0) {
-					 P -= elementsLA_d[st0 * N0 + ii].x;
+					 P += elementsL_d[st0 * N0 + ii].P;
 printf("GRAD P %d %d %d %d\n", id, ii, id / ne, id % ne);
 				}
 			}
@@ -1212,12 +1989,12 @@ printf("GRAD P %d %d %d %d\n", id, ii, id / ne, id % ne);
 				//modify m
 				rd = curand_uniform(&random) * 2.0 * eb;
 				m += z * (1.0 - eb + rd) * (m1 - m2);
-				rd = curand_normal(&random) * eps * elementsLA_d[st0 * N0 + ii].w;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].m;
 				m += m0 * rd;
 
-				m += elementsLA_d[st0 * N0 + ii].w * sc;
+				m += elementsL_d[st0 * N0 + ii].m * sc;
 				if(EE == 5 && id / ne == ii && id % ne == 2) {
-					 m -= elementsLA_d[st0 * N0 + ii].w;
+					 m += elementsL_d[st0 * N0 + ii].m;
 printf("GRAD m %d %d %d %d\n", id, ii, id / ne, id % ne);
 				}
 			}
@@ -1265,24 +2042,24 @@ printf("GRAD m %d %d %d %d\n", id, ii, id / ne, id % ne);
 			if(ne > 3){
 				rd = curand_uniform(&random) * 2.0 * eb;
 				e += z * (1.0 - eb + rd) * (e1 - e2);
-				rd = curand_normal(&random) * eps * elementsLA_d[st0 * N0 + ii].y;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].e;
 				e += e0 * rd;
 
-				e += elementsLA_d[st0 * N0 + ii].y * sc;
+				e += elementsL_d[st0 * N0 + ii].e * sc;
 				if(EE == 5 && id / ne == ii && id % ne == 3) {
-					 e -= elementsLA_d[st0 * N0 + ii].y;
+					 e += elementsL_d[st0 * N0 + ii].e;
 printf("GRAD e %d %d %d %d\n", id, ii, id / ne, id % ne);
 				}
 			}
 			if(ne > 4){
 				rd = curand_uniform(&random) * 2.0 * eb;
 				w += z * (1.0 - eb + rd) * (w1 - w2);
-				rd = curand_normal(&random) * eps * elementsLB_d[st0 * N0 + ii].y;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].w;
 				w += w0 * rd;
 
-				w += elementsLB_d[st0 * N0 + ii].y * sc;
+				w += elementsL_d[st0 * N0 + ii].w * sc;
 				if(EE == 5 && id / ne == ii && id % ne == 4) {
-					 w -= elementsLB_d[st0 * N0 + ii].y;
+					 w += elementsL_d[st0 * N0 + ii].w;
 printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 				}
 			}
@@ -1294,7 +2071,7 @@ printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 				double inc2 = elementsAOld_d[st2 * N0 + ii].z;		//eccentricity
 				rd = curand_uniform(&random) * 2.0 * eb;
 				inc += z * (1.0 - eb + rd) * (inc1 - inc2);
-				rd = curand_normal(&random) * eps * elementsLA_d[st0 * N0 + ii].z;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].inc;
 				inc += inc0 * rd;
 	
 				double Omega0 = Omega;
@@ -1302,7 +2079,7 @@ printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 				double Omega2 = elementsBOld_d[st2 * N0 + ii].x;		//eccentricity
 				rd = curand_uniform(&random) * 2.0 * eb;
 				Omega += z * (1.0 - eb + rd) * (Omega1 - Omega2);
-				rd = curand_normal(&random) * eps * elementsLB_d[st0 * N0 + ii].x;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].O;
 				Omega += Omega0 * rd;
 
 			}
@@ -1317,13 +2094,13 @@ printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 			if(ne > 1){
 				rd = curand_uniform(&random) * 2.0 * eb;
 				T += z * (1.0 - eb + rd) * (T1 - T2);
-				rd = curand_normal(&random) * eps * elementsLB_d[st0 * N0 + ii].z;
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].T;
 				T += T0 * rd;
 
-				T += elementsLB_d[st0 * N0 + ii].z * sc;
+				T += elementsL_d[st0 * N0 + ii].T * sc;
 				//M += z * (M1 - M2);
 				if(EE == 5 && id / ne == ii && id % ne == 1) {
-					 T -= elementsLB_d[st0 * N0 + ii].z;
+					 T += elementsL_d[st0 * N0 + ii].T;
 printf("GRAD T %d %d %d %d\n", id, ii, id / ne, id % ne);
 				}
 			}
@@ -1519,7 +2296,7 @@ if(ii == 0){
 }
 
 //quadratic estimation for period
-__global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
+__global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1547,17 +2324,17 @@ __global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *
 			double x1, x2, x3;
 				
 			if(AA == 0){		
-				//x1 = a - elementsLA_d[st0 * N0 + ii].x * ff;
+				//x1 = a - elementsL_d[st0 * N0 + ii].a * ff;
 				//x2 = a;
-				//x3 = a + elementsLA_d[st0 * N0 + ii].x * ff;
+				//x3 = a + elementsL_d[st0 * N0 + ii].a * ff;
 				x1 = a - 5.0e-7;
 				x2 = a;
 				x3 = a + 5.0e-7;
 			}
 			if(AA == 1){		
-				x1 = M - elementsLB_d[st0 * N0 + ii].z * ff;
+				x1 = M - elementsL_d[st0 * N0 + ii].M * ff;
 				x2 = M;
-				x3 = M + elementsLB_d[st0 * N0 + ii].z * ff;
+				x3 = M + elementsL_d[st0 * N0 + ii].M * ff;
 			}
 			if(ii != EE){
 				if(AA == 0){
@@ -1578,16 +2355,16 @@ __global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *
 
 			if(id / (Nst / 3) == 0){
 				x = x1;
-//printf("a1 %d %.20g %.20g\n", id, a, elementsLA_d[st0 * N0 + ii].x);
+//printf("a1 %d %.20g %.20g\n", id, a, elementsL_d[st0 * N0 + ii].a);
 			}
 			if(id / (Nst / 3) == 1){
 				x = x2;
-//printf("a2 %d %.20g %.20g\n", id, a, elementsLA_d[st0 * N0 + ii].x);
+//printf("a2 %d %.20g %.20g\n", id, a, elementsL_d[st0 * N0 + ii].a);
 				elementsP_d[id].z = pOld;
 			}
 			if(id / (Nst / 3) == 2){
 				x = x3;
-//printf("a3 %d %.20g %.20g\n", id, a, elementsLA_d[st0 * N0 + ii].x);
+//printf("a3 %d %.20g %.20g\n", id, a, elementsL_d[st0 * N0 + ii].a);
 				elementsP_d[id].z = pOld;
 			}
 
@@ -1658,7 +2435,7 @@ __global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *
 }
 
 //quadratic estimation for period
-__global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, double4 *elementsLA_d, double4 *elementsLB_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
+__global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1775,9 +2552,9 @@ if(p1 != p2) printf("****** %d %g %g %g %g %g %g %g\n", ii, p1, p2, p3, b0, b1, 
 
 			if(ii == EEE){
 				if(AA == 0 && EE < N0 - 1){
-					//deltaa1 =-elementsLA_d[st0 * N0 + ii].x * ff;
+					//deltaa1 =-elementsL_d[st0 * N0 + ii].a * ff;
 					//deltaa2 = 0.0;
-					//deltaa3 = elementsLA_d[st0 * N0 + ii].x * ff;
+					//deltaa3 = elementsL_d[st0 * N0 + ii].a * ff;
 					if(EE == 0){
 						deltaa1 =-5.0e-7;
 						deltaa2 = 0.0;
@@ -1818,9 +2595,9 @@ if(p1 != p2) printf("****** %d %g %g %g %g %g %g %g\n", ii, p1, p2, p3, b0, b1, 
 					deltaa3 *= ff;
 				}
 				else{
-					//deltaM1 =-elementsLB_d[st0 * N0 + ii].z * ff;
+					//deltaM1 =-elementsL_d[st0 * N0 + ii].M * ff;
 					//deltaM2 = 0.0;
-					//deltaM3 = elementsLB_d[st0 * N0 + ii].z * ff;
+					//deltaM3 = elementsL_d[st0 * N0 + ii].M * ff;
 					if(EE == 0){
 						deltaM1 =-0.01;
 						deltaM2 = 0.0;
@@ -1868,19 +2645,19 @@ if(p1 != p2) printf("****** %d %g %g %g %g %g %g %g\n", ii, p1, p2, p3, b0, b1, 
 				x = x1;
 				deltaa = deltaa1;
 				deltaM = deltaM1;
-//printf("a1 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsLA_d[st0 * N0 + ii].x, ff, deltaa, deltaM);
+//printf("a1 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsL_d[st0 * N0 + ii].a, ff, deltaa, deltaM);
 			}
 			if(id / (Nst / 3) == 1){
 				x = x2;
 				deltaa = deltaa2;
 				deltaM = deltaM2;
-//printf("a2 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsLA_d[st0 * N0 + ii].x, ff, deltaa, deltaM);
+//printf("a2 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsL_d[st0 * N0 + ii].a, ff, deltaa, deltaM);
 			}
 			if(id / (Nst / 3) == 2){
 				x = x3;
 				deltaa = deltaa3;
 				deltaM = deltaM3;
-//printf("a3 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsLA_d[st0 * N0 + ii].x, ff, deltaa, deltaM);
+//printf("a3 %d %d %.20g %.20g %g %g %g\n", ii, id, x, elementsL_d[st0 * N0 + ii].a, ff, deltaa, deltaM);
 			}
 
 			if(AA == 0) a = x;
@@ -2154,7 +2931,7 @@ printf("not accept swap %3d %3d %g %g %g %g %g %g\n", i, j, pi, pj, Ti, Tj, q, r
 }
 
 
-__global__ void sigma_kernel(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsLA_d, double4 *elementsLB_d, double time, double Msun, int N0, int Nst){
+__global__ void sigma_kernel(double4 *elementsAOld_d, double4 *elementsBOld_d, elements10 *elementsL_d, double time, double Msun, int N0, int Nst){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -2234,18 +3011,18 @@ __global__ void sigma_kernel(double4 *elementsAOld_d, double4 *elementsBOld_d, d
 
  printf("S1 %d %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g\n", id, elementsAOld.x, elementsAOld.y, elementsAOld.z, elementsAOld.w, elementsBOld.x, elementsBOld.y, elementsBOld.z, elementsBOld.w);
 
-		elementsLA_d[id].x = sqrt(fmax(elementsAOld2.x - elementsAOld.x * elementsAOld.x, 0.0));
-		elementsLA_d[id].y = sqrt(fmax(elementsAOld2.y - elementsAOld.y * elementsAOld.y, 0.0));
-		elementsLA_d[id].z = sqrt(fmax(elementsAOld2.z - elementsAOld.z * elementsAOld.z, 0.0));
-		elementsLA_d[id].w = sqrt(fmax(elementsAOld2.w - elementsAOld.w * elementsAOld.w, 0.0));
+		elementsL_d[id].P = sqrt(fmax(elementsAOld2.x - elementsAOld.x * elementsAOld.x, 0.0));
+		elementsL_d[id].e = sqrt(fmax(elementsAOld2.y - elementsAOld.y * elementsAOld.y, 0.0));
+		elementsL_d[id].inc = sqrt(fmax(elementsAOld2.z - elementsAOld.z * elementsAOld.z, 0.0));
+		elementsL_d[id].m = sqrt(fmax(elementsAOld2.w - elementsAOld.w * elementsAOld.w, 0.0));
 
-		elementsLB_d[id].x = sqrt(fmax(elementsBOld2.x - elementsBOld.x * elementsBOld.x, 0.0));
-		elementsLB_d[id].y = sqrt(fmax(elementsBOld2.y - elementsBOld.y * elementsBOld.y, 0.0));
-		elementsLB_d[id].z = sqrt(fmax(elementsBOld2.z - elementsBOld.z * elementsBOld.z, 0.0));
-		elementsLB_d[id].w = sqrt(fmax(elementsBOld2.w - elementsBOld.w * elementsBOld.w, 0.0));
+		elementsL_d[id].O = sqrt(fmax(elementsBOld2.x - elementsBOld.x * elementsBOld.x, 0.0));
+		elementsL_d[id].w = sqrt(fmax(elementsBOld2.y - elementsBOld.y * elementsBOld.y, 0.0));
+		elementsL_d[id].T = sqrt(fmax(elementsBOld2.z - elementsBOld.z * elementsBOld.z, 0.0));
+		elementsL_d[id].r = sqrt(fmax(elementsBOld2.w - elementsBOld.w * elementsBOld.w, 0.0));
 
 
- printf("S %d %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g\n", id, elementsLA_d[id].x, elementsLA_d[id].y, elementsLA_d[id].z, elementsLA_d[id].w, elementsLB_d[id].x, elementsLB_d[id].y, elementsLB_d[id].z, elementsLB_d[id].w);
+ printf("S %d %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g %15.10g\n", id, elementsL_d[id].P, elementsL_d[id].e, elementsL_d[id].inc, elementsL_d[id].m, elementsL_d[id].O, elementsL_d[id].w, elementsL_d[id].T, elementsL_d[id].r);
 	}	
 
 }
@@ -2260,58 +3037,58 @@ __host__ void Data::modifyElementsCall(int ittv, int EE){
 	SetSA_kernel <<< (Nst + 127) / 128, 128 >>> (elementsSA_d, Nst);
 
  #if MCMC_NCOV > 0
-	setCovarianceRandom1 <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (random_d, elementsLA_d, elementsLB_d, Nst, N_h[0]); 
-	setCovarianceRandom <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (elementsCOV_d, elementsLA_d, elementsLB_d, Nst, N_h[0]); 
+	setCovarianceRandom1 <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (random_d, elementsL_d, Nst, N_h[0]); 
+	setCovarianceRandom <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (elementsCOV_d, elementsL_d, Nst, N_h[0]); 
  #endif
-	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, EE);
+	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, EE);
 
 #endif
 #if MCMC_Q == 2
-	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, 0, P.mcmcRestart, 10); 
+	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, 0, P.mcmcRestart, 10); 
 #endif
 #if MCMC_Q == 1
 
-	if(ittv % 16 == 0) modifyElementsJ <<< (Nst / 3 + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld_d, elementsBOld_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst / 3, ittv, P.mcmcNE, P.mcmcRestart, EE);
+	if(ittv % 16 == 0) modifyElementsJ <<< (Nst / 3 + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld_d, elementsBOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst / 3, ittv, P.mcmcNE, P.mcmcRestart, EE);
 
 	cudaMemcpy(elementsAOld2_d, elementsA_d, sizeof(double4) * NconstT, cudaMemcpyDeviceToDevice);
 	cudaMemcpy(elementsBOld2_d, elementsB_d, sizeof(double4) * NconstT, cudaMemcpyDeviceToDevice);
 
-	if(ittv % 16 == 1) modifyElementsPQ <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
-	if(ittv % 16 == 2) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
-	if(ittv % 16 == 3) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
-	if(ittv % 16 == 4) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
-	if(ittv % 16 == 5) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
-	if(ittv % 16 == 6) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
-	if(ittv % 16 == 7) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
-	if(ittv % 16 == 8) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 1.0, 0);
-	if(ittv % 16 == 9) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 1);
-	if(ittv % 16 == 10) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 1);
-	if(ittv % 16 == 11) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 1);
-	if(ittv % 16 == 12) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 1);
-	if(ittv % 16 == 13) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 1);
-	if(ittv % 16 == 14) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 1);
+	if(ittv % 16 == 1) modifyElementsPQ <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
+	if(ittv % 16 == 2) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
+	if(ittv % 16 == 3) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
+	if(ittv % 16 == 4) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
+	if(ittv % 16 == 5) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
+	if(ittv % 16 == 6) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
+	if(ittv % 16 == 7) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
+	if(ittv % 16 == 8) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 1.0, 0);
+	if(ittv % 16 == 9) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 1);
+	if(ittv % 16 == 10) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 1);
+	if(ittv % 16 == 11) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 1);
+	if(ittv % 16 == 12) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 1);
+	if(ittv % 16 == 13) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 1);
+	if(ittv % 16 == 14) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 1);
 	if(ittv % 16 == 15){
-			modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 0.0, 1);
+			modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsA_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 0.0, 1);
 			setJ_kernel <<< (Nst + 127) / 128, 128 >>> (elementsP_d, Nst);
 
 	}
 /*
-	if(ittv % 16 == 1) modifyElementsPQ <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
-	if(ittv % 16 == 2) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
-	if(ittv % 16 == 3) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
-	if(ittv % 16 == 4) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
-	if(ittv % 16 == 5) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
-	if(ittv % 16 == 6) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
-	if(ittv % 16 == 7) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
-	if(ittv % 16 == 8) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 1.0, 0);
-	if(ittv % 16 == 9) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
-	if(ittv % 16 == 10) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
-	if(ittv % 16 == 11) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
-	if(ittv % 16 == 12) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
-	if(ittv % 16 == 13) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
-	if(ittv % 16 == 14) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
+	if(ittv % 16 == 1) modifyElementsPQ <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
+	if(ittv % 16 == 2) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
+	if(ittv % 16 == 3) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
+	if(ittv % 16 == 4) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
+	if(ittv % 16 == 5) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
+	if(ittv % 16 == 6) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
+	if(ittv % 16 == 7) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
+	if(ittv % 16 == 8) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 1.0, 0);
+	if(ittv % 16 == 9) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 0, 1.0, 0);
+	if(ittv % 16 == 10) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 1, 1.0, 0);
+	if(ittv % 16 == 11) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 2, 1.0, 0);
+	if(ittv % 16 == 12) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 3, 1.0, 0);
+	if(ittv % 16 == 13) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 4, 1.0, 0);
+	if(ittv % 16 == 14) modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 5, 1.0, 0);
 	if(ittv % 16 == 15){
-			modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsLA_d, elementsLB_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 0.0, 0);
+			modifyElementsPQ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsAOld2_d, elementsBOld2_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, 6, 0.0, 0);
 			setJ_kernel <<< (Nst + 127) / 128, 128 >>> (elementsP_d, Nst);
 
 	}

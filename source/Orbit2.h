@@ -37,6 +37,7 @@ public:
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
 	int *Encpairs3_d;
+	int *EncpairsScan_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
 	unsigned int *aecount_h, *aecount_d;
@@ -53,8 +54,15 @@ public:
 	//arrays for backup
 	double4 *x4b_d;
 	double4 *v4b_d;
+	double4 *x4bb_d;
+	double4 *v4bb_d;
 	double3 *ab_d;
 	int *indexb_d;
+	int *indexbb_d;
+	double *rcritb_d, *rcritvb_d;
+	double *rcritbb_d, *rcritvbb_d;
+	double3 *spinb_d;
+	double3 *spinbb_d;
 
 	//arrays for BSA
 	double4 *xt_d;
@@ -104,12 +112,14 @@ public:
 	double4 *elementsAOld_d, *elementsAOld2_d;
 	double4 *elementsBOld_d, *elementsBOld2_d;
 	double4 *elementsTOld_d, *elementsTOld2_d;
-	double4 *elementsLA_h, *elementsLA_d;			//tuning lenghts
-	double4 *elementsLB_h, *elementsLB_d;			
-	double4 *elementsGA_d;					//gradient for adadelta
-	double4 *elementsGB_d;			
-	double4 *elementsDA_d;					//gradient for adadelta		
-	double4 *elementsDB_d;			
+	elements10 *elementsL_h, *elementsL_d;			//tuning lenghts
+	elements8 *elementsG_d;					//gradient for adadelta
+	elements8 *elementsD_d;					//gradient for adadelta		
+	elements8 *elementsMean_d;				//mean
+	elements8 *elementsVar_d;				//variance		
+	elements8 *elementsGh_d;				//hyperparameter learning rates					
+	elementsS *elementsStep_d;
+	elementsH *elementsHist_d;				//History for Hessian matrix
 
 	int2 *elementsC_h, *elementsC_d;			//current count, total count
 	double4 *elementsP_h, *elementsP_d;			//probability, random number, old probability, global tuning factor
@@ -117,6 +127,9 @@ public:
 	int4 *elementsI_h, *elementsI_d;			//indizes for proposals
 	double *elementsM_h, *elementsM_d;			//Stellar mass
 	double *elementsCOV_h, *elementsCOV_d;			//Covariance matrix 
+	elements *Symplex_d;					//Nelder Mead downhill symplex
+	int *SymplexCount_d;
+
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
 	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall(int, int);
@@ -183,7 +196,8 @@ public:
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();
 	__host__ void GridaeOutput();
-	__host__ int printCollisions(double &);
+	__host__ int printCollisions();
+	__host__ void printCollisionsTshift();
 	__host__ int printEncounters();
 	__host__ int printFragments(int);
 	__host__ int printRotation();
@@ -207,26 +221,27 @@ public:
 	__host__ int tuneKick(int, int &, int &, int &);
 	__host__ int tuneForce(int &);
 
-	__host__ void firstKick_16();
-	__host__ void firstKick_largeN();
-	__host__ void firstKick_small();
-	__host__ void firstKick_M(long long);
+	__host__ void firstKick_16(int);
+	__host__ void firstKick_largeN(int);
+	__host__ void firstKick_small(int);
+	__host__ void firstKick_M(long long, int);
 
-	__host__ void SEnc(int, double, int);
+	__host__ void SEnc(double &, int, double, int, int);
 	__host__ int bStep(int);
 
-	__host__ int step();
-	__host__ int step_16();
-	__host__ int step_largeN();
-	__host__ int step_small();
-	__host__ int step_M();
+	__host__ void firstStep(int);
+	__host__ int step(int);
+	__host__ int step_16(int);
+	__host__ int step_largeN(int);
+	__host__ int step_small(int);
+	__host__ int step_M(int);
 	__host__ int step_MSimple();
 	__host__ int step_BS();
 	
 	__host__ void comCall(const int);
 	__host__ void HCCall(const double);
 
-	__host__ int CollisionCall();
+	__host__ int CollisionCall(int);
 	__host__ int CollisionMCall();
 	__host__ int RemoveCall();
 	__host__ int writeEncCall();
