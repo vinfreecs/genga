@@ -424,11 +424,11 @@ __host__ int Data::FGAlloc(){
 //This function reads at a restart the correspondent Gridae file
 __host__ int Data::readGridae(){
 	if(P.tRestart > 0){
-		sprintf(Gridae.filename, "aeCount%s_%.12lld.dat", Gridae.X, P.tRestart);
+		sprintf(Gridae.filename, "aeCount%s_%.*lld.dat", Gridae.X, def_NFileNameDigits, P.tRestart);
 		Gridae.file = fopen(Gridae.filename, "r");
 		if(Gridae.file == NULL){
-			fprintf(masterfile, "Error: aeGrid file not found: aeCount%s_%.12lld.dat\n", Gridae.X, P.tRestart);
-			printf("Error: aeGrid file not found: aeCount%s_%.12lld.dat\n", Gridae.X, P.tRestart);
+			fprintf(masterfile, "Error: aeGrid file not found: aeCount%s_%.*lld.dat\n", Gridae.X, def_NFileNameDigits, P.tRestart);
+			printf("Error: aeGrid file not found: aeCount%s_%.*lld.dat\n", Gridae.X, def_NFileNameDigits, P.tRestart);
 			return 0;
 		}
 		//Read Total aeGrid

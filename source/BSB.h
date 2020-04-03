@@ -468,8 +468,8 @@ __global__ void BSBStep_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, do
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+							//int i = Colpairs_s[c].x;
+							//int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
 //printf("Coltime BSB  %d %d %.20g %g %g %.20g %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}

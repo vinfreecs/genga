@@ -58,6 +58,7 @@ Set Elements file name = -
 FormatS = 0
 FormatT = 0
 FormatP = 1
+FormatO = 0
 TTV file name = -
 RV file name = -
 TTV steps = 1

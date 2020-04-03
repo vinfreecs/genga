@@ -162,9 +162,10 @@ int main(int argc, char*argv[]){
 	double s, t;
 	int index;
 
-	for(long long int k = kmin; k <= kmax; k += step){	    
+	for(long long int k = kmin; k <= kmax; k += step){
 		if(useCollfile == 0){
 			sprintf(outputfilename, "aei%s_%.12lld.dat", X, k);
+			//sprintf(outputfilename, "aei%s.dat", X);
 		}
 		else{
 			sprintf(outputfilename, "Collisions_aei%s.dat", X);
@@ -174,6 +175,7 @@ int main(int argc, char*argv[]){
 		t = 1.0e8;
 		if(useCollfile == 0){
 			sprintf(inputfilename, "Out%s_%.12lld.dat", X, k);	
+			//sprintf(inputfilename, "Out%s.dat", X);
 		}
 		else{
 			sprintf(inputfilename, "Collisions%s.dat", X);

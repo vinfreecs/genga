@@ -582,8 +582,8 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 					if(idy == 0) {
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+							//int i = Colpairs_s[c].x;
+							//int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
 //printf("Coltime BSA %d %d %.20g %g %g %.20g %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
@@ -1104,8 +1104,8 @@ __global__ void BSA512_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, dou
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-							int i = Colpairs_s[c].x;
-							int j = Colpairs_s[c].y;
+							//int i = Colpairs_s[c].x;
+							//int j = Colpairs_s[c].y;
 							Coltime = fmin(Coltime_s[c], Coltime);
 //printf("Coltime BSA512 %d %d %.20g %g %g %.20g %d\n", i, j, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
 						}
@@ -1533,8 +1533,8 @@ __global__ void BSUpdate_kernel(double4 *xold_d, double4 *vold_d, double4 *x4_d,
 	if(threadIdx.x == 0){
 		double Coltime = 10.0;
 		for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-			int i = Colpairs_s[c].x;
-			int j = Colpairs_s[c].y;
+			//int i = Colpairs_s[c].x;
+			//int j = Colpairs_s[c].y;
 			Coltime = fmin(Coltime_s[c], Coltime);
 //printf("Coltime BSAm %d %d %.20g %g %g %.20g %d\n", index_d[i], index_d[j], Coltime,  t1_d[i] / dayUnit,  dt1_d[i] / dayUnit, (1.0 - Coltime) * dt1_d[i], n);
 		}

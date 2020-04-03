@@ -54,7 +54,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
 
  * The time step, in days
  * The output name
- * The Energy output interval, in time steps. When it is set to zero, then no Energy outputs are written.
+ * The Energy output interval, in time steps. When it is set to zero, then no energy outputs are written. When set to -1, then only the last energy output  is written.
  * The Coordinates output interval, in time steps. When it is set to 0, then no coordinate outputs are written. When set to -1, then only the last time step is written.
  * The number of outputs per Coordinate output interval.
  * The Coordinates output buffer, in time steps. If this is larger than 1, then the coordinate outputs are written only block-wise to increase the performance especially in the multi simulation mode with lots of consecutive outputs. The energy outputs within a buffer size are skipped in this mode.  
@@ -187,9 +187,10 @@ Here it can also be chosen if the gas disc is included or not.
  * def_pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
  * MaxColl i: Maximum number of Collisions per time step that can be stored
  * def_cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
- * def_tol f: Tolerance in Bulirsh Stoer integrator
- * def_dtmin f: Minimal time step in Bulirsch Stoer integrator 
- * def_Nfragments d: Additional array size for debris particles
+ * def_tol f: Tolerance in Bulirsh Stoer integrator.
+ * def_dtmin f: Minimal time step in Bulirsch Stoer integrator .
+ * def_Nfragments d: Additional array size for debris particles.
+ * def_NFileNameDigits: Number of time step digits in the output filenames.
  * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
@@ -264,9 +265,9 @@ The initial conditions are read from the file specified in 'param.dat' (Input fi
 # The Output Files #
 ## The Coordinate output files
 This file contains the heliocentric positions and velocities, the spin and some information about the orbit and close encounters.
-At the coordinate output interval, set in the 'param.dat' file, a new output is written. The structure of the coordinate output files depends on the parameters FormatS, FormatT and FormatP. Here we describe the possible choices: 
+At the coordinate output interval, set in the 'param.dat' file, a new output is written. The structure of the coordinate output files depends on the parameters FormatS, FormatT ,FormatP and FormatO. Here we describe the possible choices: 
 
-### FormatS = 0, FormatT = 0, FormatP = 1: Out<name>_<time step>.dat
+### FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 0: Out<name>_<time step>.dat
 In this format, at each coordinate output interval, a new file is created which contains all particles. In the multi simulation mode, each sub simulation folder contain individual files.
 
     t i1 m1 r1 x1 y1 z1 vx1 vy1 vz1 Sx1 Sy2 Sz1 amin1 amax1 emin1 emax1 aecount1 aecountT1 enccountT1 test1
@@ -289,14 +290,17 @@ In this format, at each coordinate output interval, a new file is created which 
  * enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
  * test can be used for some individual values
 
-### FormatS = 1, FormatT = 0 FormatP = 1: Out<name>.dat
+### FormatS = 1, FormatT = 0 FormatP = 1, FormatO = 0: Out<name>.dat
 Here the difference is that in the multi simulation mode, the coordinates are not written in the sub simulation folders, but in the main folder. The output files contain all particles from all sub simulations.
-### FormatS = 0, FormatT = 1 FormatP = 1: Out<name>.dat
+### FormatS = 0, FormatT = 1 FormatP = 1, FormatO = 0: Out<name>.dat
 Here all the time steps are written to the same file, containing all time steps and all particles.
-### FormatS = 1, FormatT = 1 FormatP = 1: Out<name>.dat
+### FormatS = 1, FormatT = 1 FormatP = 1, FormatO = 0: Out<name>.dat
 Here all time steps are written to the same file, containing all time steps and all particles from all sub simulations.
 ### FormatP = 0: Outp< index>.dat
 Here all particles are written to different files, containing all time steps. 
+### FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 1: Out<name>_<output step>.dat
+Here the difference is that the output files are not named after the time step, but the output step. When the simulation is interrupted at a time step in between of two output steps, then a backup file 'Outbackup<name>_<time step>.dat' is created. This backupstep step can be read by the restart option -R -1. To restart from a nomrmal putput file, the real time step, and not the output step must be chosen. 
+
 
 ## The Energy output file: Energy<name>.dat
 This file contains information about the number of particles and the energy. At the energy output interval set in the 'param.dat' file, a new line in this file is written. The format is the following:

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.97
+#define def_Version 3.98
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
@@ -62,6 +62,7 @@
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
+#define def_FormatO 0			//output numbering, 0: time steps or 1: output steps
 #define def_WriteEncounters 0		//Write all close encounters to a file
 #define def_WriteEncountersRadius 3	//factor in terms fo physical radii
 #define def_StopAtEncounter 0		//Stop simulations at close encounters
@@ -88,6 +89,8 @@
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
 #define def_Nfragments 0		//Additional array size for debris particles
+#define def_NFileNameDigits 12		//number of digits in output filenames
+
 
 //The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
 #define SERIAL_GROUPING 0
@@ -273,6 +276,7 @@ struct Parameter{
 	int FormatS;			//Output file structure
 	int FormatT;			
 	int FormatP;
+	int FormatO;			//output numbering, 0: time steps or 1: output steps
 	int Buffer;
 	int Usegas;
 	int UseForce;

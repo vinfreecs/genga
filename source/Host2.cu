@@ -413,6 +413,7 @@ __host__ void Host::Halloc(){
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
+	P.FormatO = def_FormatO;
 	P.WriteEncounters = def_WriteEncounters;
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
 	P.StopAtEncounter = def_StopAtEncounter;
@@ -560,7 +561,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Energy output interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.ei);
-				if(er <= 0 || P.ei < 0){
+				if(er <= 0 || P.ei < -1){
 					printf("Error: Energy output interval is not valid!\n");
 					return 0;
 				}
@@ -1355,6 +1356,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "FormatO =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.FormatO);
+				if(er <= 0){
+					printf("Error: FormatO value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Report Encounters =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.WriteEncounters);
@@ -1788,6 +1803,16 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		return 0;
 	} 
 
+	if(log10(delta_h[st]) >= def_NFileNameDigits && P.FormatO == 0){
+		printf("Error, number of time steps larger than number of digits in the output filenames. Increase def_NFileNameDigits in the define.h file or use P.FormatO = 1.\n");
+		return 0;
+
+	}
+	if(P.ci > 0 && log10(delta_h[st] / P.ci) >= def_NFileNameDigits && P.FormatO == 1){
+		printf("Error, number of time steps larger than number of digits in the output filenames. Increase def_NFileNameDigits in the define.h file.\n");
+		return 0;
+
+	}
 
 	ForceFlag = 0;
 	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0){
@@ -1821,7 +1846,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 		int er;
 		er = readparam(paramfile, st, argc, argv);
 		if(dayUnit == 1){
-			Msun_h[st].x *= def_Kg;	//convert to mercuy units
+			Msun_h[st].x *= def_Kg;	//convert to mercury units
 		}
 		if(er == 0) return 0;
 		fclose(paramfile);
@@ -1834,13 +1859,15 @@ __host__ int Host::Param(int argc, char*argv[]){
 		}
 		dt_h[st] = idt_h[st] * dayUnit;
 	}
-	if(P.ei > P.ci && P.ci > 0){
+	if((P.ei > P.ci && P.ci > 0) || (P.ci == -1 && P.ei == 0)){
 		P.ei = P.ci;
 		printf("**** Energy output interval decreased equal to coordinate output interval ****\n");
 		fprintf(masterfile, "**** Energy output interval decreased equal to coordinate output interval ****\n");
 	}
 	//if Restart == -1, find last printed output
+	int RestartBackup = 0;	//Flag, used to find last output in P.FormatO 1 restarts
 	if(P.tRestart == -1){
+		RestartBackup = 1;
 		long long Restart = -1;
 		for(int st = 0; st < Nst; ++st){
 			FILE *timefile;
@@ -1876,17 +1903,36 @@ __host__ int Host::Param(int argc, char*argv[]){
 		P.tRestart = max(Restart, P.tRestart);
 		}
 	}
-	
+	if(P.ci != -1 && P.tRestart % P.ci == 0) RestartBackup = 0;
+//printf("restart %lld %d\n", P.tRestart, RestartBackup);
 	
 	for(int st = 0; st < Nst; ++st){
 		//restart -> inputfilename
 		if(P.tRestart > 0 && P.FormatP == 1){
 			if(Nst == 1 || P.FormatS == 0){
-				if(P.FormatT == 0) sprintf(GSF[st].inputfilename, "%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+				if(P.FormatT == 0){
+					long long scale = 1ll;
+					if(P.FormatO == 1){
+						scale = (long long)(P.ci);
+						if(P.ci == -1) scale = P.tRestart;
+					}
+					sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart);
+					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart / scale);
+					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "%sOutbackup%s_%.20lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+				}
 				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
 			}
 			else{
-				if(P.FormatT == 0) sprintf(GSF[st].inputfilename, "Out%s_%.12lld.dat", GSF[st].X, P.tRestart);
+				if(P.FormatT == 0){
+					long long scale = 1ll;
+					if(P.FormatO == 1){
+						scale = (long long)(P.ci);
+						if(P.ci == -1) scale = P.tRestart;
+					}
+					sprintf(GSF[st].inputfilename, "Out%s_%.*lld.dat", GSF[st].X, def_NFileNameDigits, P.tRestart);
+					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "Out%s_%.*lld.dat", GSF[st].X, def_NFileNameDigits, P.tRestart / scale);
+					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "Outbackup%s_%.20lld.dat", GSF[st].X, P.tRestart);
+				}
 				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.dat", GSF[st].X);
 			}
 		}
@@ -2292,6 +2338,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
 			fprintf(infofile, "FormatP: %d\n", P.FormatP);						// use only argument in simulation 0
+			fprintf(infofile, "FormatO: %d\n", P.FormatO);						// use only argument in simulation 0
 			fprintf(infofile, "NmaxM: %d\n", NmaxM);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);

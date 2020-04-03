@@ -256,7 +256,7 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 	setStartTime();
 
 #if poincareFlag == 1
-	sprintf(poincarefilename, "%sPoincare%s_%.12ld.dat", GSF[0].path, GSF[0].X, 0);
+	sprintf(poincarefilename, "%sPoincare%s_%.*lld.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, 0);
 	poincarefile = fopen(poincarefilename, "w");
 #endif
 
@@ -348,8 +348,8 @@ __host__ int Data::timeStepLoop(int interrupted){
 	
 	
 	//Print Energy and log information//
-	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1){
-		if(bufferCount + 1 >= P.Buffer || interrupt == 1){
+	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1 || (P.ei < 0 && timeStep == P.deltaT)){
+		if(bufferCount + 1 >= P.Buffer || interrupt == 1 || (P.ei < 0 && timeStep == P.deltaT)){
 			er = EnergyOutput(0);
 			if(er == 0) return 0;
 		}
@@ -403,7 +403,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 #if poincareFlag == 1
 		if((timeStep - 1) % P.ci == P.ci - P.nci){
 			fclose(poincarefile);
-			sprintf(poincarefilename, "%sPoincare%s_%.12ld.dat", GSF[0].path, GSF[0].X, timeStep);
+			sprintf(poincarefilename, "%sPoincare%s_%.*lld.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, timeStep);
 			//Erase old Poincare files
 			poincarefile = fopen(poincarefilename, "w");
 		}

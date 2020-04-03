@@ -53,7 +53,7 @@ __host__ int Data::firstoutput(int irregular){
 				if(P.FormatP == 1){
 					if(Nst == 1 || P.FormatS == 0){
 						//clear Irregular output files
-						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, 0);
 						if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOutIrr%s.dat", GSF[st].path, GSF[st].X);
 						FILE *file;
 						file = fopen(GSF[st].outputfilename, "r");
@@ -64,7 +64,7 @@ __host__ int Data::firstoutput(int irregular){
 						}
 			
 		
-						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 0) sprintf(GSF[st].outputfilename, "%sOut%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, 0);
 						if(P.FormatT == 1) sprintf(GSF[st].outputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
 #if def_TTV == 0
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
@@ -75,7 +75,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 					else{
 						//clear Irregular output files
-						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, 0);
 						if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../OutIrr%s.dat", GSF[st].path, GSF[st].X);
 						FILE *file;
 						file = fopen(GSF[st].outputfilename, "r");
@@ -86,7 +86,7 @@ __host__ int Data::firstoutput(int irregular){
 						}
 				
 
-						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, 0);
+						if(P.FormatT == 0)sprintf(GSF[st].outputfilename, "%s../Out%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, 0);
 						if(P.FormatT == 1)sprintf(GSF[st].outputfilename, "%s../Out%s.dat", GSF[st].path, GSF[st].X);
 						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
@@ -141,6 +141,7 @@ __host__ int Data::firstoutput(int irregular){
 				Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
 				sprintf(Ets, "%.16g", (ict_h[st] * 365.25) / 365.25);
 			}
+			int er = 0;
 			fscanf (Energyfile, "%lf",&Et);
 			fscanf (Energyfile, "%lf",&skip);
 			fscanf (Energyfile, "%lf",&skip);
@@ -150,9 +151,9 @@ __host__ int Data::firstoutput(int irregular){
 			fscanf (Energyfile, "%lf",&Energy0_h[st]);
 			fscanf (Energyfile, "%lf",&LI0_h[st]);
 			fscanf (Energyfile, "%lf",&skip);
-			fscanf (Energyfile, "%lf",&skip);
-			int er = 0;
-			while(Et * tsign <= atof(Ets) * tsign){
+			er = fscanf (Energyfile, "%lf",&skip);
+//printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
+			while(Et * tsign < atof(Ets) * tsign){
 				fscanf (Energyfile, "%lf",&Et);
 				fscanf (Energyfile, "%lf",&skip);
 				fscanf (Energyfile, "%lf",&skip);
@@ -163,6 +164,7 @@ __host__ int Data::firstoutput(int irregular){
 				fscanf (Energyfile, "%lf",&skip);
 				fscanf (Energyfile, "%lf",&skip);
 				er = fscanf (Energyfile, "%lf",&skip);
+//printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 				if(Et * tsign >= atof(Ets) * tsign) break;
 
 				if(er <= 0){
@@ -467,10 +469,18 @@ __host__ void Data::CoordinateOutput(int irregular){
 			else if(Nst == 1 || P.FormatS == 0){
 				if(P.FormatT == 0){
 					if(irregular == 0 || irregular == 3){
-						sprintf(GSF[st].outputfilename,"%sOut%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
+						long long scale = 1ll;
+						if(P.FormatO == 1){
+							scale = (long long)(P.ci);
+							if(P.ci == -1) scale = (long long)(delta_h[st]);
+						}
+						sprintf(GSF[st].outputfilename,"%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timeStep / scale);
+						if(P.FormatO == 1 && interrupt == 1){
+							sprintf(GSF[st].outputfilename,"%sOutbackup%s_%.20lld.dat", GSF[st].path, GSF[st].X, timeStep);
+						}
 					}
 					else if(irregular == 1){
-						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
 					}
 #if def_TTV == 0
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
@@ -493,10 +503,18 @@ __host__ void Data::CoordinateOutput(int irregular){
 			else{
 				if(P.FormatT == 0){
 					if(irregular == 0 || irregular == 3){
-						sprintf(GSF[st].outputfilename, "%s../Out%s_%.12lld.dat", GSF[st].path, GSF[st].X, timeStep);
+						long long scale = 1ll;
+						if(P.FormatO == 1){
+							scale = (long long)(P.ci);
+							if(P.ci == -1) scale = (long long)(delta_h[st]);
+						}
+						sprintf(GSF[st].outputfilename, "%s../Out%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timeStep / scale);
+						if(P.FormatO == 1 && interrupt == 1){
+							sprintf(GSF[st].outputfilename, "%s../Outbackup%s_%.20lld.dat", GSF[st].path, GSF[st].X, timeStep);
+						}
 					}
 					else if(irregular == 1){
-						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStep);
+						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
 					}
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
@@ -587,10 +605,10 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
 						if(irregular == 0){
-							sprintf(GSF[st].outputfilename,"%sOut%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+							sprintf(GSF[st].outputfilename,"%sOut%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
 						}
 						else{
-							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStepOut + bf);
+							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
 						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					}
@@ -607,10 +625,10 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				else{
 					if(P.FormatT == 0){
 						if(irregular == 0){
-							sprintf(GSF[st].outputfilename, "%s../Out%s_%.12d.dat", GSF[st].path, GSF[st].X, timestepBuffer[bf]);
+							sprintf(GSF[st].outputfilename, "%s../Out%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
 						}
 						else{
-							sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.12d.dat", GSF[st].path, GSF[st].X, irrTimeStepOut + bf);
+							sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
 						}
 						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
@@ -656,7 +674,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 __host__ void Data::GridaeOutput(){
 	int GridNae = Gridae.Na * Gridae.Ne;
 	int GridNai = Gridae.Na * Gridae.Ni;
-	sprintf(Gridae.filename, "aeCount%s_%.12lld.dat", Gridae.X, timeStep);
+	sprintf(Gridae.filename, "aeCount%s_%.*lld.dat", Gridae.X, def_NFileNameDigits, timeStep);
 	Gridae.file = fopen(Gridae.filename, "w");
 	cudaMemcpy(Gridaecount_h, Gridaecount_d, sizeof(unsigned int)*GridNae, cudaMemcpyDeviceToHost);
 	cudaMemcpy(Gridaicount_h, Gridaicount_d, sizeof(unsigned int)*GridNai, cudaMemcpyDeviceToHost);
@@ -881,9 +899,6 @@ __host__ void Data::printCollisionsTshift(){
 		if(Nst == 1) st = 0;
 		else st = (int)(Coll_h[nc * def_NColl + 1]) / def_MaxIndex;
 		collisionfile = fopen(GSF[st].collisionTshiftfilename, "a");
-
-		int ii = int(Coll_h[nc * def_NColl + 1]);
-		int jj = int(Coll_h[nc * def_NColl + 13]);
 
 		for(int in = 0; in < def_NColl; ++in){
 			if(in == 1 || in == 13){
