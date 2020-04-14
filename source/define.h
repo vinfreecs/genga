@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.98
+#define def_Version 3.99
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
@@ -51,6 +51,7 @@
 #define def_aeGridStartCount 0
 #define def_aeGridName "A"
 #define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define def_UsegasEnhance 0		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
 #define def_UseYarkovsky 0
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
@@ -279,6 +280,7 @@ struct Parameter{
 	int FormatO;			//output numbering, 0: time steps or 1: output steps
 	int Buffer;
 	int Usegas;
+	int UsegasEnhance;
 	int UseForce;
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model

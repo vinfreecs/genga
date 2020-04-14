@@ -94,6 +94,56 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 	ac.z += __dmul_rn(r3ij.z, s);
 
 }
+__device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile float rcritvi, volatile float rcritvj, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int j, const int i, const int NencMax, const int EE){
+
+	float3 r3ij;
+
+	//ignore ghost particles
+	bool bm = (x4i.w >= 0.0f && x4j.w >= 0.0f && (i != j)) ? true : false;
+
+	r3ij.x = x4j.x - x4i.x;
+	r3ij.y = x4j.y - x4i.y;
+	r3ij.z = x4j.z - x4i.z;
+
+	float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+	float rcritv = fmaxf(rcritvi, rcritvj);
+
+	float ir = 1.0f/sqrtf(rsq);
+	float ir3 = ir*ir*ir;
+
+	float s = x4j.w * ir3 * bm;
+
+	if(rsq < def_pc * rcritv * rcritv && bm && (x4i.w > 0.0f || x4j.w > 0.0f)){
+
+		int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+//printf("enc1 %d %d %d\n", i, j, Ni);
+		if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
+		Encpairs2_d[i * NencMax + Ni].y = j;
+
+		if(EE == 0){
+			if(i < j){
+				int Ne = atomicAdd(Nencpairs_d, 1);
+				Encpairs_d[Ne].x = i;
+				Encpairs_d[Ne].y = j;
+			}
+		}
+		if(EE > 0){
+			if(i > j){
+				int Ne = atomicAdd(Nencpairs_d, 1);
+				Encpairs_d[Ne].x = i;
+				Encpairs_d[Ne].y = j;
+			}
+		}
+
+		s = 0.0f;
+	}
+
+	ac.x += __fmul_rn(r3ij.x, s);
+	ac.y += __fmul_rn(r3ij.y, s);
+	ac.z += __fmul_rn(r3ij.z, s);
+
+}
+
 
 
 // ********************************************************************************************
@@ -318,6 +368,195 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 				acck_d[idx + 3].x += a_s[ix * Bl + 3 * Bll].x;
 				acck_d[idx + 3].y += a_s[ix * Bl + 3 * Bll].y;
 				acck_d[idx + 3].z += a_s[ix * Bl + 3 * Bll].z;
+			}
+		}
+	}
+}
+
+__global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+
+	int idy = threadIdx.y;
+	int ix = threadIdx.x;
+	int idx = (blockIdx.x * blockDim.x + ix) * p;
+	int Bl = blockDim.y;
+	int Bll = Bl * blockDim.x;
+//if(idy == 0) printf("idx %d %d %d %d\n", idx, blockIdx.x, blockDim.x, threadIdx.x);
+
+	extern volatile __shared__ float3 af_s[];
+
+	float4 x4i1, x4i2, x4i3, x4i4;
+	float rcritvi1, rcritvi2, rcritvi3, rcritvi4;
+
+	if(idx + 0 < N){
+		x4i1.x = float(x4_d[idx + 0].x);
+		x4i1.y = float(x4_d[idx + 0].y);
+		x4i1.z = float(x4_d[idx + 0].z);
+		x4i1.w = float(x4_d[idx + 0].w);
+		rcritvi1 = float(rcritv_d[idx + 0]);
+		if(idy == 0 && EE < 2){
+			Encpairs2_d[(idx + 0) * NencMax].x = 0;
+		}
+	}
+	if(idx + 1 < N && p > 1){
+		x4i2.x = float(x4_d[idx + 1].x);
+		x4i2.y = float(x4_d[idx + 1].y);
+		x4i2.z = float(x4_d[idx + 1].z);
+		x4i2.w = float(x4_d[idx + 1].w);
+		rcritvi2 = float(rcritv_d[idx + 1]);
+		if(idy == 0 && EE < 2){
+			Encpairs2_d[(idx + 1) * NencMax].x = 0;
+		}
+	}
+	if(idx + 2 < N && p > 2){
+		x4i3.x = float(x4_d[idx + 2].x);
+		x4i3.y = float(x4_d[idx + 2].y);
+		x4i3.z = float(x4_d[idx + 2].z);
+		x4i3.w = float(x4_d[idx + 2].w);
+		rcritvi3 =float( rcritv_d[idx + 2]);
+		if(idy == 0 && EE < 2){
+			Encpairs2_d[(idx + 2) * NencMax].x = 0;
+		}
+	}
+	if(idx + 3 < N && p > 3){
+		x4i4.x = float(x4_d[idx + 3].x);
+		x4i4.y = float(x4_d[idx + 3].y);
+		x4i4.z = float(x4_d[idx + 3].z);
+		x4i4.w = float(x4_d[idx + 3].w);
+		rcritvi4 = float(rcritv_d[idx + 3]);
+		if(idy == 0 && EE < 2){
+			Encpairs2_d[(idx + 3) * NencMax].x = 0;
+		}
+	}
+
+	for(int j = 0; j < p; ++j){
+		af_s[idy + ix * Bl + j * Bll].x = 0.0f;
+		af_s[idy + ix * Bl + j * Bll].y = 0.0f;
+		af_s[idy + ix * Bl + j * Bll].z = 0.0f;
+	}
+
+	__syncthreads();
+	for(int i = N0; i < N1; i += Bl){
+		if(idy + i < N1){
+			float4 x4j;
+			x4j.x = float(x4_d[idy + i].x);
+			x4j.y = float(x4_d[idy + i].y);
+			x4j.z = float(x4_d[idy + i].z);
+			x4j.w = float(x4_d[idy + i].w);
+			float rcritvj = float(rcritv_d[idy + i]);
+
+			if(idx + 0 < N)          acc_ef(af_s[idy + ix * Bl + 0 * Bll], x4i1, x4j, rcritvi1, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 0, NencMax, EE);
+			if(idx + 1 < N && p > 1) acc_ef(af_s[idy + ix * Bl + 1 * Bll], x4i2, x4j, rcritvi2, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 1, NencMax, EE);
+			if(idx + 2 < N && p > 2) acc_ef(af_s[idy + ix * Bl + 2 * Bll], x4i3, x4j, rcritvi3, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 2, NencMax, EE);
+			if(idx + 3 < N && p > 3) acc_ef(af_s[idy + ix * Bl + 3 * Bll], x4i4, x4j, rcritvi4, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 3, NencMax, EE);
+
+		}
+	}
+	__syncthreads();
+//	if(idx > 980)	printf("A %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, af_s[ix * Bl + 0 * Bll].x, af_s[ix * Bl + 0 * Bll].y, af_s[ix * Bl + 0 * Bll].z); 
+
+	int s = Bl/2;
+
+	for(int i = 6; i < log2f(Bl); ++i){
+		if( idy < s ) {
+			for(int j = 0; j < p; ++j){
+				af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + s].x;
+				af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + s].y;
+				af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + s].z;
+			}
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+
+	for(int j = 0; j < p; ++j){
+
+		if(Bl > 32 && idy < 32){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 32].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 32].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 32].z;
+		}
+		__syncthreads();        //this is needed here because idy are not neccessary in the same warp
+		if(Bl > 16 && idy < 16){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 16].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 16].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 16].z;
+		}
+		__syncthreads();
+		if(Bl >  8 && idy < 8){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 8].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 8].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 8].z;
+		}
+		__syncthreads();
+		if(Bl >  4 && idy < 4){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 4].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 4].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 4].z;
+		}
+		__syncthreads();
+		if(Bl >  2 && idy < 2){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 2].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 2].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 2].z;
+		}
+		__syncthreads();
+		if(Bl >  1 && idy < 1){
+			af_s[idy + ix * Bl + j * Bll].x += af_s[idy + ix * Bl + j * Bll + 1].x;
+			af_s[idy + ix * Bl + j * Bll].y += af_s[idy + ix * Bl + j * Bll + 1].y;
+			af_s[idy + ix * Bl + j * Bll].z += af_s[idy + ix * Bl + j * Bll + 1].z;
+		}
+		__syncthreads();
+	}
+
+//	if(idy == 0 && idx > 980)	printf("%d %d %d %.20g %.20g %.20g\n", idx, ix, idy, af_s[ix * Bl + 0 * Bll].x, af_s[ix * Bl + 0 * Bll].y, af_s[ix * Bl + 0 * Bll].z); 
+
+
+	if(EE < 2){
+		if(idy == 0){
+			if(idx + 0 < N){
+				acck_d[idx + 0].x = af_s[ix * Bl + 0 * Bll].x;
+				acck_d[idx + 0].y = af_s[ix * Bl + 0 * Bll].y;
+				acck_d[idx + 0].z = af_s[ix * Bl + 0 * Bll].z;
+			}
+			if(idx + 1 < N && p > 1){
+				acck_d[idx + 1].x = af_s[ix * Bl + 1 * Bll].x;
+				acck_d[idx + 1].y = af_s[ix * Bl + 1 * Bll].y;
+				acck_d[idx + 1].z = af_s[ix * Bl + 1 * Bll].z;
+			}
+			if(idx + 2 < N && p > 2){
+				acck_d[idx + 2].x = af_s[ix * Bl + 2 * Bll].x;
+				acck_d[idx + 2].y = af_s[ix * Bl + 2 * Bll].y;
+				acck_d[idx + 2].z = af_s[ix * Bl + 2 * Bll].z;
+			}
+			if(idx + 3 < N && p > 3){
+				acck_d[idx + 3].x = af_s[ix * Bl + 3 * Bll].x;
+				acck_d[idx + 3].y = af_s[ix * Bl + 3 * Bll].y;
+				acck_d[idx + 3].z = af_s[ix * Bl + 3 * Bll].z;
+			}
+		}
+	}
+	if(EE == 2){
+		if(idy == 0){
+			if(idx + 0 < N){
+				acck_d[idx + 0].x += af_s[ix * Bl + 0 * Bll].x;
+				acck_d[idx + 0].y += af_s[ix * Bl + 0 * Bll].y;
+				acck_d[idx + 0].z += af_s[ix * Bl + 0 * Bll].z;
+			}
+			if(idx + 1 < N && p > 1){
+				acck_d[idx + 1].x += af_s[ix * Bl + 1 * Bll].x;
+				acck_d[idx + 1].y += af_s[ix * Bl + 1 * Bll].y;
+				acck_d[idx + 1].z += af_s[ix * Bl + 1 * Bll].z;
+			}
+			if(idx + 2 < N && p > 2){
+				acck_d[idx + 2].x += af_s[ix * Bl + 2 * Bll].x;
+				acck_d[idx + 2].y += af_s[ix * Bl + 2 * Bll].y;
+				acck_d[idx + 2].z += af_s[ix * Bl + 2 * Bll].z;
+			}
+			if(idx + 3 < N && p > 3){
+				acck_d[idx + 3].x += af_s[ix * Bl + 3 * Bll].x;
+				acck_d[idx + 3].y += af_s[ix * Bl + 3 * Bll].y;
+				acck_d[idx + 3].z += af_s[ix * Bl + 3 * Bll].z;
 			}
 		}
 	}

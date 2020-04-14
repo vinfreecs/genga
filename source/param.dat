@@ -45,6 +45,7 @@ aeGrid Ni = 10
 aeGrid Start Count = 1
 aeGrid name = A
 Use gas disk = 0
+Use gas disk enhancement = 0
 Gas dTau_diss = 10000
 Gas alpha = 1
 Gas Sigma_10 = 2000

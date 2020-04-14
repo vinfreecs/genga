@@ -401,6 +401,7 @@ __host__ void Host::Halloc(){
 	Gridae.Start = def_aeGridStartCount;
 	sprintf(Gridae.X, def_aeGridName);
 	P.Usegas = def_Usegas;
+	P.UsegasEnhance = def_UsegasEnhance;
 	P.UseForce = def_UseForce;
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
@@ -1187,6 +1188,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%d", &P.Usegas);
 				if(er <= 0){
 					printf("Error: Use gas Disk value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use gas disk enhancement =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UsegasEnhance);
+				if(er <= 0){
+					printf("Error: Use gas disk enhancement value is not valid!\n");
 					return 0;
 				}
 			}
@@ -2456,6 +2471,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);                  // use only argument in simulation 0
 			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
 			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
+			fprintf(infofile, "Use gas disk enhancement: %d\n", P.UsegasEnhance);		// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0

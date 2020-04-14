@@ -326,7 +326,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, double G_Sigma_10, int Nst, double Ct, int Nstart){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, double G_Sigma_10, int Nst, double Ct, int UsegasEnhance, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -445,15 +445,23 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			
 			//Enhanced Drag
 			double Soft;
-			if(m < M_Enhance && m > MgasSmall){
-				double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
-				double jc = M_Enhance/Mass_pl;
-				m = pow(jc, pid);
-				m *= Mass_pl;
-				Soft = v4.w * pow(m/x4.w, 1.0/3.0);
+			if(UsegasEnhance == 1){
+				
+				if(m < M_Enhance && m > MgasSmall){
+					double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
+					double jc = M_Enhance/Mass_pl;
+					m = pow(jc, pid);
+					m *= Mass_pl;
+					Soft = v4.w * pow(m/x4.w, 1.0/3.0);
+				}
+				else{
+				
+					Soft = v4.w;
+				}
 			}
 			else{
 				Soft = v4.w;
+
 			}
 			v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
 			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
@@ -540,7 +548,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, int Nstart){
+__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, int UsegasEnhance, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -627,6 +635,27 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 		if(m == 0.0) m = MgasSmall;
 		if(m < Mgiant && Sigma > 0.0){
 		
+			//Enhanced Drag
+			double Soft;
+			if(UsegasEnhance == 1){
+				
+				if(m < M_Enhance && m > MgasSmall){
+					double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
+					double jc = M_Enhance/Mass_pl;
+					m = pow(jc, pid);
+					m *= Mass_pl;
+					Soft = v4.w * pow(m/x4.w, 1.0/3.0);
+				}
+				else{
+				
+					Soft = v4.w;
+				}
+			}
+			else{
+				Soft = v4.w;
+
+			}
+
 			v_kep = sqrt(Msun * def_ksq / r1); 
 			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
 			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
@@ -641,7 +670,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 			
 			v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 			v_rel = sqrt(v_rel);
-			if(m > 0.0) v_rel *= M_PI / m * v4.w * v4.w * rho;
+			if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
 			else v_rel = 0.0;
 
 			a_x += -v_rel * v_rel3.x;
@@ -816,16 +845,16 @@ __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, dou
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
 	int nt = min(32, NB[0]);
-	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, 0);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, 0);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, 0);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, 0);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, Nstart);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, Nstart);
 }
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, 0);
+	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.UsegasEnhance, 0);
 }
 
 __host__ int Data::freeGas(){

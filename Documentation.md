@@ -130,7 +130,8 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The number of cells in i of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The time step when aeCount starts. (In Detail aeCount will start at the next bigger coordinate output step).
  * The name for the aeCount grid
- * use gas disk: By setting this flag, the [gas disc](#markdown-header-gas-disc) is used.
+ * use gas disk: By setting this to 1, the [gas disc](#markdown-header-gas-disc) is used.
+ * Use gas disk enhancement; By setting this to 1, the gas disk enhancement is used.
  * The dissipation time for the gas disc in years
  * The gas surface density at 1 AU Sigma_10 in g / cm^3
  * The power law exponent for the gas disc, alpha 
@@ -450,7 +451,6 @@ The gas disc is implemented according Morishima et al. (2010) [From planetesimal
 The parameters for the gas disc can be set in:
 
  * define.h:
-    * useGas: Use the gas disc or not
     * Gasnr_g: Number of cells in r direction for gas grid
     * Gasnz_g: Number of cells in z direction for gas grid
     * Gasnr_p: Number of cells in r direction for particle grid
@@ -461,6 +461,8 @@ The parameters for the gas disc can be set in:
     * Mass_pl: factor for enhancement
     * fMass_min: factor for enhancement 
  * param.dat:
+    * Use gas disk: Use the gas disk or not
+    * Use gas disk enhancement: USe the gas disk enhancement
     * Dissipation time for the gas in years
     * power law exponent for the gas disc (must be 1 in the current version of GENGA)
 
