@@ -3026,7 +3026,7 @@ __host__ int Host::readSetElements(){
 			++nlinesToSkip;
 		}
 	}
-	if(nlines < 4){
+	if(nlines < 4 * P.setElementsN){
 		printf("Error, set Elements less than 4 data points, need at least 4\n");
 		return 0;
 	}
@@ -3037,7 +3037,7 @@ __host__ int Host::readSetElements(){
 	}
 
 	fclose(Efile);
-	printf("%d lines, %d linesToSkip %d bodies %d elements\n", nlines, nlinesToSkip, P.setElementsN, nelements);
+	printf("%d lines, %d linesToSkip, %d bodies, %d elements\n", nlines, nlinesToSkip, P.setElementsN, nelements);
 	
 	constantCopy3(Elements, nelements, P.setElementsN, nlines);
 	//allocate memory

@@ -505,7 +505,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					time1 = setElementsData_d[line1 * nelements + i];
 					time2 = setElementsData_d[line2 * nelements + i];
 					time3 = setElementsData_d[line3 * nelements + i];
-//printf("i %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
+//printf("i %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line0 %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
 					if(time >= time2 && line3 < nlines - nbodies){
 						line += nbodies;
 						line1 += nbodies;
@@ -535,7 +535,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				double f0 = (time2 - time1) / (time2 - time0);
 				double f1 = (time2 - time1) / (time3 - time1);
 
-//if(i == 0) printf("id %d xxA %g \n", id, xx);
+//if(i == 0) printf("id %d xxA %g %g %g %g | %g | %g %g\n", id, xx0, xx1, xx2, xx3, xx, f0, f1);
 
 				if(xx < 0){
 					//first point
@@ -555,8 +555,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					f0 = (time3 - time2) / (time3 - time1);
 					f1 = (time3 - time2) / (2.0 * (time3 - time2));
 				}
-
-//if(i == 0) printf("id %d xxB %g %.10g %.10g\n", id, xx, f0, f1);
+//if(i == 0) printf("id %d xxB %g %g %g %g | %g | %g %g\n", id, xx0, xx1, xx2, xx3, xx, f0, f1);
 
 
 //f0 = 0.5;
@@ -567,12 +566,6 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				double bb = 2.0 * f0 * xx0 - 3.0 * xx1 + f1 * xx1 + 3.0 * xx2 - 2.0 * f0 * xx2 - f1 * xx3;
 				double cc = -f0 * xx0 + f0 * xx2;
 				double dd = xx1;
-
-				//cubic interpolation
-		//		double aa = -0.5 * xx0 + 1.5 * xx1 - 1.5 * xx2 + 0.5 * xx3;
-		//		double bb = xx0 - 2.5 * xx1 + 2.0 * xx2 - 0.5 * xx3;
-		//		double cc = -0.5 * xx0 + 0.5 * xx2;
-		//		double dd = xx1;
 
 				double xx22 = xx * xx;
 
@@ -655,7 +648,7 @@ if(setElements_c[i] == 13){
 			mu = def_ksq * (Msun + x4i.w);
 
 			if(doConversion == 1){
-//printf("K1 %10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
+//printf("K1 %.10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
 				//Convert to Cartesian Coordinates
 
 				double cw = cos(w);

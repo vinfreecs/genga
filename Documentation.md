@@ -66,9 +66,9 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The Star Radius in AU
  * The Star Love Number
  * The Star fluid Love Number
- * The Star spin_x in Solar masses AU^2 * day / 0.0172020989
- * The Star spin_y in Solar masses AU^2 * day / 0.0172020989
- * The Star spin_z in Solar masses AU^2 * day / 0.0172020989
+ * The Star spin_x in Solar masses AU^2 / day * 0.0172020989
+ * The Star spin_y in Solar masses AU^2 / day * 0.0172020989
+ * The Star spin_z in Solar masses AU^2 / day * 0.0172020989
  * The Star tau (time lag) in day / 0.0172020989.
  * The Solar Constant at 1 AU in W /m^2. 
  * The Input file name
@@ -92,9 +92,9 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
     * M = mean anomaly in radians
     * rho = density in g/cm^3; optional, the default value can be specified below.
     * r = physical radius in AU; optional, if r is not given or the radius is equal to zero, then the program uses the density to calculate the radius. Note that you have many ways to input the radius or density. Look at the input file section.
-    * Sx = x-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
-    * Sy = y-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
-    * Sz = z-spin in Solar masses AU^2 * day / 0.0172020989; optional, the default value is 0.0
+    * Sx = x-spin in Solar masses AU^2 / day * 0.0172020989; optional, the default value is 0.0
+    * Sy = y-spin in Solar masses AU^2 / day * 0.0172020989; optional, the default value is 0.0
+    * Sz = z-spin in Solar masses AU^2 / day * 0.0172020989; optional, the default value is 0.0
     * i = index of the body; optional, the default value is the line number in the input file. Don't give two bodies the same index.
     * t = start time of the simulation in years, optional. The default is zero.
     * amin = minimal value of semi major axis range for aecount; optional, the default value is 0.0. See [here](#markdown-header-aelimits) for more details
@@ -284,7 +284,7 @@ In this format, at each coordinate output interval, a new file is created which 
  * r is the physical radius of the body in AU.
  * x, y, z are the heliocentric positions in AU.
  * vx, vy, vz are the heliocentric velocities in AU/day * 0.0172020989.
- * Sx, Sy, Sz are the spin components in Solar masses AU^2 * day / 0.0172020989.
+ * Sx, Sy, Sz are the spin components in Solar masses AU^2 / day * 0.0172020989.
  * amin, amax, emin and emax are the specified boundaries for the aeCount box, see [here](#markdown-header-aelimits) for more details. At a collision, the same rules as for the index are applied to these values.
  * aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits. See [here](#markdown-header-aelimits) for more details.
  * aecountT is the integrated value of all previous aecount values.
