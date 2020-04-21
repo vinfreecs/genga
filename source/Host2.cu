@@ -2553,7 +2553,7 @@ __host__ int Host::readIrregularOutputs(){
 	double t;
 	int er;
 	int n = 0;
-	for(int i = 0; i < 1000000; ++i){
+	for(int i = 0; i < 100000000; ++i){
 		er = fscanf(Irrfile, "%lf", &t);
 		if(er <= 0){
 			n = i;

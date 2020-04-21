@@ -83,9 +83,9 @@ public:
 	//data for irregular outputs
 	int bufferCount;
 	int bufferCountIrr;
-	int irrTimeStep;
-	int irrTimeStepOut;
-	int NIrrOutputs;
+	long long int irrTimeStep;
+	long long int irrTimeStepOut;
+	long long int NIrrOutputs;
 	double *IrrOutputs;
 	
 	//Transits Data

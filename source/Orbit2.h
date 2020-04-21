@@ -139,8 +139,8 @@ public:
 	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
 	double *coordinateBufferIrr_d;
-	int *timestepBuffer;
-	int *timestepBufferIrr;
+	long long int *timestepBuffer;
+	long long int *timestepBufferIrr;
 	int2 *NBuffer;
 	int2 *NBufferIrr;
 

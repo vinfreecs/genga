@@ -480,7 +480,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 						}
 					}
 					else if(irregular == 1){
-						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
+						sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
 					}
 #if def_TTV == 0
 					GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
@@ -514,7 +514,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 						}
 					}
 					else if(irregular == 1){
-						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
+						sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStep);
 					}
 					if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");
@@ -605,10 +605,10 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
 						if(irregular == 0){
-							sprintf(GSF[st].outputfilename,"%sOut%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
+							sprintf(GSF[st].outputfilename,"%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
 						}
 						else{
-							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
+							sprintf(GSF[st].outputfilename,"%sOutIrr%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
 						}
 						GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 					}
@@ -625,10 +625,10 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				else{
 					if(P.FormatT == 0){
 						if(irregular == 0){
-							sprintf(GSF[st].outputfilename, "%s../Out%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
+							sprintf(GSF[st].outputfilename, "%s../Out%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf]);
 						}
 						else{
-							sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*d.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
+							sprintf(GSF[st].outputfilename, "%s../OutIrr%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, irrTimeStepOut + bf);
 						}
 						if(st == 0) GSF[st].outputfile = fopen(GSF[st].outputfilename, "w");
 						else GSF[st].outputfile = fopen(GSF[st].outputfilename, "a");

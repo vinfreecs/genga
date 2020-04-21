@@ -260,8 +260,8 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 	poincarefile = fopen(poincarefilename, "w");
 #endif
 
-	irrTimeStep = 0;
-	irrTimeStepOut = 0;
+	irrTimeStep = 0ll;
+	irrTimeStepOut = 0ll;
 	if(P.IrregularOutputs == 1){
 		er = readIrregularOutputs();
 		if(er == 0){
@@ -269,7 +269,7 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 		}
 		//skip Irregular output times which are before the simulation starts
 		double starttime = (P.tRestart) * idt_h[0] + ict_h[0] * 365.25;
-		for(int i = 0; i < NIrrOutputs; ++i){
+		for(long long int i = 0ll; i < NIrrOutputs; ++i){
 			if(IrrOutputs[i] >= starttime){
 				break;
 			}

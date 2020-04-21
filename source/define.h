@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.99
+#define def_Version 3.101
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 

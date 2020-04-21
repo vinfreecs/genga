@@ -31,8 +31,8 @@ __host__ void Data::AllocateOrbit(){
 	enccountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
 
 	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
-	timestepBuffer = (int*)malloc(P.Buffer * sizeof(int));
-	timestepBufferIrr = (int*)malloc(P.Buffer * sizeof(int));
+	timestepBuffer = (long long int*)malloc(P.Buffer * sizeof(long long int));
+	timestepBufferIrr = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 #if def_TTV == 1
@@ -640,8 +640,8 @@ __host__ int Data::init(){
 		coordinateBuffer_h[i] = 0.0;
 	}
 	for(int i = 0; i < P.Buffer; ++i){
-		timestepBuffer[i] = 0;
-		timestepBufferIrr[i] = 0;
+		timestepBuffer[i] = 0ll;
+		timestepBufferIrr[i] = 0ll;
 		for(int st = 0; st < Nst; ++st){
 			NBuffer[i * Nst + st].x = N_h[st];
 			NBuffer[i * Nst + st].y = Nsmall_h[st];
