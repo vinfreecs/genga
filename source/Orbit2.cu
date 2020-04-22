@@ -1171,7 +1171,7 @@ __host__ int Data::readic(int st){
 			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 			OrigInfile = fopen(Origfilename, "r");
 			for(int k = 0; k < 1000000000; ++k){
-				int i = ii;
+				int i = k;
 				double skip = 0.0;
 				int eri = 1;
 				for(int f = 0; f < def_Ninformat; ++f){

@@ -2137,9 +2137,10 @@ __host__ int Host::icSize(int st){
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 		OrigInfile = fopen(Origfilename, "r");
 		for(int k = 0; k < 1000000000; ++k){
-			int i = NNN + NNNsmall;
 			double skip = 0.0;
 			int eri = 1;
+			int i = k;
+			//if index is not given in the initial conditions file, i = k, otherwise scan for the index
 			for(int f = 0; f < 22; ++f){
 				if(GSF[st].informat[f] == 13){
 					eri = fscanf (OrigInfile, "%d",&i);
@@ -2178,6 +2179,7 @@ __host__ int Host::icSize(int st){
 						if(Et == time){
 							if(m > P.MinMass) ++NNN;
 							else ++NNNsmall;
+							break;
 						}
 						if(NNN + NNNsmall == NN){
 							NMAX = 1;
