@@ -141,9 +141,10 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * Radiation Pressure Coefficient Qpr: Efficiency factor, used for Poynting Robertson drag.
  * Use Small Collisions. 0: no effect, 1: Fragmentation and rotation rate reset model for test particles.
  * Set Elements file name: '-': no file, 'name':  name of the file containg the data table for Keplerian elements. See [here](#markdown-header-set-elements-function) for more details. 
- * FormatS:  Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
+ * FormatS: Output file format for multi simulation run. 0: all simulations write to different files, 1: all simulations write to the same file.
  * FormatT: Output file format for time steps. 0: all time steps are written to different files, 1: all time steps are written to the same file.
  * FormatP: Output file format for particles. 0: all particles are written to different files, 1: all particles are written to the same file.
+ * FormatO: Output file format for file names. 0: file names contain time steps, 1: file names contain output steps.
  * Report Encounters: When this is set to one, then close encounters with a separation less than a factor f times the physical radius of the body are reported to a file.
  * Report Encounters Radius: This option sets the factor f of the 'Report Encounter'  separation.
  * Stop at Encounter: When this is set to one, then the simulation or sub-simulation is stopped when the separation between two bodies is less than a factor g times the Hill radii of the involved bodies. 
