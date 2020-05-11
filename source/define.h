@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.101
+#define def_Version 3.102
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
@@ -123,6 +123,7 @@
 #define def_ksq 1.0			//Squared Gaussion gravitation constant in current units
 #define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
 #define dayUnit 0.01720209895
+//#define dayUnit 0.01720412578565452474399499749324604636058
 #define def_AU 149597870700.0		//AU in m
 #define def_Solarmass 1.98855e30	//solar mass in Kg
 #define def_c 299792458.0		//speed of light in m/s

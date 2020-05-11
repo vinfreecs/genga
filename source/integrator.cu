@@ -495,7 +495,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 	// this should be the last thing to print, because it is used to restart at the last possible timestep
 	if((P.ci > 0 && timeStep % P.ci == 0) || interrupt == 1){
 		if(bufferCount >= P.Buffer || P.Buffer == 1 || interrupt == 1){
-			er = printTime();
+			er = printTime(0);
 			if(er == 0) return 0;
 			fflush(masterfile);
 			bufferCount = 0;
@@ -549,7 +549,7 @@ __host__ int Data::Remaining(){
 
 
 	//print last informations
-	printLastTime();
+	printLastTime(0);
 	LastInfo();
 
 	//free all the memory on the Host and on the Device
@@ -1863,7 +1863,6 @@ __host__ int Data::EjectionCall(){
 	Ejection();
 	EjectionFlag_m[0] = 0;
 	EjectionFlag2 = 1;
-	
 	int NminFlag = remove();
 	if(NminFlag > 0){
 		//at least one simulation has less bodies than Nmin and must be stopped
@@ -2801,7 +2800,10 @@ __host__ int Data::step_M(int noColl){
 	if(StopFlag_m[0] == 1){
 		if(P.ci != 0){
 			CoordinateOutput(3);
+			EnergyOutput(3);
+			printTime(3);
 		}
+		printLastTime(3);
 		
 		stopSimulations();
 		StopFlag_m[0] = 0;

@@ -316,7 +316,25 @@ __host__ int Data::EnergyOutput(int irregular){
 	cudaMemcpy(Energy_h, Energy_d, sizeof(double) * NEnergyT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
-		if(irregular == 0){
+
+//printf("Print Energy | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+		if(Nst > 1){
+			int s = 0;
+		
+			if(irregular < 3) s = 1;	
+			if(N_h[st] < Nmin[st].x) s = 1;
+			if(Nsmall_h[st] < Nmin[st].y) s = 1;
+			if(n1_h[st] < 0) s = 1;
+			if(timeStep >= delta_h[st]) s = 1;
+			//print only simulations which must be stopped by StopAtEncounter
+			//or when the simulation reached the end
+			if(s == 0){
+				continue;
+			}			
+		}
+//printf("Print Energy2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+
+		if(irregular == 0 || irregular == 3){
 			Energyfile = fopen(GSF[st].Energyfilename, "a");
 		}
 		else{
@@ -440,7 +458,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 
 		int NBS = NBS_h[st];
 
-//printf("Print Output | irreguler: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+//printf("Print Output | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
 		if(Nst > 1){
 			int s = 0;
 		
@@ -455,7 +473,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 				continue;
 			}			
 		}
-//printf("Print Output2 | irreguler: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+//printf("Print Output2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
 
 		if(P.FormatP == 1){
 			if(irregular == 2){
@@ -784,13 +802,30 @@ __host__ void Data::setStartTime(){
 
 
 //This function prints information how long the integration takes
-__host__ int Data::printTime(){
+__host__ int Data::printTime(int irregular){
 	
 	cudaEventRecord(tt3, 0);
 	cudaEventSynchronize(tt3);
 	cudaEventElapsedTime(&times, tt2, tt3);
 	FILE *timefile;
 	for(int st = 0; st < Nst; ++st){
+
+//printf("Print time | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+		if(Nst > 1){
+			int s = 0;
+		
+			if(irregular < 3) s = 1;	
+			if(N_h[st] < Nmin[st].x) s = 1;
+			if(Nsmall_h[st] < Nmin[st].y) s = 1;
+			if(n1_h[st] < 0) s = 1;
+			if(timeStep >= delta_h[st]) s = 1;
+			//print only simulations which must be stopped by StopAtEncounter
+			//or when the simulation reached the end
+			if(s == 0){
+				continue;
+			}			
+		}
+//printf("Print time2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
 
 		timefile = fopen(GSF[st].timefilename, "a");
 		if(timefile == NULL){
@@ -817,19 +852,43 @@ __host__ int Data::printTime(){
 			fprintf(masterfile, "Reached timestep %lld with %d simulations\n", timeStep, Nst);
 		}
 	}
-	cudaEventRecord(tt2, 0);
+	if(irregular == 0){
+		cudaEventRecord(tt2, 0);
+	}
 	return 1;
 }
 
 //This function prints the total integration runtime
-__host__ void Data::printLastTime(){
+__host__ void Data::printLastTime(int irregular){
 	cudaEventRecord(tt4, 0);
 	cudaEventSynchronize(tt4);
 	cudaEventElapsedTime(&times, tt1, tt4);
 	FILE *timefile;
 	for(int st = 0; st < Nst; ++st){
+
+//printf("Print last time | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
+		if(Nst > 1){
+			int s = 0;
+		
+			if(irregular < 3) s = 1;	
+			if(N_h[st] < Nmin[st].x) s = 1;
+			if(Nsmall_h[st] < Nmin[st].y) s = 1;
+			if(n1_h[st] < 0) s = 1;
+			if(timeStep >= delta_h[st]) s = 1;
+			//print only simulations which must be stopped by StopAtEncounter
+			//or when the simulation reached the end
+			if(s == 0){
+				continue;
+			}			
+		}
+//printf("Print last time2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
 		timefile = fopen(GSF[st].timefilename, "a");
-		fprintf(timefile, "\n\n%lld %.20g\n", timeStep -1, times * 0.001);
+		if(irregular == 0){
+			fprintf(timefile, "\n\n%lld %.20g\n", timeStep -1, times * 0.001);
+		}
+		else{
+			fprintf(timefile, "\n\n%lld %.20g\n", timeStep, times * 0.001);
+		}
 		if(st == 0) printf("Execution time: \n\n%g\n", times * 0.001);
 		fclose(timefile);
 	}

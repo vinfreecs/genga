@@ -1794,6 +1794,7 @@ __host__ void Data::Ejection(){
 						}
 					}
 				}
+//if(i == 619) printf("ejection %d %g %g %g\n", i, rsq, RcutSun_h[st] * RcutSun_h[st], x4_h[i + NBS].w);
 				if( rsq < RcutSun_h[st] * RcutSun_h[st] && x4_h[i + NBS].w >= 0){
 					c = -2;
 					if(Nst == 1){

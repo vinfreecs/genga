@@ -103,7 +103,6 @@ __device__  double rf(double x, double y, double z){
 //	}
 
 	for(int i = 0; i < 10000; ++i){
-//	do{ 
 		sqrtx = sqrt(xt);	
 		sqrty = sqrt(yt);
 		sqrtz = sqrt(zt);
@@ -122,7 +121,6 @@ __device__  double rf(double x, double y, double z){
 
 		if(fmax(fmax(fabs(X), fabs(Y)), fabs(Z)) <= errtol) break;
 	}
-//	}while(fmax(fmax(fabs(X),fabs(Y)),fabs(Z)) > errtol);
 
 
 	E2 = X * Y - Z * Z;
@@ -155,7 +153,6 @@ __device__  double rd(double x, double y, double z){
 //	}
 
 	for(int i = 0; i < 10000; ++i){
-	//do{
 		sqrtx = sqrt(xt);
 		sqrty = sqrt(yt);
 		sqrtz = sqrt(zt);
@@ -176,7 +173,6 @@ __device__  double rd(double x, double y, double z){
 
 		if(fmax(fmax(fabs(X), fabs(Y)), fabs(Z)) <= errtol) break;
 	}
-	//}while(fmax(fmax(fabs(X),fabs(Y)),fabs(Z)) > errtol);
 
 	EA = X * Y;
 	EB = Z * Z;

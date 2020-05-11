@@ -190,8 +190,8 @@ public:
 	__host__ void firstInfo();
 	__host__ void LastInfo();
 	__host__ void setStartTime();
-	__host__ void printLastTime();
-	__host__ int printTime();
+	__host__ void printLastTime(int);
+	__host__ int printTime(int);
 	__host__ void CoordinateOutput(int);
 	__host__ void CoordinateOutputBuffer(int);
 	__host__ int MaxGroups();

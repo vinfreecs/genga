@@ -1847,7 +1847,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 __host__ int Host::Param(int argc, char*argv[]){
 	FILE *paramfile;
 	char paramfilename[300];
-	
 	// Read parameters from param file //
 	for(int st = 0; st < Nst; ++st){
 		sprintf(paramfilename, "%s%s", GSF[st].path, "param.dat");
@@ -1918,7 +1917,9 @@ __host__ int Host::Param(int argc, char*argv[]){
 		P.tRestart = max(Restart, P.tRestart);
 		}
 	}
-	if(P.ci != -1 && P.tRestart % P.ci == 0) RestartBackup = 0;
+	if(P.ci != -1 && P.ci != 0){
+		 if(P.tRestart % P.ci == 0) RestartBackup = 0;
+	}
 //printf("restart %lld %d\n", P.tRestart, RestartBackup);
 	
 	for(int st = 0; st < Nst; ++st){
