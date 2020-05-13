@@ -7,12 +7,14 @@
 #include <math.h>
 
 
-#define def_Version 3.102
+#define def_Version 3.103
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn have shfl_sync operations
 
 
 //Default parameter values
+// ---------------------------------
+//The following block defines default values for the parameters from the param.dat file
 #define def_TimeStep 6
 #define def_Name "test"
 #define def_EnergyOutputInterval 100
@@ -24,6 +26,10 @@
 #define def_CentralRadius 0.00465475877
 #define def_CentralK2 1.0
 #define def_CentralK2f 1.0
+#define def_StarSpinx 0.0
+#define def_StarSpiny 0.0
+#define def_StarSpinz 0.0
+#define def_StarTau 0.0
 #define def_SolarConstant 1367.0	//Solar Constant at 1 AU in W /m^2
 #define def_n1 3.0
 #define def_n2 0.4
@@ -35,8 +41,9 @@
 #define def_RestartTimeStep 0
 #define def_MinimumNumberOfBodies 0
 #define def_MinimumNumberOfTestParticles 0
-#define def_Rcut 50.0
 #define def_RcutSun 0.2
+#define def_Rcut 50.0
+#define def_NencMax 512
 #define def_OderOfIntegrator 2			//2, 4  or 6
 #define def_UseaeGrid 0				// 1 or 0
 #define def_aeGridamin 0.0f
@@ -51,15 +58,19 @@
 #define def_aeGridStartCount 0
 #define def_aeGridName "A"
 #define def_Usegas 0			//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
-#define def_UsegasEnhance 0		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
-#define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
-#define def_UseYarkovsky 0
-#define def_UseSmallCollisions 0	//fragmentation and rotation reset model
-#define def_UsePR 0
-#define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
+#define def_UsegasEnhance 2		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define def_UsegasPotential 1		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define def_UsegasDrag 2		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
+#define def_UsegasTidalDamping 2	//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
 #define def_G_Sigma_10 2000		 //surface density at 1AU
+#define def_Mgiant  1.0E-4
+#define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
+#define def_UseYarkovsky 0
+#define def_UsePR 0
+#define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
+#define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
@@ -72,14 +83,17 @@
 #define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations only when both bodies are more massive than def_StopMinMass
 #define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
+#define def_SLevels 1			//Number of recursive symplectic sub step levels
+#define def_SLSteps 2			//number of time steps per level
+// --------------------------------
+
+
+//The following parameters can not be set in the param.dat file
 #define def_NAFvars 1
 #define def_NAFn0 10
 #define def_NAFnfreqs 1
 #define def_NAFformat 1
 #define def_NAFinterval 1
-#define def_NencMax 512
-#define def_SLevels 1			//Number of recursive symplectic sub step levels
-#define def_SLSteps 2			//number of time steps per level
 #define def_Ninformat 50		//number of entries in informat array
 #define def_NColl 25			//number of parameters in Coll array
 
@@ -107,17 +121,16 @@
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
-#define Gasnr_g 189
-#define Gasnz_g 50
-#define Gasnr_p 150
-#define Gasnz_p 51
-#define h_1 0.03358 //scale height at 1AU for c = 1km/s*
-#define Mgiant  1.0E-4
-#define M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
-#define Mass_pl  0.502E-14 /* corresponding to 10^19g */
-#define fMass_min 7.55E-9
+#define def_Gasnr_g 189
+#define def_Gasnz_g 50
+#define def_Gasnr_p 150
+#define def_Gasnz_p 51
+#define def_h_1 0.03358 //scale height at 1AU for c = 1km/s*
+#define def_M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
+#define def_Mass_pl  0.502E-14 /* corresponding to 10^19g */
+#define def_fMass_min 7.55E-9
 
-#define MgasSmall 1.0e-14  //minimal mass that is taken for test particles
+#define def_MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
 //Units and constants
 #define def_ksq 1.0			//Squared Gaussion gravitation constant in current units
@@ -229,9 +242,9 @@
 //#define Asteroid_A 0.069	//Bond albedo			Veritas
 	
 
-#define Asteroid_K 2.65       //Thermal conductivity in W/mK	Hebe
-//#define Asteroid_K 1.0         //Thermal conductivity in W/mK	Veritas
-//#define Asteroid_K 0.001         //Thermal conductivity in W/mK	Veritas
+#define Asteroid_K 2.65		//Thermal conductivity in W/mK	Hebe
+//#define Asteroid_K 1.0	//Thermal conductivity in W/mK	Veritas
+//#define Asteroid_K 0.001	//Thermal conductivity in W/mK	Veritas
 
 
 
@@ -247,7 +260,7 @@ double __shfld_xor(double x, int k) {
 	int2 a = *reinterpret_cast<int2*>(&x);
 	a.x = __shfl_xor(a.x, k);
 	a.y = __shfl_xor(a.y, k);
-        return *reinterpret_cast<double*>(&a);
+	return *reinterpret_cast<double*>(&a);
 }
 #endif
 
@@ -263,17 +276,18 @@ __constant__ double StopAtEncounterRadius_c[1];
 
 
 struct Parameter{
-	int dev;                        //Number of device
-	int ei;                         //Energy output interval
-	int ci;                         //Coordinate output interval
-	int nci;                        //Number of outputs per interval
+	int dev;			//Number of device
+	int ei;				//Energy output interval
+	int ci;				//Coordinate output interval
+	int nci;			//Number of outputs per interval
 	int UseTestParticles;
-	long long tRestart;             //timestep for restart
-	long long deltaT;               //Number of time steps to do
+	long long tRestart;		//timestep for restart
+	long long deltaT;		//Number of time steps to do
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	int G_alpha;			//alpha parameter for Gas Disc
 	double G_Sigma_10;		//Gas Sigma_10
+	double G_Mgiant;		//Mass limit for gas effects
 	int UseaeGrid;			
 	int FormatS;			//Output file structure
 	int FormatT;			
@@ -281,7 +295,10 @@ struct Parameter{
 	int FormatO;			//output numbering, 0: time steps or 1: output steps
 	int Buffer;
 	int Usegas;
+	int UsegasPotential;
 	int UsegasEnhance;
+	int UsegasDrag;
+	int UsegasTidalDamping;
 	int UseForce;
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model

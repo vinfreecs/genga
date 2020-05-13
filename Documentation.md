@@ -130,12 +130,22 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * The number of cells in i of the aeCount grid. See [here](#markdown-header-aegrid) for more details
  * The time step when aeCount starts. (In Detail aeCount will start at the next bigger coordinate output step).
  * The name for the aeCount grid
- * use gas disk: By setting this to 1, the [gas disc](#markdown-header-gas-disc) is used.
- * Use gas disk enhancement; By setting this to 1, the gas disk enhancement is used.
- * The dissipation time for the gas disc in years
- * The gas surface density at 1 AU Sigma_10 in g / cm^3
- * The power law exponent for the gas disc, alpha 
- * use additional force, which is specified in the file force.h. See [here](#markdown-header-additional-forces) for more details.
+ * Use gas disk: By setting this to 1, the [gas disc](#markdown-header-gas-disc) is used. Individual effects can be selected with the following parameters.
+   When set to 0, then no gas effects are applied. 
+ * Use gas disk potential; By setting this to 1, the gas disk potential is applied to all particles.
+   When set to 2, then the effect is limited to particles with m < Mgiant.
+ * Use gas disk enhancement; By setting this to 1, the gas disk enhancement is applied to all particles with m < def_M_Enhance and m > def_MgasSmall.
+   When set to 2, then the effect is limited to particles with m < Mgiant.
+ * Use gas disk drag; By setting this to 1, the gas disk drag applied to all particles.
+   When set to 2, then the effect is limited to particles with m < Mgiant.
+ * Use gas disk tidal dampening; By setting this to 1, the gas disk tidal damping (Type I migration) is applied to all particles.
+   When set to 2, then the effect is limited to particles with m < Mgiant.
+ * Gas dTau_diss: The dissipation time for the gas disc in years
+ * Gas Sigma_10: The gas surface density at 1 AU Sigma_10 in g / cm^3
+ * Gas alpha: The power law exponent for the gas disc, alpha 
+ * Gas Mgiant: Mass limit for gas effects, in solar masses. If m > Mgiant, the gas drag and tidal dampening is not applied to that particle.
+ * Gas file name: name of file containing time, r, Sigma and h.
+ * Use force: use additional force, which is specified in the file force.h. See [here](#markdown-header-additional-forces) for more details.
  * Use Yarkovsky. 0: No Yarkovsky effect, 1: Yarkovsky effect (dv/dt), 2: Yarkovsky effect (da/dt) See [here](#markdown-header-yarkovsky-effect) for more details.
  * Use Poynting-Robertson. 0: No PR drag, 1: PR drag (dv/dt), 2: PR drag (da/dt, de/dt) See [here](#markdown-header-poynting-robertson-drag) for more details.
  * Radiation Pressure Coefficient Qpr: Efficiency factor, used for Poynting Robertson drag.
@@ -182,12 +192,10 @@ Here i means an integer, f a floating point value, and s a string.
 
 Some Constants are defined as c++ preprocessor directives in the define.h file. After changing one of these constants, the code has to be recompiled.
 
-Here it can also be chosen if the gas disc is included or not.
-
  * All default parameters for the 'param.dat' file. See [here](#markdown-header-the-param.dat-file) for more details
 
  * def_pc f: Factor in Pre-checker, Pairs with rij^2 smaller than pc * rcrit^2 are considered as close encounter candidates
- * MaxColl i: Maximum number of Collisions per time step that can be stored
+ * def_MaxColl i: Maximum number of Collisions per time step that can be stored
  * def_cef f: Close encounter factor, pairs with rij^2 smaller than f * rcrit^2 are considered as close encounter pairs.
  * def_tol f: Tolerance in Bulirsh Stoer integrator.
  * def_dtmin f: Minimal time step in Bulirsch Stoer integrator .
@@ -452,20 +460,26 @@ The gas disc is implemented according Morishima et al. (2010) [From planetesimal
 The parameters for the gas disc can be set in:
 
  * define.h:
-    * Gasnr_g: Number of cells in r direction for gas grid
-    * Gasnz_g: Number of cells in z direction for gas grid
-    * Gasnr_p: Number of cells in r direction for particle grid
-    * Gasnz_p: Number of cells in z direction for particle grid
-    * h_1: scale height at 1AU for c = 1km/s
-    * Mgiant: Maximum mass for gas drag
-    * M_Enhance: factor for enhancement
-    * Mass_pl: factor for enhancement
-    * fMass_min: factor for enhancement 
+    * def_Gasnr_g: Number of cells in r direction for gas grid
+    * def_Gasnz_g: Number of cells in z direction for gas grid
+    * def_Gasnr_p: Number of cells in r direction for particle grid
+    * def_Gasnz_p: Number of cells in z direction for particle grid
+    * def_h_1: scale height at 1AU for c = 1km/s
+    * def_M_Enhance: factor for enhancement
+    * def_Mass_pl: factor for enhancement
+    * def_fMass_min: factor for enhancement 
  * param.dat:
-    * Use gas disk: Use the gas disk or not
-    * Use gas disk enhancement: USe the gas disk enhancement
-    * Dissipation time for the gas in years
-    * power law exponent for the gas disc (must be 1 in the current version of GENGA)
+   * Use gas disk: By setting this to 1, the gas disc] is used. Individual effects can be selected with the following parameters.
+   When set to 0, then no gas effects are applied. 
+   * Use gas disk potential; By setting this to 1, the gas disk potential is used.
+   * Use gas disk enhancement; By setting this to 1, the gas disk enhancement is used.
+   * Use gas disk drag; By setting this to 1, the gas disk drag is used.
+   * Use gas disk tidal dampening; By setting this to 1, the gas disk tidal damping is used (Type I migration).
+   * Gas dTau_diss: The dissipation time for the gas disc in years
+   * Gas Sigma_10: The gas surface density at 1 AU Sigma_10 in g / cm^3
+   * Gas alpha: The power law exponent for the gas disc, alpha 
+   * Gas Mgiant: Mass limit for gas effects, in solar masses. If m > Mgiant, the gas drag and tidal dampening is not applied to that particle.
+   * Gas file name:
 
 # Test particle mode
 The test particle mode can be used to speed up simulations with lots of small particles.

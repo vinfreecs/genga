@@ -569,7 +569,7 @@ __global__ void BSA_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
-//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);      
+//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, j;
 								int ne = atomicAdd(NWriteEnc_d, 1);
 								if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
 								writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;

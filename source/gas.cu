@@ -15,17 +15,17 @@ __host__ void Data::GasAlloc(){
 	Gas_dTau_diss = P.G_dTau_diss;
 	Gas_alpha = P.G_alpha;
 
-	Gas_rg_h = (double*)malloc(Gasnr_g * sizeof(double));
-	Gas_zg_h = (double*)malloc(Gasnr_g * Gasnz_g * sizeof(double));
-	Gas_rho_h = (double*)malloc(Gasnr_g * Gasnz_g * sizeof(double));
-	GasDisk_h = (double3*)malloc(Gasnr_p * sizeof(double3));
-	GasAcc_h = (double3*)malloc(Gasnr_p * Gasnz_p * sizeof(double3));
+	Gas_rg_h = (double*)malloc(def_Gasnr_g * sizeof(double));
+	Gas_zg_h = (double*)malloc(def_Gasnr_g * def_Gasnz_g * sizeof(double));
+	Gas_rho_h = (double*)malloc(def_Gasnr_g * def_Gasnz_g * sizeof(double));
+	GasDisk_h = (double3*)malloc(def_Gasnr_p * sizeof(double3));
+	GasAcc_h = (double3*)malloc(def_Gasnr_p * def_Gasnz_p * sizeof(double3));
 
-	cudaMalloc((void **) &Gas_rg_d, Gasnr_g * sizeof(double));
-	cudaMalloc((void **) &Gas_zg_d, Gasnr_g * Gasnz_g * sizeof(double));
-	cudaMalloc((void **) &Gas_rho_d, Gasnr_g * Gasnz_g * sizeof(double));
-	cudaMalloc((void **) &GasDisk_d, Gasnr_p * sizeof(double3));
-	cudaMalloc((void **) &GasAcc_d, Gasnr_p * Gasnz_p * sizeof(double3));
+	cudaMalloc((void **) &Gas_rg_d, def_Gasnr_g * sizeof(double));
+	cudaMalloc((void **) &Gas_zg_d, def_Gasnr_g * def_Gasnz_g * sizeof(double));
+	cudaMalloc((void **) &Gas_rho_d, def_Gasnr_g * def_Gasnz_g * sizeof(double));
+	cudaMalloc((void **) &GasDisk_d, def_Gasnr_p * sizeof(double3));
+	cudaMalloc((void **) &GasAcc_d, def_Gasnr_p * def_Gasnz_p * sizeof(double3));
 }
 
 
@@ -46,7 +46,7 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 //		rin = 0.1 + dTime/(2.0 * M_PI * dTau_diss); // time scale for the inner edge to move 1AU
 //	}
 
-	for(int ig = 0; ig < Gasnr_g; ++ig){
+	for(int ig = 0; ig < def_Gasnr_g; ++ig){
 		if(ig < 149){
 			drg = dr1;
 			rg = 0.15 + drg * ig;
@@ -58,7 +58,7 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 
 		Gas_rg_h[ig] = rg;
 
-		h = h_1 * rg * pow(rg, 0.25); //beta = 0.25 comes from Temperature profile
+		h = def_h_1 * rg * pow(rg, 0.25); //beta = 0.25 comes from Temperature profile
 		Sigma = Sigma10 * pow(rg, -G_alpha);
 	
 //			if(uniform != 1){
@@ -71,12 +71,12 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 //					Sigma *= (ro - rin)/drg;
 //				}
 //			}
-		for(int jg = 0; jg < Gasnz_g; ++jg){
+		for(int jg = 0; jg < def_Gasnz_g; ++jg){
 			zg = 0.01 * (0.5 + jg) * rg;
 			zh = zg / h;
-			Gas_zg_h[ig * Gasnz_g + jg] = zg;
-			Gas_rho_h[ig * Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
-//printf("%g %g %g\n", rg, zg, Gas_rho_h[ig * Gasnz_g + jg];
+			Gas_zg_h[ig * def_Gasnz_g + jg] = zg;
+			Gas_rho_h[ig * def_Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
+//printf("%g %g %g\n", rg, zg, Gas_rho_h[ig * def_Gasnz_g + jg];
 		}
 	}
 }
@@ -86,7 +86,7 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 // This function corresponds to the rf function in the file master.c in pkdgrav_planets.
 // It is based on numerical recipes and the paper from Carlson 
 // **********************************************
-__device__  double rf(double x, double y, double z){
+__device__ double rf(double x, double y, double z){
 	double lambda, mu, imu, X, Y, Z;
 	double E2, E3, sqrtx, sqrty, sqrtz;
 	double errtol = 0.008;
@@ -135,7 +135,7 @@ __device__  double rf(double x, double y, double z){
 // This function corresponds to the rf function in the file master.c in pkdgrav_planets.
 // It is based on numerical recipes and the paper from Carlson 
 // **********************************************
-__device__  double rd(double x, double y, double z){
+__device__ double rd(double x, double y, double z){
 	double lambda, mu, imu, X, Y, Z;
 	double EA, EB, EC, ED, EE, sqrtx, sqrty, sqrtz;
 	double errtol = 0.008;
@@ -158,7 +158,7 @@ __device__  double rd(double x, double y, double z){
 		sqrtz = sqrt(zt);
 
 		lambda = sqrtx * (sqrty + sqrtz) + sqrty * sqrtz;
-		sum += fac / (sqrtz * (zt + lambda));   //difference from master.c and numerical recipes
+		sum += fac / (sqrtz * (zt + lambda));	//difference from master.c and numerical recipes
 //sum += fac / (sqrtz * zt + lambda);
 		fac *= 0.25;
 		xt = 0.25 * (xt + lambda);
@@ -217,10 +217,10 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 	double h;
 	double ellf, elle;
 
-	if(ip < Gasnr_p){	
+	if(ip < def_Gasnr_p){	
 		rp = 0.1 + dr1 * ip;
 
-		h = h_1 * rp * pow(rp, 0.25);
+		h = def_h_1 * rp * pow(rp, 0.25);
 		double Sigma = G_Sigma_10 * pow(rp, -G_alpha);
 //		if(uniform != 1){
 //			ro = rp + 0.5 * dr1; // radius of the outer cel boundary
@@ -242,21 +242,21 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 	}
 	__syncthreads();
 
-	if(ip < Gasnr_p && jp < Gasnz_p){
+	if(ip < def_Gasnr_p && jp < def_Gasnz_p){
 
 		zp = (0.03 * jp) * rp;
 		ar = 0.0;
 		az = 0.0;
-		for(int ig = 0; ig < Gasnr_g; ++ig){
+		for(int ig = 0; ig < def_Gasnr_g; ++ig){
 			if(ig < 150) drg = dr1;
 			else drg = dr2;
 			double rgas = Gas_rg_d[ig];
 			double dzg = 0.03 * rgas;
 			
-			for(int jg = 0; jg < Gasnz_g; ++jg){
+			for(int jg = 0; jg < def_Gasnz_g; ++jg){
 
-				double zgas = Gas_zg_d[ig * Gasnz_g + jg];
-				double rho_gas = Gas_rho_d[ig * Gasnz_g + jg];
+				double zgas = Gas_zg_d[ig * def_Gasnz_g + jg];
+				double rho_gas = Gas_rho_d[ig * def_Gasnz_g + jg];
 
 				volatile double rpzm = (zp - zgas) * (zp - zgas);
 				volatile double rmzm = rpzm + (rp - rgas) * (rp - rgas);
@@ -289,9 +289,9 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 
 			}
 		}
-		GasAcc_d[ip * Gasnz_p + jp].x = ar;
-		GasAcc_d[ip * Gasnz_p + jp].y = az;
-		GasAcc_d[ip * Gasnz_p + jp].z = zp;
+		GasAcc_d[ip * def_Gasnz_p + jp].x = ar;
+		GasAcc_d[ip * def_Gasnz_p + jp].y = az;
+		GasAcc_d[ip * def_Gasnz_p + jp].z = zp;
 	}
 }
 
@@ -299,12 +299,12 @@ __host__ int Data::setGasDisk(){
 	cudaError_t error;
 	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10);
 
-	cudaMemcpy(Gas_rg_d, Gas_rg_h, Gasnr_g * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(Gas_zg_d, Gas_zg_h, Gasnr_g * Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(Gas_rho_d, Gas_rho_h, Gasnr_g * Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Gas_rg_d, Gas_rg_h, def_Gasnr_g * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Gas_zg_d, Gas_zg_h, def_Gasnr_g * def_Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(Gas_rho_d, Gas_rho_h, def_Gasnr_g * def_Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
 
 	dim3 NTGasTabel(32, 1, 1);
-	dim3 NBGasTabel((Gasnr_p + 31) / 32, Gasnz_p, 1);
+	dim3 NBGasTabel((def_Gasnr_p + 31) / 32, def_Gasnz_p, 1);
 
 	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha, P.G_Sigma_10);
 
@@ -322,7 +322,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, double G_Sigma_10, int Nst, double Ct, int UsegasEnhance, int Nstart){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, int G_alpha, double G_Sigma_10, int Nst, double Ct, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -382,7 +382,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	
 	if(id < N + Nstart && r1 > 0.1 && r1 < 35.0 && x4.z/r1 < 1.5){ //otherwise there is no gas
 
-		h = h_1 * r1 * pow(r1, 0.25);
+		h = def_h_1 * r1 * pow(r1, 0.25);
 		Sigma = G_Sigma_10 / r1;
 		if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
 
@@ -395,59 +395,63 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 		zh = x4.z / h;
 
-
-		if(r1 >= 15.0){
-			a_r += -2.0 * M_PI * Sigma;	
-			double erfc = ERFUNC(zh);
-			a_z += a_r * erfc;
-			if(G_alpha == 2) a_r *= log(10.0 * r1);
-		}
-		else{
-			jp0 = floor(fabs(x4.z)/(rr0 * 0.03));
-			jp1 = floor(fabs(x4.z)/(rr1 * 0.03));
-			zz00 = GasAcc_d[(ip - 1) * Gasnz_p + jp0].z;
-			zz01 = GasAcc_d[(ip - 1) * Gasnz_p + jp0 + 1].z;
-			zz10 = GasAcc_d[ip * Gasnz_p + jp1].z;
-			zz11 = GasAcc_d[ip * Gasnz_p + jp1 + 1].z;
-
-			dr00 = __dmul_rn((x4.z - zz00) , (x4.z - zz00)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
-			dr01 = __dmul_rn((x4.z - zz01) , (x4.z - zz01)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
-			dr10 = __dmul_rn((x4.z - zz10) , (x4.z - zz10)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
-			dr11 = __dmul_rn((x4.z - zz11) , (x4.z - zz11)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
-			
-			dr00 = fmin(1.0/sqrt(dr00), big);
-			dr01 = fmin(1.0/sqrt(dr01), big);
-			dr10 = fmin(1.0/sqrt(dr10), big);
-			dr11 = fmin(1.0/sqrt(dr11), big);
-			drtotal = dr00 + dr01 + dr10 + dr11;
-
-			a_r_t0 = GasAcc_d[(ip - 1) * Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * Gasnz_p + jp1 + 1].x * dr11;
-
-			a_z_t0 = GasAcc_d[(ip - 1) * Gasnz_p + jp0].y * dr00 + GasAcc_d[(ip - 1) * Gasnz_p + jp0 + 1].y * dr01 + GasAcc_d[ip * Gasnz_p + jp1].y * dr10 + GasAcc_d[ip * Gasnz_p + jp1 + 1].y * dr11;
-			a_r_t0 /= drtotal;
-			a_z_t0 /= drtotal;
-
-
-			a_r += a_r_t0 * depfac;
-			if(x4.z >= 0.0){
-				a_z += a_z_t0 * depfac;
-			}
-			else a_z -= a_z_t0 * depfac;
-
-		}
 		double m = x4.w;
-		if(m == 0.0) m = MgasSmall;
-		if(m < Mgiant && Sigma > 0.0){
+		if(m == 0.0) m = def_MgasSmall;
+
+		//gas potential
+		if(UsegasPotential == 1 || (UsegasPotential == 2 && m < Mgiant)){
+			if(r1 >= 15.0){
+				a_r += -2.0 * M_PI * Sigma;	
+				double erfc = ERFUNC(zh);
+				a_z += a_r * erfc;
+				if(G_alpha == 2) a_r *= log(10.0 * r1);
+			}
+			else{
+				jp0 = floor(fabs(x4.z)/(rr0 * 0.03));
+				jp1 = floor(fabs(x4.z)/(rr1 * 0.03));
+				zz00 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].z;
+				zz01 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].z;
+				zz10 = GasAcc_d[ip * def_Gasnz_p + jp1].z;
+				zz11 = GasAcc_d[ip * def_Gasnz_p + jp1 + 1].z;
+
+				dr00 = __dmul_rn((x4.z - zz00) , (x4.z - zz00)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
+				dr01 = __dmul_rn((x4.z - zz01) , (x4.z - zz01)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
+				dr10 = __dmul_rn((x4.z - zz10) , (x4.z - zz10)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
+				dr11 = __dmul_rn((x4.z - zz11) , (x4.z - zz11)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
+				
+				dr00 = fmin(1.0/sqrt(dr00), big);
+				dr01 = fmin(1.0/sqrt(dr01), big);
+				dr10 = fmin(1.0/sqrt(dr10), big);
+				dr11 = fmin(1.0/sqrt(dr11), big);
+				drtotal = dr00 + dr01 + dr10 + dr11;
+
+				a_r_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].x * dr11;
+
+				a_z_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].y * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].y * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].y * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].y * dr11;
+				a_r_t0 /= drtotal;
+				a_z_t0 /= drtotal;
+
+
+				a_r += a_r_t0 * depfac;
+				if(x4.z >= 0.0){
+					a_z += a_z_t0 * depfac;
+				}
+				else a_z -= a_z_t0 * depfac;
+
+			}
+		}
+
+		if(Sigma > 0.0){
 			
 			//Enhanced Drag
 			double Soft;
-			if(UsegasEnhance == 1){
+			if(UsegasEnhance == 1 || (UsegasEnhance == 2 && m < Mgiant)){
 				
-				if(m < M_Enhance && m > MgasSmall){
-					double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
-					double jc = M_Enhance/Mass_pl;
+				if(m < def_M_Enhance && m > def_MgasSmall){
+					double pid = log(m/def_fMass_min) / log(def_M_Enhance/def_fMass_min);
+					double jc = def_M_Enhance/def_Mass_pl;
 					m = pow(jc, pid);
-					m *= Mass_pl;
+					m *= def_Mass_pl;
 					Soft = v4.w * pow(m/x4.w, 1.0/3.0);
 				}
 				else{
@@ -459,62 +463,68 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				Soft = v4.w;
 
 			}
-			v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
-			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
-			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
+	
+			//gas drag
+			if(UsegasDrag == 1 || (UsegasDrag == 2 && m < Mgiant)){
+				v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
+				eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
+				v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
-			rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
-			v_rel3.x = v4.x + v_gas * x4.y / r1; 
-			v_rel3.y = v4.y - v_gas * x4.x / r1;
-			v_rel3.z = v4.z;
+				rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
+				v_rel3.x = v4.x + v_gas * x4.y / r1; 
+				v_rel3.y = v4.y - v_gas * x4.x / r1;
+				v_rel3.z = v4.z;
 
-			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
-			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
-			
-			v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
-			v_rel = sqrt(v_rel);
-			if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
-			else v_rel = 0.0;
+				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+				
+				v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
+				v_rel = sqrt(v_rel);
+				if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
+				else v_rel = 0.0;
 
-			a_x += -v_rel * v_rel3.x;
-			a_y += -v_rel * v_rel3.y;
-			a_z += -v_rel * v_rel3.z;
+				a_x += -v_rel * v_rel3.x;
+				a_y += -v_rel * v_rel3.y;
+				a_z += -v_rel * v_rel3.z;
+			}
 
 			//tidal damping
-			v_rel3.x = v4.x + v_kep * x4.y / r1;
-			v_rel3.y = v4.y - v_kep * x4.x / r1;
-			v_rel3.z = v4.z;
+			if(UsegasTidalDamping == 1 || (UsegasTidalDamping == 2 && m < Mgiant)){
+				v_rel3.x = v4.x + v_kep * x4.y / r1;
+				v_rel3.y = v4.y - v_kep * x4.x / r1;
+				v_rel3.z = v4.z;
 
-			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
-			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 
-			double Mtot = Msun + m;
-			double Etot = 0.5 * vsq - def_ksq * Mtot / r;
-			double3 L;
-			L.x = x4.y * v4.z - x4.z * v4.y;
-			L.y = x4.z * v4.x - x4.x * v4.z;
-			L.z = x4.x * v4.y - x4.y * v4.x;
+				double Mtot = Msun + m;
+				double Etot = 0.5 * vsq - def_ksq * Mtot / r;
+				double3 L;
+				L.x = x4.y * v4.z - x4.z * v4.y;
+				L.y = x4.z * v4.x - x4.x * v4.z;
+				L.z = x4.x * v4.y - x4.y * v4.x;
 
-			double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
-			double esq = 1.0 + 2.0 * Etot * Lsq /(Mtot * Mtot);
-			if(esq < 0.0) esq = 0.0;
-			double isq = 1.0 - L.z * L.z / Lsq;
-			double a = -0.5/Etot;
+				double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
+				double esq = 1.0 + 2.0 * Etot * Lsq /(Mtot * Mtot);
+				if(esq < 0.0) esq = 0.0;
+				double isq = 1.0 - L.z * L.z / Lsq;
+				double a = -0.5/Etot;
 
-			double r1h2 = r1 * r1 / (h * h);
-			
-			double chi = 0.5 * a * sqrt(esq + isq) / h;
-			double chi3 = chi * chi * chi;
+				double r1h2 = r1 * r1 / (h * h);
+				
+				double chi = 0.5 * a * sqrt(esq + isq) / h;
+				double chi3 = chi * chi * chi;
 
-			double iTau_tid1 = m * (Sigma * r1 * r1) * r1h2	/ (r1 * sqrt(r1)); //a = ri because of circular orbit
-			double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
-			iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
+				double iTau_tid1 = m * (Sigma * r1 * r1) * r1h2	/ (r1 * sqrt(r1)); //a = ri because of circular orbit
+				double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
+				iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
 
-			a_th += -0.5 * iTau_tid1 * v_kep; //circular
+				a_th += -0.5 * iTau_tid1 * v_kep; //circular
 
-			a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
-			a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
-			a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;
+				a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
+				a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
+				a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;
+			}
 		}
 		a_x += (x4.x * a_r - x4.y * a_th) / r1;
 		a_y += (x4.y * a_r + x4.x * a_th) / r1;
@@ -538,13 +548,14 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 			Energy_d[id] += U;
 		}
 	}
+
 }
 
 // *************************************************
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, int UsegasEnhance, int Nstart){
+__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -628,18 +639,18 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 		double G_alpha = 1.0;
 
 		double m = x4.w;
-		if(m == 0.0) m = MgasSmall;
-		if(m < Mgiant && Sigma > 0.0){
+		if(m == 0.0) m = def_MgasSmall;
+		if(Sigma > 0.0){
 		
 			//Enhanced Drag
 			double Soft;
-			if(UsegasEnhance == 1){
+			if(UsegasEnhance == 1 || (UsegasEnhance == 2 && m < Mgiant)){
 				
-				if(m < M_Enhance && m > MgasSmall){
-					double pid = log(m/fMass_min) / log(M_Enhance/fMass_min);
-					double jc = M_Enhance/Mass_pl;
+				if(m < def_M_Enhance && m > def_MgasSmall){
+					double pid = log(m/def_fMass_min) / log(def_M_Enhance/def_fMass_min);
+					double jc = def_M_Enhance/def_Mass_pl;
 					m = pow(jc, pid);
-					m *= Mass_pl;
+					m *= def_Mass_pl;
 					Soft = v4.w * pow(m/x4.w, 1.0/3.0);
 				}
 				else{
@@ -652,62 +663,67 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 
 			}
 
-			v_kep = sqrt(Msun * def_ksq / r1); 
-			eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
-			v_gas = v_kep * (1.0 - eta);  //Change that to v_kep * sqrt(1.0 - 2.0 * eta);
+			//gas drag
+			if(UsegasDrag == 1 || (UsegasDrag == 2 && m < Mgiant)){
+				v_kep = sqrt(Msun * def_ksq / r1); 
+				eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
+				v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
-			rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
-			v_rel3.x = v4.x + v_gas * x4.y / r1; 
-			v_rel3.y = v4.y - v_gas * x4.x / r1;
-			v_rel3.z = v4.z;
+				rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
+				v_rel3.x = v4.x + v_gas * x4.y / r1; 
+				v_rel3.y = v4.y - v_gas * x4.x / r1;
+				v_rel3.z = v4.z;
 
-			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
-			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
-			
-			v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
-			v_rel = sqrt(v_rel);
-			if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
-			else v_rel = 0.0;
+				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+				
+				v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
+				v_rel = sqrt(v_rel);
+				if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
+				else v_rel = 0.0;
 
-			a_x += -v_rel * v_rel3.x;
-			a_y += -v_rel * v_rel3.y;
-			a_z += -v_rel * v_rel3.z;
+				a_x += -v_rel * v_rel3.x;
+				a_y += -v_rel * v_rel3.y;
+				a_z += -v_rel * v_rel3.z;
+			}
 
 			//tidal damping
-			v_rel3.x = v4.x + v_kep * x4.y / r1;
-			v_rel3.y = v4.y - v_kep * x4.x / r1;
-			v_rel3.z = v4.z;
+			if(UsegasTidalDamping == 1 || (UsegasTidalDamping == 2 && m < Mgiant)){
+				v_rel3.x = v4.x + v_kep * x4.y / r1;
+				v_rel3.y = v4.y - v_kep * x4.x / r1;
+				v_rel3.z = v4.z;
 
-			v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
-			v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
+				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
+				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 
-			double Mtot = Msun + m;
-			double Etot = 0.5 * vsq - def_ksq * Mtot / r;
-			double3 L;
-			L.x = x4.y * v4.z - x4.z * v4.y;
-			L.y = x4.z * v4.x - x4.x * v4.z;
-			L.z = x4.x * v4.y - x4.y * v4.x;
+				double Mtot = Msun + m;
+				double Etot = 0.5 * vsq - def_ksq * Mtot / r;
+				double3 L;
+				L.x = x4.y * v4.z - x4.z * v4.y;
+				L.y = x4.z * v4.x - x4.x * v4.z;
+				L.z = x4.x * v4.y - x4.y * v4.x;
 
-			double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
-			double esq = 1.0 + 2.0 * Etot * Lsq / (Mtot * Mtot);
-			if(esq < 0.0) esq = 0.0;
-			double isq = 1.0 - L.z * L.z / Lsq;
-			double a = -0.5 / Etot;
+				double Lsq = L.x * L.x + L.y * L.y + L.z * L.z;
+				double esq = 1.0 + 2.0 * Etot * Lsq / (Mtot * Mtot);
+				if(esq < 0.0) esq = 0.0;
+				double isq = 1.0 - L.z * L.z / Lsq;
+				double a = -0.5 / Etot;
 
-			double r1h2 = r1 * r1 / (h * h);
-			
-			double chi = 0.5 * a * sqrt(esq + isq) / h;
-			double chi3 = chi * chi * chi;
+				double r1h2 = r1 * r1 / (h * h);
+				
+				double chi = 0.5 * a * sqrt(esq + isq) / h;
+				double chi3 = chi * chi * chi;
 
-			double iTau_tid1 = m * (Sigma * r1 * r1) * r1h2	/ (r1 * sqrt(r1)); //a = ri because of circular orbit
-			double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
-			iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
+				double iTau_tid1 = m * (Sigma * r1 * r1) * r1h2	/ (r1 * sqrt(r1)); //a = ri because of circular orbit
+				double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
+				iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
 
-			a_th += -0.5 * iTau_tid1 * v_kep; //circular
+				a_th += -0.5 * iTau_tid1 * v_kep; //circular
 
-			a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
-			a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
-			a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;
+				a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
+				a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
+				a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;
+			}
 		}
 		a_x += (x4.x * a_r - x4.y * a_th) / r1;
 		a_y += (x4.y * a_r + x4.x * a_th) / r1;
@@ -741,9 +757,9 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 template < int Bl2 >
 __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, int st, int N){
 
-        int idy = threadIdx.x;
+	int idy = threadIdx.x;
 
-        __shared__ volatile double U_s[Bl2];
+	__shared__ volatile double U_s[Bl2];
 
 	for(int i = 0; i < Bl2; i += blockDim.x){
 		U_s[idy + i] = 0.0;
@@ -841,16 +857,16 @@ __host__ void Data::gasEnergyMCall(int NB, double* Energy_d, double *test_d, dou
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
 	int nt = min(32, NB[0]);
-	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, 0);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, 0);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasEnhance, Nstart);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, Nstart);
 }
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.UsegasEnhance, 0);
+	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 
 __host__ int Data::freeGas(){

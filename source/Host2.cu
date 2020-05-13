@@ -401,7 +401,10 @@ __host__ void Host::Halloc(){
 	Gridae.Start = def_aeGridStartCount;
 	sprintf(Gridae.X, def_aeGridName);
 	P.Usegas = def_Usegas;
+	P.UsegasPotential = def_UsegasPotential;
 	P.UsegasEnhance = def_UsegasEnhance;
+	P.UsegasDrag = def_UsegasDrag;
+	P.UsegasTidalDamping = def_UsegasTidalDamping;
 	P.UseForce = def_UseForce;
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
@@ -411,6 +414,7 @@ __host__ void Host::Halloc(){
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
+	P.G_Mgiant = def_Mgiant;
 	P.FormatS = def_FormatS;
 	P.FormatT = def_FormatT;
 	P.FormatP = def_FormatP;
@@ -476,10 +480,10 @@ __host__ void Host::Halloc(){
 		Msun_h[st].y = def_CentralRadius;
 		Msun_h[st].z = def_CentralK2;
 		Msun_h[st].w = def_CentralK2f;
-		Spinsun_h[st].x = 0.0;
-		Spinsun_h[st].y = 0.0;
-		Spinsun_h[st].z = 0.0;
-		Spinsun_h[st].w = 0.0;
+		Spinsun_h[st].x = def_StarSpinx;
+		Spinsun_h[st].y = def_StarSpiny;
+		Spinsun_h[st].z = def_StarSpinz;
+		Spinsun_h[st].w = def_StarTau;
 		idt_h[st] = def_TimeStep;
 		ict_h[st] = 0.0;
 		Rcut_h[st] = def_Rcut;
@@ -1197,11 +1201,53 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use gas disk potential =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UsegasPotential);
+				if(er <= 0){
+					printf("Error: Use gas disk potential value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Use gas disk enhancement =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.UsegasEnhance);
 				if(er <= 0){
 					printf("Error: Use gas disk enhancement value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use gas disk drag =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UsegasDrag);
+				if(er <= 0){
+					printf("Error: Use gas disk drag value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Use gas disk tidal damping =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UsegasTidalDamping);
+				if(er <= 0){
+					printf("Error: Use gas disk tidal damping value is not valid!\n");
 					return 0;
 				}
 			}
@@ -1246,6 +1292,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				P.G_Sigma_10 *= 1.49598*1.49598/1.98892*1.0e-7;
 				if(er <= 0 || P.G_Sigma_10 < 0){
 					printf("Error: Gas Sigma_10 value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Gas Mgiant =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_Mgiant);
+				if(er <= 0 || P.G_Mgiant < 0){
+					printf("Error: Gas Mgiant value is not valid!\n");
 					return 0;
 				}
 				
@@ -2475,9 +2536,13 @@ __host__ void Host::Info(){
 			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
 			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk enhancement: %d\n", P.UsegasEnhance);		// use only argument in simulation 0
+			fprintf(infofile, "Use gas disk potential: %d\n", P.UsegasPotential);		// use only argument in simulation 0
+			fprintf(infofile, "Use gas disk drag: %d\n", P.UsegasDrag);			// use only argument in simulation 0
+			fprintf(infofile, "Use gas disk tidal damping: %d\n", P.UsegasTidalDamping);	// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
+			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);                              // use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0

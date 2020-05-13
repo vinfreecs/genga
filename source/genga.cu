@@ -154,7 +154,7 @@ if(ittv % MCMC_NQ == 0){
     #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
     #endif
-    #if def_TTV == 2  
+    #if def_TTV == 2
 	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
     #endif
 //use the following output for longterm stability runs (from MCMC)

@@ -188,6 +188,16 @@ __global__ void TTVstep(double *TransitTime_d, double2 *TransitTimeObs_d, int2 *
 			if(T == 0.0 || Tobs.x == 0.0) p = 0.0;
 			p = p * p * 0.5;
 			pp += p;
+
+			// --------------------------
+			//log Student-t distribution
+			//double nu = 3.9;
+			//double V1 = 0.85;
+			//double p = (T - Tobs.x) / Tobs.y;
+			//p = 0.5 * (nu + 1.0) * log(1.0 + p * p / (nu * V1));
+			//pp += p;
+			// --------------------------
+
 			if(T > 0 && Tobs.x > 0) ++ Nt;
 			++Epoch;
 //if(id % N_d[0] == 2) printf(" p %d NtOld Nt NtObs %d %d %d Epoch EpochObs %d %d %.20g %.20g %g %g\n", id, NtOld, Nt, NtObs, Epoch, EpochObs, T, Tobs.x, Tobs.y, p);

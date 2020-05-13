@@ -854,8 +854,8 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
 			}
 			if(accept == -1){
-				double x0 = 0.01;    //m
-				double x1 = RR;      //m
+				double x0 = 0.01;	//m
+				double x1 = RR;		//m
 
 				volatile int ii;
 				double vscaleT = 0.0;
