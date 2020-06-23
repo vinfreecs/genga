@@ -332,7 +332,7 @@ __host__ int Data::timeStepLoop(int interrupted){
 	}
 
 	//cudaEventSynchronize(KickEvent);
-	//do not synchronize here, to save time. but that means that the erro message could be delayed
+	//do not synchronize here, to save time. but that means that the error message could be delayed
 	//Check for too many encounters
 	if(EncFlag_m[0] > 0){
 		printf("Error: more encounters than allowed. %d %d\n", EncFlag_m[0], P.NencMax);
@@ -345,7 +345,12 @@ __host__ int Data::timeStepLoop(int interrupted){
 		er = MaxGroups();
 		if(er == 0) return 0;
 	}
-	
+
+	if(interrupt == 1){
+		if(Nst == 1){
+			RemoveCall();
+		}
+	}
 	
 	//Print Energy and log information//
 	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1 || (P.ei < 0 && timeStep == P.deltaT)){

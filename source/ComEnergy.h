@@ -542,12 +542,21 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / def_MaxIndex;
 		volatile double m = x4_d[id].w;
-		p_s[idy].x = m * v4_d[id].x;
-		p_s[idy].y = m * v4_d[id].y;
-		p_s[idy].z = m * v4_d[id].z;
-		p_s[idy].w = m;
+		if(m > 0.0){
+			p_s[idy].x = m * v4_d[id].x;
+			p_s[idy].y = m * v4_d[id].y;
+			p_s[idy].z = m * v4_d[id].z;
+			p_s[idy].w = m;
+		}
+		else{
+			p_s[idy].x = 0.0;
+			p_s[idy].y = 0.0;
+			p_s[idy].z = 0.0;
+			p_s[idy].w = 0.0;
+		}
 		Msun = Msun_d[st_s[idy]].x;
 		NBS = NBS_d[st_s[idy]];
+//printf("ComA1 %d %d %g %g %g %g\n", id, idy, p_s[idy].x, p_s[idy].y, p_s[idy].z, p_s[idy].w);
 
 	}
 	else{
@@ -578,8 +587,8 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 			p_s[idy + Bl].z = 0.0;
 			p_s[idy + Bl].w = 0.0;
 		}
+//printf("ComA2 %d %d %g %g %g %g\n", id, idy, p_s[idy + Bl].x, p_s[idy + Bl].y, p_s[idy + Bl].z, p_s[idy + Bl].w);
 	}
-
 	volatile int f;
 	volatile double px;
 	volatile double py;
@@ -599,6 +608,7 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		p_s[idy].y += py;
 		p_s[idy].z += pz;
 		p_s[idy].w += pw;
+//printf("ComA3 %d %d %g %g %g %g\n", id, idy, p_s[idy].x, p_s[idy].y, p_s[idy].z, p_s[idy].w);
 	}
 
 	if(Nmax >= 32){

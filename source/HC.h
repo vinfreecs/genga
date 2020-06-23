@@ -213,9 +213,9 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if(id< N){
+	if(id < N && x4_d[id].w >= 0.0){
 		double3 a = a_d[0];
-//if(id == 0) printf("HC A %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a.x, a.y, a.z, x4_d[id].x, x4_d[id].y, x4_d[id].z);
+//if(id == 0) printf("HC A %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", id, x4_d[id].w, a.x, a.y, a.z, x4_d[id].x, x4_d[id].y, x4_d[id].z);
 		x4_d[id].x += a.x * dtiMsun;
 		x4_d[id].y += a.y * dtiMsun;
 		x4_d[id].z += a.z * dtiMsun;
@@ -329,7 +329,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 	}
 	__syncthreads();
 	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
+		if(idy + i < N && x4_d[idy + i].w >= 0.0){
 			if(idx == 0) x4_d[idy + i].x += a * dtiMsun;
 			if(idx == 1) x4_d[idy + i].y += a * dtiMsun;
 			if(idx == 2) x4_d[idy + i].z += a * dtiMsun;
@@ -375,6 +375,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 			a.y += m * v4.y;
 			a.z += m * v4.z;
 		}
+//printf("HC1 %d %.20g %.20g %.20g\n", idy, a.x, a.y, a.z);
 	}
 	__syncthreads();
 
@@ -393,13 +394,13 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 
 	__syncthreads();
 
-	if(idy< N){
+	if(idy < N && x4_d[idy].w >= 0.0){
 //printf("HC A %d %.20g %.20g %.20g %.20g %.20g %.20g %.29g %.20g %.20g %.20g %.20g\n", idy, a.x, a.y, a.z, x4_d[idy].x, x4_d[idy].y, x4_d[idy].z, v4_d[idy].x, v4_d[idy].y, v4_d[idy].z, x4_d[idy].w, dtiMsun);
 		x4_d[idy].x += a.x * dtiMsun;
 		x4_d[idy].y += a.y * dtiMsun;
 		x4_d[idy].z += a.z * dtiMsun;
 //if(idy == 12) printf("HC B %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, a.x, a.y, a.z, x4_d[idy].x, x4_d[idy].y, x4_d[idy].z, dtiMsun);
-//printf("HC %d %.20e %.20e %.20e %.20e %.20e\n", idy, x4_d[idy].x, a.x, a.y, a.z, dtiMsun);
+//printf("HC %d %.20e %.20e %.20e %.20e %.20e %.20e\n", idy, x4_d[idy].w, x4_d[idy].x, a.x, a.y, a.z, dtiMsun);
 		if(UseForce & 1){
 			double c2 = def_cm * def_cm;
 			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
@@ -491,7 +492,7 @@ __global__ void HCshared_kernel(double4 *x4_d, double4 *v4_d, const int Bl, cons
 
 
 	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
+		if(idy + i < N && x4_d[idy + i].w >= 0.0){
 			x4_d[idy + i].x += a3_s[0].x * dtiMsun;
 			x4_d[idy + i].y += a3_s[0].y * dtiMsun;
 			x4_d[idy + i].z += a3_s[0].z * dtiMsun;
@@ -585,9 +586,17 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 
 	if(id < NT + Nstart && id >= Nstart){
 		st_s[idy] = index_d[id] / def_MaxIndex;
 		volatile double m = x4_d[id].w;
-		p_s[idy].x = m * v4_d[id].x;
-		p_s[idy].y = m * v4_d[id].y;
-		p_s[idy].z = m * v4_d[id].z;
+		if(m > 0.0){
+			p_s[idy].x = m * v4_d[id].x;
+			p_s[idy].y = m * v4_d[id].y;
+			p_s[idy].z = m * v4_d[id].z;
+		}
+		else{
+			p_s[idy].x = 0.0;
+			p_s[idy].y = 0.0;
+			p_s[idy].z = 0.0;
+		}
+//printf("HC %d %d %g %g %g %g\n", id, idy, p_s[idy].x, p_s[idy].y, p_s[idy].z, m);
 		dt = dt_d[st_s[idy]] * Ct;
 		dtiMsun = dt / Msun_d[st_s[idy]].x;
 	}
@@ -779,7 +788,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 
 		__syncthreads();
 	}
 
-	if(id < NT + Nstart && id >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0){
+	if(id < NT + Nstart && id >= Nstart && idy >= Nmax && idy < Bl - Nmax / 2 && x4_d[id].w >= 0.0){
 		x4_d[id].x += p_s[idy].x * dtiMsun;
 		x4_d[id].y += p_s[idy].y * dtiMsun;
 		x4_d[id].z += p_s[idy].z * dtiMsun;

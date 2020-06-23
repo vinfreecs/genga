@@ -390,8 +390,6 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 //if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
 
 		ip = floor(10*r1);
-		rr0 = GasDisk_d[ip - 1].z;
-		rr1 = GasDisk_d[ip].z;
 
 		zh = x4.z / h;
 
@@ -400,6 +398,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 		//gas potential
 		if(UsegasPotential == 1 || (UsegasPotential == 2 && m < Mgiant)){
+
 			if(r1 >= 15.0){
 				a_r += -2.0 * M_PI * Sigma;	
 				double erfc = ERFUNC(zh);
@@ -407,12 +406,17 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				if(G_alpha == 2) a_r *= log(10.0 * r1);
 			}
 			else{
+				rr0 = GasDisk_d[ip - 1].z;
+				rr1 = GasDisk_d[ip].z;
+
 				jp0 = floor(fabs(x4.z)/(rr0 * 0.03));
 				jp1 = floor(fabs(x4.z)/(rr1 * 0.03));
+
 				zz00 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].z;
 				zz01 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].z;
 				zz10 = GasAcc_d[ip * def_Gasnz_p + jp1].z;
 				zz11 = GasAcc_d[ip * def_Gasnz_p + jp1 + 1].z;
+
 
 				dr00 = __dmul_rn((x4.z - zz00) , (x4.z - zz00)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
 				dr01 = __dmul_rn((x4.z - zz01) , (x4.z - zz01)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
@@ -424,6 +428,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				dr10 = fmin(1.0/sqrt(dr10), big);
 				dr11 = fmin(1.0/sqrt(dr11), big);
 				drtotal = dr00 + dr01 + dr10 + dr11;
+
 
 				a_r_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].x * dr11;
 
@@ -440,6 +445,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 			}
 		}
+
 
 		if(Sigma > 0.0){
 			
@@ -528,19 +534,19 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 		}
 		a_x += (x4.x * a_r - x4.y * a_th) / r1;
 		a_y += (x4.y * a_r + x4.x * a_th) / r1;
+
 	}
 	__syncthreads();
 
-	double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-	//Kick
-	v4.x += a_x * dt;
-	v4.y += a_y * dt;
-	v4.z += a_z * dt;
+	if(id < N + Nstart && x4.w >= 0.0){
+		double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+		//Kick
+		v4.x += a_x * dt;
+		v4.y += a_y * dt;
+		v4.z += a_z * dt;
+//printf("Gas 2 %d %g %g %g %g %g %g %g\n", id, v4.x, v4.y, v4.z, a_x, a_y, a_z, x4.w);
+		double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 
-	double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-	__syncthreads();
-
-	if(id < N + Nstart){
 		v4_d[id] = v4;
 	
 		if(x4.w > 0.0){
@@ -730,16 +736,16 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 	}
 	__syncthreads();
 
-	double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-	//Kick
-	v4.x += a_x * dt;
-	v4.y += a_y * dt;
-	v4.z += a_z * dt;
+	if(id < N + Nstart && x4.w >= 0.0){
 
-	double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-	__syncthreads();
+		double v2 = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+		//Kick
+		v4.x += a_x * dt;
+		v4.y += a_y * dt;
+		v4.z += a_z * dt;
 
-	if(id < N + Nstart){
+		double v2B = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+
 		v4_d[id] = v4;
 		if(x4.w > 0.0){
 			U = 0.5 * x4.w * (v2 - v2B);

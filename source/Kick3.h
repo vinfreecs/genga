@@ -850,6 +850,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			double4 x4j = x4_d[idy];
 			double rcritvj = rcritv_d[idy];
 			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+//printf("Kick1 %d %d %g %g %g %g %g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
 		}
 
 
@@ -878,6 +879,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 				v4_d[idx].x += __dmul_rn(a.x, dtksq);
 				v4_d[idx].y += __dmul_rn(a.y, dtksq);
 				v4_d[idx].z += __dmul_rn(a.z, dtksq);
+//printf("Kick %d %g %g %g %g\n", idx, x4_d[idx].w, __dmul_rn(a.x, dtksq), __dmul_rn(a.y, dtksq), __dmul_rn(a.z, dtksq));
 			}
 			if(E <= 1){
 				acck_d[idx].x = b.x;
@@ -1275,7 +1277,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			b_s[idy + j].x += __dmul_rn(-rx, sj);
 			b_s[idy + j].y += __dmul_rn(-ry, sj);
 			b_s[idy + j].z += __dmul_rn(-rz, sj);
-
+//printf("Kick1 %d %d %g %g %g %g %g\n", id, id + j, x4_s[idy].w, x4_s[idy + j].w, __dmul_rn(rx, si), __dmul_rn(ry, si), __dmul_rn(rz, si));
 		}
 	}
 	__syncthreads();
@@ -1284,6 +1286,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			v4_d[id].x += __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt);
 			v4_d[id].y += __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt);
 			v4_d[id].z += __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt);
+//printf("Kick %d %g %g %g %g\n", id, x4_d[id].w, __dmul_rn((a_s[idy].x + b_s[idy].x), dtksqKt), __dmul_rn((a_s[idy].y + b_s[idy].y), dtksqKt), __dmul_rn((a_s[idy].z + b_s[idy].z), dtksqKt));
 		}
 		if(E <= 1){
 			acck_d[id].x = (a_s[idy].x + b_s[idy].x);
