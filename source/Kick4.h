@@ -94,6 +94,8 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 	ac.z += __dmul_rn(r3ij.z, s);
 
 }
+
+//float version
 __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile float rcritvi, volatile float rcritvj, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int j, const int i, const int NencMax, const int EE){
 
 	float3 r3ij;
@@ -180,9 +182,15 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int N, const
 			double dy = fabs(a_d[id].y - ab_d[id].y);
 			double dz = fabs(a_d[id].z - ab_d[id].z);
 
+#if def_KickFloat == 0
 			if(dx + dy + dz > 1.0e-8){
 				printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
 			}
+#else
+			if(dx + dy + dz > 1.0e-6){
+				printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+			}
+#endif
 		}
 		ab_d[id] = a_d[id];
 	}
@@ -373,6 +381,7 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 	}
 }
 
+//float version
 __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	int idy = threadIdx.y;

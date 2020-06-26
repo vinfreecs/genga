@@ -129,6 +129,75 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //printf("%d %d %g %g Kick\n", i, j, s, ac.x);
 	}
 }
+//float version
+template < int E >
+__device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rcritvi, float rcritvj, int *NencpairsI, int2 *Encpairs2_d, int j, int i, int NencMax, float &test){
+	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+		volatile float rsq, ir, ir3, s, sb;
+		float3 r3ij;
+		float rcritv, rcritv2;
+//		float rcrit, rcrit2;
+		volatile float y, yy;
+
+		r3ij.x = x4j.x - x4i.x;
+		r3ij.y = x4j.y - x4i.y;
+		r3ij.z = x4j.z - x4i.z;
+
+		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+		rcritv = fmax(rcritvi, rcritvj);
+
+//		rcrit2 = rcrit * rcrit;
+		rcritv2 = rcritv * rcritv;
+		if(E <= 2){
+			if(rsq < def_pc * rcritv2){  //prechecker
+				int Ni = atomicAdd(NencpairsI, 1);
+				Encpairs2_d[NencMax * i + Ni].y = j;
+//printf("Precheck %d %d %d %d %g %g %g\n", i, j, Ni, NencMax, rsq, rcritvi, rcritvj);
+			}
+		}
+		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
+			if(rsq < def_pc * rcritv2){  //prechecker
+//printf("Precheck %d %d\n", i, j);
+				Encpairs2_d[NencMax * i + *NencpairsI].y = j;
+				*NencpairsI += 1;
+			}
+		}
+		ir = 1.0f/sqrtf(rsq);
+		ir3 = ir*ir*ir;
+		sb = 0.0f;
+
+		if(rsq >= 1.0f * rcritv2){
+			s = x4j.w * ir3;
+			if( rsq >= def_pc * rcritv2) sb = s;
+//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s);
+		}
+		else{
+			if(rsq <= 0.01f * rcritv2){
+				s = 0.0f;
+//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 0, 1.0 / ir, s);
+
+			}
+			else{
+				y = (rsq * ir - 0.1f * rcritv)/(0.9f*rcritv);
+				yy = y * y;
+				s = (ir3 * yy) / (2.0f*yy - 2.0f*y + 1.0f) * x4j.w;
+//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
+
+			}
+		}
+//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
+		ac.x += __fmul_rn(r3ij.x, s);
+		ac.y += __fmul_rn(r3ij.y, s);
+		ac.z += __fmul_rn(r3ij.z, s);
+
+		if(E % 10 != 2){
+			b.x += __fmul_rn(r3ij.x, sb);
+			b.y += __fmul_rn(r3ij.y, sb);
+			b.z += __fmul_rn(r3ij.z, sb);
+		}
+//printf("%d %d %g %g Kick\n", i, j, s, ac.x);
+	}
+}
 
 // ******************************************************
 // Version of acc which is called from the recursive symplectic sub step method
@@ -902,6 +971,95 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		}
 	}
 }
+//float Version
+template <int E>
+__global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, const double t, const int N){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	if(idx < N){
+
+		__shared__ int NencpairsI_s;
+
+		float4 x4i;
+		x4i.x = x4_d[idx].x;
+		x4i.y = x4_d[idx].y;
+		x4i.z = x4_d[idx].z;
+		x4i.w = x4_d[idx].w;
+		float rcritvi = rcritv_d[idx];
+
+		float3 a = {0.0f, 0.0f, 0.0f};
+		float3 b = {0.0f, 0.0f, 0.0f};
+
+		float test;
+
+		if(idy == 0){
+			NencpairsI_s = 0;
+		}
+
+		__syncthreads();
+
+
+		if(idy < N){
+			float4 x4j;
+			x4j.x = x4_d[idy].x;
+			x4j.y = x4_d[idy].y;
+			x4j.z = x4_d[idy].z;
+			x4j.w = x4_d[idy].w;
+			float rcritvj = rcritv_d[idy];
+			acc_df<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+//printf("Kick1 %d %d %g %g %g %g %g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
+		}
+
+
+		for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+
+			b.x += __shfld_xor(b.x, i);
+			b.y += __shfld_xor(b.y, i);
+			b.z += __shfld_xor(b.z, i);
+#endif
+		}
+
+		if(idy == 0){
+			if(E >= 1){
+				v4_d[idx].x += __fmul_rn(a.x, dtksq);
+				v4_d[idx].y += __fmul_rn(a.y, dtksq);
+				v4_d[idx].z += __fmul_rn(a.z, dtksq);
+//printf("Kick %d %g %g %g %g\n", idx, x4_d[idx].w, __dmul_rn(a.x, dtksq), __dmul_rn(a.y, dtksq), __dmul_rn(a.z, dtksq));
+			}
+			if(E <= 1){
+				acck_d[idx].x = b.x;
+				acck_d[idx].y = b.y;
+				acck_d[idx].z = b.z;
+			}
+		}
+		if(E <= 2){
+			if(idy == 0){
+				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			}
+			if(idy < NencpairsI_s){
+				int jj = Encpairs2_d[idx * NencMax + idy].y;
+				if(idx < jj){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = idx;
+					Encpairs_d[Ne].y = jj;
+				}
+			}
+		}
+	}
+}
 template <int E>
 __global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, int *N_d, int *NBS_d){
 	int idy = threadIdx.x;
@@ -1118,6 +1276,151 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 				v4_d[idx].x += __dmul_rn(a.x, dtksq);
 				v4_d[idx].y += __dmul_rn(a.y, dtksq);
 				v4_d[idx].z += __dmul_rn(a.z, dtksq);
+			}
+			if(E <= 1){
+				acck_d[idx].x = b.x;
+				acck_d[idx].y = b.y;
+				acck_d[idx].z = b.z;
+			}
+		}
+		if(E <= 2){
+			if(idy == 0){
+				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
+			}
+			if(idy < NencpairsI_s){
+				int jj = Encpairs2_d[idx * NencMax + idy].y;
+				if(idx < jj){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = idx;
+					Encpairs_d[Ne].y = jj;
+				}
+			}
+		}
+	}
+}
+//float Version
+template <int E>
+__global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, const int NencMax, const double t, const int N){
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+
+	if(idx < N){
+
+		__shared__ int NencpairsI_s;
+
+		float4 x4i;
+		x4i.x = x4_d[idx].x;
+		x4i.y = x4_d[idx].y;
+		x4i.z = x4_d[idx].z;
+		x4i.w = x4_d[idx].w;
+		float rcritvi = rcritv_d[idx];
+
+		float3 a = {0.0f, 0.0f, 0.0f};
+		float3 b = {0.0f, 0.0f, 0.0f};
+
+		float test;
+
+		if(idy == 0){
+			NencpairsI_s = 0;
+		}
+
+		__syncthreads();
+
+
+		if(idy < N){
+			float4 x4j;
+			x4j.x = x4_d[idy].x;
+			x4j.y = x4_d[idy].y;
+			x4j.z = x4_d[idy].z;
+			x4j.w = x4_d[idy].w;
+			float rcritvj = rcritv_d[idy];
+			acc_df<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		}
+
+
+		for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+
+			b.x += __shfld_xor(b.x, i);
+			b.y += __shfld_xor(b.y, i);
+			b.z += __shfld_xor(b.z, i);
+#endif
+		}
+
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			__shared__ float3 a_s[32];
+			__shared__ float3 b_s[32];
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				a_s[threadIdx.x].x = 0.0f;
+				a_s[threadIdx.x].y = 0.0f;
+				a_s[threadIdx.x].z = 0.0f;
+				b_s[threadIdx.x].x = 0.0f;
+				b_s[threadIdx.x].y = 0.0f;
+				b_s[threadIdx.x].z = 0.0f;
+			}
+			__syncthreads();
+
+			if(lane == 0){
+				a_s[warp] = a;
+				b_s[warp] = b;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				a = a_s[threadIdx.x];
+				b = b_s[threadIdx.x];
+				for(int i = 16; i >= 1; i/=2){
+#if OldShuffle == 0
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+
+					b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
+					b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
+					b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+#else
+					a.x += __shfld_xor(a.x, i);
+					a.y += __shfld_xor(a.y, i);
+					a.z += __shfld_xor(a.z, i);
+
+					b.x += __shfld_xor(b.x, i);
+					b.y += __shfld_xor(b.y, i);
+					b.z += __shfld_xor(b.z, i);
+#endif
+
+				}
+				if(lane == 0){
+					a_s[0] = a;
+					b_s[0] = b;
+				}
+			}
+			__syncthreads();
+
+			a = a_s[0];
+			b = b_s[0];
+		}
+
+
+		if(idy == 0){
+			if(E >= 1){
+				v4_d[idx].x += __fmul_rn(a.x, dtksq);
+				v4_d[idx].y += __fmul_rn(a.y, dtksq);
+				v4_d[idx].z += __fmul_rn(a.z, dtksq);
 			}
 			if(E <= 1){
 				acck_d[idx].x = b.x;

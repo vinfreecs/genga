@@ -2412,6 +2412,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
+			fprintf(infofile, "KickFloat, kick in float precision: %d\n", define def_KickFloat);
 			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.105
+#define def_Version 3.106
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -117,6 +117,9 @@
 #define IgnoreLockFile 1
 
 #define def_SLevelsMax 1
+
+//1: Do kick operation in large N runs in single precision, 0 use double precision
+#define def_KickFloat 0
 
 
 //gas disk constants 
