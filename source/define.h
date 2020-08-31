@@ -168,12 +168,12 @@
 #define N_PI FGN/M_PI
 
 //Build Data
-#ifndef HG_BRANCH
-#define HG_BRANCH "Undefined"
+#ifndef GIT_BRANCH
+#define GIT_BRANCH "Undefined"
 #endif
 
-#ifndef HG_COMMIT
-#define HG_COMMIT "Undefined"
+#ifndef GIT_COMMIT
+#define GIT_COMMIT "Undefined"
 #endif
 
 #ifndef BUILD_DATE

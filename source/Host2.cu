@@ -2438,8 +2438,8 @@ __host__ void Host::Info(){
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", def_Version);
-			fprintf(infofile, "Mercurial Branch: %s\n", HG_BRANCH);
-			fprintf(infofile, "Mercurial Commit: %s\n", HG_COMMIT);
+			fprintf(infofile, "Mercurial Branch: %s\n", GIT_BRANCH);
+			fprintf(infofile, "Mercurial Commit: %s\n", GIT_COMMIT);
 			fprintf(infofile, "Build Date: %s\n", BUILD_DATE);
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
