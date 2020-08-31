@@ -109,9 +109,11 @@ public:
 	double4 *elementsA_h, *elementsA_d;
 	double4 *elementsB_h, *elementsB_d;
 	double4 *elementsT_h, *elementsT_d;
+	double4 *elementsSpin_h, *elementsSpin_d;
 	double4 *elementsAOld_d, *elementsAOld2_d;
 	double4 *elementsBOld_d, *elementsBOld2_d;
 	double4 *elementsTOld_d, *elementsTOld2_d;
+	double4 *elementsSpinOld_d, *elementsSpinOld2_d;
 	elements10 *elementsL_h, *elementsL_d;			//tuning lenghts
 	elements8 *elementsG_d;					//gradient for adadelta
 	elements8 *elementsD_d;					//gradient for adadelta		
@@ -155,7 +157,7 @@ public:
 	__host__ Data(long long);
 	__host__ int beforeTimeStepLoop1();
 	__host__ int beforeTimeStepLoop(int);
-	__host__ int timeStepLoop(int);
+	__host__ int timeStepLoop(int, int);
 	__host__ int Remaining();
 	__host__ void AllocateOrbit();
 	__host__ int CMallocateOrbit();
@@ -188,6 +190,7 @@ public:
 	cudaStream_t *hstream;
 	__host__ int firstoutput(int);
 	__host__ void firstInfo();
+	__host__ void firstInfoB();
 	__host__ void LastInfo();
 	__host__ void setStartTime();
 	__host__ void printLastTime(int);
@@ -231,6 +234,7 @@ public:
 
 	__host__ void firstStep(int);
 	__host__ int step(int);
+	__host__ int step_1kernel(int);
 	__host__ int step_16(int);
 	__host__ int step_largeN(int);
 	__host__ int step_small(int);

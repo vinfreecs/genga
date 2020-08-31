@@ -145,12 +145,14 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			omegasun3.x = Spinsun.x * iIsun;
 			omegasun3.y = Spinsun.y * iIsun;
 			omegasun3.z = Spinsun.z * iIsun;
+//printf("omegaS %d %g %g %g\n", id, Spinsun.z, 1.0 / omegasun3.z / dayUnit, 1.0/iIsun, omegasun3.z * dayUnit);
 
 			//compute rotation vector from spin vector
 			double iI = 5.0 / (2.0 * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			omega3.x = spin_d[id].x * iI;
 			omega3.y = spin_d[id].y * iI;
 			omega3.z = spin_d[id].z * iI;
+//printf("omegaP %d %g %g %g\n", id, omega3.x * dayUnit, omega3.y * dayUnit, omega3.z * dayUnit);
 
 			ir2 = ir * ir;
 			ir3 = ir2 * ir;
@@ -170,6 +172,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 			volatile double tsun = 3.0 * def_ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
 			volatile double t = 3.0 * def_ksq * Msun2 * R5 * ir8 * love / x4.w;
+
+
 //volatile double tt = 3.0 * def_ksq * Msun2 * R5 * ir7 * love * tau;
 
 //in SI units
@@ -181,8 +185,9 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 			Psun = tsun * tausun;
 			P = t * tau;
-//printf("P %d %g | %g %g %g | %g %g %g\n", id, love, P, t, tau, Psun, tsun, tausun);
 			F1 = -tsun - t;
+
+			//F1 * x4i.xyz is the nondissipative radial part if the acceleration
 	
 			t2.x = ( omega3.y * x4.z) - (omega3.z * x4.y);
 			t2.y = (-omega3.x * x4.z) + (omega3.z * x4.x);
@@ -192,7 +197,6 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			t3.y = (-omegasun3.x * x4.z) + (omegasun3.z * x4.x);
 			t3.z = ( omegasun3.x * x4.y) - (omegasun3.y * x4.x);
 
-//printf("F1 %d %g %g %g %g %g %g\n", id, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z); 
 
 		}
 		if((UseForce >> 2 & 1) && x4.w > 0.0){
@@ -209,9 +213,23 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
 			volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
 
-			volatile double F1 = -3.0 * ir5 * (Csun + Cp) + 15.0 * ir7 * (Csun * r_omegasun * r_omegasun / omegasun2 + Cp * r_omega * r_omega / omega2);
-			volatile double F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
-			volatile double F3 = -6.0 * ir5 * Cp * r_omega / omega2;
+			volatile double F1 = -3.0 * ir5 * (Csun + Cp);
+			if(omegasun2 != 0.0){
+				F1 += 15.0 * ir7 * Csun * r_omegasun * r_omegasun / omegasun2;
+			}
+			if(omega2 != 0.0){
+				F1 += 15.0 * ir7 * Cp * r_omega * r_omega / omega2; 
+			}
+
+			volatile double F2 = 0.0;
+			volatile double F3 = 0.0;
+			if(omegasun2 != 0.0){
+				F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
+			}
+			if(omega2 != 0.0){
+				F3 = -6.0 * ir5 * Cp * r_omega / omega2;
+			}
+			
 
 			a3.x += (F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x) / x4.w;
 			a3.y += (F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y) / x4.w;
@@ -232,6 +250,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3told.z = 0.0;
 			
 			for(int k = 0; k < 30; ++k){
+			//for(int k = 0; k < 1; ++k){
 			
 				a3t.x = 0.0;
 				a3t.y = 0.0;
@@ -254,7 +273,6 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 					//Tidal Force see Bolmont et al 2015 equation 6
 					double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
 					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);  // -3 + 1 = -2
-
 
 					a3t.x += (F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x);
 					a3t.y += (F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y);

@@ -177,6 +177,7 @@ __host__ int Host::DeviceInfo(){
 			return 0;
 		}
 	}
+
 	return 1;
 }
 
@@ -357,7 +358,10 @@ __host__ void Host::Halloc(){
 	Nmin = (int2*)malloc(Nst*sizeof(int2));				// x: masive particles, y: test particles
 	rho = (double*)malloc(Nst*sizeof(double));	
 	
-	P.dev = 0;
+	for(int i = 0; i < 32; ++i){
+		P.dev[i] = i;
+	}
+	P.ndev = 1;
 	GSF = (struct GSFiles*)malloc(Nst*sizeof(struct GSFiles));
 	
 	n1_h = (double*)malloc(Nst*sizeof(double));
@@ -1772,8 +1776,14 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-n2") == 0){ 
 			n2_h[st] = atof(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-ndev") == 0){
+			P.ndev = atoi(argv[i + 1]);
+		}
 		else if(strcmp(argv[i], "-dev") == 0){
-			P.dev = atof(argv[i + 1]);
+			for(int j = 0; j < P.ndev; ++j){
+				P.dev[j] = atoi(argv[i + 1]);
+				++i;
+			}
 		}
 		else if(strcmp(argv[i], "-in") == 0){
 			sprintf(GSF[st].inputfilename, "%s", argv[i + 1]);
@@ -1894,6 +1904,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0){
 		ForceFlag = 1;
 	}
+
+	//check peer to peer access for multi GPU runs:
+	for(int i = 1; i < P.ndev; ++i){
+		int check = 0;
+		cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[0]);       //check if device i can access device 0
+		fprintf(masterfile, "device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
+		printf("device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
+		if(check == 0){
+			fprintf(masterfile, "error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[0], check);
+			printf("error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[0], check);
+		return 0;
+		}
+	}
+
+
 	
 	return 1;
 }
@@ -2393,9 +2418,16 @@ __host__ void Host::Info(){
 	
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		if(P.dev > devCount){
-			P.dev = P.dev % devCount;
-			fprintf(GSF[st].logfile,"selected device not allowed; changed to %d", P.dev);
+		if(P.ndev > devCount){
+			P.ndev = devCount;
+			fprintf(GSF[st].logfile,"selected amount of devices not allowed; changed to %d", P.ndev);
+		}
+		for(int j = 0; j < P.ndev; ++j){
+			if(P.dev[j] > devCount){
+				int dev0 = P.dev[j];
+				P.dev[j] = P.dev[j] % devCount;
+				fprintf(GSF[st].logfile,"selected device not allowed; changed %d to %d", dev0, P.dev[j]);
+			}
 		}
 		
 		for(int i = 0; i < 2; ++i){
@@ -2504,7 +2536,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "\n");
 			fprintf(infofile, "Angle units: %d\n", P.AngleUnits);
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
-			fprintf(infofile, "Device number: %d\n", P.dev);                           // use only argument in simulation 0
+			fprintf(infofile, "Number of devices: %d\n", P.ndev);                           // use only argument in simulation 0
+			for(int j = 0; j < P.ndev; ++j){
+				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);                     // use only argument in simulation 0
+			}
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
 			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
 			fprintf(infofile, "MaxColl: %d\n", def_MaxColl);

@@ -73,6 +73,7 @@ __host__ void Data::AllocateOrbit(){
 	elementsA_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsB_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsT_h = (double4*)malloc(NconstT * sizeof(double4));
+	elementsSpin_h = (double4*)malloc(NconstT * sizeof(double4));
 	elementsL_h = (elements10*)malloc(NconstT * sizeof(elements10));
 	elementsC_h = (int2*)malloc((Nst + MCMC_NT) * sizeof(int2));
 	elementsP_h = (double4*)malloc(Nst * sizeof(double4));
@@ -89,6 +90,7 @@ __host__ void Data::AllocateOrbit(){
 	elementsA_h = NULL;
 	elementsB_h = NULL;
 	elementsT_h = NULL;
+	elementsSpin_h = NULL;
 	elementsL_h = NULL;
 	elementsC_h = NULL;
 	elementsP_h = NULL;
@@ -183,12 +185,15 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &elementsA_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsB_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsT_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsSpin_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsAOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsBOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsTOld_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsTOld2_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsSpinOld_d, NconstT * sizeof(double4));
+	cudaMalloc((void **) &elementsSpinOld2_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &elementsL_d, NconstT * sizeof(elements10));
 	cudaMalloc((void **) &elementsC_d, (Nst + MCMC_NT) * sizeof(int2));
 	cudaMalloc((void **) &elementsP_d, Nst * sizeof(double4));
@@ -233,12 +238,15 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	elementsA_d = NULL;
 	elementsB_d = NULL;
 	elementsT_d = NULL;
+	elementsSpin_d = NULL;
 	elementsAOld_d = NULL;
 	elementsAOld2_d = NULL;
 	elementsBOld_d = NULL;
 	elementsBOld2_d = NULL;
 	elementsTOld_d = NULL;
 	elementsTOld2_d = NULL;
+	elementsSpinOld_d = NULL;
+	elementsSpinOld2_d = NULL;
 	elementsL_d = NULL;
 	elementsC_d = NULL;
 	elementsP_d = NULL;
@@ -593,6 +601,10 @@ __host__ int Data::init(){
 		elementsT_h[i].y = 0.0;
 		elementsT_h[i].z = 0.0;
 		elementsT_h[i].w = 0.0;
+		elementsSpin_h[i].x = 0.0;
+		elementsSpin_h[i].y = 0.0;
+		elementsSpin_h[i].z = 0.0;
+		elementsSpin_h[i].w = 0.0;
 		elementsL_h[i].P = 0.0;
 		elementsL_h[i].T = 0.0;
 		elementsL_h[i].m = 0.0;
@@ -753,12 +765,15 @@ __host__ int Data::ic(){
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsT_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsSpin_d, elementsSpin_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsAOld2_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsBOld2_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsTOld_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsTOld2_d, elementsT_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsSpinOld_d, elementsSpin_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
+	cudaMemcpy(elementsSpinOld2_d, elementsSpin_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsL_d, elementsL_h, sizeof(elements10) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsC_d, elementsC_h, sizeof(int2) * (Nst + MCMC_NT), cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsSA_d, elementsSA_h, sizeof(double) * Nst, cudaMemcpyHostToDevice);
@@ -858,6 +873,7 @@ __host__ int Data::readic(int st){
 			double4 elementsA = elementsA_h[i + NBS];
 			double4 elementsB = elementsB_h[i + NBS];
 			double4 elementsT = elementsT_h[i + NBS];
+			double4 elementsSpin = elementsSpin_h[i + NBS];
 			elements10  elementsL = elementsL_h[i + NBS];
 			double elementsSA = elementsSA_h[st];
 			double4 elementsP = elementsP_h[st];
@@ -873,9 +889,27 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 7) fscanf (infile, "%lf",&v.z);		//vz
 				else if (GSF[st].informat[f] == 8) fscanf (infile, "%lf",&v.w);		//r
 				else if (GSF[st].informat[f] == 9) fscanf (infile, "%lf",&rho[st]);
-				else if (GSF[st].informat[f] == 10) fscanf (infile, "%lf",&spin.x);
-				else if (GSF[st].informat[f] == 11) fscanf (infile, "%lf",&spin.y);
-				else if (GSF[st].informat[f] == 12) fscanf (infile, "%lf",&spin.z);
+				else if (GSF[st].informat[f] == 10){
+					//Sx
+					fscanf (infile, "%lf",&spin.x);
+#if def_TTV > 0
+					elementsSpin.y = spin.x;
+#endif
+				}
+				else if (GSF[st].informat[f] == 11){
+					//Sy
+					fscanf (infile, "%lf",&spin.y);
+#if def_TTV > 0
+					elementsSpin.y = spin.y;
+#endif
+				}
+				else if (GSF[st].informat[f] == 12){
+					//Sz
+					fscanf (infile, "%lf",&spin.z);
+#if def_TTV > 0
+					elementsSpin.y = spin.z;
+#endif
+				}
 				else if (GSF[st].informat[f] == 13) fscanf (infile, "%d",&index);
 				else if (GSF[st].informat[f] == 14) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);
@@ -1038,6 +1072,12 @@ __host__ int Data::readic(int st){
 				double mu = def_ksq * (Msun_h[st].x + mJ);
 				double p2 = x.x * x.x * x.x * 4.0 * M_PI * M_PI / (dayUnit * dayUnit * mu);
 				p = sqrt(p2);
+				//double a = x.x;
+#if def_TTV > 0
+				elementsT.z = p;
+				elementsT.w = 0.0;
+#endif
+//printf("read p %d %.30g %.30g %.30g %.30g\n", i, p, mu, a, p2);
 
 			}
 
@@ -1053,14 +1093,36 @@ __host__ int Data::readic(int st){
 				double time = ict_h[0] * 365.25;
 				//compute Mean Anomaly of the first transit
 				double Mt = nu - 2.0 * e * sin(nu) + (3.0 * 0.25 * ee2 + 0.125 * ee4) * sin(2.0 * nu) - 1.0 / 3.0 * e * ee2 * sin(3.0 * nu) + 5.0/32.0 * ee4 * sin(4.0 * nu);
-//printf("T to M %g %g %g %g %g\n", time, nu, Mt, T, p);
 				double M = -(T - time) / p * 2.0 * M_PI + Mt;
+//printf("T to M %g %g %g %g %g %g\n", time, nu, Mt, T, p, M);
 				M = fmod(M, 2.0 * M_PI);
 				if(M < 0.0) M += 2.0 * M_PI;
 
 				v.z = M;
 #if def_TTV > 0
 				elementsB.z = M;
+#endif
+			}
+			else{
+#if def_TTV > 0
+
+				double w = v.y;
+				double e = x.y;
+				double M = v.z;
+
+				double nu = M_PI * 0.5 - w;     //true anomaly at first transit
+				double ee2 = e * e;
+				double ee4 = ee2 * ee2;
+				//double time = time_h[0] - dt_h[0] / dayUnit;
+				double time = ict_h[0] * 365.25;
+				//compute Mean Anomaly of the first transit
+				double Mt = nu - 2.0 * e * sin(nu) + (3.0 * 0.25 * ee2 + 0.125 * ee4) * sin(2.0 * nu) - 1.0 / 3.0 * e * ee2 * sin(3.0 * nu) + 5.0/32.0 * ee4 * sin(4.0 * nu);
+
+//printf("M to T %g %g %g %g %g %g\n", M, time, nu, Mt, T, p);
+
+				double T = -(M - Mt) / (2.0 * M_PI) * p + time;
+				elementsT.x = T;
+				elementsT.y = 0.0;
 #endif
 			}
 			if(keplerian == 1){
@@ -1092,6 +1154,7 @@ __host__ int Data::readic(int st){
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
 			elementsT_h[ii + NBSN] = elementsT;
+			elementsSpin_h[ii + NBSN] = elementsSpin;
 			elementsL_h[ii + NBSN] = elementsL;
 			int iT = st / (Nst / MCMC_NT);			//index of temperature in parallel tempering
 			 
@@ -2186,6 +2249,7 @@ __host__ int Data::freeOrbit(){
 	free(elementsA_h);
 	free(elementsB_h);
 	free(elementsT_h);
+	free(elementsSpin_h);
 	free(elementsL_h);
 	free(elementsC_h);
 	free(elementsP_h);
@@ -2310,12 +2374,15 @@ __host__ int Data::freeOrbit(){
 	cudaFree(elementsA_d);
 	cudaFree(elementsB_d);
 	cudaFree(elementsT_d);
+	cudaFree(elementsSpin_d);
 	cudaFree(elementsAOld_d);
 	cudaFree(elementsAOld2_d);
 	cudaFree(elementsBOld_d);
 	cudaFree(elementsBOld2_d);
 	cudaFree(elementsTOld_d);
 	cudaFree(elementsTOld2_d);
+	cudaFree(elementsSpinOld_d);
+	cudaFree(elementsSpinOld2_d);
 	cudaFree(elementsL_d);
 	cudaFree(elementsC_d);
 	cudaFree(elementsP_d);

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.106
+#define def_Version 3.107
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -266,7 +266,8 @@ double __shfld_xor(double x, int k) {
 	return *reinterpret_cast<double*>(&a);
 }
 #endif
-
+__constant__ double  Rcut_c[1];
+__constant__ double  RcutSun_c[1];
 __constant__ int  StopAtCollision_c[1];
 __constant__ double  StopMinMass_c[1];
 __constant__ double CollisionPrecision_c[1]; 
@@ -279,7 +280,8 @@ __constant__ double StopAtEncounterRadius_c[1];
 
 
 struct Parameter{
-	int dev;			//Number of device
+	int dev[32];			//device number array 
+	int ndev;			//number of devices
 	int ei;				//Energy output interval
 	int ci;				//Coordinate output interval
 	int nci;			//Number of outputs per interval

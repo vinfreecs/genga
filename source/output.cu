@@ -247,7 +247,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 	}
 }
 
-//this function prints the first close encounter information to the info file
+//this function prints the first close encounter information to the info file, partA
 __host__ void Data::firstInfo(){
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, (Nst + 1) * sizeof(int), cudaMemcpyDeviceToHost);
 	for(int st = 0; st < Nst; ++st){
@@ -256,6 +256,37 @@ __host__ void Data::firstInfo(){
 		else fprintf(GSF[st].logfile, "Initial Precheck pairs: %d\n", Nencpairs_h[st + 1]);
 		fclose(GSF[st].logfile);
 		if(MTFlag == 1) break;
+	}
+}
+
+//this function prints the first close encounter information to the info file, partB
+__host__ void Data::firstInfoB(){
+	for(int st = 0; st < Nst; ++st){
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+		cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
+		cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
+
+		if(Nst == 1){
+			fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+			fprintf(GSF[0].logfile, "groups: %d; ", Nenc_m[0]);
+			int nn = 2;
+			for(int st = 1; st < def_GMax; ++st){
+				if(Nenc_m[st] > 0) fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
+				nn *= 2;
+			}
+			fprintf(GSF[0].logfile, "\n");
+
+			fprintf(GSF[0].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+		}
+		else{
+			fprintf(GSF[st].logfile, "    CE:    %d\n", Nencpairs2_h[st + 1]);
+			fprintf(GSF[st].logfile, "    Precheck-pairs:    %d\n", Nencpairs_h[st + 1]);
+		}
+		if(interrupt == 1){
+			fprintf(GSF[st].logfile, "GENGA is terminated by SIGINT signal at time step %lld\n", timeStep);
+
+		}
+		fclose(GSF[st].logfile);
 	}
 }
 
@@ -1224,18 +1255,21 @@ __host__ void Data::printMCMC(int E){
 		cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsT_h, elementsTOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsSpin_h, elementsSpinOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	}
 	if(P.PrintMCMC == 2){
 	//print all, also not accepted steps
 		cudaMemcpy(elementsA_h, elementsA_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsB_h, elementsB_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsT_h, elementsT_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsSpin_h, elementsSpin_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	}
 	if(P.PrintMCMC == 1){
 	//print only accepted
 		cudaMemcpy(elementsA_h, elementsAOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsB_h, elementsBOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 		cudaMemcpy(elementsT_h, elementsTOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
+		cudaMemcpy(elementsSpin_h, elementsSpinOld_d, NconstT * sizeof(double4), cudaMemcpyDeviceToHost);
 	}
 	cudaMemcpy(elementsL_h, elementsL_d, NconstT * sizeof(elements10), cudaMemcpyDeviceToHost);
 	cudaMemcpy(elementsP_h, elementsP_d, Nst * sizeof(double4), cudaMemcpyDeviceToHost);
@@ -1281,6 +1315,7 @@ __host__ void Data::printMCMC(int E){
 		
 				int ii = id;
 				fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsB_h[ii].w, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsL_h[ii].m, f * elementsL_h[ii].r, f * elementsL_h[ii].P, f * elementsL_h[ii].e, f * elementsL_h[ii].inc, f * elementsL_h[ii].O, f * elementsL_h[ii].w, f * elementsL_h[ii].T, pp * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
+				//fprintf(MCMCfile, "%#15.10g %d %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#25.20g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g %#15.10g\n", time, id % N_h[0], elementsA_h[ii].w, elementsSpin_h[ii].y, elementsT_h[ii].z, elementsA_h[ii].y, elementsA_h[ii].z, elementsB_h[ii].x, elementsB_h[ii].y, elementsT_h[ii].x, f * elementsL_h[ii].m, f * elementsL_h[ii].r, f * elementsL_h[ii].P, f * elementsL_h[ii].e, f * elementsL_h[ii].inc, f * elementsL_h[ii].O, f * elementsL_h[ii].w, f * elementsL_h[ii].T, pp * 2.0, elementsP_h[si].w, elementsSA_h[si], Msun_h[si].x);
 			}
 		}
 		fclose(MCMCfile);

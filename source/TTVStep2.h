@@ -525,7 +525,7 @@ __global__ void TTVstep1(int *index_d, double *TransitTime_d, double *RVP_d, dou
 // Author: Simon Grimm
 // February 2020
 // *******************************************************************************************
-__global__ void TTVstep3(int *index_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsP_d, double *elementsSA_d, int2 *elementsC_d, int2 *NtransitsT_d, double4 *Msun_d, double *elementsM_d, int NT, int N0, int Nst, int mcmcNE){
+__global__ void TTVstep3(int *index_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, double4 *elementsP_d, double *elementsSA_d, int2 *elementsC_d, int2 *NtransitsT_d, double4 *Msun_d, double *elementsM_d, int NT, int N0, int Nst, int mcmcNE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -562,6 +562,7 @@ if(id % (N0 * Nst / 3) < N0 /*|| elementsP_d[st].w < 0.0001*/)  printf("p %5d %5
 			elementsBOld_d[id] = elementsB_d[id];
 			elementsTOld_d[id].x = elementsT_d[id].x;
 			elementsTOld_d[id].z = elementsT_d[id].z;
+			elementsSpinOld_d[id] = elementsSpin_d[id];
 			NtransitsT_d[id].y = NtransitsT_d[id].x; //NtOld = Nt
 //			elementsM_d[st] = Msun_d[st].x;
 
@@ -1840,7 +1841,7 @@ if(i == 0) printf("contract2\n");
 //EE = 4: DEMCMC
 //EE = 5: ADAGRAD
 //EE = 10 Refine
-__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
+__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1918,6 +1919,7 @@ Msun = 0.0;
 			double r = elementsBOld_d[st0 * N0 + ii].w;		//radius
 			double P = elementsTOld_d[st0 * N0 + ii].z;		//period
 			double T = elementsTOld_d[st0 * N0 + ii].x;		//time of first transit
+			double Sy = elementsSpinOld_d[st0 * N0 + ii].y;		//Spiny
 
 			if(EE == 5 || EE == -1){
 				P = fmax(P, 1.0e-16);
@@ -1937,6 +1939,7 @@ Msun = 0.0;
 				r = elementsB_d[st0 * N0 + ii].w;		//radius
 				P = elementsT_d[st0 * N0 + ii].z;		//period
 				T = elementsT_d[st0 * N0 + ii].x;		//time of first transit
+				Sy = elementsSpin_d[st0 * N0 + ii].y;		//Spiny
 			}
 //printf("Modify %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g| %g %d\n", ii, m, r, P, e, inc, Omega, w, T, a, M, z, ne);
 
@@ -1969,8 +1972,10 @@ Msun = 0.0;
 					Omega += rd * elementsL_d[st0 * N0 + ii].O;
 				}
 				if(ne > 7){
+					//rd = curand_normal(&random);
+					//r += rd * elementsL_d[st0 * N0 + ii].r;
 					rd = curand_normal(&random);
-					r += rd * elementsL_d[st0 * N0 + ii].r;
+					Sy += rd * elementsL_d[st0 * N0 + ii].r;
 				}
 			}
 			double P0 = P;
@@ -2093,6 +2098,33 @@ printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 				Omega += Omega0 * rd;
 
 			}
+		
+			/*	
+			double r0 = r;		
+			double r1 = elementsBOld_d[st1 * N0 + ii].w;		
+			double r2 = elementsBOld_d[st2 * N0 + ii].w;		
+			if(ne > 7){
+				//modify r
+				rd = curand_uniform(&random) * 2.0 * eb;
+				r += z * (1.0 - eb + rd) * (r1 - r2);
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].r;
+				r += r0 * rd;
+
+				r += elementsL_d[st0 * N0 + ii].r * sc;
+			}
+			*/
+			double Sy0 = r;		
+			double Sy1 = elementsSpinOld_d[st1 * N0 + ii].y;		
+			double Sy2 = elementsSpinOld_d[st2 * N0 + ii].y;		
+			if(ne > 7){
+				//modify Sy
+				rd = curand_uniform(&random) * 2.0 * eb;
+				Sy += z * (1.0 - eb + rd) * (Sy1 - Sy2);
+				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].r;
+				Sy += Sy0 * rd;
+
+				Sy += elementsL_d[st0 * N0 + ii].r * sc;
+			}
 
 			if(e <= 0) w = 0;
 //printf("ModifyB %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g | %g\n", ii, m, r, P, e, inc, Omega, w, T, a, z);
@@ -2175,6 +2207,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 				r = elementsBOld_d[st0 * N0 + ii].w;		//radius
 				P = elementsTOld_d[st0 * N0 + ii].z;		//periode
 				T = elementsTOld_d[st0 * N0 + ii].x;		//time of first transit
+				Sy = elementsSpinOld_d[st0 * N0 + ii].y;	//Spiny
 			
 				//Jacoby mass
 				mJ0 += m;
@@ -2234,6 +2267,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 			elementsB_d[st0 * N0 + ii].w = r;
 			elementsT_d[st0 * N0 + ii].z = P;
 			elementsT_d[st0 * N0 + ii].x = T;
+			elementsSpin_d[st0 * N0 + ii].y = Sy;
 //printf("MJ %d %.20g %d %d %d\n", st0 * N0 + ii, a, st0, st1, st2);
 //printf("ModifyC %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g| %g\n", ii, m, r, P, e, inc, Omega, w, T, a, M, z);
 
@@ -2297,6 +2331,7 @@ if(ii == 0){
 
 			x4_d[st0 * N0 + ii] = x4i;
 			v4_d[st0 * N0 + ii] = v4i;
+			spin_d[st0 * N0 + ii].y = Sy;
 
 //printf("ModifyD %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ii, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, v4i.x, v4i.y, v4i.z);
 
@@ -3050,11 +3085,11 @@ __host__ void Data::modifyElementsCall(int ittv, int EE){
 	setCovarianceRandom1 <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (random_d, elementsL_d, Nst, N_h[0]); 
 	setCovarianceRandom <<< Nst, ((N_h[0] + 31) / 32) * 32 >>> (elementsCOV_d, elementsL_d, Nst, N_h[0]); 
  #endif
-	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, EE);
+	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, spin_d, elementsA_d, elementsB_d, elementsT_d, elementsSpin_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsSpinOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, P.mcmcNE, P.mcmcRestart, EE);
 
 #endif
 #if MCMC_Q == 2
-	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, elementsA_d, elementsB_d, elementsT_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, 0, P.mcmcRestart, 10); 
+	modifyElementsJ2 <<< (Nst + 127) / 128, 128 >>> (random_d, x4_d, v4_d, spin_d, elementsA_d, elementsB_d, elementsT_d, elementsSpin_d, elementsAOld_d, elementsBOld_d, elementsTOld_d, elementsSpinOld_d, elementsL_d, elementsP_d, elementsI_d, elementsC_d, Msun_d, time_h[0] - dt_h[0] / dayUnit, N_d, Nst, ittv, 0, P.mcmcRestart, 10); 
 #endif
 #if MCMC_Q == 1
 

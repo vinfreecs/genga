@@ -589,6 +589,7 @@ The structure of the data file must be the following:
     .
 
  * The number of bodies 'n', indicates how many bodies will be modified. They are the first 'n' massive bodies in the initial condition file
+ * The index of the planets can not be set. The order of the planets must correspond to the order of the initial conditions file. 
  * time is the time of the elements in years
  * elements can be:
     * a, semi-major axis in AU

@@ -98,7 +98,7 @@ int main(int argc, char*argv[]){
 	}
 	printf("Size OK\n");
 
-	cudaSetDevice(H.P.dev);
+	cudaSetDevice(H.P.dev[0]);
 	cudaDeviceSynchronize();
 
 	//Allocate memory for parameters on the device:
@@ -255,7 +255,7 @@ if(ittv % MCMC_NQ == 0){
 	// ************************************************************************
 	// start time step loop here
 	for(D.timeStep = D.P.tRestart + 1; D.timeStep <= D.P.deltaT; ++D.timeStep){
-		er = D.timeStepLoop(interrupted);
+		er = D.timeStepLoop(interrupted, ittv);
 		if(er == 0){
 #if def_TTV > 0
 			D.printMCMC(1);
@@ -293,7 +293,7 @@ if(ittv % MCMC_NQ == 0){
  #endif
 	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.RVP_d, D.elementsP_d, D.NtransitsT_d, D.n1_d, D.NT, D.N_h[0], D.Nst);
 
-	TTVstep3 <<< (D.NT + 255) / 256, 256 >>> (D.index_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, D.P.mcmcNE);
+	TTVstep3 <<< (D.NT + 255) / 256, 256 >>> (D.index_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsSpin_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsSpinOld_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, D.P.mcmcNE);
 
  #if MCMC_Q == 1
 	if(ittv % 16 == 15){

@@ -208,11 +208,11 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int N, const
 // EE = 2: used for semi test particles
 // Date: April 2019
 // Author: Simon Grimm
-__global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+__global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	int idy = threadIdx.y;
 	int ix = threadIdx.x;
-	int idx = (blockIdx.x * blockDim.x + ix) * p;
+	int idx = (blockIdx.x * blockDim.x + ix) * p + Nstart;
 	int Bl = blockDim.y;
 	int Bll = Bl * blockDim.x;
 //if(idy == 0) printf("idx %d %d %d %d\n", idx, blockIdx.x, blockDim.x, threadIdx.x);
@@ -382,11 +382,11 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 }
 
 //float version
-__global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+__global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	int idy = threadIdx.y;
 	int ix = threadIdx.x;
-	int idx = (blockIdx.x * blockDim.x + ix) * p;
+	int idx = (blockIdx.x * blockDim.x + ix) * p + Nstart;
 	int Bl = blockDim.y;
 	int Bll = Bl * blockDim.x;
 //if(idy == 0) printf("idx %d %d %d %d\n", idx, blockIdx.x, blockDim.x, threadIdx.x);
