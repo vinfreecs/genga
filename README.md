@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.107: The GENGA repository has moved from Mercurial to Git, because bitbucket removed mercurial.
  * Version 3.103: The param.dat file has more parameters for the different gas disk effects.
  * Version 3.98: The number of digits in the output file names can be specified.
  * Version 3.92: Set Elements files have new format and cubic interpolation.
