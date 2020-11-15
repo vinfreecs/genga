@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.107
+#define def_Version 3.108
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -207,13 +207,15 @@
 #define def_TTV 0			//1: to transit detection and MCMC sampling, 2: use only BS integrator
 #define def_NtransitMax 6000
 #define def_NtransitTimeMax 6000	//Maximum number of transit times per object
+//#define def_NtransitMax 20000
+//#define def_NtransitTimeMax 2000	//Maximum number of transit times per object
 #define def_TransitTol 1.0e-12
 
 #define def_RV 0			
 #define def_NRVMax 6000			//Maximum number of RV data
 #define MCMC_BLOCK 4			
 					//4 DEMCMC
-					//5 ADAGRAD
+					//5 RMSPROP
 					//6 Nelder Mead
 					//7 lbfgs
 

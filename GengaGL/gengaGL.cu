@@ -195,7 +195,7 @@ void display(){
 	if(stop == 0){
 		for(int i = 0; i < 1; ++i){
 			D.timeStep = ts;
-			int er = D.timeStepLoop(interrupted);
+			int er = D.timeStepLoop(interrupted, 0);
 			time = D.time_h[0] / 365.25;
 			++ts;
 		}
@@ -435,7 +435,7 @@ int main(int argc, char*argv[]){
 	printf("Size OK\n");
 	cudaDeviceSynchronize();
 //	cudaDeviceReset();
-	error = cudaSetDevice(H.P.dev);
+	error = cudaSetDevice(H.P.dev[0]);
 //	fprintf(D.masterfile, "Set device error = %d = %s\n",error, cudaGetErrorString(error));
 
 	//Allocate memory for parameters on the device:

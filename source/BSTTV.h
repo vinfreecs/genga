@@ -155,7 +155,6 @@ __global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_
 //if(itransit == 0 && idy == 0) printf("A id %d %d %d  x %.20g y %.20g g %.20g gd %.20g -g/gd %g %.20g %g %g time %.20g\n", (idy + si * N_d[0]), tt, ff, x4_s[itransit].x, x4_s[itransit].y, g, gd, -g / gd, dt1 / dayUnit, dt / dayUnit, t / dayUnit, time);
 			if(-g / (gd * dt1) < 0) dt1 = -dt1; 
 			if(fabs(g / gd) < fabs(dt1)) dt1 = -g /gd;
-	//		if(fabs(g / gd) >= fabs(dt)) dt1 *= 0.9;
 //if(itransit == 0 && idy == 0) printf("B id %d %d %d  x %.20g y %.20g g %.20g gd %.20g -g/gd %g %.20g %g %g time %.20g\n", (idy + si * N_d[0]), tt, ff, x4_s[itransit].x, x4_s[itransit].y, g, gd, -g / gd, dt1 / dayUnit, dt / dayUnit, t / dayUnit, time);
 			if(fabs(g / gd) < def_TransitTol){
 				if(idy == itransit){

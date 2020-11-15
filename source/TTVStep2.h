@@ -716,6 +716,7 @@ __global__ void setHyperParameters(elements8 *elementsGh_d, const int NT, const 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
+	//these elements scale the step size eta in the optimizers
 	if(id < NT){
 
 		//P
@@ -729,24 +730,6 @@ __global__ void setHyperParameters(elements8 *elementsGh_d, const int NT, const 
 		//w
 		elementsGh_d[id].w = 1.0e-1;
 		
-		
-/*
-		if(id < Nst){
-			int fi = id + 1;
-			double f = fi * fi * fi;
-printf("eta %d %d %g %g\n", id, fi, 1.0e-9 * f, f);
-			//P
-			elementsGh_d[id].P = 1.0e-9 * f;
-			//T
-			elementsGh_d[id].T = 1.0e-9 * f;
-			//m
-			elementsGh_d[id].m = 1.0e-9 * f;
-			//e
-			elementsGh_d[id].e = 1.0e-9 * f;
-			//w
-			elementsGh_d[id].w = 1.0e-9 * f;
-		}
-*/
 	}
 }
 
@@ -1123,12 +1106,6 @@ for(int i = 0; i < N0; ++i){
 }
 
 
-//__global__void lbfgs(){
-
-
-
-//}
-
 
 
 //lbfgs
@@ -1192,120 +1169,385 @@ if(id == 0) printf("alpha %g\n", alpha);
 	}
 }
 
-
-//RMSprop
+//RMSprop with hyperparmaters optimization
 __global__ void rmsprop(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(id < Nst -1){
+	int iid = id / (Ne * N0 + 1);	//simulation index, consisting with all the (35) gradient points, plus one point without gradient (total 36)
+	int jjd = id % (Ne * N0 + 1);	// map to 0 - 35
+
+
+	if(id < Nst && jjd < Ne * N0){
 		double dx, dx1, gx, Gx;
 
 		double eta = 0.01;
 		double eps = 1.0e-6;
 		
 		double beta = 0.9;
-		int jj = id % Ne;
-		int ii = id / Ne;
+
+		int nne = iid * (Ne * N0 + 1);			//corresponds to 0, 36, 72,...
+		int nne0 = nne + (Ne * N0);			//corresponds to 35, 71, 107,...
+
+		int jj = jjd % Ne;
+		int ii = jjd / Ne;
+
+//printf("nne0 %d %d %d %d %d %d\n", id, iid, jjd, nne0, jj, ii);
+
 		if(jj == 0){
 			dx = elementsL_d[id * N0 + ii].P;
-			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
 			Gx = beta * elementsG_d[id * N0 + ii].P + (1.0 - beta) * gx * gx;
 			elementsG_d[id * N0 + ii].P = Gx;
 			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].P;
-			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
 			if(gx == 0.0 || dx == 0) dx1 = 0.0;
 			//elementsL_d[id * N0 + ii].P = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
+			for(int j = 0; j < Ne * N0 + 1; ++j){
 				if(j % Ne == 0 && j / Ne == ii){
-					elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + 1.1 * dx1;
+					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + 1.1 * dx1;
 				}
-				else elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + dx1;
-				//elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z + dx1 * elementsGh_d[j].P;
+				else{
+					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + dx1;
+				}
 			}
-printf("dx P %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsTOld_d[id * N0 + ii].z, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].P);
-//printf("dx P %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].P);
+//printf("dx P %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].z, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].P);
 		}
 		if(jj == 1){
 			dx = elementsL_d[id * N0 + ii].T;
-			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
 			Gx = beta * elementsG_d[id * N0 + ii].T + (1.0 - beta) * gx * gx;
 			elementsG_d[id * N0 + ii].T = Gx;
 			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].T;
-			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
 			if(gx == 0.0 || dx == 0) dx1 = 0.0;
 			//elementsL_d[id * N0 + ii].T = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
+			for(int j = 0; j < Ne * N0 + 1; ++j){
 				if(j % Ne == 1 && j / Ne == ii){
-					elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + 1.1 * dx1;
+					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + 1.1 * dx1;
 				}
-				else elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + dx1;
-				//elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x + dx1 * elementsGh_d[j].T;
+				else{
+					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + dx1;
+				}
 			}
-printf("dx T %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsTOld_d[id * N0 + ii].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].T);
-//printf("dx T %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].T);
+//printf("dx T %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].T);
 		}
 		if(jj == 2){
 			dx = elementsL_d[id * N0 + ii].m;
-			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
 			Gx = beta * elementsG_d[id * N0 + ii].m + (1.0 - beta) * gx * gx;
 			elementsG_d[id * N0 + ii].m = Gx;
 			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].m;
-			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
 			if(gx == 0.0 || dx == 0) dx1 = 0.0;
 			//elementsL_d[id * N0 + ii].m = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
+			for(int j = 0; j < Ne * N0 + 1; ++j){
 				if(j % Ne == 2 && j / Ne == ii){
-					elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + 1.1 * dx1;
+					elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + 1.1 * dx1;
 				}
-				else elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + dx1;
-				//elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w + dx1 * elementsGh_d[j].m;
+				else{
+					 elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + dx1;
+				}
 			}
-printf("dx m %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, elementsAOld_d[id * N0 + ii].w, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].m);
-//printf("dx m %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].m);
+//printf("dx m %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[nne0].x, elementsAOld_d[id * N0 + ii].w, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].m);
 		}
 		if(jj == 3){
 			dx = elementsL_d[id * N0 + ii].e;
-			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
 			Gx = beta * elementsG_d[id * N0 + ii].e + (1.0 - beta) * gx * gx;
 			elementsG_d[id * N0 + ii].e = Gx;
 			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].e;
-			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
 			if(gx == 0.0 || dx == 0) dx1 = 0.0;
 			//elementsL_d[id * N0 + ii].e = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
+			for(int j = 0; j < Ne * N0 + 1; ++j){
 				if(j % Ne == 3 && j / Ne == ii){
-					elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + 1.1 * dx1;
+					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
 				}
-				else elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + dx1;
-				//elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].e;
+				else{
+					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + dx1;
+				}
 			}
-printf("dx e %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsAOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].e);
-//printf("dx e %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].e);
+//printf("dx e %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsAOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].e);
 		}
 		if(jj == 4){
 			dx = elementsL_d[id * N0 + ii].w;
-			gx = -2.0 * (elementsP_d[35].z - elementsP_d[id].z) / dx;
+			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
 			Gx = beta * elementsG_d[id * N0 + ii].w + (1.0 - beta) * gx * gx;
 			elementsG_d[id * N0 + ii].w = Gx;
 			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].w;
-			//dx1 = -eta / sqrt(Gx + eps*dx) * gx;
 			if(gx == 0.0 || dx == 0) dx1 = 0.0;
 			//elementsL_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Nst; ++j){
+			for(int j = 0; j < Ne * N0 + 1; ++j){
 				if(j % Ne == 4 && j / Ne == ii){
-					elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + 1.1 * dx1;
+					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
 				}
-				else elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + dx1;
-				//elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y + dx1 * elementsGh_d[j].w;
+				else{
+					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + dx1;
+				}
 			}
-printf("dx w %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[35].z, elementsBOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].w);
-//printf("dx w %d %d %.20g %.20g | %g %g %g %g %g\n", id, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[35].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id].w);
+//printf("dx w %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsBOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].w);
 		}
 	
 
 	}
 }
+
+//RMSprop with hyperparmaters optimization
+__global__ void rmsprop2(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsGh_d, elements8 *elementsD_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int iid = id / (Ne * N0 + 1);	//simulation index, consisting with all the (35) gradient points, plus one point without gradient (total 36)
+	int jjd = id % (Ne * N0 + 1);	// map to 0 - 35
+
+
+	if(id < Nst && jjd < Ne * N0){
+		double dx, dx1, gx, Gx;
+
+		double eta = 0.01;
+		double eps = 1.0e-6;
+		
+		double beta = 0.9;
+
+		int nne = iid * (Ne * N0 + 1);			//corresponds to 0, 36, 72,...
+		int nne0 = nne + (Ne * N0);			//corresponds to 35, 71, 107,...
+
+		int jj = jjd % Ne;
+		int ii = jjd / Ne;
+
+//printf("nne0 %d %d %d %d %d %d\n", id, iid, jjd, nne0, jj, ii);
+
+		if(jj == 0){
+			dx = elementsL_d[id * N0 + ii].P;
+			gx = elementsD_d[nne0 * N0 + ii].P;
+			Gx = beta * elementsG_d[id * N0 + ii].P + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].P = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].P;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].P = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				if(j % Ne == 0 && j / Ne == ii){
+					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + 1.1 * dx1;
+				}
+				else{
+					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + dx1;
+				}
+			}
+//printf("dx P %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].z, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].P);
+		}
+		if(jj == 1){
+			dx = elementsL_d[id * N0 + ii].T;
+			gx = elementsD_d[nne0 * N0 + ii].T;
+			Gx = beta * elementsG_d[id * N0 + ii].T + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].T = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].T;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].T = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				if(j % Ne == 1 && j / Ne == ii){
+					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + 1.1 * dx1;
+				}
+				else{
+					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + dx1;
+				}
+			}
+//printf("dx T %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].T);
+		}
+		if(jj == 2){
+			dx = elementsL_d[id * N0 + ii].m;
+			gx = elementsD_d[nne0 * N0 + ii].m;
+			Gx = beta * elementsG_d[id * N0 + ii].m + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].m = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].m;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].m = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				if(j % Ne == 2 && j / Ne == ii){
+					elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + 1.1 * dx1;
+				}
+				else{
+					 elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + dx1;
+				}
+			}
+//printf("dx m %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[nne0].x, elementsAOld_d[id * N0 + ii].w, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].m);
+		}
+		if(jj == 3){
+			dx = elementsL_d[id * N0 + ii].e;
+			gx = elementsD_d[nne0 * N0 + ii].e;
+			Gx = beta * elementsG_d[id * N0 + ii].e + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].e = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].e;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].e = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				if(j % Ne == 3 && j / Ne == ii){
+					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
+				}
+				else{
+					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + dx1;
+				}
+			}
+//printf("dx e %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsAOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].e);
+		}
+		if(jj == 4){
+			dx = elementsL_d[id * N0 + ii].w;
+			gx = elementsD_d[nne0 * N0 + ii].w;
+			Gx = beta * elementsG_d[id * N0 + ii].w + (1.0 - beta) * gx * gx;
+			elementsG_d[id * N0 + ii].w = Gx;
+			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].w;
+			if(gx == 0.0 || dx == 0) dx1 = 0.0;
+			//elementsL_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				if(j % Ne == 4 && j / Ne == ii){
+					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
+				}
+				else{
+					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + dx1;
+				}
+			}
+//printf("dx w %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsBOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].w);
+		}
+	
+
+	}
+}
+
+
+//RMSprop with hyperparmaters optimization and svgd
+__global__ void SVGD(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsD_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	int iid = id * (Ne * N0 + 1) + (Ne * N0);			//corresponds to 35, 71,
+
+	double h = 1.0;
+	
+	if(id < Nst / (Ne * N0 + 1)){
+//printf("id %d %d\n", id, iid);
+
+
+		//set gradients to zero
+		for(int ii = 0; ii < N0; ++ii){
+			elementsD_d[iid * N0 + ii].P = 0.0;
+			elementsD_d[iid * N0 + ii].T = 0.0;
+			elementsD_d[iid * N0 + ii].m = 0.0;
+			elementsD_d[iid * N0 + ii].e = 0.0;
+			elementsD_d[iid * N0 + ii].w = 0.0;
+		}
+
+		for(int jjd = Ne * N0; jjd < Nst; jjd += Ne * N0 + 1){ 
+			//calculate kernel
+			double dsq = 0.0;
+			//P
+			//for(int ii = 0; ii < N0; ++ii){
+			//	double dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / 1.0e-5;	//scale variables distance
+			//	dsq += dd * dd;
+//printf("ddP %d %d %d %g\n", iid, jjd, ii, dd);
+			//}
+			//T
+			//for(int ii = 0; ii < N0; ++ii){
+			//	double dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / 1.0e-5;
+			//	dsq += dd * dd;
+//printf("ddT %d %d %d %g\n", iid, jjd, ii, dd);
+			//}
+			//m
+			//for(int ii = 0; ii < N0; ++ii){
+			//	double dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / 1.0e-5;
+			//	dsq += dd * dd;
+//printf("ddm %d %d %d %g\n", iid, jjd, ii, dd);
+			//}
+//printf("ddm %d %d %g\n", iid, jjd, dsq);
+			//e
+			for(int ii = 0; ii < N0; ++ii){
+				double dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / 0.1;
+				dsq += dd * dd;
+//printf("dde %d %d %d %g\n", iid, jjd, ii, dd);
+			}
+//printf("dde %d %d %g\n", iid, jjd, dsq);
+			//w
+			for(int ii = 0; ii < N0; ++ii){
+				double dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / (2.0*M_PI);
+				dsq += dd * dd;
+//printf("ddw %d %d %d %g\n", iid, jjd, ii, dd);
+			}
+//printf("ddw %d %d %g\n", iid, jjd, dsq);
+			double kij = exp(-1.0 / h * dsq);
+	//kij = 1.0;
+	//if(jjd != iid) kij = 0.0;
+
+
+printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
+
+			//calculate gradient
+
+			//gradients are P0, T0, m0, e0, w0, P1, T1, m1, e1, w1, ... Pn, Tn, mn, en, wn, NoGrad.
+			double dx, gx, dd;
+			//P
+			for(int ii = 0; ii < N0; ++ii){
+				dx = elementsL_d[jjd * N0 + ii].P;
+				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne].z) / dx;
+//if(iid == jjd && iid == 35) printf("dP %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne, dx);
+				elementsD_d[iid * N0 + ii].P += gx * kij;
+
+				//dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / 1.0e-5;
+				//elementsD_d[iid * N0 + ii].P += 2.0 / h * dd * kij;
+			}
+			//T
+			for(int ii = 0; ii < N0; ++ii){
+				dx = elementsL_d[jjd * N0 + ii].T;
+				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne + 1].z) / dx;
+//if(iid == jjd && iid == 35) printf("dT %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 1, dx);
+
+				elementsD_d[iid * N0 + ii].T += gx * kij;
+
+				//dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / 1.0e-5;
+				//elementsD_d[iid * N0 + ii].T += 2.0 / h * dd * kij;
+			}
+			//m
+			for(int ii = 0; ii < N0; ++ii){
+				dx = elementsL_d[jjd * N0 + ii].m;
+				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne + 2].z) / dx;
+//if(iid == jjd && iid == 35) printf("dm %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 2, dx);
+
+				elementsD_d[iid * N0 + ii].m += gx * kij;
+
+				//dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / 1.0e-5;
+				//elementsD_d[iid * N0 + ii].m += 2.0 / h * dd * kij;
+			}
+			//e
+			for(int ii = 0; ii < N0; ++ii){
+				dx = elementsL_d[jjd * N0 + ii].e;
+				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne + 3].z) / dx;
+//if(iid == jjd && iid == 35) printf("de %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 3, dx);
+
+				elementsD_d[iid * N0 + ii].e += gx * kij;
+
+				dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / 0.1;
+				elementsD_d[iid * N0 + ii].e += 2.0 / h * dd * kij * 10.0;
+printf("dde %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 / h * dd);
+			}
+			//w
+			for(int ii = 0; ii < N0; ++ii){
+				dx = elementsL_d[jjd * N0 + ii].w;
+				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne + 4].z) / dx;
+//if(iid == jjd && iid == 35) printf("dw %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 4, dx);
+
+				elementsD_d[iid * N0 + ii].w += gx * kij;
+
+				dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / (2.0 * M_PI);
+				elementsD_d[iid * N0 + ii].w += 2.0 / h * dd * kij * 10.0;
+printf("ddw %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 / h * dd);
+			}
+		}
+	
+		for(int ii = 0; ii < N0; ++ii){
+			elementsD_d[iid * N0 + ii].P /= Nst / double(Ne * N0 + 1);
+			elementsD_d[iid * N0 + ii].T /= Nst / double(Ne * N0 + 1);
+			elementsD_d[iid * N0 + ii].m /= Nst / double(Ne * N0 + 1);
+			elementsD_d[iid * N0 + ii].e /= Nst / double(Ne * N0 + 1);
+			elementsD_d[iid * N0 + ii].w /= Nst / double(Ne * N0 + 1);
+		}
+
+	}
+}
+
 
 //adamW
 __global__ void adam(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsD_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
@@ -1448,75 +1690,132 @@ printf("min %d %d %g %g \n", i, imin, min, elementsP_d[i].z);
 }
 
 
+//This kernel modifies the non-gradient simulations with random numbers. Used to initialize multiple gradient runs.
+__global__ void rmsPropRand(curandState *random_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, const int N0, const int Ne, const int Nst){
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < Nst / (Ne * N0 + 1)){
+		
+		int iid = id * (Ne * N0 + 1);			//corresponds to 0, 36, 72,...
+
+		curandState random;
+		random = random_d[id];
+		double rd;
+
+		for(int ii = 0; ii < N0; ++ii){
+			if(Ne > 0){
+				rd = curand_normal(&random);
+				elementsTOld_d[iid * N0 + ii].z += rd * elementsL_d[iid * N0 + ii].P;       //scale to standard deviation of tuning length
+			}
+			if(Ne > 1){
+				rd = curand_normal(&random);
+				elementsTOld_d[iid * N0 + ii].x += rd * elementsL_d[iid * N0 + ii].T;
+			}
+			if(Ne > 2){
+				rd = curand_normal(&random);
+				elementsAOld_d[iid * N0 + ii].w += rd * elementsL_d[iid * N0 + ii].m;
+			}
+			if(Ne > 3){
+				rd = curand_normal(&random);
+				elementsAOld_d[iid * N0 + ii].y += rd * elementsL_d[iid * N0 + ii].e;
+			}
+			if(Ne > 4){
+				rd = curand_normal(&random);
+				elementsBOld_d[iid * N0 + ii].y += rd * elementsL_d[iid * N0 + ii].w;
+			}
+		}
+
+		for(int j = 0; j < Ne * N0 + 1; ++j){
+			for(int ii = 0; ii < N0; ++ii){
+				elementsTOld_d[(j + iid) * N0 + ii].z = elementsTOld_d[iid * N0 + ii].z; //P
+				elementsTOld_d[(j + iid) * N0 + ii].x = elementsTOld_d[iid * N0 + ii].x; //T
+				elementsAOld_d[(j + iid) * N0 + ii].w = elementsAOld_d[iid * N0 + ii].w; //m
+				elementsAOld_d[(j + iid) * N0 + ii].y = elementsAOld_d[iid * N0 + ii].y; //e
+				elementsBOld_d[(j + iid) * N0 + ii].y = elementsBOld_d[iid * N0 + ii].y; //w
+			}
+		}
+//printf("dh P %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].P, elementsTOld_d[id * N0 + ii].z);
+		random_d[id] = random;
+	}
+}
+
 __global__ void tuneHyperParameters(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
-	if(id < Nst -1){
+	int iid = id / (Ne * N0 + 1);	//simulation index, consisting with all the (35) gradient points, plus one point without gradient (total 36)
+	int jjd = id % (Ne * N0 + 1);	// map to 0 - 35
 
-		int jj = id % Ne;
-		int ii = id / Ne;
+	if(id < Nst && jjd < Ne * N0){
+
+		int nne = iid * (Ne * N0 + 1);			//corresponds to 0, 36, 72,...
+		int nne0 = nne + (Ne * N0);			//corresponds to 35, 71, 107,...
+
+		int jj = jjd % Ne;
+		int ii = jjd / Ne;
+
 		if(jj == 0){
-			if(elementsP_d[id].z < elementsP_d[35].z){
+			if(elementsP_d[id].z < elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].P *= 1.1;
 			}
-			if(elementsP_d[id].z > elementsP_d[35].z){
+			if(elementsP_d[id].z > elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].P *= 0.9;
 			}
-			for(int j = 0; j < Nst; ++j){
-				elementsTOld_d[j * N0 + ii].z = elementsTOld_d[35 * N0 + ii].z;
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z;
 			}
-printf("dh P %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].P, elementsTOld_d[id * N0 + ii].z);
+//printf("dh P %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].P, elementsTOld_d[id * N0 + ii].z);
 		}
 		if(jj == 1){
-			if(elementsP_d[id].z < elementsP_d[35].z){
+			if(elementsP_d[id].z < elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].T *= 1.1;
 			}
-			if(elementsP_d[id].z > elementsP_d[35].z){
+			if(elementsP_d[id].z > elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].T *= 0.9;
 			}
-			for(int j = 0; j < Nst; ++j){
-				elementsTOld_d[j * N0 + ii].x = elementsTOld_d[35 * N0 + ii].x;
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x;
 			}
-printf("dh T %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].T, elementsTOld_d[id * N0 + ii].x);
+//printf("dh T %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].T, elementsTOld_d[id * N0 + ii].x);
 		}
 		if(jj == 2){
-			if(elementsP_d[id].z < elementsP_d[35].z){
+			if(elementsP_d[id].z < elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].m *= 1.1;
 			}
-			if(elementsP_d[id].z > elementsP_d[35].z){
+			if(elementsP_d[id].z > elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].m *= 0.9;
 			}
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].w = elementsAOld_d[35 * N0 + ii].w;
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w;
 			}
-printf("dh m %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].m, elementsAOld_d[id * N0 + ii].w);
+//printf("dh m %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].m, elementsAOld_d[id * N0 + ii].w);
 		}
 		if(jj == 3){
-			if(elementsP_d[id].z < elementsP_d[35].z){
+			if(elementsP_d[id].z < elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].e *= 1.1;
 			}
-			if(elementsP_d[id].z > elementsP_d[35].z){
+			if(elementsP_d[id].z > elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].e *= 0.9;
 			}
-			for(int j = 0; j < Nst; ++j){
-				elementsAOld_d[j * N0 + ii].y = elementsAOld_d[35 * N0 + ii].y;
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y;
 			}
-printf("dh e %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].e, elementsAOld_d[id * N0 + ii].y);
+//printf("dh e %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].e, elementsAOld_d[id * N0 + ii].y);
 		}
 		if(jj == 4){
-			if(elementsP_d[id].z < elementsP_d[35].z){
+			if(elementsP_d[id].z < elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].w *= 1.1;
 			}
-			if(elementsP_d[id].z > elementsP_d[35].z){
+			if(elementsP_d[id].z > elementsP_d[nne0].z){
 				elementsGh_d[id * N0 + ii].w *= 0.9;
 			}
-			for(int j = 0; j < Nst; ++j){
-				elementsBOld_d[j * N0 + ii].y = elementsBOld_d[35 * N0 + ii].y;
+			for(int j = 0; j < Ne * N0 + 1; ++j){
+				elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y;
 			}
-printf("dh w %d %d %.20g %.20g | %g %g\n", id, ii, 2.0 * elementsP_d[35].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].w, elementsBOld_d[id * N0 + ii].y);
+//printf("dh w %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].w, elementsBOld_d[id * N0 + ii].y);
 		}
-		elementsP_d[id].z = elementsP_d[35].z;
+		elementsP_d[id].z = elementsP_d[nne0].z;
 
 	}
 }
@@ -1859,6 +2158,10 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 		double eb = 0.05;    //range of e in stretch move
 		double sc = 0.0;    //scaling factor for external update lengths
 
+
+		int jjd = id % (ne * N0 + 1);   // map to 0 - 35
+
+
 #if def_TTV == 2
 Msun = 0.0;
 #endif
@@ -1993,9 +2296,9 @@ Msun = 0.0;
 				P += P0 * rd;
 
 				P += elementsL_d[st0 * N0 + ii].P * sc;
-				if(EE == 5 && id / ne == ii && id % ne == 0) {
+				if(EE == 5 && jjd / ne == ii && jjd % ne == 0) {
 					 P += elementsL_d[st0 * N0 + ii].P;
-printf("GRAD P %d %d %d %d\n", id, ii, id / ne, id % ne);
+//printf("GRAD P %d %d %d %d %d %.20g\n", id, jjd, ii, jjd / ne, jjd % ne, P);
 				}
 			}
 //printf("ModifyA %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g | %g\n", ii, m, r, P, e, inc, Omega, w, T, a, z);
@@ -2008,9 +2311,9 @@ printf("GRAD P %d %d %d %d\n", id, ii, id / ne, id % ne);
 				m += m0 * rd;
 
 				m += elementsL_d[st0 * N0 + ii].m * sc;
-				if(EE == 5 && id / ne == ii && id % ne == 2) {
+				if(EE == 5 && jjd / ne == ii && jjd % ne == 2) {
 					 m += elementsL_d[st0 * N0 + ii].m;
-printf("GRAD m %d %d %d %d\n", id, ii, id / ne, id % ne);
+//printf("GRAD m %d %d %d %d %d %.20g\n", id, jjd, ii, jjd / ne, jjd % ne, m);
 				}
 			}
 			//Jacoby mass
@@ -2061,9 +2364,9 @@ printf("GRAD m %d %d %d %d\n", id, ii, id / ne, id % ne);
 				e += e0 * rd;
 
 				e += elementsL_d[st0 * N0 + ii].e * sc;
-				if(EE == 5 && id / ne == ii && id % ne == 3) {
+				if(EE == 5 && jjd / ne == ii && jjd % ne == 3) {
 					 e += elementsL_d[st0 * N0 + ii].e;
-printf("GRAD e %d %d %d %d\n", id, ii, id / ne, id % ne);
+//printf("GRAD e %d %d %d %d %d %.20g\n", id, jjd, ii, jjd / ne, jjd % ne, e);
 				}
 			}
 			if(ne > 4){
@@ -2073,9 +2376,9 @@ printf("GRAD e %d %d %d %d\n", id, ii, id / ne, id % ne);
 				w += w0 * rd;
 
 				w += elementsL_d[st0 * N0 + ii].w * sc;
-				if(EE == 5 && id / ne == ii && id % ne == 4) {
+				if(EE == 5 && jjd / ne == ii && jjd % ne == 4) {
 					 w += elementsL_d[st0 * N0 + ii].w;
-printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
+//printf("GRAD w %d %d %d %d %d %.20g\n", id, jjd, ii, jjd / ne, jjd % ne, w);
 				}
 			}
 
@@ -2141,9 +2444,9 @@ printf("GRAD w %d %d %d %d\n", id, ii, id / ne, id % ne);
 
 				T += elementsL_d[st0 * N0 + ii].T * sc;
 				//M += z * (M1 - M2);
-				if(EE == 5 && id / ne == ii && id % ne == 1) {
+				if(EE == 5 && jjd / ne == ii && jjd % ne == 1) {
 					 T += elementsL_d[st0 * N0 + ii].T;
-printf("GRAD T %d %d %d %d\n", id, ii, id / ne, id % ne);
+//printf("GRAD T %d %d %d %d %d %.20g\n", id, jjd, ii, jjd / ne, jjd % ne, T);
 				}
 			}
 			
@@ -2269,7 +2572,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 			elementsT_d[st0 * N0 + ii].x = T;
 			elementsSpin_d[st0 * N0 + ii].y = Sy;
 //printf("MJ %d %.20g %d %d %d\n", st0 * N0 + ii, a, st0, st1, st2);
-//printf("ModifyC %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g| %g\n", ii, m, r, P, e, inc, Omega, w, T, a, M, z);
+//printf("ModifyC %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g| %g\n", id, jjd, ii, m, r, P, e, inc, Omega, w, T, a, M, z);
 
 			//Convert to Cartesian Coordinates
 			
@@ -2336,7 +2639,7 @@ if(ii == 0){
 //printf("ModifyD %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", ii, x4i.w, v4i.w, x4i.x, x4i.y, x4i.z, v4i.x, v4i.y, v4i.z);
 
 		}// end of loop around planets
-		 random_d[id] = random;
+		random_d[id] = random;
 	}
 }
 

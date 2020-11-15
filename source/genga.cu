@@ -167,10 +167,15 @@ if(ittv % MCMC_NQ == 0){
 //printf("-----\n");
   #endif
   #if MCMC_BLOCK == 5
+	//with hyperparameter optimization
 	//periodic line search
 	//if(ittv == 0 || ittv % 50 == 1) setHyperParameters <<< (D.NT + 127) / 128, 128 >>> (D.elementsGh_d, D.NT, D.N_h[0], D.Nst);
 	//hypertune
-	if(ittv == 0) setHyperParameters <<< (D.NT + 127) / 128, 128 >>> (D.elementsGh_d, D.NT, D.N_h[0], D.Nst);
+	if(ittv == 0){
+		setHyperParameters <<< (D.NT + 127) / 128, 128 >>> (D.elementsGh_d, D.NT, D.N_h[0], D.Nst);
+		//modify initial values of each gradient simulation block with normal random numbers
+		rmsPropRand <<< (D.Nst / (D.N_h[0] * D.P.mcmcNE + 1) + 127) / 128  ,128 >>> (D.random_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+	}
 
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
@@ -182,7 +187,7 @@ if(ittv % MCMC_NQ == 0){
 	//periodic line search
 	//if((ittv > 0 && ittv % 50 == 2)  ||  ittv == 2) findMin <<<1, 1>>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsGh_d, D.elementsP_d, D.Nst, D.N_h[0]);
 	
-	if(ittv % 2 == 0 )D.modifyElementsCall(ittv, 5);
+	if(ittv % 2 == 0 )D.modifyElementsCall(ittv, 5);  //compute gradients
 	if(ittv % 2 == 1 )D.modifyElementsCall(ittv, -1); //no update
 
 
@@ -190,7 +195,10 @@ if(ittv % MCMC_NQ == 0){
 
 		//Normalize <<< (D.NT + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsMean_d, D.elementsVar_d, D.NT,ittv);
 
-		rmsprop <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
+		SVGD <<< (D.Nst / (D.N_h[0] * D.P.mcmcNE + 1) + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsD_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+		rmsprop2 <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsD_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+
+		//rmsprop <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
 		//adam <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsD_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);
 		//deNormalize <<< (D.NT + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsMean_d, D.elementsVar_d, D.NT,ittv);
 

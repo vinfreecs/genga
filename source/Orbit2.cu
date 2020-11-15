@@ -517,10 +517,12 @@ __host__ int Data::readMCMC_COV(){
 			fscanf(COVfile, "%d",&jj);
 			fscanf(COVfile, "%lf",&elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
 //printf("MCMCL %d %d %d %g\n", i, i % N_h[0], j, elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
-			if(ii != (i % (N_h[0] * MCMC_NCOV)) || jj != j){
-				fprintf(masterfile, "Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
-				printf("Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
-				return 0;
+			if(MCMC_NCOV != 0){
+				if(ii != (i % (N_h[0] * MCMC_NCOV)) || jj != j){
+					fprintf(masterfile, "Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
+					printf("Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
+					return 0;
+				}
 			}
 		}
 	}
