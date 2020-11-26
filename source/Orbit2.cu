@@ -1169,11 +1169,11 @@ __host__ int Data::readic(int st){
 	}
 	else{
 #if def_TTV > 0
-	printf("Restart for TTV not possible\n");
-	return 0;
+		printf("Restart for TTV not possible\n");
+		return 0;
 
 #endif
-	//read from restart time step
+		//read from restart time step
 		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
 		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 		double Et = atof(Ets);
@@ -1184,7 +1184,7 @@ __host__ int Data::readic(int st){
 			if(P.FormatT == 0) fscanf (infile, "%lf",&time);
 			if(P.FormatT == 1){
 				fscanf (infile, "%lf",&time);
-				while(time < Et){
+				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
 					for(int j = 0; j < 20; ++j){
 						fscanf (infile, "%lf",&skip);
@@ -1257,7 +1257,7 @@ __host__ int Data::readic(int st){
 	
 				//skip previous time steps
 				fscanf (infile, "%lf",&time);
-				while(time < Et){
+				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
 					for(int j = 0; j < 20; ++j){
 						fscanf (infile, "%lf",&skip);

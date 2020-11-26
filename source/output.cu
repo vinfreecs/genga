@@ -229,8 +229,12 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 				}
 			}
-			if(time > ict_h[st]) outputfile = fopen(outputfilename, "a");
-			else outputfile = fopen(outputfilename, "w");
+			if((time > ict_h[st] && idt_h[st] > 0.0) || (time < ict_h[st] && idt_h[st] < 0.0)){
+				outputfile = fopen(outputfilename, "a");
+			}
+			else{
+				outputfile = fopen(outputfilename, "w");
+			}
 		}
 #if def_TTV == 0
 		if(Nst == 1 || P.FormatS == 1) index = index_h[j];
@@ -505,7 +509,6 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}			
 		}
 //printf("Print Output2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
-
 		if(P.FormatP == 1){
 			if(irregular == 2){
 				sprintf(GSF[st].outputfilename,"OutCollision.dat");
@@ -579,7 +582,6 @@ __host__ void Data::CoordinateOutput(int irregular){
 				}
 			}
 		}
-
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
 			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 

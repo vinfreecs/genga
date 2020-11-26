@@ -310,6 +310,8 @@ Here all time steps are written to the same file, containing all time steps and 
 Here all particles are written to different files, containing all time steps. 
 ### FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 1: Out<name>_<output step>.dat
 Here the difference is that the output files are not named after the time step, but the output step. When the simulation is interrupted at a time step in between of two output steps, then a backup file 'Outbackup<name>_<time step>.dat' is created. This backupstep step can be read by the restart option -R -1. To restart from a nomrmal putput file, the real time step, and not the output step must be chosen. 
+### FormatT = 0, and FormatP = 0
+This option is not possible, it is equivalent to FormatT = 1 and FormatP = 0
 
 
 ## The Energy output file: Energy<name>.dat

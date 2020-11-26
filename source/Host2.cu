@@ -2186,7 +2186,7 @@ __host__ int Host::icSize(int st){
 			}
 			
 		}
-		if(P.FormatT == 1 && time > Et) break;
+		if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))) break;
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
 			if(P.FormatP == 1){ // All particles in one time file
