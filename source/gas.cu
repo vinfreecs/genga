@@ -335,18 +335,11 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	double Msun = Msun_d[st].x;
 	double U = 0.0;
 
-	int ip, jp0, jp1;
-	double zz00, zz01, zz10, zz11, dr00, dr01, dr10, dr11, drtotal;
-	double a_r_t0, a_z_t0, v_kep, eta, v_gas, rho;
 	double3 v_rel3;
-	double v_rel_r, v_rel_th, v_rel;
+	double v_rel_r, v_rel_th;
 	double big = 1.0e7;
 
-	double h, rr0, rr1, zh;
-
 	double depfac = exp(-dTime/(dTau_diss));
-	double Sigma;
-
 
 	double4 x4;
 	double4 v4;
@@ -382,16 +375,16 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	
 	if(id < N + Nstart && r1 > 0.1 && r1 < 35.0 && x4.z/r1 < 1.5){ //otherwise there is no gas
 
-		h = def_h_1 * r1 * pow(r1, 0.25);
-		Sigma = G_Sigma_10 / r1;
+		double h = def_h_1 * r1 * pow(r1, 0.25);
+		double Sigma = G_Sigma_10 / r1;
 		if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
 
 		Sigma *= depfac;
 //if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
 
-		ip = floor(10*r1);
+		int ip = floor(10*r1);
 
-		zh = x4.z / h;
+		double zh = x4.z / h;
 
 		double m = x4.w;
 		if(m == 0.0) m = def_MgasSmall;
@@ -406,33 +399,32 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				if(G_alpha == 2) a_r *= log(10.0 * r1);
 			}
 			else{
-				rr0 = GasDisk_d[ip - 1].z;
-				rr1 = GasDisk_d[ip].z;
+				double rr0 = GasDisk_d[ip - 1].z;
+				double rr1 = GasDisk_d[ip].z;
 
-				jp0 = floor(fabs(x4.z)/(rr0 * 0.03));
-				jp1 = floor(fabs(x4.z)/(rr1 * 0.03));
+				int jp0 = floor(fabs(x4.z)/(rr0 * 0.03));
+				int jp1 = floor(fabs(x4.z)/(rr1 * 0.03));
 
-				zz00 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].z;
-				zz01 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].z;
-				zz10 = GasAcc_d[ip * def_Gasnz_p + jp1].z;
-				zz11 = GasAcc_d[ip * def_Gasnz_p + jp1 + 1].z;
+				double zz00 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].z;
+				double zz01 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].z;
+				double zz10 = GasAcc_d[ip * def_Gasnz_p + jp1].z;
+				double zz11 = GasAcc_d[ip * def_Gasnz_p + jp1 + 1].z;
 
-
-				dr00 = __dmul_rn((x4.z - zz00) , (x4.z - zz00)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
-				dr01 = __dmul_rn((x4.z - zz01) , (x4.z - zz01)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
-				dr10 = __dmul_rn((x4.z - zz10) , (x4.z - zz10)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
-				dr11 = __dmul_rn((x4.z - zz11) , (x4.z - zz11)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
+				double dr00 = __dmul_rn((x4.z - zz00) , (x4.z - zz00)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
+				double dr01 = __dmul_rn((x4.z - zz01) , (x4.z - zz01)) + __dmul_rn((r1 - rr0) , (r1 - rr0));
+				double dr10 = __dmul_rn((x4.z - zz10) , (x4.z - zz10)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
+				double dr11 = __dmul_rn((x4.z - zz11) , (x4.z - zz11)) + __dmul_rn((r1 - rr1) , (r1 - rr1));
 				
 				dr00 = fmin(1.0/sqrt(dr00), big);
 				dr01 = fmin(1.0/sqrt(dr01), big);
 				dr10 = fmin(1.0/sqrt(dr10), big);
 				dr11 = fmin(1.0/sqrt(dr11), big);
-				drtotal = dr00 + dr01 + dr10 + dr11;
+				double drtotal = dr00 + dr01 + dr10 + dr11;
 
 
-				a_r_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].x * dr11;
+				double a_r_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].x * dr11;
 
-				a_z_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].y * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].y * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].y * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].y * dr11;
+				double a_z_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].y * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].y * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].y * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].y * dr11;
 				a_r_t0 /= drtotal;
 				a_z_t0 /= drtotal;
 
@@ -469,14 +461,19 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				Soft = v4.w;
 
 			}
+			
+			//vKep
+			double v_kep = 0.0;
+			if(UsegasDrag > 0 || UsegasTidalDamping > 0){
+				v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
+			}
 	
 			//gas drag
 			if(UsegasDrag == 1 || (UsegasDrag == 2 && m < Mgiant)){
-				v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
-				eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
-				v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
+				double eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
+				double v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
-				rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
+				double rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
 				v_rel3.x = v4.x + v_gas * x4.y / r1; 
 				v_rel3.y = v4.y - v_gas * x4.x / r1;
 				v_rel3.z = v4.z;
@@ -484,7 +481,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
 				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 				
-				v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
+				double v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 				v_rel = sqrt(v_rel);
 				if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
 				else v_rel = 0.0;
@@ -499,7 +496,6 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 				v_rel3.x = v4.x + v_kep * x4.y / r1;
 				v_rel3.y = v4.y - v_kep * x4.x / r1;
 				v_rel3.z = v4.z;
-
 				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
 				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 
@@ -580,13 +576,8 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 	double Msun = Msun_d[st].x;
 	double U = 0.0;
 
-	double v_kep, eta, v_gas, rho;
 	double3 v_rel3;
-	double v_rel_r, v_rel_th, v_rel;
-
-	double h, zh;
-	double Sigma;
-
+	double v_rel_r, v_rel_th;
 
 	double4 x4;
 	double4 v4;
@@ -635,13 +626,13 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 		double Sigma1 = (GasData1.z - GasData0.z) * tr + GasData0.z;
 		double h1 = (GasData1.w - GasData0.w) * tr + GasData0.w;
 		double tt = (dTime - GasDatatime.x) / (GasDatatime.y - GasDatatime.x);
-		Sigma = (Sigma1 - Sigma0) * tt + Sigma0;
+		double Sigma = (Sigma1 - Sigma0) * tt + Sigma0;
 		Sigma *= 1.49598*1.49598/1.98892*1.0e-7;
-		h = ((h1 - h0) * tt + h0) * r1;
+		double h = ((h1 - h0) * tt + h0) * r1;
 
 //if(id < 100) printf("%d %g %g %g %g %g\n", id, r1, Sigma, h, GasData1.x, GasData0.x);
 
-		zh = x4.z / h;
+		double zh = x4.z / h;
 		double G_alpha = 1.0;
 
 		double m = x4.w;
@@ -669,13 +660,18 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 
 			}
 
+			//vKep
+			double v_kep = 0.0;
+			if(UsegasDrag > 0 || UsegasTidalDamping > 0){
+				v_kep = sqrt(Msun * def_ksq / r1 - a_r * r1); 
+			}
+
 			//gas drag
 			if(UsegasDrag == 1 || (UsegasDrag == 2 && m < Mgiant)){
-				v_kep = sqrt(Msun * def_ksq / r1); 
-				eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
-				v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
+				double eta = 0.5 * ((G_alpha + 1.75) * h * h + 0.5 * x4.z * x4.z) / (r1 * r1);
+				double v_gas = v_kep * (1.0 - eta);	//Change that to v_kep * sqrt(1.0 - 2.0 * eta);
 
-				rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
+				double rho = facrho * Sigma / h * exp(-0.5 * zh * zh);
 				v_rel3.x = v4.x + v_gas * x4.y / r1; 
 				v_rel3.y = v4.y - v_gas * x4.x / r1;
 				v_rel3.z = v4.z;
@@ -683,7 +679,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 				v_rel_r = (x4.x * v_rel3.x + x4.y * v_rel3.y) / r1;
 				v_rel_th = (x4.x * v_rel3.y - x4.y * v_rel3.x) / r1;
 				
-				v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
+				double v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 				v_rel = sqrt(v_rel);
 				if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
 				else v_rel = 0.0;
