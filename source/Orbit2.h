@@ -240,7 +240,6 @@ public:
 	__host__ int step_small(int);
 	__host__ int step_M(int);
 	__host__ int step_MSimple();
-	__host__ int step_BS();
 	
 	__host__ void comCall(const int);
 	__host__ void HCCall(const double);

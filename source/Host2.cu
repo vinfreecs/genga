@@ -2729,6 +2729,8 @@ __host__ int Host::readTransits(){
 	}
 	++n;
 	fclose(Transitfile);
+
+	// read now file 
 	Transitfile = fopen(P.Transitsfilename, "r");
 	
 	for(int i = 0; i < NconstT; ++i){

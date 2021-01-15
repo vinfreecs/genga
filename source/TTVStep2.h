@@ -2161,10 +2161,6 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 
 		int jjd = id % (ne * N0 + 1);   // map to 0 - 35
 
-
-#if def_TTV == 2
-Msun = 0.0;
-#endif
 		double z = elementsP_d[id].z;
 		if(ittv % (10 * MCMC_NQ) == 0){
 			z =1.0;
@@ -2620,17 +2616,6 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 			v4i.y = t0 * (t1 * Py + t2 * Qy);
 			v4i.z = t0 * (t1 * Pz + t2 * Qz);
 			v4i.w = r;
-#if def_TTV == 2
-if(ii == 0){
-//set cenctral body to be heliocentric
-	x4i.x = 0.0;
-	x4i.y = 0.0;
-	x4i.z = 0.0;
-	v4i.x = 0.0;
-	v4i.y = 0.0;
-	v4i.z = 0.0;
-}
-#endif
 
 			x4_d[st0 * N0 + ii] = x4i;
 			v4_d[st0 * N0 + ii] = v4i;

@@ -151,12 +151,8 @@ if(ittv % MCMC_NQ == 0){
 		
 	if(ittv <= 0) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 4);
-    #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
-    #if def_TTV == 2
-	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
+	//HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
 //use the following output for longterm stability runs (from MCMC)
 //printf("----- %d %d %d\n", D.NconstT, D.Nst, D.N_h[0]);
 //cudaMemcpy(D.x4_h, D.x4_d, sizeof(double4) * D.NconstT, cudaMemcpyDeviceToHost);
@@ -205,12 +201,8 @@ if(ittv % MCMC_NQ == 0){
 		D.modifyElementsCall(ittv, -1);
 
 	}
-    #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
-    #if def_TTV == 2  
-	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
+	//HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
   #endif
   #if MCMC_BLOCK == 6
 
@@ -225,12 +217,8 @@ if(ittv % MCMC_NQ == 0){
 		D.modifyElementsCall(ittv, -1);
 	}
 
-    #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
-    #if def_TTV == 2  
-	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
+	//HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
   #endif
   #if MCMC_BLOCK == 7
 
@@ -246,12 +234,8 @@ if(ittv % MCMC_NQ == 0){
 		D.modifyElementsCall(ittv, -1);
 	}
 
-    #if def_TTV == 1 
 	HelioToDemo_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
-    #if def_TTV == 2  
-	HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
-    #endif
+	//HelioToBary_kernel <<< (D.Nst + 127) / 128, 128 >>> (D.x4_d, D.v4_d, D.NBS_d, D.Msun_h[0].x, D.Nst, D.N_h[0]);
   #endif
 	cudaMemcpy(D.elementsA_h, D.elementsA_d, sizeof(double4) * D.NconstT, cudaMemcpyDeviceToHost);
 #endif

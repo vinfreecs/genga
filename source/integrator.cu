@@ -14,11 +14,10 @@
 #include "Kick4.h"
 #include "BSA.h"
 #if def_TTV > 0
-#include "BSTTV.h"
-#include "BSTTVAll.h"
+  #include "BSTTV.h"
 #endif
 #if def_RV == 1
-#include "BSRV.h"
+  #include "BSRV.h"
 #endif
 #include "Scan.h"
 
@@ -1271,14 +1270,12 @@ __host__ void Data::firstKick_small(int noColl){
 }
 
 __host__ void Data::firstKick_M(long long ts, int noColl){
-#if def_TTV != 2
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
 	RcritM_kernel <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, ts, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1] * def_ksq, index_d, NT, Nstart);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
-#endif
 }
 
 cudaStream_t stream[12];
@@ -2663,14 +2660,4 @@ __host__ int Data::step_MSimple(){
 	
 	return 1;
 }
-
-__host__ int Data::step_BS(){
-	//this integrates all bodies, including the central star with the Bulirsh Stoer method in barycentric coordinates
-#if def_TTV == 2
-	BSTTVStepAll_kernel < 8, 8 > <<< Nst, 64 >>> (x4_d, v4_d, Transit_d, N_d, dt_d, Msun_d, index_d, time_d, idt_d, ict_d, timeStep, NBS_d, P.UseForce, P.MinMass, P.UseTestParticles, Nst, TransitTime_d, NtransitsT_d);
-#endif
-	return 1;
-}
-
-
 

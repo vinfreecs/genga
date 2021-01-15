@@ -204,7 +204,7 @@
 
 //------------------------------
 //only for TTV or RV sampling
-#define def_TTV 0			//1: to transit detection and MCMC sampling, 2: use only BS integrator
+#define def_TTV 0			//1: to transit detection and MCMC sampling
 #define def_NtransitMax 6000
 #define def_NtransitTimeMax 6000	//Maximum number of transit times per object
 //#define def_NtransitMax 20000

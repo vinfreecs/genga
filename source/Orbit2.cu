@@ -37,9 +37,6 @@ __host__ void Data::AllocateOrbit(){
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 #if def_TTV == 1
 	doTransits = 1;
-#else
-	//TTV = 0 or TTV = 2
-	doTransits = 0;
 #endif
 	
 
@@ -725,11 +722,8 @@ __host__ int Data::ic(){
 				return 0;
 			}
 			fclose(GSF[st].logfile);
-#if def_TTV != 2
 			HelioToDemo(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
-#else
-			HelioToBary(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
-#endif
+			//HelioToBary(x4_h + NBS, v4_h + NBS, Msun_h[st].x, N_h[st] + Nsmall_h[st]);
 		}
 	}
 	//Copy memory to device//
@@ -1478,7 +1472,6 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 // The zeroth body must be the cetnral star here
 __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
-#if def_TTV != 2
 	double3 xcom;
 	double3 vcom;
 	xcom.x = 0.0;
@@ -1513,18 +1506,6 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].y += vcom.y;
 		v4_h[i].z += vcom.z;
 	}
-#else
-	
-	for(int i = 0; i < N; ++i){
-		x4_h[i].x -= x4_h[0].x;
-		x4_h[i].y -= x4_h[0].y;
-		x4_h[i].z -= x4_h[0].z;
-		v4_h[i].x -= v4_h[0].x;
-		v4_h[i].y -= v4_h[0].y; 
-		v4_h[i].z -= v4_h[0].z;
-	} 
-#endif
-
 }
 
 

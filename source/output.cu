@@ -199,11 +199,8 @@ __host__ int Data::firstoutput(int irregular){
 // ***************************************
 __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double3 *spin_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
-#if def_TTV != 2
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
-#else
-	BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
-#endif
+	//BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
 
 	int index;
 	int st = 0;
