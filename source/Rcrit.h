@@ -443,7 +443,11 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 
 __host__ void Data::firstStep(int noColl){
 	if(Nst > 1){
-		firstKick_M(0, noColl);
+		#if def_TTV == 2
+
+		#else
+		  firstKick_M(0, noColl);
+		#endif
 	}
 	else{
 		if(P.UseTestParticles > 0) firstKick_small(noColl);
@@ -463,10 +467,15 @@ __host__ int Data::step(int noColl){
 	int er;
 	//Multi simulation mode
 	if(MultiSim == 1){
-		#if NoEncounters == 0
-		  er = step_M(noColl);
+		#if def_TTV == 2
+		  er = ttv_step();
 		#else
-		  er = step_MSimple();
+
+		  #if NoEncounters == 0
+		    er = step_M(noColl);
+	 	  #else
+		    er = step_MSimple();
+		  #endif
 		#endif
 		if(er == 0) return 0;
 	}

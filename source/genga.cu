@@ -129,6 +129,10 @@ for(ittv = 0; ittv < D.P.TransitSteps; ++ittv){
 	cudaMemset(D.Nencpairs_d, 0, (D.Nst + 1) * sizeof(int));
 	cudaMemset(D.TransitTime_d, 0, def_NtransitTimeMax * D.NconstT * sizeof(double));
 	cudaDeviceSynchronize();
+ #if def_TTV == 2
+	setTimeTTV_kernel <<< (D.NconstT + 127) / 128  ,128 >>>(D.time_d, D.dt_d, D.lastTransitTime_d, D.transitIndex_d, D.EpochCount_d, D.TTV_d, D.ict_h[0] * 365.25, D.idt_h[0], D.Nst, D.NconstT);
+ #endif
+
  #if def_RV > 0
 	D.RVTimeStep = 0; 
  #endif
@@ -277,13 +281,20 @@ if(ittv % MCMC_NQ == 0){
 			return 0;
 		} 
 	}
-
+ #if def_TTV == 1
 	TTVstep <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.elementsT_d, D.NT, ittv);
+ #endif
 
  #if def_RV == 1
 	RVstep <<< (D.Nst + 127) / 128, 128 >>> (D.RV_d, D.RVObs_d, D.NRVT_d, D.RVP_d, D.Nst);
  #endif
+ 
+ #if def_TTV == 1
 	TTVstep1 < HCM_Bl, HCM_Bl2, NmaxM > <<< (D.NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (D.index_d, D.TransitTime_d, D.RVP_d, D.elementsP_d, D.NtransitsT_d, D.n1_d, D.NT, D.N_h[0], D.Nst);
+ #endif
+ #if def_TTV == 2
+	TTVstepb <<< (D.Nst + 127) / 128, 128 >>> (D.elementsP_d, D.TTV_d, D.NtransitsT_d, D.EpochCount_d, D.Nst, D.N_h[0]);
+ #endif
 
 	TTVstep3 <<< (D.NT + 255) / 256, 256 >>> (D.index_d, D.elementsA_d, D.elementsB_d, D.elementsT_d, D.elementsSpin_d, D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsSpinOld_d, D.elementsP_d, D.elementsSA_d, D.elementsC_d, D.NtransitsT_d, D.Msun_d, D.elementsM_d, D.NT, D.N_h[0], D.Nst, D.P.mcmcNE);
 

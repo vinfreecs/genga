@@ -2733,11 +2733,11 @@ __host__ int Host::readTransits(){
 	// read now file 
 	Transitfile = fopen(P.Transitsfilename, "r");
 	
-	for(int i = 0; i < NconstT; ++i){
+	for(int i = 0; i < N_h[0]; ++i){
 		NtransitsTObs_h[i] = 0;
 		
 	}
-	for(int i = 0; i < def_NtransitTimeMax * NconstT; ++i){
+	for(int i = 0; i < def_NtransitTimeMax * N_h[0]; ++i){
 		TransitTimeObs_h[i].x = 0.0;
 		TransitTimeObs_h[i].y = 1.0;
 	}
@@ -2804,18 +2804,9 @@ __host__ int Host::readTransits(){
 		
 	}
 	fclose(Transitfile);
-	//copy first sub-simulation to all the others
-	for(int st = 1; st < Nst; ++st){
-		for(int i = 0; i < N_h[0]; ++i){
-			//assume that all sub simulations are of equal size
-			NtransitsTObs_h[i + st * N_h[0]] = NtransitsTObs_h[i];
-			for(int Epoch = 0; Epoch <= NtransitsTObs_h[i] + 1; ++Epoch){
-				TransitTimeObs_h[(i + st * N_h[0]) * def_NtransitTimeMax + Epoch] = TransitTimeObs_h[i * def_NtransitTimeMax + Epoch];
-			}
-		}
-	}
-	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * NconstT * sizeof(double2), cudaMemcpyHostToDevice);
-	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, NconstT * sizeof(int), cudaMemcpyHostToDevice);
+
+	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * N_h[0] * sizeof(double2), cudaMemcpyHostToDevice);
+	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, N_h[0] * sizeof(int), cudaMemcpyHostToDevice);
 	
 	return 1;
 }

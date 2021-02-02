@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.109
+#define def_Version 3.110
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -205,7 +205,7 @@
 //------------------------------
 //only for TTV or RV sampling
 #define def_TTV 0			//1: to transit detection and MCMC sampling
-#define def_NtransitMax 6000
+#define def_NtransitMax 6000		//only used in def_TTV 1
 #define def_NtransitTimeMax 6000	//Maximum number of transit times per object
 //#define def_NtransitMax 20000
 //#define def_NtransitTimeMax 2000	//Maximum number of transit times per object

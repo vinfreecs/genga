@@ -1132,8 +1132,8 @@ __host__ int Data::printTransits(){
 				double T = TransitTime_h[i * def_NtransitTimeMax + Epoch + 1]; 
 				double T1 = TransitTime_h[i * def_NtransitTimeMax + Epoch + 2];
 				double2 TObs;
-				if(EpochObs <= NtransitsTObs_h[i]){
-					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
+				if(EpochObs <= NtransitsTObs_h[i % N_h[0]]){
+					TObs = TransitTimeObs_h[(i % N_h[0]) * def_NtransitTimeMax + EpochObs + 1];
 				}
 				else{
 					TObs.x = 0.0;
@@ -1150,7 +1150,7 @@ __host__ int Data::printTransits(){
 				if(setEpoch == 0 && T != 0 && TObs.x != 0 && fabs(TObs.x - T) < fabs(TObs.x - T1)){
 //printf("***** %d %.20g %.20g %d %d\n", i, T, TObs.x, Epoch, EpochObs);
 					++EpochObs;
-					TObs = TransitTimeObs_h[i * def_NtransitTimeMax + EpochObs + 1];
+					TObs = TransitTimeObs_h[(i % N_h[0]) * def_NtransitTimeMax + EpochObs + 1];
 				}
 
 				if(fabs(TObs.x - T) < fabs(TObs.x - T1) && T != 0.0 && TObs.x != 0.0){
@@ -1176,8 +1176,8 @@ __host__ int Data::printTransits(){
 				}
 
 				++Epoch;
-				if(NtransitsTObs_h[i] >= def_NtransitTimeMax -1){
-					printf("Error: more transits than def_NtransitTimeMax for object %d: %d %d\n", i, NtransitsTObs_h[i], def_NtransitTimeMax);
+				if(NtransitsTObs_h[i % N_h[0]] >= def_NtransitTimeMax -1){
+					printf("Error: more transits than def_NtransitTimeMax for object %d: %d %d\n", i, NtransitsTObs_h[i % N_h[0]], def_NtransitTimeMax);
 					return 0;
 				}
 			}

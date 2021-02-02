@@ -133,10 +133,18 @@ public:
 	int *SymplexCount_d;
 
 	int *Ntransit_m, *Ntransit_d;		//Number of transits per time step
-	int * Transit_h, *Transit_d;		//contains indexes of transiting objects per time step
+	int *Transit_d;				//contains indexes of transiting objects per time step
 	__host__ void modifyElementsCall(int, int);
 	__host__ void BSTTVCall(int);
 	FILE *MCMCRestartFile;
+
+	//TTV2
+	double *timeold_d;
+	double *lastTransitTime_d;
+	int *transitIndex_d;
+	int2 *EpochCount_d;
+	double *TTV_d;
+
 	
 	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
@@ -240,6 +248,7 @@ public:
 	__host__ int step_small(int);
 	__host__ int step_M(int);
 	__host__ int step_MSimple();
+	__host__ int ttv_step();
 	
 	__host__ void comCall(const int);
 	__host__ void HCCall(const double);

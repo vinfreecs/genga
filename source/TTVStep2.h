@@ -143,7 +143,7 @@ __global__ void TTVstep(double *TransitTime_d, double2 *TransitTimeObs_d, int2 *
 	if(id < NT){
 		int Nt = 0;
 		int NtOld = NtransitsT_d[id].y;
-		int NtObs = NtransitsTObs_d[id];
+		int NtObs = NtransitsTObs_d[id % N_d[0]];
 //if(id <= 8) printf("NtObs %d\n", NtObs);
 		double pp = 0.0;
 		int Epoch = 0;
@@ -152,8 +152,8 @@ __global__ void TTVstep(double *TransitTime_d, double2 *TransitTimeObs_d, int2 *
 		for(int EpochObs = 0; EpochObs <= NtObs; ++EpochObs){
 			double T = TransitTime_d[id * def_NtransitTimeMax + Epoch + 1];
 			double T1 = TransitTime_d[id * def_NtransitTimeMax + Epoch + 2];	//next transit
-			double2 Tobs = TransitTimeObs_d[id * def_NtransitTimeMax + EpochObs + 1];
-//if(id % N_d[0] == 2) printf("--------- %d %.20g %.20g | %g %g %g | %d %d %d\n", id, T, Tobs.x, Tobs.x - T, Tobs.x - T1, T - Tobs.x, Epoch, EpochObs, id * def_NtransitTimeMax + Epoch + 1);
+			double2 Tobs = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax + EpochObs + 1];
+//if(id % N_d[0] == 2) printf("--------- %d %.20g %.20g %.20g | %g %g %g | %d %d %d\n", id, T, T1, Tobs.x, Tobs.x - T, Tobs.x - T1, T - Tobs.x, Epoch, EpochObs, id * def_NtransitTimeMax + Epoch + 1);
 
 			if(setEpoch == 0 && fabs(Tobs.x - T) < fabs(Tobs.x - T1) && T != 0.0 && Tobs.x != 0.0){
 				 setEpoch = 1;
@@ -164,7 +164,7 @@ __global__ void TTVstep(double *TransitTime_d, double2 *TransitTimeObs_d, int2 *
 //if(id % N_d[0] == 2) printf("********* %d %.20g %.20g %d %d\n", id, T, Tobs.x, Epoch, EpochObs);
 				++EpochObs;
 				if(EpochObs >= NtObs) break;
-				Tobs = TransitTimeObs_d[id * def_NtransitTimeMax + EpochObs + 1];
+				Tobs = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax + EpochObs + 1];
 //if(id % N_d[0] == 2) printf("********+ %d %.20g %.20g %d %d\n", id, T, Tobs.x, Epoch, EpochObs);
 			}
 
@@ -235,11 +235,11 @@ __global__ void TTVstepRefine(double *TransitTime_d, double2 *TransitTimeObs_d, 
 			for(int j = 0; j < 2; ++ j){
 
 				Nt = 0;
-				int NtObs = NtransitsTObs_d[id];
+				int NtObs = NtransitsTObs_d[id % N_d[0]];
 				pp = 0.0;
 				int Epoch = 0;
 				int setEpoch = 0;
-				double P = TransitTimeObs_d[id * def_NtransitTimeMax].y; //period
+				double P = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax].y; //period
 				for(int EpochObs = 0; EpochObs <= NtObs; ++EpochObs){
 
 					double T = TransitTime_d[id * def_NtransitTimeMax + Epoch + 1];
@@ -252,7 +252,7 @@ __global__ void TTVstepRefine(double *TransitTime_d, double2 *TransitTimeObs_d, 
 						T += d * Epoch;
 						T1 += d * Epoch;
 					}
-					double2 Tobs = TransitTimeObs_d[id * def_NtransitTimeMax + EpochObs + 1];
+					double2 Tobs = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax + EpochObs + 1];
 
 					if(setEpoch == 0 && fabs(Tobs.x - T) < fabs(Tobs.x - T1) && T != 0.0 && Tobs.x != 0.0){
 						 setEpoch = 1;
@@ -261,7 +261,7 @@ __global__ void TTVstepRefine(double *TransitTime_d, double2 *TransitTimeObs_d, 
 					if(setEpoch == 0 && T != 0 && Tobs.x != 0 && fabs(Tobs.x - T) < fabs(Tobs.x - T1)){
 						++EpochObs;
 						if(EpochObs >= NtObs) break;
-						Tobs = TransitTimeObs_d[id * def_NtransitTimeMax + EpochObs + 1];
+						Tobs = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax + EpochObs + 1];
 					}
 
 					//recheck setEpoch 
@@ -515,6 +515,36 @@ __global__ void TTVstep1(int *index_d, double *TransitTime_d, double *RVP_d, dou
 
 	}
 }
+
+
+// used for TTV = 2, instead of TTVStep  and TTVStep1
+__global__ void TTVstepb(double4 *elementsP_d, double *TTV_d, int2 *NtransitsT_d, int2 *EpochCount_d, int Nst, int N0){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+
+	if(id < Nst){
+
+		elementsP_d[id].z = 0.0;
+
+		for(int i = 0; i < N0; ++i){
+			int Nt = EpochCount_d[id * N0 + i].y;
+			NtransitsT_d[id * N0 + i].x = Nt;
+			int NtOld = NtransitsT_d[id * N0 + i].y;
+
+			double pp = TTV_d[id * N0 + i];
+			if(Nt < NtOld){
+				pp = 1.0e300; //penalty for missing transits
+printf("missing transit %d %d %d\n", id * N0 + i, Nt, NtOld);
+			}
+if(id == 1) printf("pp %d %14.8e %d %d\n", id * N0 + i, pp, Nt, NtOld);
+
+
+			elementsP_d[id].z += pp;
+		}
+	}
+}
+
 
 // ********************************************************************************************
 // This kernel performs a parallel summation of the values p*p / 2, it is also parallel for multi simulations.
@@ -3430,4 +3460,23 @@ __host__ void Data::modifyElementsCall(int ittv, int EE){
 
 }
 
+
+//For def_TTV == 2
+//set the time and timestep for a new simulation
+__global__ void setTimeTTV_kernel(double *time_d, double *dt_d, double *lastTransitTime_d, int *transitIndex_d, int2 *EpochCount_d, double *TTV_d, double time, double dt0, int Nst, int N){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id < Nst){
+		dt_d[id] = dt0 * dayUnit;
+		time_d[id] = time;
+		transitIndex_d[id] = 100000;
+	}
+	if(id < N){
+		lastTransitTime_d[id] = time - 10.0 * dt0;
+		EpochCount_d[id].x = 0;
+		EpochCount_d[id].y = 0;
+		TTV_d[id] = 0.0;
+	}
+}
 

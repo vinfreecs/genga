@@ -16,6 +16,9 @@
 #if def_TTV > 0
   #include "BSTTV.h"
 #endif
+#if def_TTV == 2
+  #include "TTVAll.h"
+#endif
 #if def_RV == 1
   #include "BSRV.h"
 #endif
@@ -2661,3 +2664,14 @@ __host__ int Data::step_MSimple(){
 	return 1;
 }
 
+#if def_TTV == 2
+__host__ int Data::ttv_step(){
+
+	int nsteps = 1;
+
+	ttv_step_kernel < 4 > <<< (Nst + 3) / 4, dim3(7, 4, 1) >>> (x4_d, v4_d, xold_d, vold_d, dt_d, idt_h[0] * dayUnit, Msun_d, N_h[0], Nst, nsteps, time_d, timeold_d, lastTransitTime_d, transitIndex_d, NtransitsT_d, TransitTime_d, TransitTimeObs_d, EpochCount_d, TTV_d);
+	
+	return 1;
+
+}
+#endif
