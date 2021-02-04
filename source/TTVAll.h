@@ -22,7 +22,7 @@ __device__ void  acc_ttv(double3 &ac, double4 &x4i, double4 &x4j, int j, int i){
 
 //ny = 4
 template <const int ny>
-__global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double dt0, double4 *Msun_d, const int N, const int Nst, const int nsteps, double *time_d, double *timeold_d, double *lastTransitTime_d, int *transitIndex_d, int2 *NtransitsT_d, double *TransitTime_d, double2 *TransitTimeObs_d, int2 *EpochCount_d, double *TTV_d){
+__global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double dt0, double4 *Msun_d, const int N, const int Nst, const int nsteps, double *time_d, double *timeold_d, double *lastTransitTime_d, int *transitIndex_d, int2 *NtransitsT_d, double *TransitTime_d, double2 *TransitTimeObs_d, int2 *EpochCount_d, double *TTV_d, const int PrintTransits){
 
 	int idx = threadIdx.x;
 
@@ -210,13 +210,15 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 					Epoch = NtransitsT_d[si * N + idx].x++;
 					EpochObs = EpochCount_d[si * N + idx].x++;
 
-					TransitTime_d[(si * N + idx) * def_NtransitTimeMax + Epoch + 1] = time;
+					if(PrintTransits > 0){
+						TransitTime_d[(si * N + idx) * def_NtransitTimeMax + Epoch + 1] = time;
+					}
 
 					double P = TransitTimeObs_d[idx * def_NtransitTimeMax].y; //period
 					
 
 					double2 TObs0 = TransitTimeObs_d[idx * def_NtransitTimeMax + EpochObs + 1];
-					double2 TObs1 = TransitTimeObs_d[idx * def_NtransitTimeMax + EpochObs + 2];
+					//double2 TObs1 = TransitTimeObs_d[idx * def_NtransitTimeMax + EpochObs + 2];
 
 //if(idx == 2) printf("Transit %d %.10g %d | %.10g %d\n", idx, time, Epoch, TObs0.x, EpochObs);
 
@@ -283,18 +285,4 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 		}
 	}
 }
-
-
-
-/*
-	double *TTV_h, *TTV_d;
-
-	//allocate data on host
-	TTV_h = (double*)malloc(N * Nst * sizeof(double));
-
-	//allocate data on the device
-	cudaMalloc((void **) &TTV_d, N * Nst * sizeof(double));
-
-	cudaMemcpy(TTV_d, TTV_h, N * Nst * sizeof(double), cudaMemcpyHostToDevice);	
-*/
 

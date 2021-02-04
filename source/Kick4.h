@@ -68,18 +68,22 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 		int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
 //printf("enc1 %d %d %d\n", i, j, Ni);
-		if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
-		Encpairs2_d[i * NencMax + Ni].y = j;
+		if(Ni >= NencMax){
+			atomicMax(&EncFlag_d[0], Ni);
+		}
+		else{
+			Encpairs2_d[i * NencMax + Ni].y = j;
+		}
 
 		if(EE == 0){
-			if(i < j){
+			if(i < j && Ni < NencMax){
 				int Ne = atomicAdd(Nencpairs_d, 1);
 				Encpairs_d[Ne].x = i;
 				Encpairs_d[Ne].y = j;
 			}
 		}
 		if(EE > 0){
-			if(i > j){
+			if(i > j && Ni < NencMax){
 				int Ne = atomicAdd(Nencpairs_d, 1);
 				Encpairs_d[Ne].x = i;
 				Encpairs_d[Ne].y = j;
@@ -119,18 +123,22 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 		int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
 //printf("enc1 %d %d %d\n", i, j, Ni);
-		if(Ni >= NencMax) atomicMax(&EncFlag_d[0], Ni);
-		Encpairs2_d[i * NencMax + Ni].y = j;
+		if(Ni >= NencMax){
+			atomicMax(&EncFlag_d[0], Ni);
+		}
+		else{
+			Encpairs2_d[i * NencMax + Ni].y = j;
+		}
 
 		if(EE == 0){
-			if(i < j){
+			if(i < j && Ni < NencMax){
 				int Ne = atomicAdd(Nencpairs_d, 1);
 				Encpairs_d[Ne].x = i;
 				Encpairs_d[Ne].y = j;
 			}
 		}
 		if(EE > 0){
-			if(i > j){
+			if(i > j && Ni < NencMax){
 				int Ne = atomicAdd(Nencpairs_d, 1);
 				Encpairs_d[Ne].x = i;
 				Encpairs_d[Ne].y = j;

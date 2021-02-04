@@ -592,6 +592,7 @@ __global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
 
 	if(id < N){
 		int NI = Encpairs2_d[id * NencMax].x;
+		NI = min(NI, NencMax);
 
 		int stop = 0;
 		while(stop == 0){
@@ -622,6 +623,7 @@ __global__ void SortSb_kernel(int *Encpairs3_d, int *Nencpairs3_d, int N, int Ne
 		int id = Encpairs3_d[idd * NencMax + 1];
 		if(id >= 0 && id < N){
 			int NI = Encpairs3_d[id * NencMax + 2];
+			NI = min(NI, NencMax);
 
 			int stop = 0;
 			while(stop == 0){
@@ -670,6 +672,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		if(x4i.w >= 0.0){
 			if(Nencpairs_d[0] > 0){
 				int NI = Encpairs2_d[id * NencMax].x;
+				NI = min(NI, NencMax);
 //if(NI > 0) printf("NI %d %d\n", id, NI);
 				double rcritvi = rcritv_d[id];
 				for(int i = 0; i < NI; ++i){
@@ -737,6 +740,7 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 			if(x4i.w >= 0.0){
 				__syncthreads();
 				int NI = Encpairs3_d[id * NencMax + 2];
+				NI = min(NI, NencMax);
 //if(NI > 0) printf("NI %d %d %d\n", idd, id, NI);
 				for(int i = 0; i < NI; ++i){
 					int jj = Encpairs3_d[id * NencMax + i + 4];
@@ -806,6 +810,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 			double4 v4i = v4_d[id];
 			if(Nencpairs_d[0] > 0){
 				int NI = Encpairs2_d[id * NencMax].x;
+				NI = min(NI, NencMax);
 				double rcritvi = rcritv_d[id];
 				for(int i = 0; i < NI; ++i){
 					int jj = Encpairs2_d[id * NencMax + i].y;

@@ -127,7 +127,9 @@ int main(int argc, char*argv[]){
 for(ittv = 0; ittv < D.P.TransitSteps; ++ittv){
 	D.time_h[0] = (D.P.tRestart + 1) * D.idt_h[0] + D.ict_h[0] * 365.25;
 	cudaMemset(D.Nencpairs_d, 0, (D.Nst + 1) * sizeof(int));
-	cudaMemset(D.TransitTime_d, 0, def_NtransitTimeMax * D.NconstT * sizeof(double));
+	if(def_TTV == 1 || D.P.PrintTransits > 0){
+		cudaMemset(D.TransitTime_d, 0, def_NtransitTimeMax * D.NconstT * sizeof(double));
+	}
 	cudaDeviceSynchronize();
  #if def_TTV == 2
 	setTimeTTV_kernel <<< (D.NconstT + 127) / 128  ,128 >>>(D.time_d, D.dt_d, D.lastTransitTime_d, D.transitIndex_d, D.EpochCount_d, D.TTV_d, D.ict_h[0] * 365.25, D.idt_h[0], D.Nst, D.NconstT);

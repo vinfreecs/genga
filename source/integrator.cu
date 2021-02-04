@@ -970,11 +970,11 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	float times;
 	float timesMin = 1000000.0f;
 
-	//limit the tuning test to 16384. More particles behave most likely the same
+	//limit the tuning test to 8192. More particles behave most likely the same
 	//This is to save some time at the beginning
 	int NN, N0, N1;
 	if(EE == 0){
-		NN = min(N_h[0], 16384);
+		NN = min(N_h[0], 8192);
 		N1 = NN;
 		N0 = 0;
 	}
@@ -1056,6 +1056,10 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	for(int i = 0; i < 3; ++i){
 		for(int j = 0; j < 4; ++j){
 			for(int k = 0; k < 9; ++k){
+	//for(int i = 0; i < 1; ++i){
+	//	for(int j = 0; j < 1; ++j){
+	//		for(int k = 0; k < 1; ++k){
+
 				int p = pp[i];
 				int tx = ttx[j];
 				int ty = tty[k];
@@ -2669,7 +2673,7 @@ __host__ int Data::ttv_step(){
 
 	int nsteps = 1;
 
-	ttv_step_kernel < 4 > <<< (Nst + 3) / 4, dim3(7, 4, 1) >>> (x4_d, v4_d, xold_d, vold_d, dt_d, idt_h[0] * dayUnit, Msun_d, N_h[0], Nst, nsteps, time_d, timeold_d, lastTransitTime_d, transitIndex_d, NtransitsT_d, TransitTime_d, TransitTimeObs_d, EpochCount_d, TTV_d);
+	ttv_step_kernel < 4 > <<< (Nst + 3) / 4, dim3(7, 4, 1) >>> (x4_d, v4_d, xold_d, vold_d, dt_d, idt_h[0] * dayUnit, Msun_d, N_h[0], Nst, nsteps, time_d, timeold_d, lastTransitTime_d, transitIndex_d, NtransitsT_d, TransitTime_d, TransitTimeObs_d, EpochCount_d, TTV_d, P.PrintTransits);
 	
 	return 1;
 

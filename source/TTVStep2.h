@@ -239,7 +239,7 @@ __global__ void TTVstepRefine(double *TransitTime_d, double2 *TransitTimeObs_d, 
 				pp = 0.0;
 				int Epoch = 0;
 				int setEpoch = 0;
-				double P = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax].y; //period
+				//double P = TransitTimeObs_d[(id % N_d[0]) * def_NtransitTimeMax].y; //period
 				for(int EpochObs = 0; EpochObs <= NtObs; ++EpochObs){
 
 					double T = TransitTime_d[id * def_NtransitTimeMax + Epoch + 1];
