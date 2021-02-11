@@ -331,7 +331,6 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	if(er == 0){
 		return 0;
 	}
-
 	if(doTransits == 0 && timeStep == P.tRestart + 1){
 		if(P.ei == 0 || (P.ei != 0 && timeStep % P.ei != 0)){
 			firstInfoB();

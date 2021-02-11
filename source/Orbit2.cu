@@ -35,9 +35,6 @@ __host__ void Data::AllocateOrbit(){
 	timestepBufferIrr = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
-#if def_TTV == 1
-	doTransits = 1;
-#endif
 	
 
 #if def_TTV > 0
@@ -587,6 +584,10 @@ __global__ void randomInit_kernel(curandState *random_d, int N){
 //This function initializes the data
 __host__ int Data::init(){
 
+	doTransits = 0;
+#if def_TTV == 1
+	doTransits = 1;
+#endif
 	Ncoll_m[0] = 0;
 	Ntransit_m[0] = 0;
 	NWriteEnc_m[0] = 0;
