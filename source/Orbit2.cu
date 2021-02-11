@@ -265,8 +265,14 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	elementsSA_d = NULL;
 	elementsI_d = NULL;
 	elementsM_d = NULL;
+	elementsG_d = NULL;
+	elementsGh_d = NULL;
+	elementsD_d = NULL;
+	elementsMean_d = NULL;
+	elementsVar_d = NULL;
 	elementsCOV_d = NULL;
 	Symplex_d = NULL;
+	SymplexCount_d = NULL;
 	elementsStep_d = NULL;
 	elementsHist_d = NULL;
 #endif
@@ -543,12 +549,13 @@ __host__ int Data::readMCMC_COV(){
 			fscanf(COVfile, "%d",&jj);
 			fscanf(COVfile, "%lf",&elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
 //printf("MCMCL %d %d %d %g\n", i, i % N_h[0], j, elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
-			if(MCMC_NCOV != 0){
-				if(ii != (i % (N_h[0] * MCMC_NCOV)) || jj != j){
-					fprintf(masterfile, "Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
-					printf("Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, i % (N_h[0] * MCMC_NCOV), jj, j);
-					return 0;
-				}
+			int iii = 0;
+			int NM = N_h[0] * MCMC_NCOV;
+			if(NM != 0) iii = i % NM;
+			if(ii != iii || jj != j){
+				fprintf(masterfile, "Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, iii, jj, j);
+				printf("Error: MCMCL.dat file not the correct size %d %d %d %d\n", ii, iii, jj, j);
+				return 0;
 			}
 		}
 	}

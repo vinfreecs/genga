@@ -4,35 +4,33 @@
 
 
 __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int NconstT, int nn){
-	//volatile double rsq, ir, ir3, s;
-	double rsq, ir, ir3, s;
-	double3 r3ij;
-	double rcritv;
+	if(i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+		double rsq, ir, ir3, s;
+		double3 r3ij;
+		double rcritv;
 
-	//ignore ghost particles
-	bool bm = (x4i.w >= 0.0 && x4j.w >= 0.0) ? true : false;
+		r3ij.x = x4j.x - x4i.x;
+		r3ij.y = x4j.y - x4i.y;
+		r3ij.z = x4j.z - x4i.z;
 
-	r3ij.x = x4j.x - x4i.x;
-	r3ij.y = x4j.y - x4i.y;
-	r3ij.z = x4j.z - x4i.z;
-
-	rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-	rcritv = fmax(rcritvi, rcritvj);
-	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
+		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+		rcritv = fmax(rcritvi, rcritvj);
+		bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 //	long long int clij = (long long int)(NconstT) * (long long int)(i - nn) + j;
 //if (cl && i == 319) printf("cl %d %d %d %d %d %lld %g %g %g %g\n", nn, i, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
 //if (cl && i != j) printf("cl %d %d %d %d %d %lld %g %g %g %g\n", nn, i, i - nn, j, NconstT, clij, x4i.x, x4j.x, x4i.w, x4j.w);
 //	Encpairsb_d[clij] = cl;
 
-	ir = 1.0/sqrt(rsq);
-	ir3 = ir*ir*ir;
+		ir = 1.0/sqrt(rsq);
+		ir3 = ir*ir*ir;
 
-	s = (x4j.w * ir3) * (!cl) * bm * (i != j);
+		s = (x4j.w * ir3) * (!cl);
 
-	ac.x += __dmul_rn(r3ij.x, s);
-	ac.y += __dmul_rn(r3ij.y, s);
-	ac.z += __dmul_rn(r3ij.z, s);
+		ac.x += __dmul_rn(r3ij.x, s);
+		ac.y += __dmul_rn(r3ij.y, s);
+		ac.z += __dmul_rn(r3ij.z, s);
 //printf("%d %d %.20g %.20g %.20g\n", i, j, __dmul_rn(r3ij.x, s), __dmul_rn(r3ij.y, s), __dmul_rn(r3ij.z, s));
+	}
 }
 
 
@@ -47,111 +45,107 @@ __device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, 
 //****************************************
 __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatile double rcritvi, volatile double rcritvj, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int j, const int i, const int NencMax, const int EE){
 
-	double3 r3ij;
+	if(i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+		double3 r3ij;
 
-	//ignore ghost particles
-	bool bm = (x4i.w >= 0.0 && x4j.w >= 0.0 && (i != j)) ? true : false;
+		r3ij.x = x4j.x - x4i.x;
+		r3ij.y = x4j.y - x4i.y;
+		r3ij.z = x4j.z - x4i.z;
 
-	r3ij.x = x4j.x - x4i.x;
-	r3ij.y = x4j.y - x4i.y;
-	r3ij.z = x4j.z - x4i.z;
+		double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+		double rcritv = fmax(rcritvi, rcritvj);
 
-	double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-	double rcritv = fmax(rcritvi, rcritvj);
+		double ir = 1.0/sqrt(rsq);
+		double ir3 = ir*ir*ir;
 
-	double ir = 1.0/sqrt(rsq);
-	double ir3 = ir*ir*ir;
+		double s = x4j.w * ir3;
 
-	double s = x4j.w * ir3 * bm;
+		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
 
-	if(rsq < def_pc * rcritv * rcritv && bm && (x4i.w > 0.0 || x4j.w > 0.0)){
-
-		int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-//printf("enc1 %d %d %d\n", i, j, Ni);
-		if(Ni >= NencMax){
-			atomicMax(&EncFlag_d[0], Ni);
-		}
-		else{
-			Encpairs2_d[i * NencMax + Ni].y = j;
-		}
-
-		if(EE == 0){
-			if(i < j && Ni < NencMax){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = i;
-				Encpairs_d[Ne].y = j;
+			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+	//printf("enc1 %d %d %d\n", i, j, Ni);
+			if(Ni >= NencMax){
+				atomicMax(&EncFlag_d[0], Ni);
 			}
-		}
-		if(EE > 0){
-			if(i > j && Ni < NencMax){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = i;
-				Encpairs_d[Ne].y = j;
+			else{
+				Encpairs2_d[i * NencMax + Ni].y = j;
 			}
+
+			if(EE == 0){
+				if(i < j && Ni < NencMax){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].y = j;
+				}
+			}
+			if(EE > 0){
+				if(i > j && Ni < NencMax){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].y = j;
+				}
+			}
+
+			s = 0.0;
 		}
 
-		s = 0.0;
+		ac.x += __dmul_rn(r3ij.x, s);
+		ac.y += __dmul_rn(r3ij.y, s);
+		ac.z += __dmul_rn(r3ij.z, s);
 	}
-
-	ac.x += __dmul_rn(r3ij.x, s);
-	ac.y += __dmul_rn(r3ij.y, s);
-	ac.z += __dmul_rn(r3ij.z, s);
-
 }
 
 //float version
 __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile float rcritvi, volatile float rcritvj, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int j, const int i, const int NencMax, const int EE){
 
-	float3 r3ij;
+	if(i != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
+		float3 r3ij;
 
-	//ignore ghost particles
-	bool bm = (x4i.w >= 0.0f && x4j.w >= 0.0f && (i != j)) ? true : false;
+		r3ij.x = x4j.x - x4i.x;
+		r3ij.y = x4j.y - x4i.y;
+		r3ij.z = x4j.z - x4i.z;
 
-	r3ij.x = x4j.x - x4i.x;
-	r3ij.y = x4j.y - x4i.y;
-	r3ij.z = x4j.z - x4i.z;
+		float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+		float rcritv = fmaxf(rcritvi, rcritvj);
 
-	float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-	float rcritv = fmaxf(rcritvi, rcritvj);
+		float ir = 1.0f/sqrtf(rsq);
+		float ir3 = ir*ir*ir;
 
-	float ir = 1.0f/sqrtf(rsq);
-	float ir3 = ir*ir*ir;
+		float s = x4j.w * ir3;
 
-	float s = x4j.w * ir3 * bm;
+		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
 
-	if(rsq < def_pc * rcritv * rcritv && bm && (x4i.w > 0.0f || x4j.w > 0.0f)){
-
-		int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-//printf("enc1 %d %d %d\n", i, j, Ni);
-		if(Ni >= NencMax){
-			atomicMax(&EncFlag_d[0], Ni);
-		}
-		else{
-			Encpairs2_d[i * NencMax + Ni].y = j;
-		}
-
-		if(EE == 0){
-			if(i < j && Ni < NencMax){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = i;
-				Encpairs_d[Ne].y = j;
+			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+	//printf("enc1 %d %d %d\n", i, j, Ni);
+			if(Ni >= NencMax){
+				atomicMax(&EncFlag_d[0], Ni);
 			}
-		}
-		if(EE > 0){
-			if(i > j && Ni < NencMax){
-				int Ne = atomicAdd(Nencpairs_d, 1);
-				Encpairs_d[Ne].x = i;
-				Encpairs_d[Ne].y = j;
+			else{
+				Encpairs2_d[i * NencMax + Ni].y = j;
 			}
+
+			if(EE == 0){
+				if(i < j && Ni < NencMax){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].y = j;
+				}
+			}
+			if(EE > 0){
+				if(i > j && Ni < NencMax){
+					int Ne = atomicAdd(Nencpairs_d, 1);
+					Encpairs_d[Ne].x = i;
+					Encpairs_d[Ne].y = j;
+				}
+			}
+
+			s = 0.0f;
 		}
 
-		s = 0.0f;
+		ac.x += __fmul_rn(r3ij.x, s);
+		ac.y += __fmul_rn(r3ij.y, s);
+		ac.z += __fmul_rn(r3ij.z, s);
 	}
-
-	ac.x += __fmul_rn(r3ij.x, s);
-	ac.y += __fmul_rn(r3ij.y, s);
-	ac.z += __fmul_rn(r3ij.z, s);
-
 }
 
 
