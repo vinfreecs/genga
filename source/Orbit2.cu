@@ -140,7 +140,7 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
-	cudaMalloc((void **) &EncpairsScan_d, sizeof(int) * (NconstT + 1023 / 1024));	//helper array for stream compation
+	cudaMalloc((void **) &EncpairsScan_d, sizeof(int) * (NconstT + 1023 / 1024));	//helper array for stream compaction
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);

@@ -1,6 +1,6 @@
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compations
+//This kernel performs a scan operation, used for  stream compactions
 //
 //It works for the case of multiple blocks
 //must be followed by Scan32d2 and Scan32d3
@@ -199,7 +199,7 @@ __global__ void Scan32d3_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 }
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compations
+//This kernel performs a scan operation, used for  stream compactions
 //
 //It works for the case of multiple warps, but only 1 thread block
 //
@@ -282,6 +282,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 //printf("Scan c %d %d %d\n", idy, t0, Encpairs3_d[idy * NencMax + 0]);
 		Encpairs3_d[idy * NencMax + 3] = t0;
 		if(Encpairs3_d[idy * NencMax + 0] > 0){
+//printf("Scan d %d %d\n", t0 - 1, idy);
 			Encpairs3_d[(t0 - 1) * NencMax + 1] = idy;
 		}
 	}
@@ -292,7 +293,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 }
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compations
+//This kernel performs a scan operation, used for  stream compactions
 //
 //It works for the case of only 1 single warp
 //

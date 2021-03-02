@@ -470,7 +470,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //April 2019
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *x4G3_d, double4 *v4G3_d, double *rcrit_d, double *rcritv_d, const double dt, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, double *K_d, double *Kold_d, double4 *StopTime_d, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, const double dt, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -1016,7 +1016,7 @@ __global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, int *
 		Encpairs3_d[id * NencMax] = 0;		//Encounter pairs per body
 		Encpairs3_d[id * NencMax + 1] = -1;	//list of indices 
 		Encpairs3_d[id * NencMax + 2] = 0;	//number of pairs with real gravitational influence
-		Encpairs3_d[id * NencMax + 3] = 0;	//helper array for stream compation
+		Encpairs3_d[id * NencMax + 3] = 0;	//helper array for stream compaction
 	}
 	if(id < (N + 1023) / 1024){
 		EncpairsScan_d[id] = 0;
@@ -1063,7 +1063,7 @@ __global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpai
 
 // **********************************************************
 // This kernel writes lists of encounter pairs for each bodies.
-// It prepares the helper array for stream compation, for a list of all involved particles
+// It prepares the helper array for stream compaction, for a list of all involved particles
 // Date: March 2020
 // Author: Simon Grimm
 // **********************************************************
@@ -1082,7 +1082,7 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
 //printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);
 
-		//fill helper array for stream compation
+		//fill helper array for stream compaction
 		Encpairs3_d[ii * NencMax + 3] = 1;
 		Encpairs3_d[jj * NencMax + 3] = 1;
 

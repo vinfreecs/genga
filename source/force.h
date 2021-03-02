@@ -1057,7 +1057,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 	}
 }
 
-__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex, double4 *x4_h, double4 *v4_h, double3 *spin_h, int *index_h){
+__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
 	int st = 0;
 	nFragments_m[0] = -1;
 	fragment_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
@@ -1409,180 +1409,182 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	//Compute the Kepler Elements
-	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
+	if(id < N + Nstart){
+		if(x4_d[id].w >= 0.0){
 
-	if(id < N + Nstart && x4_d[id].w >= 0.0){
+			int st = 0;
+			if(Nst > 1) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
-		double4 x4i = x4_d[id];
-		double4 v4i = v4_d[id];
+			double4 x4i = x4_d[id];
+			double4 v4i = v4_d[id];
 
-		double Msun = Msun_d[st].x;
-		double dt = dt_d[st] * Kt;
-		double m = x4i.w;
-		double RR = v4i.w * def_AU;					//covert radius in m	
+			double Msun = Msun_d[st].x;
+			double dt = dt_d[st] * Kt;
+			double m = x4i.w;
+			double RR = v4i.w * def_AU;					//covert radius in m	
 
-		if(m == 0.0){
-			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
-			m /= def_Solarmass;					//mass im Solar masses
-		}
-		double mu = def_ksq * (Msun + m);
+			if(m == 0.0){
+				m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m /= def_Solarmass;					//mass im Solar masses
+			}
+			double mu = def_ksq * (Msun + m);
 
-		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
-		double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
-		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
+			//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+			double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
+			eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
-		double a, e, inc, Omega, w, Theta, E;
-	
+			double a, e, inc, Omega, w, Theta, E;
+		
 
-		double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
-		double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
-		double u =  x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z;
-		double ir = 1.0 / sqrt(rsq);
-		double ia = 2.0 * ir - vsq / mu;
+			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
+			double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+			double u =  x4i.x * v4i.x + x4i.y * v4i.y + x4i.z * v4i.z;
+			double ir = 1.0 / sqrt(rsq);
+			double ia = 2.0 * ir - vsq / mu;
 
-		a = 1.0 / ia;
+			a = 1.0 / ia;
 
-		//inclination
-		double3 h3;
-		h3.x = ( x4i.y * v4i.z) - (x4i.z * v4i.y);
-		h3.y = (-x4i.x * v4i.z) + (x4i.z * v4i.x);
-		h3.z = ( x4i.x * v4i.y) - (x4i.y * v4i.x);
+			//inclination
+			double3 h3;
+			h3.x = ( x4i.y * v4i.z) - (x4i.z * v4i.y);
+			h3.y = (-x4i.x * v4i.z) + (x4i.z * v4i.x);
+			h3.z = ( x4i.x * v4i.y) - (x4i.y * v4i.x);
 
-		double h = sqrt(h3.x * h3.x + h3.y * h3.y + h3.z * h3.z);
+			double h = sqrt(h3.x * h3.x + h3.y * h3.y + h3.z * h3.z);
 
-		double t = h3.z / h;
-		if(t < -1.0) t = -1.0;
-		if(t > 1.0) t = 1.0;
-	
-		inc = acos(t);
-
-		//longitude of ascending node
-		double n = sqrt(h3.x * h3.x + h3.y * h3.y);
-		Omega = acos(-h3.y / n);
-		if(h3.x < 0.0){
-			Omega = 2.0 * M_PI - Omega;
-		}
-
-		if(inc < 1.0e-10 || n == 0) Omega = 0.0;
-
-		//argument of periapsis
-		double3 e3;
-		e3.x = ( v4i.y * h3.z - v4i.z * h3.y) / mu - x4i.x * ir;
-		e3.y = (-v4i.x * h3.z + v4i.z * h3.x) / mu - x4i.y * ir;
-		e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
-	
-		e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
-		if(e < 1.0){
-
-			t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
+			double t = h3.z / h;
 			if(t < -1.0) t = -1.0;
 			if(t > 1.0) t = 1.0;
-			w = acos(t);
-			if(e3.z < 0.0) w = 2.0 * M_PI - w;
-			if(n == 0) w = 0.0;
+		
+			inc = acos(t);
 
-			//True Anomaly
-			t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
-			if(t < -1.0) t = -1.0;
-			if(t > 1.0) t = 1.0;
-			Theta = acos(t);
-			if(u < 0.0) Theta = 2.0 * M_PI - Theta;
-
-			//Non circular, equatorial orbit
-			if(e > 1.0e-10 && inc < 1.0e-10){
-				Omega = 0.0;
-				w = acos(e3.x / e);
-				if(e3.y < 0.0) w = 2.0 * M_PI - w;
-			}
-			
-			//circular, inclinded orbit
-			if(e < 1.0e-10 && inc > 1.0e-11){
-				w = 0.0;
-			}
-			
-			//circular, equatorial orbit
-			if(e < 1.0e-10 && inc < 1.0e-11){
-				w = 0.0;
-				Omega = 0.0;
+			//longitude of ascending node
+			double n = sqrt(h3.x * h3.x + h3.y * h3.y);
+			Omega = acos(-h3.y / n);
+			if(h3.x < 0.0){
+				Omega = 2.0 * M_PI - Omega;
 			}
 
-			if(w == 0 && Omega != 0.0){
-				t = (-h3.y * x4i.x + h3.x * x4i.y) / n * ir;
+			if(inc < 1.0e-10 || n == 0) Omega = 0.0;
+
+			//argument of periapsis
+			double3 e3;
+			e3.x = ( v4i.y * h3.z - v4i.z * h3.y) / mu - x4i.x * ir;
+			e3.y = (-v4i.x * h3.z + v4i.z * h3.x) / mu - x4i.y * ir;
+			e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
+		
+			e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
+			if(e < 1.0){
+
+				t = (-h3.y * e3.x + h3.x * e3.y) / (n * e);
+				if(t < -1.0) t = -1.0;
+				if(t > 1.0) t = 1.0;
+				w = acos(t);
+				if(e3.z < 0.0) w = 2.0 * M_PI - w;
+				if(n == 0) w = 0.0;
+
+				//True Anomaly
+				t = (e3.x * x4i.x + e3.y * x4i.y + e3.z * x4i.z) / e * ir;
 				if(t < -1.0) t = -1.0;
 				if(t > 1.0) t = 1.0;
 				Theta = acos(t);
-				if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
-			}
-			if(w == 0 && Omega == 0.0){
-				Theta = acos(x4i.x * ir);
-				if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
+				if(u < 0.0) Theta = 2.0 * M_PI - Theta;
 
-			}
+				//Non circular, equatorial orbit
+				if(e > 1.0e-10 && inc < 1.0e-10){
+					Omega = 0.0;
+					w = acos(e3.x / e);
+					if(e3.y < 0.0) w = 2.0 * M_PI - w;
+				}
+				
+				//circular, inclinded orbit
+				if(e < 1.0e-10 && inc > 1.0e-11){
+					w = 0.0;
+				}
+				
+				//circular, equatorial orbit
+				if(e < 1.0e-10 && inc < 1.0e-11){
+					w = 0.0;
+					Omega = 0.0;
+				}
 
-			//Eccentric Anomaly
-			E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
-			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+				if(w == 0 && Omega != 0.0){
+					t = (-h3.y * x4i.x + h3.x * x4i.y) / n * ir;
+					if(t < -1.0) t = -1.0;
+					if(t > 1.0) t = 1.0;
+					Theta = acos(t);
+					if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+				}
+				if(w == 0 && Omega == 0.0){
+					Theta = acos(x4i.x * ir);
+					if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
 
-			if(e >= 1){
-				E = acosh((e + t) / (1.0 + e * t));
+				}
+
+				//Eccentric Anomaly
+				E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-			}
+
+				if(e >= 1){
+					E = acosh((e + t) / (1.0 + e * t));
+					if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+				}
 
 
 //if(id < 10) printf("K1 %d %g %g %g %g %g %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta);
 
-			//modify elements
-			//BURNS, LAMY, AND SOTER, 1979 equation 47 and 48
-			double tt1 = 1.0 - e * e;
-			double tt2 = sqrt(tt1);
-			double dadt = -(eta * ia) * Qpr * (2.0 + 3.0 * e * e) / (tt1 * tt2);
-			double dedt = -2.5 * (eta * ia * ia) * Qpr * e / tt2;
+				//modify elements
+				//BURNS, LAMY, AND SOTER, 1979 equation 47 and 48
+				double tt1 = 1.0 - e * e;
+				double tt2 = sqrt(tt1);
+				double dadt = -(eta * ia) * Qpr * (2.0 + 3.0 * e * e) / (tt1 * tt2);
+				double dedt = -2.5 * (eta * ia * ia) * Qpr * e / tt2;
 
-			a += dadt * dt;
-			e += dedt * dt;
+				a += dadt * dt;
+				e += dedt * dt;
 //if(id < 10) printf("K2 %d %g %g %g %g %g %g %g %g %g | %g %g %g %g\n", id, m, RR, a, e, inc, Omega, w, E, Theta, Qpr, eta, dadt, dedt);
 
-			//Convert to Cartesian Coordinates
+				//Convert to Cartesian Coordinates
 
-			double cw = cos(w);
-			double sw = sin(w);
-			double cOmega = cos(Omega);
-			double sOmega = sin(Omega);
-			double ci = cos(inc);
-			double si = sin(inc);
+				double cw = cos(w);
+				double sw = sin(w);
+				double cOmega = cos(Omega);
+				double sOmega = sin(Omega);
+				double ci = cos(inc);
+				double si = sin(inc);
 
-			double3 P3;
-			P3.x = cw * cOmega - sw * ci * sOmega;
-			P3.y = cw * sOmega + sw * ci * cOmega;
-			P3.z = sw * si;
+				double3 P3;
+				P3.x = cw * cOmega - sw * ci * sOmega;
+				P3.y = cw * sOmega + sw * ci * cOmega;
+				P3.z = sw * si;
 
-			double3 Q3;
-			Q3.x = -sw * cOmega - cw * ci * sOmega;
-			Q3.y = -sw * sOmega + cw * ci * cOmega;
-			Q3.z = cw * si;
+				double3 Q3;
+				Q3.x = -sw * cOmega - cw * ci * sOmega;
+				Q3.y = -sw * sOmega + cw * ci * cOmega;
+				Q3.z = cw * si;
 
-			double cE = cos(E);
-			double sE = sin(E);
-			double t1 = a * (cE - e);
-			double t2 = a * sqrt(1.0 - e * e) * sE;
+				double cE = cos(E);
+				double sE = sin(E);
+				double t1 = a * (cE - e);
+				double t2 = a * sqrt(1.0 - e * e) * sE;
 
-			x4i.x =  t1 * P3.x + t2 * Q3.x;
-			x4i.y =  t1 * P3.y + t2 * Q3.y;
-			x4i.z =  t1 * P3.z + t2 * Q3.z;
+				x4i.x =  t1 * P3.x + t2 * Q3.x;
+				x4i.y =  t1 * P3.y + t2 * Q3.y;
+				x4i.z =  t1 * P3.z + t2 * Q3.z;
 
-			double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-			t1 = -sE;
-			t2 = sqrt(1.0 - e * e) * cE;
-			v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
-			v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
-			v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
+				double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+				t1 = -sE;
+				t2 = sqrt(1.0 - e * e) * cE;
+				v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
+				v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
+				v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
 
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-		}
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+			}
 //if(id < 10) printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+		}
 	}	
 }
 // ***************************************************************
@@ -1600,65 +1602,67 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	//Compute the Kepler Elements
-	int st = 0;
 
-	if(Nst > 1 && id < N + Nstart) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
+	if(id < N + Nstart){
+		if(x4_d[id].w >= 0.0){
+				
+			int st = 0;
+			if(Nst > 1) st = index_d[id] / def_MaxIndex;	//st is the sub simulation index
 
-	if(id < N + Nstart && x4_d[id].w >= 0.0){
-
-		double4 x4i = x4_d[id];
-		double4 v4i = v4_d[id];
-		double4 v4it = v4i;
-		double3 a3t;
-
-
-		double dt = dt_d[st] * Kt;
-		double RR = v4i.w * def_AU;					//covert radius in m	
-		double m = x4i.w;
-	
-		if(m == 0.0){
-			m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
-			m /= def_Solarmass;					//mass im Solar masses
-		}
-	
-		//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
-		double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
-		eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
-
-		//BURNS, LAMY, AND SOTER, 1979 equation 2
-
-		double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
-		double ir = 1.0 / sqrt(rsq);
-	
-		double t1 = eta * ir * ir * Qpr;
+			double4 x4i = x4_d[id];
+			double4 v4i = v4_d[id];
+			double4 v4it = v4i;
+			double3 a3t;
 
 
-		//v dependen part with implicit midpoint method
-		for(int k = 0; k < 3; ++k){	
+			double dt = dt_d[st] * Kt;
+			double RR = v4i.w * def_AU;					//covert radius in m	
+			double m = x4i.w;
 		
-			double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir; 
-			double t2 = (def_cm - rd);
+			if(m == 0.0){
+				m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m /= def_Solarmass;					//mass im Solar masses
+			}
+		
+			//double eta = 2.53e8 / (Asteroid_rho * RR);			//m^2 / s
+			double eta = SolarConstant * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
+			eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
+
+			//BURNS, LAMY, AND SOTER, 1979 equation 2
+
+			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
+			double ir = 1.0 / sqrt(rsq);
+		
+			double t1 = eta * ir * ir * Qpr;
 
 
-			a3t.x = t1 * (t2 * x4i.x * ir - v4it.x);
-			a3t.y = t1 * (t2 * x4i.y * ir - v4it.y);
-			a3t.z = t1 * (t2 * x4i.z * ir - v4it.z);
-
-			v4it.x = v4i.x + 0.5 * dt * a3t.x;
-			v4it.y = v4i.y + 0.5 * dt * a3t.y;
-			v4it.z = v4i.z + 0.5 * dt * a3t.z;
+			//v dependen part with implicit midpoint method
+			for(int k = 0; k < 3; ++k){	
+			
+				double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir; 
+				double t2 = (def_cm - rd);
 
 
-		}
-		//apply the Kick
-		v4i.x += a3t.x * dt;
-		v4i.y += a3t.y * dt;
-		v4i.z += a3t.z * dt;
+				a3t.x = t1 * (t2 * x4i.x * ir - v4it.x);
+				a3t.y = t1 * (t2 * x4i.y * ir - v4it.y);
+				a3t.z = t1 * (t2 * x4i.z * ir - v4it.z);
+
+				v4it.x = v4i.x + 0.5 * dt * a3t.x;
+				v4it.y = v4i.y + 0.5 * dt * a3t.y;
+				v4it.z = v4i.z + 0.5 * dt * a3t.z;
 
 
-		x4_d[id] = x4i;
-		v4_d[id] = v4i;
+			}
+			//apply the Kick
+			v4i.x += a3t.x * dt;
+			v4i.y += a3t.y * dt;
+			v4i.z += a3t.z * dt;
+
+
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
 //printf("PR %g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+		}
 	}	
 }
 

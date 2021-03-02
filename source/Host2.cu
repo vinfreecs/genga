@@ -1277,8 +1277,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Gas alpha =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%d", &P.G_alpha);
-				if(er <= 0 || !(P.G_alpha == 1 || P.G_alpha == 2)){
+				er = fscanf (paramfile, "%lf", &P.G_alpha);
+				if(er <= 0 || !(P.G_alpha == 1.0 || P.G_alpha == 2.0)){
 					printf("Error: Gas alpha value is not valid!\n");
 					return 0;
 				}
@@ -2576,7 +2576,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas disk drag: %d\n", P.UsegasDrag);			// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk tidal damping: %d\n", P.UsegasTidalDamping);	// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
-			fprintf(infofile, "Gas alpha: %d\n", P.G_alpha);                                // use only argument in simulation 0
+			fprintf(infofile, "Gas alpha: %g\n", P.G_alpha);                                // use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);                              // use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0

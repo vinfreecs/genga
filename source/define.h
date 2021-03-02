@@ -292,7 +292,7 @@ struct Parameter{
 	long long deltaT;		//Number of time steps to do
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
-	int G_alpha;			//alpha parameter for Gas Disc
+	double G_alpha;			//alpha parameter for Gas Disc
 	double G_Sigma_10;		//Gas Sigma_10
 	double G_Mgiant;		//Mass limit for gas effects
 	int UseaeGrid;			

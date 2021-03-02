@@ -3,7 +3,7 @@
 #include "define.h"
 
 
-__device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int NconstT, int nn){
+__device__ void  acc_c(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i, int NconstT, int nn){
 	if(i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -574,7 +574,7 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 }
 
 template <int Bl>
-__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *groupIndex_d, int N4, bool *Encpairsb_d, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
+__global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int N4, int2 *Encpairs2_d, double *test_d, int N, int NconstT, int NencMax, double t){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -619,8 +619,8 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			if(idy + i < N){
 				double4 x4j = x4_d[idy + i];
 				double rcritvj = rcritv_d[idy + i];
-				if(idx < N)        acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, Encpairsb_d, idy + i, idx, NconstT, 0);
-				if(idx + 2*N4 < N) acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, Encpairsb_d, idy + i, idx +2*N4, NconstT, 0);
+				if(idx < N)        acc_c(a1_s[idy], x4i, x4j, rcritvi, rcritvj, idy + i, idx, NconstT, 0);
+				if(idx + 2*N4 < N) acc_c(a3_s[idy], x4i3, x4j, rcritvi3, rcritvj, idy + i, idx +2*N4, NconstT, 0);
 //if(idx + N4 == 1045 && idy + i == 0) printf("acc1 %d %d %.20g %.20g %.20g\n", idx + N4, idy + i, a1_s[idy].x, x4i4.x, x4j.x);
 //if(idx + 2*N4 == 1045 && idy + i == 0) printf("acc2 %d %d %.20g %.20g %.20g\n", idx + 2*N4, idy + i, a2_s[idy].x, x4i4.x, x4j.x);
 			}
@@ -640,8 +640,8 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 			if(idy-Bl_2 + i < N){
 				double4 x4j = x4_d[idy-Bl_2 + i];
 				double rcritvj = rcritv_d[idy-Bl_2 + i];
-				if(idx + N4 < N)   acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +N4, NconstT, 0);
-				if(idx + 3*N4 < N) acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, Encpairsb_d, idy-Bl_2 + i, idx +3*N4, NconstT, 0);
+				if(idx + N4 < N)   acc_c(a2_s[idy-Bl_2], x4i2, x4j, rcritvi2, rcritvj, idy-Bl_2 + i, idx +N4, NconstT, 0);
+				if(idx + 3*N4 < N) acc_c(a4_s[idy-Bl_2], x4i4, x4j, rcritvi4, rcritvj, idy-Bl_2 + i, idx +3*N4, NconstT, 0);
 //if(idx + N4 == 1045 && idy-Bl_2 + i == 0) printf("acc2 %d %d %.20g %.20g %.20g\n", idx + N4, idy-Bl_2 + i, a2_s[idy-Bl_2].x, x4i2.x, x4j.x);
 //if(idx + 3*N4 == 1045 && idy-Bl_2 + i == 0) printf("acc4 %d %d %.20g %.20g %.20g\n", idx + 3*N4, idy-Bl_2 + i, a4_s[idy-Bl_2].x, x4i4.x, x4j.x);
 
@@ -810,7 +810,7 @@ __global__ void acc4b_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, doub
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, bool *Encpairsb_d, int j, int i, int NconstT){
+__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int j, int i, int NconstT){
 
 	double3 r3ij;
 
@@ -822,7 +822,7 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, boo
 
 	double rcritv = fmax(fi.w, fj.w);
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
-	Encpairsb_d[NconstT * i + j] = cl; 
+	//Encpairsb_d[NconstT * i + j] = cl; 
 	
 	double ir = 1.0 / sqrt(rsq);
 
@@ -844,7 +844,7 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, boo
 }
 
 
-__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, bool *Encpairsb_d, int j, int i, int NconstT){
+__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i, int NconstT){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -858,7 +858,7 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 		rcritv = fmax(rcritvi, rcritvj);
 
 		bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
-		Encpairsb_d[NconstT * i + j] = cl;
+		//Encpairsb_d[NconstT * i + j] = cl;
 
 
 		ir = 1.0/sqrt(rsq);
@@ -886,7 +886,7 @@ __device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int NconstT, int I, int II, int nb){
+__global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int NconstT, int I, int II, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -915,7 +915,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, b
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + JJ * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], Encpairsb_d, jjj, iii, NconstT);
+			forceij(x4i, x4_s[j], fi, fj_s[j], jjj, iii, NconstT);
 		}
 		__syncthreads();
 //printf("%d %d %d %d\n", TT, JJ, TT * p + i, JJ * p + j);
@@ -941,7 +941,7 @@ __global__ void ForceTri_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, b
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int NconstT){
+__global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int NconstT){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -964,7 +964,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 	for(int i = 1; i < p; ++i){
 		int j = idy ^ i;
 		int jjj = j + J * p;
-		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], Encpairsb_d, jjj, iii, NconstT);
+		accc(ai, x4i, x4_s[j], rcritvi, rcritv_s[j], jjj, iii, NconstT);
 		__syncthreads();
 	}
 
@@ -990,7 +990,7 @@ __global__ void ForceDiag_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, 
 // January 2015
 //********************************************************
 template <int p>
-__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bool *Encpairsb_d, int NconstT, int I, int nb){
+__global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, int NconstT, int I, int nb){
 
 	int idy = threadIdx.x;
 	int T = blockIdx.x;
@@ -1016,7 +1016,7 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bo
 		for(int ii = 0; ii < 32; ++ii){
 			int j = idy ^ (i + ii);
 			int jjj = j + J * p;
-			forceij(x4i, x4_s[j], fi, fj_s[j], Encpairsb_d, jjj, iii, NconstT);
+			forceij(x4i, x4_s[j], fi, fj_s[j], jjj, iii, NconstT);
 		}
 		__syncthreads();
 	}
@@ -1028,18 +1028,18 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, bo
 	f_d[idy + J * p].z += fj_s[idy].z;
 }
 
-__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax){
+__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax, int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
+	if(id < N){
+		Encpairs2_d[NencMax * id].x = 0;
+		Encpairs2_d[NencMax * id + 1].x = 0;
 
-	Encpairs2_d[NencMax * id].x = 0;
-	Encpairs2_d[NencMax * id + 1].x = 0;
-
-	a_d[id].x = 0.0;
-	a_d[id].y = 0.0;
-	a_d[id].z = 0.0;
-
+		a_d[id].x = 0.0;
+		a_d[id].y = 0.0;
+		a_d[id].z = 0.0;
+	}
 }
 
 
@@ -1070,27 +1070,27 @@ __global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, double dtksq, int 
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, bool *Encpairsb_d, int2 *Encpairs2_d, double dtksq, int NconstT, int NencMax, int NB, int N){
+__host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int2 *Encpairs2_d, double dtksq, int NconstT, int NencMax, int NB, int N){
 
 	const int p = 256;
 	const int nb = NB / (2 * p);
 
 	//set NencpairsI and NencpairsJ to zero
-	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax);
+	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax, NB);
 	//Blocks on the Diagonal
-	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, Encpairsb_d, NconstT);
+	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, NconstT);
 
 	//Combine upper left quarter triangle with lower right quarter triangle
 	for(int ii = 1; ii < nb; ii *= 2){
 		for(int k = 0; k < ii; ++k){
 			int i = ii + k;
-			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, Encpairsb_d, NconstT, i, ii, nb);
+			ForceTri_kernel < p > <<< nb, p>>> (x4_d, f_d, rcritv_d, NconstT, i, ii, nb);
 		}
 	}
 
 	//Lower left quarter
 	for(int i = 0; i < nb; ++i){
-		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, Encpairsb_d, NconstT, i, nb);
+		ForceSq_kernel < p > <<< nb, p >>> (x4_d, f_d, rcritv_d, NconstT, i, nb);
 	}
 
 	acclargeN_kernel <<< (N + p - 1) / p, p >>> (x4_d, f_d, dtksq, N);

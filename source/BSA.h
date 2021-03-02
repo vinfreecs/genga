@@ -1686,39 +1686,3 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 		if(Ncoll_m[0] > def_MaxColl) break; 
 	}
 }
-/*
-__host__ void Data::BSAsmallCall(const int st, const int b, const int Nm, const int si, const double t, const double FGt, const int noColl){
-
-	int Nt = 32;
-	int Nb = (b + Nt - 1) / Nt;
-	int N = N_h[0] + Nsmall_h[0];
-	BSA_setdt_kernel <<< (N + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
-	BSAstop_h[0] = 0;
-	for(int f = 0; f < 100000; ++f){
-		for(int n = 1; n <= 8; ++n){
-printf("%d %d %d\n", f, n, BSAstop_h[0]);
-			if(BSAstop_h[0] == 1) break; 
-			if(BSAstop_h[0] == 3) break;
-			if(Ncoll_m[0] > def_MaxColl) break; 
-			BSAcc_kernel < 0 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xold_d, vold_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], P.SLevels, noColl);
-			BSAcc_kernel < 1 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], P.SLevels, noColl);
-			for(int m = 2; m <= n; ++m){
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], noColl);
-				BSAcc_kernel < 2 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], P.SLevels, noColl);
-			}
-			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, P.MinMass, P.UseTestParticles, dt_h[0], P.SLevels, noColl);
-			BSError_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, st, N, n, f);
-			BSAccept_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, dt1_d, st, N, n);
-			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N, NconstT, n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-			cudaMemcpy(BSAstop_h, BSAstop_d, sizeof(int), cudaMemcpyDeviceToHost);
-			if(BSAstop_h[0] == 1) break; 
-			if(BSAstop_h[0] == 2) break; 
-			if(BSAstop_h[0] == 3) break; 
-			if(Ncoll_m[0] > def_MaxColl) break; 
-		}
-		if(BSAstop_h[0] == 1) break; 
-		if(BSAstop_h[0] == 3) break;
-		if(Ncoll_m[0] > def_MaxColl) break; 
-	}
-}
-*/
