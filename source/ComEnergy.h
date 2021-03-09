@@ -5,15 +5,17 @@
 
 
 // *********************************************************
-//This kernel computes the kinetic energy of the center of mass.
-//It converts the velocities between heliocentric and democratic coordinates
-//Must be followed by comd2 and comd3
-//Author: Simon Grimm
-//May 2019
+// This kernel computes the kinetic energy of the center of mass.
+// It converts the velocities between heliocentric and democratic coordinates
+// Must be followed by comd2 and comd3
+//
+// using vold as temporary storage
+//
+// Author: Simon Grimm
+// May 2019
 // ***********************************************************
 
-//using v4old as temporary storage
-__global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, const int N){
+__global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, const int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -32,7 +34,7 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, con
 	}
 
 
-	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple bock reduce
+	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple block reduce
 		if(id + i < N){
 			double m = x4_d[id + i].w;
 			double4 v4i = v4_d[id + i];
@@ -88,21 +90,22 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, con
 	}
 	__syncthreads();
 	if(threadIdx.x == 0){
-		v4old_d[blockIdx.x] = p;
+		vold_d[blockIdx.x] = p;
 	}
 }
 
 // *********************************************************
-//This kernel reads the result from the multiple thread block kernel comd1
-//and performs the last summation step in
+// This kernel reads the result from the multiple thread block kernel comd1
+// and performs the last summation step in
 // --a single thread block --
 //
-//Must be followed by comd3
-//Author: Simon Grimm
-//May 2019
+// using vold as temporary storage
+//
+// Must be followed by comd3
+// Author: Simon Grimm
+// May 2019
 // ***********************************************************
-//using v4old as temporary storage
-__global__ void comd2_kernel(double4 *v4old_d, const int N){
+__global__ void comd2_kernel(double4 *vold_d, const int N){
 
 	int idy = threadIdx.x;
 
@@ -121,7 +124,7 @@ __global__ void comd2_kernel(double4 *v4old_d, const int N){
 
 
 	if(idy < N){
-		p = v4old_d[idy];
+		p = vold_d[idy];
 	}
 
 	__syncthreads();
@@ -167,23 +170,25 @@ __global__ void comd2_kernel(double4 *v4old_d, const int N){
 	}
 	__syncthreads();
 	if(threadIdx.x == 0){
-		v4old_d[0] = p;
+		vold_d[0] = p;
 	}
 }
 
 // *********************************************************
-//This kernel distributes the result from the multiple thread block kernel
-//comd1 and comd2.
+// This kernel distributes the result from the multiple thread block kernel
+// comd1 and comd2.
 //
-//Must be followed by comd3
-//Author: Simon Grimm
-//May 2019
+// Must be followed by comd3
+//
+// using vold as temporary storage
+// 
+// Author: Simon Grimm
+// May 2019
 // ***********************************************************
-//using v4old as temporary storage
-__global__ void comd3_kernel(double4 *x4_d, double4 *v4_d, double4 *v4old_d, double3 *vcom_d, const double Msun, const int N, const int f){
+__global__ void comd3_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, double3 *vcom_d, const double Msun, const int N, const int f){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	double4 p = v4old_d[0];
+	double4 p = vold_d[0];
 	double iMsun = 1.0 / Msun;
 
 
@@ -386,138 +391,20 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	}
 }
 
-__global__ void comshared_kernel(double4 *x4_d, double4 *v4_d, const int Bl, double3 *vcom_d, const double Msun, const int N, const int f){
-
-	int idy = threadIdx.x;
-
-	extern __shared__ double4 p4_s[];
-
-	for(int i = 0; i < Bl; i += blockDim.x){
-		p4_s[idy + i].x = 0.0;
-		p4_s[idy + i].y = 0.0;
-		p4_s[idy + i].z = 0.0;
-		p4_s[idy + i].w = 0.0;
-	}
-
-	__syncthreads();
-
-	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			double4 v4 = v4_d[idy + i];
-			if(m > 0.0){
-				p4_s[idy].x += m * v4.x;
-				p4_s[idy].y += m * v4.y;
-				p4_s[idy].z += m * v4.z;
-				p4_s[idy].w += m;
-			}
-		}
-	}
-	__syncthreads();
-
-
-	int s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			p4_s[idy].x += p4_s[idy + s].x;
-			p4_s[idy].y += p4_s[idy + s].y;
-			p4_s[idy].z += p4_s[idy + s].z;
-			p4_s[idy].w += p4_s[idy + s].w;
-		}
-		__syncthreads();
-		s /= 2;
-	}
-
-	if(idy < 32){
-		volatile double4 *p = p4_s;
-		if(blockDim.x >= 64) p[idy].x += p[idy + 32].x;
-		if(blockDim.x >= 32) p[idy].x += p[idy + 16].x;
-		if(blockDim.x >= 16) p[idy].x += p[idy + 8].x;
-		if(blockDim.x >= 8) p[idy].x += p[idy + 4].x;
-		if(blockDim.x >= 4) p[idy].x += p[idy + 2].x;
-		if(blockDim.x >= 2) p[idy].x += p[idy + 1].x;
-
-		if(blockDim.x >= 64) p[idy].y += p[idy + 32].y;
-		if(blockDim.x >= 32) p[idy].y += p[idy + 16].y;
-		if(blockDim.x >= 16) p[idy].y += p[idy + 8].y;
-		if(blockDim.x >= 8) p[idy].y += p[idy + 4].y;
-		if(blockDim.x >= 4) p[idy].y += p[idy + 2].y;
-		if(blockDim.x >= 2) p[idy].y += p[idy + 1].y;
-
-		if(blockDim.x >= 64) p[idy].z += p[idy + 32].z;
-		if(blockDim.x >= 32) p[idy].z += p[idy + 16].z;
-		if(blockDim.x >= 16) p[idy].z += p[idy + 8].z;
-		if(blockDim.x >= 8) p[idy].z += p[idy + 4].z;
-		if(blockDim.x >= 4) p[idy].z += p[idy + 2].z;
-		if(blockDim.x >= 2) p[idy].z += p[idy + 1].z;
-
-		if(blockDim.x >= 64) p[idy].w += p[idy + 32].w;
-		if(blockDim.x >= 32) p[idy].w += p[idy + 16].w;
-		if(blockDim.x >= 16) p[idy].w += p[idy + 8].w;
-		if(blockDim.x >= 8) p[idy].w += p[idy + 4].w;
-		if(blockDim.x >= 4) p[idy].w += p[idy + 2].w;
-		if(blockDim.x >= 2) p[idy].w += p[idy + 1].w;
-
-	}
-
-	__syncthreads();
-
-	double iMsun = 1.0 / Msun;
-
-	if(idy == 0){
-		if(f == 0){
-			vcom_d[0].x = p4_s[0].x;
-			vcom_d[0].y = p4_s[0].y;
-			vcom_d[0].z = p4_s[0].z;
-		}
-	}
-//if(idy == 0) printf("comC %d %.20g %.20g %.20g %.20g\n", idy, p4_s[0].x, p4_s[0].y, p4_s[0].z, p4_s[0].w);
-	for(int i = 0; i < N; i += blockDim.x){
-		if(idy + i < N){
-			double m = x4_d[idy + i].w;
-			if(m >= 0.0 && f == 1){
-				//Convert to Heliocentric coordinates
-				v4_d[idy + i].x += p4_s[0].x * iMsun;
-				v4_d[idy + i].y += p4_s[0].y * iMsun;
-				v4_d[idy + i].z += p4_s[0].z * iMsun;
-			}
-			if(m >= 0.0 && f == -1){
-				//Convert to Democratic coordinates
-				double iMsunp = 1.0 / (Msun + p4_s[0].w);
-				v4_d[idy + i].x -= p4_s[0].x * iMsunp;
-				v4_d[idy + i].y -= p4_s[0].y * iMsunp;
-				v4_d[idy + i].z -= p4_s[0].z * iMsunp;
-			}
-		}
-	}
-}
-
 __host__ void Data::comCall(const int f){
 	if(N_h[0] + Nsmall_h[0] <= 32){
-#if OldShuffle < 2
 		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
-#else
-		comshared_kernel <<< 1, NBT[0], 2 * NBT[0] * sizeof(double4) >>> (x4_d, v4_d, 2 * NBT[0], vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
-#endif
 	}
 	else if(N_h[0] + Nsmall_h[0] <= 512){
-#if OldShuffle < 2
 		int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
 		comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
-#else
-		comshared_kernel <<< 1, NBT[0], NBT[0] * sizeof(double4) >>> (x4_d, v4_d, NBT[0], vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
-#endif
 	}
 	else{
-#if OldShuffle < 2
 		int nct = 512;
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
 		comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
 		comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], f);
-#else
-		comshared_kernel <<< 1, 512, 512 * sizeof(double4) >>> (x4_d, v4_d, 512, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
-#endif
 	}
 
 }

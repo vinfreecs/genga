@@ -322,11 +322,11 @@ __host__ int Data::EnergyOutput(int irregular){
 		}
 	}
 	if(P.Usegas == 1){
-		if(Nst == 1) gasEnergyCall(NB[0], Energy_d, test_d, U_d, hstream[0], 0, N_h[0], Nsmall_h[0]);
+		if(Nst == 1) gasEnergyCall(Energy_d, test_d, U_d, hstream[0], N_h[0], Nsmall_h[0]);
 		else{
 			for(int st = 0; st < Nst; ++st){
 				int NBS = NBS_h[st];
-				gasEnergyMCall(NB[st], Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], st, N_h[st]);
+				gasEnergyMCall(Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], N_h[st]);
 			}
 		}
 	}

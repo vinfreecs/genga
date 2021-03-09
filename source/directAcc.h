@@ -249,17 +249,21 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //The index of the new bodie is the index of the more massiv one. If both bodies
 //have an equal mass then the new index is the smaller one.
 //
+// rd can be used to generate random numbers for more complex collision models.
+//
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 //
 //****************************************
-__device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
+__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
+
+//	double rd = curand_uniform(&random);
 
 	double3 vij;
 	double3 rij;
 	double3 L;
 	if(noColl != 1){
-//printf("collide %d %d %g\n", (index[indexi]), (index[indexj]), time);
+//printf("collide %d %d %g %g\n", (index[indexi]), (index[indexj]), time, rd);
 
 		Coll[nc * def_NColl + 0] = time/365.25;
 		Coll[nc * def_NColl + 1] = (double)(index[indexi]);
@@ -382,6 +386,8 @@ __device__ void collide(volatile double4 *x4, volatile double4 *v4, const int i,
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;
 }
+
+
 // **************************************
 // This function stores the details of close encounters
 //

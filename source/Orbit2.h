@@ -158,6 +158,49 @@ public:
 	NAF naf;
 #endif
 
+#if def_CPU == 1
+	double4 *xold_h;
+	double4 *vold_h;
+	double3 *a_h;
+	double *rcritv_h;
+
+	double4 *x4b_h;
+	double4 *v4b_h;
+	double4 *x4bb_h;
+	double4 *v4bb_h;
+	double3 *ab_h;
+	int *indexb_h;
+	int *indexbb_h;
+	double *rcritb_h, *rcritvb_h;
+	double *rcritbb_h, *rcritvbb_h;
+	double3 *spinb_h;
+	double3 *spinbb_h;
+
+	double3 *vcom_h;
+
+	double4 *xt_h;
+	double4 *vt_h;
+	double4 *xp_h;
+	double4 *vp_h;
+	double3 *dx_h;
+	double3 *dv_h;
+	double *dt1_h;
+	double *t1_h;
+	double *dtgr_h;
+	double *Coltime_h;
+
+	int2 *Encpairs_h;
+	int2 *Encpairs2_h;
+	int *Encpairs3_h;
+	int *EncpairsScan_h;
+	double *Energy2_h;
+
+	double *K_h;
+	double *Kold_h;
+	double4 *StopTime_h;
+
+#endif
+
 	cudaError_t error;
 	cudaEvent_t KickEvent;
 	cudaStream_t copyStream;
@@ -270,12 +313,21 @@ public:
 	__host__ void GasDisk(double *, double *, double *, double, double, double);
 	__host__ int setGasDisk();
 	__host__ int freeGas();
-	__host__ void gasEnergyCall(int, double *, double *, double *, cudaStream_t, int, int, int);
-	__host__ void gasEnergyMCall(int, double *, double *, double *, cudaStream_t, int, int);
+	__host__ void gasEnergyCall(double *, double *, double *, cudaStream_t, int, int);
+	__host__ void gasEnergyMCall(double *, double *, double *, cudaStream_t, int);
 	__host__ void GasAccCall(double *, double *, double);
 	__host__ void GasAccCall_small(double *, double *, double);
 	__host__ void GasAccCall2_small(double *, double *, double);
 	__host__ void GasAccCall_M(double *, double *, double);
+
+#if def_CPU == 1
+	__host__ void firstKick_cpu(int);
+	__host__ int step_cpu(int);
+	__host__ int tuneKickCPU(int);
+	__host__ void SEncCPU(double &, int, double, int, int);
+
+#endif
+
 
 #if poincareFlag == 1
 	int *PFlag_h;
