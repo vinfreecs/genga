@@ -67,10 +67,6 @@ int main(int argc, char*argv[]){
 		fprintf(H.masterfile,"Restart GENGA\n");
 	}
 
-#if SERIAL_GROUPING > 0
-	printf("Using serial grouping!\n");
-	fprintf(H.masterfile, "Using serial grouping!\n");
-#endif
 	//determine the number of simulations
 	int Nst = H.NSimulations(argc, argv);
 	if(Nst == 0) return 0;

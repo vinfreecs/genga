@@ -163,6 +163,7 @@ Simulation parameters are specified in the 'param.dat' file. The used parameters
  * Stop Minimum Mass. when `Stop at Collision` = 1, then stop simulations only when both bodies are more massive than `Stop Minimum Mass`.
  * Collision Precision. Tolerance for Collision Time Precision, In days. The default values is 1.0
  * Collision Time Shift. Print the collision coordinates before the collision happens, when the involved bodies are sepparated by `Collision time Shift` times the physical radii. The default value is 1.0.
+ * Serial Grouping. By setting this flag to 1, simulations can be exactly reproduced, but the performance can be slower.
 
 
 # Console Arguments #
@@ -201,7 +202,6 @@ Some Constants are defined as c++ preprocessor directives in the define.h file. 
  * def_dtmin f: Minimal time step in Bulirsch Stoer integrator .
  * def_Nfragments d: Additional array size for debris particles.
  * def_NFileNameDigits: Number of time step digits in the output filenames.
- * SERIAL_GROUPING i: By setting this flag, simulations can be exactly reproduced, but the performance can be slower.
  * poincareFlag i: By setting this flag, the [Poincare surface of section](#markdown-header-the-poincare-surface-of-section) is used.
  * IgnoreLockFile i: By setting this flag, the lock file is ignored and simulation can always be started again.
  * def_GMax i: Defines the maximum size of close encounter groups as 2^GMax.

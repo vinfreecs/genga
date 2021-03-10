@@ -557,7 +557,7 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 //March  2016
 // ****************************************
 template <int bn, int Bl>
-__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, const int NT, const int N){
+__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, const int NT, const int N, int SERIAL_GROUPING){
 
 	int idy = threadIdx.x;
 
@@ -679,29 +679,29 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 		}
 	}
 	__syncthreads();
-#if SERIAL_GROUPING == 1
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i< NT){
-			int Ni = Encpairs_d[idy + i].y;
-			int stop = 0;
-			while(stop == 0){
-				stop = 1;
-				for(int j = 0; j < Ni - 1; ++j){
-					int jj = Encpairs_d[(idy + i) * NencMax + j].x;
-					int jjnext = Encpairs_d[(idy + i) * NencMax + j + 1].x;
-				
-					if(jjnext < jj){
-						//swap
-						Encpairs_d[(idy + i) * NencMax + j].x = jjnext;
-						Encpairs_d[(idy + i) * NencMax + j + 1].x = jj;
-						stop = 0;
+	if(SERIAL_GROUPING == 1){
+		for(int i = 0; i < NT; i += Bl){
+			if(idy + i< NT){
+				int Ni = Encpairs_d[idy + i].y;
+				int stop = 0;
+				while(stop == 0){
+					stop = 1;
+					for(int j = 0; j < Ni - 1; ++j){
+						int jj = Encpairs_d[(idy + i) * NencMax + j].x;
+						int jjnext = Encpairs_d[(idy + i) * NencMax + j + 1].x;
+					
+						if(jjnext < jj){
+							//swap
+							Encpairs_d[(idy + i) * NencMax + j].x = jjnext;
+							Encpairs_d[(idy + i) * NencMax + j + 1].x = jj;
+							stop = 0;
+						}
 					}
 				}
+				stop = 0;
 			}
-			stop = 0;
 		}
 	}
-#endif
 	__syncthreads();
 
 	for(int tt = 0; tt < 100; ++tt){ 
@@ -776,29 +776,29 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 //	}
 //}
 
-#if SERIAL_GROUPING == 0
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y < BN2){
-				int Ns = atomicAdd(&Encpairs2_d[B[idy + i].y].y,1);
-				B2[idy + i].y = Ns; //index in the group
-				Encpairs_d[NT + idy + i].y = B2[idy + i].y;
-			}
-		// *At this point Encpairs2_d.x contains now line by line the members of the groups, Encpairs2_s.y contains the sizes of the groups* /
-		}
-	}
-#endif
-#if SERIAL_GROUPING == 1
-	if(idy == 0){
-		for(int i = NT - 1; i >=0; --i){
-			if(B[i].y < BN2){
-				int Ns = atomicAdd(&Encpairs2_d[B[i].y].y,1);
-				B2[i].y = Ns;   //index in the group
-				Encpairs_d[NT + i].y = B2[i].y;
+	if(SERIAL_GROUPING == 0){
+		for(int i = 0; i < NT; i += Bl){
+			if(idy + i < NT){
+				if(B[idy + i].y < BN2){
+					int Ns = atomicAdd(&Encpairs2_d[B[idy + i].y].y,1);
+					B2[idy + i].y = Ns; //index in the group
+					Encpairs_d[NT + idy + i].y = B2[idy + i].y;
+				}
+			// *At this point Encpairs2_d.x contains now line by line the members of the groups, Encpairs2_s.y contains the sizes of the groups* /
 			}
 		}
 	}
-#endif
+	if(SERIAL_GROUPING == 1){
+		if(idy == 0){
+			for(int i = NT - 1; i >=0; --i){
+				if(B[i].y < BN2){
+					int Ns = atomicAdd(&Encpairs2_d[B[i].y].y,1);
+					B2[i].y = Ns;   //index in the group
+					Encpairs_d[NT + i].y = B2[i].y;
+				}
+			}
+		}
+	}
 	__syncthreads();
 	for(int i = 0; i < Nenc_s[0]; i += Bl){
 		if(idy + i < Nenc_s[0]){

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.113
+#define def_Version 3.114
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -85,6 +85,7 @@
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
+#define def_SERIAL_GROUPING 0
 // --------------------------------
 
 
@@ -107,8 +108,6 @@
 #define def_NFileNameDigits 12		//number of digits in output filenames
 
 
-//The serial grouping mode can be chosen to reproduce simulations exactly, but there is a performance penalty
-#define SERIAL_GROUPING 0
 
 //print Poincare Section of surface, in this mode the code can be very slow
 #define poincareFlag 0			//1: print, 0: no print
@@ -347,6 +346,7 @@ struct Parameter{
 	int AngleUnits;
 	int SLevels;
 	int SLSteps;
+	int SERIAL_GROUPING;
 };
 
 struct elements{

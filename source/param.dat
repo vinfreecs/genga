@@ -80,3 +80,4 @@ Stop at Collision = 0
 Stop Minimum Mass = 0.0
 Collision Precision = 1.0
 Collision Time Shift = 1.0
+Serial Grouping = 0

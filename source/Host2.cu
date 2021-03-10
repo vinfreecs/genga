@@ -454,6 +454,8 @@ __host__ void Host::Halloc(){
 	P.mcmcNE = MCMC_NE;
 	P.mcmcRestart = 0;
 	sprintf(P.Gasfilename, "%s", "-");
+
+	P.SERIAL_GROUPING = def_SERIAL_GROUPING;
 	
 	char format[def_Ninformat];
 	sprintf(format, def_InputFileFormat);
@@ -538,7 +540,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	char sp[160];
 	int er;
 	
-	for(int j = 0; j < 100; ++j){ //loop around all lines in the param.dat file
+	for(int j = 0; j < 1000; ++j){ //loop around all lines in the param.dat file
 		int c;
 		for(int i = 0; i < 50; ++i){
 			c = fgetc(paramfile);
@@ -1738,6 +1740,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Serial Grouping =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.SERIAL_GROUPING);
+				if(er <= 0){
+					printf("Error: Serial Grouping value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Undefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -2445,7 +2462,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "KickFloat, kick in float precision: %d\n", def_KickFloat);
-			fprintf(infofile, "Serial Grouping: %d\n", SERIAL_GROUPING);
+			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
@@ -3182,6 +3199,10 @@ __host__ int Host::readSetElements(){
 	
 	cudaMalloc((void **) &setElementsLine_d, sizeof(int));
 	cudaMemset(setElementsLine_d, 0, sizeof(int));
+#if def_CPU == 1
+	setElementsLine_h = (int*)malloc(sizeof(int));
+	memset(setElementsLine_h, 0, sizeof(int));
+#endif
 
 	return 1;
 }

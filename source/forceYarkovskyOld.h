@@ -208,7 +208,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double X2cX = (X - 2.0) * cX;
 	double X2sX = (X - 2.0) * sX;
 	double eX = exp(-X);
-
+	// A B C D are multiplied by e^-X, which cancelles out later
 	double Ax = -eX * (X + 2.0) - (X2cX - X * sX);
 	double Bx = -eX * X - (X * cX + X2sX);
 	double Cx = Ax + L * (eX * 3.0 * (X + 2.0) + (3.0 * X2cX + X * (X - 3.0) * sX));
