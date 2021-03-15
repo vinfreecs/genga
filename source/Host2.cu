@@ -415,6 +415,12 @@ __host__ void Host::Halloc(){
 	P.UsePR = def_UsePR;
 	P.Qpr = def_Qpr;
 	P.SolarConstant = def_SolarConstant;
+	P.Asteroid_eps = def_Asteroid_eps;
+	P.Asteroid_rho = def_Asteroid_rho;
+	P.Asteroid_C = def_Asteroid_C;
+	P.Asteroid_A = def_Asteroid_A;
+	P.Asteroid_K = def_Asteroid_K;
+	P.Asteroid_V = def_Asteroid_V;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
@@ -1384,6 +1390,90 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%lf", &P.Qpr);
 				if(er <= 0){
 					printf("Error: Radiation Pressure Coefficient value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid emissivity eps =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_eps);
+				if(er <= 0){
+					printf("Error: Asteroid eps value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid density rho =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_rho);
+				if(er <= 0){
+					printf("Error: Asteroid rho value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid specific heat capacity C =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_C);
+				if(er <= 0){
+					printf("Error: Asteroid C value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid albedo A =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_A);
+				if(er <= 0){
+					printf("Error: Asteroid A value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid thermal conductivity K =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_K);
+				if(er <= 0){
+					printf("Error: Asteroid K value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid collisional velocity V =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_V);
+				if(er <= 0){
+					printf("Error: Asteroid V value is not valid!\n");
 					return 0;
 				}
 			}
@@ -2612,11 +2702,12 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Stop collision minimum mass: %g\n", P.StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", P.CollisionPrecision);
 			fprintf(infofile, "Collision Time Shift: %g\n", P.CollTshift);
-			fprintf(infofile, "Asteroid density: %g\n", Asteroid_rho);
-			fprintf(infofile, "Asteroid specific heat capacity: %g\n", Asteroid_C);
-			fprintf(infofile, "Asteroid albedo: %g\n", Asteroid_A);
-			fprintf(infofile, "Asteroid thermal conductivity: %g\n", Asteroid_K);
-			fprintf(infofile, "Asteroid collisional velocity V: %g\n", Asteroid_V);
+			fprintf(infofile, "Asteroid emissivity: %g\n", P.Asteroid_eps);
+			fprintf(infofile, "Asteroid density: %g\n", P.Asteroid_rho);
+			fprintf(infofile, "Asteroid specific heat capacity: %g\n", P.Asteroid_C);
+			fprintf(infofile, "Asteroid albedo: %g\n", P.Asteroid_A);
+			fprintf(infofile, "Asteroid thermal conductivity: %g\n", P.Asteroid_K);
+			fprintf(infofile, "Asteroid collisional velocity V: %g\n", P.Asteroid_V);
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

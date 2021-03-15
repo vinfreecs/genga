@@ -14,34 +14,34 @@
 //h3 angular momentum vector
 //h norm of angular momentum vector |r x v|
 //dt time step in day / 0.017
-__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double3 spin, const double3 h3, const double h, const double dt, const double SolarConstant){
+__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double3 spin, const double3 h3, const double h, const double dt){
 
 	//material constants
 //A = 0.0;
 //eps = 1.0;
 
-	double Gamma = sqrt(Asteroid_K * Asteroid_rho * Asteroid_C);	//surface thermal intertia 
+	double Gamma = sqrt(Asteroid_K_c[0] * Asteroid_rho_c[0] * Asteroid_C_c[0]);	//surface thermal intertia 
 	double RR = R * def_AU;		//covert radius in m 
 
 //comppute mass through density
-if(m == 0.0) m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 	m /= 1.98855e30;						//mass im Solar masses
 
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-	double F = SolarConstant / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+	double F = SolarConstant_c[0] / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
 	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
 
-	double Ts4 = (1.0 - Asteroid_A) * F / (Asteroid_eps * def_sigma);
+	double Ts4 = (1.0 - Asteroid_A_c[0]) * F / (Asteroid_eps_c[0] * def_sigma);
 #if PVERSION == 1
 	Ts4 *= 0.25;
 #endif
 
 	double Ts = sqrt(sqrt(Ts4));
 
-	double t1 = Gamma / (Asteroid_eps * def_sigma * Ts * Ts * Ts);
-	double t2 = (1.0 - Asteroid_A) * 3.0 * F / (9.0 * n * Asteroid_rho * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
+	double t1 = Gamma / (Asteroid_eps_c[0] * def_sigma * Ts * Ts * Ts);
+	double t2 = (1.0 - Asteroid_A_c[0]) * 3.0 * F / (9.0 * n * Asteroid_rho_c[0] * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
 
 	//compute rotation vetor from spin vector
 	double iI = 5.0 / (2.0 * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
@@ -73,13 +73,13 @@ if(m == 0.0) m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 #endif
 	
 	//seasonal
-	RR *= sqrt(Asteroid_rho * Asteroid_C * n / Asteroid_K); 
+	RR *= sqrt(Asteroid_rho_c[0] * Asteroid_C_c[0] * n / Asteroid_K_c[0]); 
 
 	double dadtS = 0.0;
 
 #if PVERSION == 1
 	//This is not Farinella 1998
-	double ilS = sqrt(Asteroid_rho * Asteroid_C * n / Asteroid_K);
+	double ilS = sqrt(Asteroid_rho_c[0] * Asteroid_C_c[0] * n / Asteroid_K_c[0]);
 	double ThetaS = t1 * sqrt(n);
 
 	double X = RR * ilS;
@@ -144,34 +144,34 @@ if(m == 0.0) m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double3 spin, const double3 h3, const double h, const double dt, const double SolarConstant){
+__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double3 spin, const double3 h3, const double h, const double dt){
 
 	//material constants
 //A = 0.0;
 //eps = 1.0;
 
-	double Gamma = sqrt(Asteroid_K * Asteroid_rho * Asteroid_C);	//surface thermal intertia 
+	double Gamma = sqrt(Asteroid_K_c[0] * Asteroid_rho_c[0] * Asteroid_C_c[0]);	//surface thermal intertia 
 	double RR = R * def_AU;		//covert radius in m 
 
 	double mu = def_ksq * (Msun + m);
 //comppute mass through density
 	if(m == 0.0){
-		m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+		m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
 		m /= 1.98855e30;						//mass im Solar masses
 		mu = def_ksq * (Msun + m);
 	}
 
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
-	double F = SolarConstant / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
+	double F = SolarConstant_c[0] / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
 	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
 
-	double Ts4 = (1.0 - Asteroid_A) * F / (Asteroid_eps * def_sigma);
+	double Ts4 = (1.0 - Asteroid_A_c[0]) * F / (Asteroid_eps_c[0] * def_sigma);
 	double Ts = sqrt(sqrt(Ts4));
 
-	double t1 = Gamma / (Asteroid_eps * def_sigma * Ts * Ts * Ts);
-	double t2 = (1.0 - Asteroid_A) * 3.0 * F / (9.0 * n * Asteroid_rho * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
+	double t1 = Gamma / (Asteroid_eps_c[0] * def_sigma * Ts * Ts * Ts);
+	double t2 = (1.0 - Asteroid_A_c[0]) * 3.0 * F / (9.0 * n * Asteroid_rho_c[0] * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
 
 	//compute rotation vector from spin vector
 	double iI = 5.0 / (2.0 * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
@@ -196,7 +196,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 
 	//Diurnal 
 	{
-	double ilD = sqrt(Asteroid_rho * Asteroid_C * omega / Asteroid_K);
+	double ilD = sqrt(Asteroid_rho_c[0] * Asteroid_C_c[0] * omega / Asteroid_K_c[0]);
 	double ThetaD = t1 * sqrt(omega);
 	double X = s2 * RR * ilD;
 	double lamda = ThetaD / X;
@@ -225,7 +225,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 	//seasonal
 	{
-	double ilS = sqrt(Asteroid_rho * Asteroid_C * n / Asteroid_K);
+	double ilS = sqrt(Asteroid_rho_c[0] * Asteroid_C_c[0] * n / Asteroid_K_c[0]);
 	double ThetaS = t1 * sqrt(n);
 	double eta = sqrt(1.0 - e * e);
 
@@ -262,7 +262,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 }	
 
-__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, const double SolarConstant, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -289,7 +289,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 			double dt = dt_d[st] * Kt;
 			double mu = def_ksq * (Msun + x4i.w);
 			if(x4i.w == 0.0){
-				double m = Asteroid_rho * 4.0 / 3.0 * M_PI * RR * RR * RR;; 	//mass in Kg;
+				double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR;; 	//mass in Kg;
 				m /= 1.98855e30;						//mass im Solar masses
 				mu = def_ksq * (Msun + m);
 			}
@@ -393,13 +393,13 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 
 			//modify elements
 #if PVERSION == 1
-			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt, SolarConstant);
+			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
 #endif
 #if PVERSION == 2
-			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt, SolarConstant);
+			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
 #endif
 #if PVERSION == 3
-			Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt, SolarConstant);
+			Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt);
 #endif
 			//Convert to Cartesian Coordinates
 

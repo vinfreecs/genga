@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.114
+#define def_Version 3.115
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -70,6 +70,12 @@
 #define def_UseYarkovsky 0
 #define def_UsePR 0
 #define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
+#define def_Asteroid_eps 0.95		//Emissivity
+#define def_Asteroid_rho 3500.0		//density of body in kg/m^3		Hebe 3500,	Veritas 2250
+#define def_Asteroid_C 680.0		//Specific Heat Capacity in J/kgK 	Hebe 680,	Veritas 500
+#define def_Asteroid_A 0.2		//Bond albedo				Hebe 0.2,	Veritas 0.069
+#define def_Asteroid_K 2.65		//Thermal conductivity in W/mK		Hebe 2.65,	Veritas 1.0
+#define def_Asteroid_V 5000.0		//Collisional velocity in m/s 
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
@@ -232,27 +238,6 @@
 #define USE_RANDOM 1
 #include <curand_kernel.h>
 
-//values for Asteroids in force function
-#define Asteroid_eps 0.95	//Emissivity
-
-
-#define Asteroid_rho 3500.0	//density of body in kg/m^3	Hebe
-//#define Asteroid_rho 2250.0	//density of body in kg/m^3	Veritas
-
-#define Asteroid_C 680.0	//Specific Heat Capacity in J/kgK Hebe
-//#define Asteroid_C 500.0	//Specific Heat Capacity in J/kgK Veritas
-
-#define Asteroid_A 0.2		//Bond albedo			Hebe
-//#define Asteroid_A 0.069	//Bond albedo			Veritas
-	
-
-#define Asteroid_K 2.65		//Thermal conductivity in W/mK	Hebe
-//#define Asteroid_K 1.0	//Thermal conductivity in W/mK	Veritas
-//#define Asteroid_K 0.001	//Thermal conductivity in W/mK	Veritas
-
-
-
-#define Asteroid_V 5000.0	//Collisional velocity in m/s 
 
 #ifndef STRUCT_H
 #define STRUCT_H
@@ -278,6 +263,14 @@ __constant__ int WriteEncounters_c[1];
 __constant__ double WriteEncountersRadius_c[1]; 
 __constant__ int StopAtEncounter_c[1]; 
 __constant__ double StopAtEncounterRadius_c[1]; 
+__constant__ double Asteroid_eps_c[1];
+__constant__ double Asteroid_rho_c[1];
+__constant__ double Asteroid_C_c[1];
+__constant__ double Asteroid_A_c[1];
+__constant__ double Asteroid_K_c[1];
+__constant__ double Asteroid_V_c[1];
+__constant__ double SolarConstant_c[1];
+__constant__ double Qpr_c[1];
 
 
 struct Parameter{
@@ -311,6 +304,12 @@ struct Parameter{
 	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient
 	double SolarConstant;
+	double Asteroid_eps;
+	double Asteroid_rho;
+	double Asteroid_C;
+	double Asteroid_A;
+	double Asteroid_K;
+	double Asteroid_V;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 	int UseTransits;
