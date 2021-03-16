@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Output Files &#8212; GENGA 2.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Exact reproducible results" href="SerialGrouping.html" />
+    <link rel="prev" title="Parameters in the param.dat file" href="Param.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="output-files">
+<h1>Output Files<a class="headerlink" href="#output-files" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-lock-file-lock-dat">
+<span id="lockfile"></span><h2>The Lock File: lock.dat<a class="headerlink" href="#the-lock-file-lock-dat" title="Permalink to this headline">¶</a></h2>
+<p>This file is created at the beginning of a GENGA simulation. The behaviour depens on the <code class="docutils literal notranslate"><span class="pre">IgnoreLockFile</span></code> in the <code class="docutils literal notranslate"><span class="pre">define.h</span></code> file.</p>
+<ul>
+<li><div class="line-block">
+<div class="line">If it is set to 0, then GENGA can not be started again from time step 0.</div>
+<div class="line">The lock file prevents that output files are overwritten and lost.</div>
+<div class="line">GENGA can only be started again when the lock.dat file is deleted.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">If it is set to 1, then GENGA can always be started again from time step 0, and all output files are overwritten.</div>
+</div>
+</li>
+</ul>
+<p>Restarting GENGA from a time step &gt; 0 is not affected by the lock file.</p>
+</div>
+<div class="section" id="the-master-file-master-out">
+<h2>The Master File: master.out<a class="headerlink" href="#the-master-file-master-out" title="Permalink to this headline">¶</a></h2>
+<p>The master file contains information about the used hardware and simulation progress. If an error occurs then the master file contains more details about that. The master file is not deleted at a new GENGA start.</p>
+</div>
+<div class="section" id="the-energy-output-file-energy-name-dat">
+<span id="energyfile"></span><h2>The Energy Output File: Energy&lt;name&gt;.dat<a class="headerlink" href="#the-energy-output-file-energy-name-dat" title="Permalink to this headline">¶</a></h2>
+<p>This file contains information about the number of particles, angular momentum and the energy.
+At the <code class="docutils literal notranslate"><span class="pre">Energy</span> <span class="pre">output</span> <span class="pre">interval</span></code>, set in the <code class="docutils literal notranslate"><span class="pre">param.dat</span></code> file, a new line in this file is written. The format is the following:</p>
+<blockquote>
+<div><blockquote>
+<div><div class="line-block">
+<div class="line">time0  N  V  T  LI  U  ETotal  LTotal  LRelativ  ERelativ</div>
+<div class="line">time1  N  V  T  LI  U  ETotal  LTotal  LRelativ  ERelativ</div>
+<div class="line">.</div>
+<div class="line">.</div>
+<div class="line">.</div>
+</div>
+</div></blockquote>
+<p>with</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>time in years</p></li>
+<li><p>N: Number of particles</p></li>
+<li><p>V: Total potential energy</p></li>
+<li><p>T: Total Kinetic energy</p></li>
+<li><p>LI: Angular momentum lost at ejections</p></li>
+<li><p>U: Inner energy created from collisions, ejections or gas disc</p></li>
+<li><p>ETotal: Total Energy</p></li>
+<li><p>LTotal: Total Angular Momentum</p></li>
+<li><p>LRelativ: (LTotal_t - LTotal_0)/LTotal_0</p></li>
+<li><p>ERelativ: (ETotal_t - ETotal_0)/ETotal_0</p></li>
+</ul>
+</div>
+<div class="section" id="the-execution-time-file-time-name-dat">
+<h2>The Execution Time File: time&lt;name&gt;.dat<a class="headerlink" href="#the-execution-time-file-time-name-dat" title="Permalink to this headline">¶</a></h2>
+<p>This file contains the execution time spent for the corresponding Coordinate Output interval, in seconds. The last line contains the total execution time in seconds.
+The first column indicates the time step. This last entry in the file is used for the automated restart (restart timestep = -1).</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">GENGA</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Param.html">Parameters in the param.dat file</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Output Files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-lock-file-lock-dat">The Lock File: lock.dat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-master-file-master-out">The Master File: master.out</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-energy-output-file-energy-name-dat">The Energy Output File: Energy&lt;name&gt;.dat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-execution-time-file-time-name-dat">The Execution Time File: time&lt;name&gt;.dat</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="SerialGrouping.html">Exact reproducible results</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Yarkovsky.html">Yarkovsky effect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PRdrag.html">Poynting-Robertson drag</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Param.html" title="previous chapter">Parameters in the param.dat file</a></li>
+      <li>Next: <a href="SerialGrouping.html" title="next chapter">Exact reproducible results</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Simon Grimm.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Files.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yarkovsky effect &#8212; GENGA 2.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Poynting-Robertson drag" href="PRdrag.html" />
+    <link rel="prev" title="Exact reproducible results" href="SerialGrouping.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="yarkovsky-effect">
+<span id="yarkovsky"></span><h1>Yarkovsky effect<a class="headerlink" href="#yarkovsky-effect" title="Permalink to this headline">¶</a></h1>
+<p>The Yarkovky effect is implemented according to <span id="id1">[<a class="reference internal" href="Bibliography.html#id5">VokrouhlickyFarinella99</a>]</span> and <span id="id2">[<a class="reference internal" href="Bibliography.html#id6">VokrouhlickyMilaniChesley00</a>]</span>
+and is available in the schemes (we recommend scheme 1):</p>
+<ul>
+<li><div class="line-block">
+<div class="line">Velocity kick <span class="math notranslate nohighlight">\(\mathbf{a_Y}\)</span></div>
+<div class="line">set <code class="docutils literal notranslate"><span class="pre">Use</span> <span class="pre">Yarkovsky</span> <span class="pre">=</span> <span class="pre">1</span></code> in the <code class="docutils literal notranslate"><span class="pre">param.dat</span></code> file.</div>
+<div class="line">See Equation <a class="reference internal" href="#equation-eq-1a">(1)</a> and <a class="reference internal" href="#equation-eq-1b">(2)</a></div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Time averaged change in sami-major axis <span class="math notranslate nohighlight">\(\frac{da}{dt}\)</span></div>
+<div class="line">set <code class="docutils literal notranslate"><span class="pre">Use</span> <span class="pre">Yarkovsky</span> <span class="pre">=</span> <span class="pre">2</span></code> in the <code class="docutils literal notranslate"><span class="pre">param.dat</span></code> file.</div>
+<div class="line">See Equation <a class="reference internal" href="#equation-eq-2a">(3)</a> and <a class="reference internal" href="#equation-eq-2b">(4)</a></div>
+</div>
+</li>
+</ul>
+<div class="line-block">
+<div class="line">The following parameters are relevant for the Yarkovsky effect and can be set in the <code class="docutils literal notranslate"><span class="pre">param.dat</span></code> file:</div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Use</span> <span class="pre">Yarkovsky</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Solar</span> <span class="pre">Constant</span></code>: Solar Constant at 1 AU in W /m^2</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">eps</span></code>: Emissivity factor</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">rho</span></code>: density of the body in kg/m^3</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">C</span></code>: Specific Heat Capacity in J kg^-1 K^-1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">A</span></code>: Bond albedo</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">K</span></code>: Thermal conductivity in W m^-1 K^-1</p></li>
+</ul>
+<p>Note that the calculation of the Yarkovsky effect uses the <code class="docutils literal notranslate"><span class="pre">Asteroid</span> <span class="pre">rho</span></code> value for the calculation of the thermal intertia
+<span class="math notranslate nohighlight">\(\Gamma\)</span> and not the individual particle densities.</p>
+<div class="math notranslate nohighlight" id="equation-eq-1a">
+<span class="eqno">(1)<a class="headerlink" href="#equation-eq-1a" title="Permalink to this equation">¶</a></span>\[\mathbf{a}_{seasonal} = \frac{4}{9}\frac{(1 - A) \Phi}{(1 + \lambda)} \times \sum_{k \ge 1} G_k\left[s_P \alpha _k \cos (knt + \delta_k) + s_Q \beta_k \sin(knt + \delta_k) \right] \mathbf{s},\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-1b">
+<span class="eqno">(2)<a class="headerlink" href="#equation-eq-1b" title="Permalink to this equation">¶</a></span>\[\mathbf{a}_{diurnal} = \frac{4}{9}\frac{(1 - A) \Phi}{(1 + \lambda)} G\left[\sin \delta + \cos \delta \mathbf{s} \times \right] \frac{\mathbf{r} \times \mathbf{s}}{r}.\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-2a">
+<span class="eqno">(3)<a class="headerlink" href="#equation-eq-2a" title="Permalink to this equation">¶</a></span>\[\left(\frac{da}{dt} \right)_{diurnal} = - \frac{8}{9} \frac{(1-A)\Phi}{n} \frac{G \sin \delta}{1 + \lambda} \cos \gamma\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-2b">
+<span class="eqno">(4)<a class="headerlink" href="#equation-eq-2b" title="Permalink to this equation">¶</a></span>\[\left(\frac{da}{dt} \right)_{seasonal} = \frac{4}{9} \frac{(1-A)\Phi}{n} \sum_{k \ge 1} \frac{G_k \sin \delta_k}{k} \chi_k \bar{\chi_k},\]</div>
+<div class="section" id="test-of-the-yarkovsky-effet">
+<span id="yarkovskytest"></span><h2>Test of the Yarkovsky effet<a class="headerlink" href="#test-of-the-yarkovsky-effet" title="Permalink to this headline">¶</a></h2>
+<p>In <a class="reference internal" href="#figyarkovsky"><span class="std std-numref">Fig. 1</span></a> is shown a test of the Yarkovsky effect following <span id="id3">[<a class="reference internal" href="Bibliography.html#id3">FarinellaVokrouhlickyHartmann98</a>]</span> and <span id="id4">[<a class="reference internal" href="Bibliography.html#id4">BRB00</a>]</span>.</p>
+<div class="line-block">
+<div class="line">Relevant parameters for this example:</div>
+</div>
+<ul class="simple">
+<li><p>Use Yarkovsky = 1 (2)</p></li>
+<li><p>Asteroid emissivity eps = 1.0</p></li>
+<li><p>Asteroid density rho = 3500.0</p></li>
+<li><p>Asteroid specific heat capacity C = 680.0</p></li>
+<li><p>Asteroid albedo A = 0.0</p></li>
+<li><p>Asteroid thermal conductivity K = 2.65</p></li>
+<li><p>Solar Constant = 1367</p></li>
+</ul>
+<div class="line-block">
+<div class="line">Initial conditions:</div>
+</div>
+<ul class="simple">
+<li><p>Semi-major axis a = 2 AU</p></li>
+<li><p>Eccentricity = 0</p></li>
+<li><p>Inclination = 0</p></li>
+<li><p>Argument of perihelion = 0 - 2 <span class="math notranslate nohighlight">\(\pi\)</span></p></li>
+<li><p>Longitude of ascending node = 0 - 2 <span class="math notranslate nohighlight">\(\pi\)</span></p></li>
+<li><p>Mean anomaly = 0 - 2 <span class="math notranslate nohighlight">\(\pi\)</span></p></li>
+<li><p>Density <span class="math notranslate nohighlight">\(\rho\)</span> = 3500.0 kg/m^3</p></li>
+<li><p>Physical radius R =  0.1 - 100 m</p></li>
+<li><p>Rotation frequency <span class="math notranslate nohighlight">\(\omega\)</span> = 5 h</p></li>
+<li><p>Obliquity <span class="math notranslate nohighlight">\(\gamma_{\text{Seasonal}}\)</span>  =  <span class="math notranslate nohighlight">\(90^\circ\)</span></p></li>
+<li><p>Obliquity <span class="math notranslate nohighlight">\(\gamma_{\text{Diurnal}}\)</span>  =  0</p></li>
+</ul>
+<div class="figure align-default" id="figyarkovsky">
+<img alt="_images/Yarkovsky.png" src="_images/Yarkovsky.png" />
+<p class="caption"><span class="caption-number">Fig. 1 </span><span class="caption-text">Drift rate of the seasonal and diurnal Yarkovsky effect. Computed after 10000 years and averaged over 1 orbit.
+The scattering is caused by the random values for the mean anomalies.</span><a class="headerlink" href="#figyarkovsky" title="Permalink to this image">¶</a></p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">GENGA</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Param.html">Parameters in the param.dat file</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="SerialGrouping.html">Exact reproducible results</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Yarkovsky effect</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#test-of-the-yarkovsky-effet">Test of the Yarkovsky effet</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="PRdrag.html">Poynting-Robertson drag</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="SerialGrouping.html" title="previous chapter">Exact reproducible results</a></li>
+      <li>Next: <a href="PRdrag.html" title="next chapter">Poynting-Robertson drag</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Simon Grimm.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Yarkovsky.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

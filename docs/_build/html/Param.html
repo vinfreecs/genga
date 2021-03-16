@@ -1,0 +1,314 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parameters in the param.dat file &#8212; GENGA 2.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Output Files" href="Files.html" />
+    <link rel="prev" title="GENGA documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="parameters-in-the-param-dat-file">
+<h1>Parameters in the param.dat file<a class="headerlink" href="#parameters-in-the-param-dat-file" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line">Time step in days</div>
+<div class="line">Should be minimal ca. 30 steps per orbit for the second order integrator.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Output name</div>
+<div class="line">All output files will contain this name</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Energy output interval, (in timesteps)</div>
+<div class="line">(See <a class="reference internal" href="Files.html#energyfile"><span class="std std-ref">The Energy Output File: Energy&lt;name&gt;.dat</span></a>)</div>
+<div class="line-block">
+<div class="line">- when set to 0, then no energy output is written.</div>
+<div class="line">- when set to -1, then only the last energy output is written.</div>
+</div>
+</div>
+</li>
+<li><p>Coordinates output interval = 100</p></li>
+<li><p>Number of outputs per interval = 1</p></li>
+<li><p>Coordinate output buffer = 1</p></li>
+<li><p>Irregular output calendar = -</p></li>
+<li><p>Integration steps = 100000</p></li>
+</ul>
+</div>
+<div class="section" id="stellar-parameters">
+<h2>Stellar parameters<a class="headerlink" href="#stellar-parameters" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><div class="line-block">
+<div class="line">Central Mass:</div>
+<div class="line">Mass of the central star, in Solar Masses (default = 1)</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Star Radius:</div>
+<div class="line">Physical radius of the central star in AU (default = 0.00465475877 = Solar radius)</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Star Love Number:</div>
+<div class="line">Love number of the central star (default = 1.0)</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Star fluid Love Number:</div>
+<div class="line">Fluid Love number of the central star (default = 1.0)</div>
+</div>
+</li>
+<li><p>Star spin_x = 0.0</p></li>
+<li><p>Star spin_y = 0.0</p></li>
+<li><p>Star spin_z = 0.0</p></li>
+<li><p>Star tau = 0.0</p></li>
+<li><p>n1 = 3.0</p></li>
+<li><p>n2 = 0.4</p></li>
+<li><p>Input file = initialplanet_2048.dat</p></li>
+<li><p>Input file Format: &lt;&lt; x y z m vx vy vz &gt;&gt;</p></li>
+<li><p>Angle units = radians</p></li>
+<li><p>Default rho = 2.0</p></li>
+<li><p>Use Test Particles = 0</p></li>
+<li><p>Particle Minimum Mass = 0.0</p></li>
+<li><p>Restart timestep = 0</p></li>
+<li><p>Symplectic recursion levels = 1</p></li>
+<li><p>Symplectic recursion sub steps = 2</p></li>
+<li><p>Minimum number of bodies = 1</p></li>
+<li><p>Minimum number of test particles = 0</p></li>
+<li><p>Inner truncation radius = 0.5</p></li>
+<li><p>Outer truncation radius = 50.0</p></li>
+<li><p>Order of integrator = 2</p></li>
+<li><p>Maximum encounter pairs = 512</p></li>
+<li><p>Use aeGrid = 0</p></li>
+<li><p>aeGrid amin = 0</p></li>
+<li><p>aeGrid amax = 5</p></li>
+<li><p>aeGrid emin = 0</p></li>
+<li><p>aeGrid emax = 1</p></li>
+<li><p>aeGrid imin = 0</p></li>
+<li><p>aeGrid imax = 0.1</p></li>
+<li><p>aeGrid Na = 10</p></li>
+<li><p>aeGrid Ne = 10</p></li>
+<li><p>aeGrid Ni = 10</p></li>
+<li><p>aeGrid Start Count = 1</p></li>
+<li><p>aeGrid name = A</p></li>
+<li><p>Use gas disk = 0</p></li>
+<li><p>Use gas disk potential = 1</p></li>
+<li><p>Use gas disk enhancement = 0</p></li>
+<li><p>Use gas disk drag = 2</p></li>
+<li><p>Use gas disk tidal damping = 2</p></li>
+<li><p>Gas dTau_diss = 10000</p></li>
+<li><p>Gas alpha = 1</p></li>
+<li><p>Gas Sigma_10 = 2000</p></li>
+<li><p>Gas Mgiant = 1.0E-4</p></li>
+<li><p>Gas file name = -</p></li>
+</ul>
+</div>
+<div class="section" id="non-newtonian-forces">
+<h2>Non-Newtonian forces<a class="headerlink" href="#non-newtonian-forces" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">See <a class="reference internal" href="Yarkovsky.html#yarkovsky"><span class="std std-ref">Yarkovsky effect</span></a> and <a class="reference internal" href="PRdrag.html#prdrag"><span class="std std-ref">Poynting-Robertson drag</span></a></div>
+</div>
+</div></blockquote>
+<ul>
+<li><p>Use force = 0</p></li>
+<li><div class="line-block">
+<div class="line">Use Yarkovsky: Flag for Yarkovsky effect</div>
+</div>
+<blockquote>
+<div><ul class="simple">
+<li><p>0 (default): no Yarkovsky effect</p></li>
+<li><p>1: use Yarkovsky effect <span class="math notranslate nohighlight">\(\mathbf{a_Y}\)</span></p></li>
+<li><p>2: use time averaged Yarkovsky effect <span class="math notranslate nohighlight">\(\frac{da}{dt}\)</span></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Use Poynting-Robertson: Flag for Poynting-Robertson drag</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>0 (default) : no Poynting-Robertson drag</p></li>
+<li><p>1: use Poynting-Roberston drag <span class="math notranslate nohighlight">\(\mathbf{a_{PR}}\)</span></p></li>
+<li><p>2: use time averaged Poynting-Robertson drag <span class="math notranslate nohighlight">\(\frac{da}{dt}\)</span> and <span class="math notranslate nohighlight">\(\frac{de}{dt}\)</span></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Radiation Pressure Coefficient Qpr, used in the Poynting-Robertson drag, in general assumed to be 1.</p></li>
+<li><div class="line-block">
+<div class="line">Asteroid emissivity eps</div>
+<div class="line">Thermal emissivity factor <span class="math notranslate nohighlight">\(\epsilon\)</span></div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">Asteroid density rho, in km/m^3</div>
+</div>
+</li>
+<li><p>Asteroid specific heat capacity C, in J kg^-1 K^-1</p></li>
+<li><div class="line-block">
+<div class="line">Asteroid albedo A</div>
+<div class="line">Bond albedo</div>
+</div>
+</li>
+<li><p>Asteroid thermal conductivity K, in W m^-1 K^-1</p></li>
+<li><p>Asteroid collisional velocity V, in m/s</p></li>
+<li><p>Solar Constant : Solar constant at 1 AU in W/m^2 (default 1367.0)</p></li>
+</ul>
+</div>
+<div class="section" id="other">
+<h2>other<a class="headerlink" href="#other" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p>Use Small Collisions = 0</p></li>
+<li><p>Set Elements file name = -</p></li>
+<li><p>FormatS = 0</p></li>
+<li><p>FormatT = 0</p></li>
+<li><p>FormatP = 1</p></li>
+<li><p>FormatO = 0</p></li>
+<li><p>TTV file name = -</p></li>
+<li><p>RV file name = -</p></li>
+<li><p>TTV steps = 1</p></li>
+<li><p>Print Transits = 0</p></li>
+<li><p>Print RV = 0</p></li>
+<li><p>Print MCMC = 0</p></li>
+<li><p>MCMC NE = 0</p></li>
+<li><p>MCMC Restart = 0</p></li>
+<li><p>Report Encounters = 0</p></li>
+<li><p>Report Encounters Radius = 3</p></li>
+<li><p>Stop at Encounter = 0</p></li>
+<li><p>Stop at Encounter Radius = 1</p></li>
+<li><p>Stop at Collision = 0</p></li>
+<li><p>Stop Minimum Mass = 0.0</p></li>
+<li><p>Collision Precision = 1.0</p></li>
+<li><p>Collision Time Shift = 1.0</p></li>
+<li><div class="line-block">
+<div class="line">Serial Grouping: Flag for exact reproducible results.</div>
+<div class="line">See <a class="reference internal" href="SerialGrouping.html#serialgrouping"><span class="std std-ref">Exact reproducible results</span></a></div>
+</div>
+<blockquote>
+<div><ul class="simple">
+<li><p>0: nothing happens.</p></li>
+<li><p>1: enable sorting step for exact reproducible results.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">GENGA</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Parameters in the param.dat file</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#main-parameters">Main parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stellar-parameters">Stellar parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#non-newtonian-forces">Non-Newtonian forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#other">other</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Output Files</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="SerialGrouping.html">Exact reproducible results</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Yarkovsky.html">Yarkovsky effect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PRdrag.html">Poynting-Robertson drag</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">GENGA documentation</a></li>
+      <li>Next: <a href="Files.html" title="next chapter">Output Files</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Simon Grimm.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/Param.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

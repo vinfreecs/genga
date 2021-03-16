@@ -1637,12 +1637,12 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 		
 			double t1 = eta * ir * ir * Qpr_c[0];
 
-
 			//v dependen part with implicit midpoint method
 			for(int k = 0; k < 3; ++k){	
 			
 				double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir; 
 				double t2 = (def_cm - rd);
+//if(id < 10) printf("%d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, RR, eta, rsq, t1, rd, t2);
 
 
 				a3t.x = t1 * (t2 * x4i.x * ir - v4it.x);
@@ -1652,7 +1652,6 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 				v4it.x = v4i.x + 0.5 * dt * a3t.x;
 				v4it.y = v4i.y + 0.5 * dt * a3t.y;
 				v4it.z = v4i.z + 0.5 * dt * a3t.z;
-
 
 			}
 			//apply the Kick
