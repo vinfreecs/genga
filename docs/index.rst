@@ -37,6 +37,15 @@ Forces
    Yarkovsky.rst
    PRdrag.rst
 
+Small body collision model
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   SmallBodies.rst
+
+
 Bibliography
 ~~~~~~~~~~~~
 

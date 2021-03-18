@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.115
+#define def_Version 3.116
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -44,6 +44,7 @@
 #define def_RcutSun 0.2
 #define def_Rcut 50.0
 #define def_NencMax 512
+#define def_Nfragments 0		//Additional array size for debris particles
 #define def_OderOfIntegrator 2			//2, 4  or 6
 #define def_UseaeGrid 0				// 1 or 0
 #define def_aeGridamin 0.0f
@@ -64,6 +65,7 @@
 #define def_UsegasTidalDamping 2	//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_GasdTau_diss 10000
 #define def_GasAlpha 1
+#define def_GasBeta 0.25
 #define def_G_Sigma_10 2000		 //surface density at 1AU
 #define def_Mgiant  1.0E-4
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
@@ -110,7 +112,6 @@
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
-#define def_Nfragments 0		//Additional array size for debris particles
 #define def_NFileNameDigits 12		//number of digits in output filenames
 
 
@@ -285,6 +286,7 @@ struct Parameter{
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
 	double G_alpha;			//alpha parameter for Gas Disc
+	double G_beta;			//beta parameter for Gas Disc
 	double G_Sigma_10;		//Gas Sigma_10
 	double G_Mgiant;		//Mass limit for gas effects
 	int UseaeGrid;			
@@ -341,6 +343,7 @@ struct Parameter{
 	int NAFformat;
 	int NAFinterval;
 	int NencMax;
+	int Nfragments;
 	double MinMass;
 	int AngleUnits;
 	int SLevels;

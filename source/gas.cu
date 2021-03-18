@@ -4,6 +4,7 @@
 
 double Gas_dTau_diss;
 double Gas_alpha;
+double Gas_beta;
 double *Gas_rg_h, *Gas_rg_d;
 double *Gas_zg_h, *Gas_zg_d;
 double *Gas_rho_h, *Gas_rho_d;
@@ -14,6 +15,7 @@ __host__ void Data::GasAlloc(){
 
 	Gas_dTau_diss = P.G_dTau_diss;
 	Gas_alpha = P.G_alpha;
+	Gas_beta = P.G_beta;
 
 	Gas_rg_h = (double*)malloc(def_Gasnr_g * sizeof(double));
 	Gas_zg_h = (double*)malloc(def_Gasnr_g * def_Gasnz_g * sizeof(double));
@@ -33,7 +35,7 @@ __host__ void Data::GasAlloc(){
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, double G_alpha, double G_Sigma_10){
+__host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, double G_alpha, double G_beta, double G_Sigma_10){
 
 	double dr1 = 0.1;
 	double dr2 = 0.5;
@@ -58,7 +60,7 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 
 		Gas_rg_h[ig] = rg;
 
-		h = def_h_1 * rg * pow(rg, 0.25); //beta = 0.25 comes from Temperature profile
+		h = def_h_1 * rg * pow(rg, G_beta); //beta = 0.25 comes from Temperature profile
 		Sigma = Sigma10 * pow(rg, -G_alpha);
 	
 //			if(uniform != 1){
@@ -203,7 +205,7 @@ __device__ double ERFUNC(double zz){
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, double G_alpha, double G_Sigma_10){
+__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, double G_alpha, double G_beta, double G_Sigma_10){
 
 	int ip = blockIdx.x * blockDim.x + threadIdx.x; // r
 	int jp = blockIdx.y * blockDim.y + threadIdx.y; // z
@@ -220,7 +222,7 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 	if(ip < def_Gasnr_p){	
 		rp = 0.1 + dr1 * ip;
 
-		h = def_h_1 * rp * pow(rp, 0.25);
+		h = def_h_1 * rp * pow(rp, G_beta);
 		double Sigma = G_Sigma_10 * pow(rp, -G_alpha);
 //		if(uniform != 1){
 //			ro = rp + 0.5 * dr1; // radius of the outer cel boundary
@@ -297,7 +299,7 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 
 __host__ int Data::setGasDisk(){
 	cudaError_t error;
-	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10);
+	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10);
 
 	cudaMemcpy(Gas_rg_d, Gas_rg_h, def_Gasnr_g * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Gas_zg_d, Gas_zg_h, def_Gasnr_g * def_Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
@@ -306,7 +308,7 @@ __host__ int Data::setGasDisk(){
 	dim3 NTGasTabel(32, 1, 1);
 	dim3 NBGasTabel((def_Gasnr_p + 31) / 32, def_Gasnz_p, 1);
 
-	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha, P.G_Sigma_10);
+	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha, P.G_beta, P.G_Sigma_10);
 
 	cudaDeviceSynchronize();
 	error = cudaGetLastError();
@@ -322,7 +324,7 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, double G_alpha, double G_Sigma_10, int Nst, double Ct, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, double G_alpha, double G_beta, double G_Sigma_10, int Nst, double Ct, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -364,10 +366,16 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 	
 		if(r1 > 0.1 && r1 < 35.0 && x4.z/r1 < 1.5){ //otherwise there is no gas
 
-			double h = def_h_1 * r1 * pow(r1, 0.25);
-			//double Sigma = G_Sigma_10 * pow(r1, -G_alpha);
-			double Sigma = G_Sigma_10 / r1;
-			if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
+			double h = def_h_1 * r1 * pow(r1, G_beta);
+			double Sigma = G_Sigma_10 * pow(r1, -G_alpha);
+			// **********
+			//  This part hase been removed in version 3.116 it was used originally to
+			//  reset G_Sigma_10 for p = 2. Since G_Sigma_10 can be set in the 
+			//  param.dat file, it is not neede here anymore
+			//double Sigma = G_Sigma_10 / r1;
+			//if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
+			// **********
+		
 
 			Sigma *= depfac;
 //if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
@@ -549,7 +557,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, double G_alpha, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
+__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double4 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, double G_alpha, double G_beta, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -1065,16 +1073,16 @@ __host__ void Data::gasEnergyMCall(double* Energy_d, double *test_d, double *U_d
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
 	int nt = min(32, NB[0]);
-	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, Nstart);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, Nstart);
 }
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.G_alpha, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.G_alpha, P.G_beta, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 
 __host__ int Data::freeGas(){

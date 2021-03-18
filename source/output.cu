@@ -1045,10 +1045,10 @@ __host__ int Data::printFragments(int nf){
 	printf("Created %d fragments\n", nf);
 	fclose(GSF[st].logfile);
 
-	if(nf > def_Nfragments){
+	if(nf > P.Nfragments){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		fprintf(GSF[st].logfile, "Error: More particles created than def_Nfragments: %d %d\n", nf, def_Nfragments);
-		printf("Error: Error: More particles created than def_Nfragments: %d %d\n", nf, def_Nfragments);
+		fprintf(GSF[st].logfile, "Error: More particles created than Nfragments: %d %d\n", nf, P.Nfragments);
+		printf("Error: Error: More particles created than Nfragments: %d %d\n", nf, P.Nfragments);
 		fclose(GSF[st].logfile);
 
 		return 0;
@@ -1063,7 +1063,7 @@ __host__ int Data::printFragments(int nf){
 		return 0;
 	}
  
-	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * def_Nfragments, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * P.Nfragments, cudaMemcpyDeviceToHost);
 
 	FILE *fragmentfile;
 	for(int nc = 0; nc < nf + 1; ++nc){

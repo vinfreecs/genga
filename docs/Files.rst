@@ -53,3 +53,28 @@ The Execution Time File: time<name>.dat
 This file contains the execution time spent for the corresponding Coordinate Output interval, in seconds. The last line contains the total execution time in seconds.
 The first column indicates the time step. This last entry in the file is used for the automated restart (restart timestep = -1).
 
+
+.. _FragmentsFile:
+
+The Fragments File: Fragments<name>.dat
+---------------------------------------
+
+(See :ref:`SmallBodies`)
+This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :literal:`param.dat` file is enabled. The file contains information about fragmentation and rotation reset events.
+
+    | time index m r x y z vx vy vz Sx Sy Sz event
+    | .
+    | .
+    | .
+    | .
+
+the 'event' indicates the following:
+ -  0: rotation rate reset
+ - -1: Collision, the particle is destroyed, and it is replaced with new fragments (listed in the next lines with event=1 or event=2 of this file)
+ - 1: A new fragment particle. The original body is the last body in this file with event = -1.
+ - 2: A new fragment particle. The original body is the last body in this file with event = -1. This body is too small and it is directly removed from the simulation.
+
+Each new created fragment gets a new, increasing,  index number.
+This file permits to recronstruct the collision and fragmentation history of every particle.
+
+

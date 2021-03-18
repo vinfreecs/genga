@@ -73,43 +73,50 @@ Stellar parameters
 - Use gas disk tidal damping = 2
 - Gas dTau_diss = 10000
 - Gas alpha = 1
+- Gas beta = 1
 - Gas Sigma_10 = 2000
 - Gas Mgiant = 1.0E-4
 - Gas file name = -
 
 Non-Newtonian forces
 --------------------
-  | See :ref:`Yarkovsky` and :ref:`PRdrag`
 
+- Solar Constant : Solar constant at 1 AU in W/m^2 (default 1367.0)
 - Use force = 0
-- | Use Yarkovsky: Flag for Yarkovsky effect
+- | Use Yarkovsky: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
 
    - 0 (default): no Yarkovsky effect
    - 1: use Yarkovsky effect :math:`\mathbf{a_Y}` 
    - 2: use time averaged Yarkovsky effect :math:`\frac{da}{dt}`
 
-- Use Poynting-Robertson: Flag for Poynting-Robertson drag
+- Use Poynting-Robertson: Flag for Poynting-Robertson drag (See :ref:`PRdrag`)
 
    - 0 (default) : no Poynting-Robertson drag
    - 1: use Poynting-Roberston drag :math:`\mathbf{a_{PR}}`
    - 2: use time averaged Poynting-Robertson drag :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
 
-- Radiation Pressure Coefficient Qpr, used in the Poynting-Robertson drag, in general assumed to be 1.
+- Radiation Pressure Coefficient Qpr, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
 - | Asteroid emissivity eps
-  | Thermal emissivity factor :math:`\epsilon`
-- | Asteroid density rho, in km/m^3
+  | Thermal emissivity factor :math:`\epsilon` (See :ref:`Yarkovsky`)
+- | Asteroid density rho, in km/m^3 (See :ref:`Yarkovsky`, :ref:`PRdrag`)
  
-- Asteroid specific heat capacity C, in J kg^-1 K^-1
+- Asteroid specific heat capacity C, in J kg^-1 K^-1 (See :ref:`Yarkovsky`)
 - | Asteroid albedo A
-  | Bond albedo
-- Asteroid thermal conductivity K, in W m^-1 K^-1
-- Asteroid collisional velocity V, in m/s
-- Solar Constant : Solar constant at 1 AU in W/m^2 (default 1367.0)
+  | Bond albedo (See :ref:`Yarkovsky`)
+- Asteroid thermal conductivity K, in W m^-1 K^-1 (See :ref:`Yarkovsky`)
+
+- | Use Small Collisions: Flag to enable model for small bodies collisions (See :ref:`SmallBodies`)
+  
+   - 0 (default): model is not enabled
+   - 1: enable rotation reset model and fragmentation model for test particles.
+
+- Asteroid collisional velocity V, in m/s (See :ref:`SmallBodies`)
+- | Nframents: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+  | (See :ref:`SmallBodies`)
 
 other
 -----
 
-- Use Small Collisions = 0
 - Set Elements file name = -
 - FormatS = 0
 - FormatT = 0

@@ -23,7 +23,7 @@ __host__ void Data::AllocateOrbit(){
 	LI0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(def_NColl * def_MaxColl * Nst * sizeof(double));
 	writeEnc_h = (double*)malloc(25 * def_MaxWriteEnc * Nst * sizeof(double));
-	Fragments_h = (double*)malloc(25 * def_Nfragments * Nst * sizeof(double));
+	Fragments_h = (double*)malloc(25 * P.Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
 	aecount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
 	enccount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
@@ -143,7 +143,7 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &EncpairsScan_d, sizeof(int) * (NconstT + 1023 / 1024));	//helper array for stream compaction
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
-	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * def_Nfragments);
+	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * P.Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
 	cudaMalloc((void **) &aecount_d, NconstT * sizeof(unsigned int));
 	cudaMalloc((void **) &enccount_d, NconstT * sizeof(unsigned int));
@@ -711,7 +711,7 @@ __host__ int Data::init(){
 		writeEnc_h[i] = 0.0;
 	}
 
-	for(int i = 0; i < Nst * 25 * def_Nfragments; ++i){
+	for(int i = 0; i < Nst * 25 * P.Nfragments; ++i){
 		Fragments_h[i] = 0.0;
 	}
 
@@ -786,7 +786,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(Nencpairs3_d, Nencpairs3_h, P.SLevels * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * def_NColl * def_MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * def_MaxWriteEnc, cudaMemcpyHostToDevice);
-	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * def_Nfragments, cudaMemcpyHostToDevice);
+	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * P.Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(aecount_d, aecount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(enccount_d, enccount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);

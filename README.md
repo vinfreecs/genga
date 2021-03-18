@@ -16,6 +16,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.116: Changed treatment of Gas alpha for values other than 1.
  * Version 3.115: The Asteroid options (Yarkovsky and PR-drag) are moved from the 'define.h' file to the 'param.dat' file.
  * Version 3.114: The SERIAL_GROUPING option is moved from the 'define.h' file to the 'param.dat' file.
  * Version 3.107: The GENGA repository has moved from Mercurial to Git, because bitbucket removed mercurial.

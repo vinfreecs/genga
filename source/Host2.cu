@@ -389,6 +389,7 @@ __host__ void Host::Halloc(){
 	P.tRestart = def_RestartTimeStep;	
 	P.SIO = def_OderOfIntegrator;
 	P.NencMax = def_NencMax;
+	P.Nfragments = def_Nfragments;
 	P.SLevels = def_SLevels;
 	P.SLSteps = def_SLSteps;
 	P.AngleUnits = 0;		//0: radians, 1:degrees
@@ -423,6 +424,7 @@ __host__ void Host::Halloc(){
 	P.Asteroid_V = def_Asteroid_V;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
+	P.G_beta = def_GasBeta;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
 	P.G_Mgiant = def_Mgiant;
 	P.FormatS = def_FormatS;
@@ -1286,8 +1288,23 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Gas alpha =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%lf", &P.G_alpha);
-				if(er <= 0 || !(P.G_alpha == 1.0 || P.G_alpha == 2.0)){
+				if(er <= 0){
 					printf("Error: Gas alpha value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Gas beta =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_beta);
+				if(er <= 0 || P.G_beta < 0.0){
+					printf("Error: Gas beta value is not valid!\n");
 					return 0;
 				}
 				
@@ -1798,6 +1815,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Nfragments =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.Nfragments);	
+				if(er <= 0){
+					printf("Error: Nfragments = is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Symplectic recursion levels =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.SLevels);
@@ -2005,6 +2036,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error, number of time steps larger than number of digits in the output filenames. Increase def_NFileNameDigits in the define.h file.\n");
 		return 0;
 
+	}
+
+	if(P.G_alpha > 1.0 && P.UsegasPotential > 0){
+		printf("Error, Gas alpha value not valid for UsegasPotential. Code needs to be updated\n");
+		return 0;
 	}
 
 	ForceFlag = 0;
@@ -2664,7 +2700,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
 			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
 			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0
-			fprintf(infofile, "Nfragments: %d\n", def_Nfragments);
+			fprintf(infofile, "Nfragments: %d\n", P.Nfragments);				// use only argument in simulation 0
 			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
 			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
 			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
@@ -2684,6 +2720,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas disk tidal damping: %d\n", P.UsegasTidalDamping);	// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %g\n", P.G_alpha);                                // use only argument in simulation 0
+			fprintf(infofile, "Gas beta: %g\n", P.G_beta);					// use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);                              // use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
@@ -2739,7 +2776,7 @@ __host__ void Host::Tsizes(){
 		NEnergyT += max(N_h[st], 8);
 	}
 	
-	NconstT = NT + NsmallT + def_Nfragments;
+	NconstT = NT + NsmallT + P.Nfragments;
 	if(Nst == 1){
 		NBNencT = NconstT * P.NencMax;
 		NEnergyT = max(NconstT, 8);
