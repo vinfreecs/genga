@@ -2,6 +2,7 @@ readme
 
 source/genga
 GengaGL/gengaGL
+tools/KE
 
 # Sphinx
 docs/_build

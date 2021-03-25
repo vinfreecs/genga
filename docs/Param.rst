@@ -89,7 +89,7 @@ Memory options
 Non-Newtonian forces
 --------------------
 
-- Solar Constant : Solar constant at 1 AU in W/m^2 (default 1367.0)
+- Solar Constant : Solar constant at 1 AU in W / :math:`\text{m}^2` (default 1367.0)
 - Use force = 0
 - | Use Yarkovsky: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
 
@@ -106,12 +106,12 @@ Non-Newtonian forces
 - Radiation Pressure Coefficient Qpr, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
 - | Asteroid emissivity eps
   | Thermal emissivity factor :math:`\epsilon` (See :ref:`Yarkovsky`)
-- | Asteroid density rho, in km/m^3 (See :ref:`Yarkovsky`, :ref:`PRdrag`)
+- | Asteroid density rho, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
  
-- Asteroid specific heat capacity C, in J kg^-1 K^-1 (See :ref:`Yarkovsky`)
+- Asteroid specific heat capacity C, in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
 - | Asteroid albedo A
   | Bond albedo (See :ref:`Yarkovsky`)
-- Asteroid thermal conductivity K, in W m^-1 K^-1 (See :ref:`Yarkovsky`)
+- Asteroid thermal conductivity K, in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
 
 - | Use Small Collisions: Flag to enable model for small bodies collisions (See :ref:`SmallBodies`)
   

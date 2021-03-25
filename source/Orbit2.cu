@@ -888,6 +888,7 @@ __host__ int Data::readic(int st){
 	float4 aelimits;
 	double mJ = 0.0;	//Jacoby mass
 	if(P.tRestart == 0 || def_TTV > 0){
+		int er = 0;
 		for(int i = 0; i < N + Nsmall; ++i){
 			x = x4_h[i + NBS];
 			v = v4_h[i + NBS];
@@ -902,6 +903,8 @@ __host__ int Data::readic(int st){
 			double p = 0.0;
 			int convertTToM = 0;
 			double T = 0.0;
+			int kepCheck = 0;
+			int cartCheck = 0;
 #if def_TTV > 0
 			double4 elementsA = elementsA_h[i + NBS];
 			double4 elementsB = elementsB_h[i + NBS];
@@ -913,15 +916,48 @@ __host__ int Data::readic(int st){
 #endif
 
 			for(int f = 0; f < def_Ninformat; ++f){
-				if(GSF[st].informat[f] == 1) fscanf (infile, "%lf",&x.x);		//x
-				else if (GSF[st].informat[f] == 2) fscanf (infile, "%lf",&x.y);		//y
-				else if (GSF[st].informat[f] == 3) fscanf (infile, "%lf",&x.z);		//z
-				else if (GSF[st].informat[f] == 4) fscanf (infile, "%lf",&x.w);		//m
-				else if (GSF[st].informat[f] == 5) fscanf (infile, "%lf",&v.x);		//vx
-				else if (GSF[st].informat[f] == 6) fscanf (infile, "%lf",&v.y);		//vy
-				else if (GSF[st].informat[f] == 7) fscanf (infile, "%lf",&v.z);		//vz
-				else if (GSF[st].informat[f] == 8) fscanf (infile, "%lf",&v.w);		//r
-				else if (GSF[st].informat[f] == 9) fscanf (infile, "%lf",&rho[st]);
+				if(GSF[st].informat[f] == 1){
+					//x
+					fscanf (infile, "%lf",&x.x);
+					cartCheck += 1;
+				}
+				else if (GSF[st].informat[f] == 2){
+					//y
+					fscanf (infile, "%lf",&x.y);
+					cartCheck += 2;
+				}
+				else if (GSF[st].informat[f] == 3){
+					//z
+					fscanf (infile, "%lf",&x.z);
+					cartCheck += 4;
+				}
+				else if (GSF[st].informat[f] == 4){
+					//m
+					fscanf (infile, "%lf",&x.w);
+				}
+				else if (GSF[st].informat[f] == 5){
+					//vx
+					fscanf (infile, "%lf",&v.x);
+					cartCheck += 8;
+				}
+				else if (GSF[st].informat[f] == 6){
+					//vy
+					fscanf (infile, "%lf",&v.y);
+					cartCheck += 16;
+				}
+				else if (GSF[st].informat[f] == 7){
+					//vz
+					fscanf (infile, "%lf",&v.z);
+					cartCheck += 32;
+				}
+				else if (GSF[st].informat[f] == 8){
+					//r
+					fscanf (infile, "%lf",&v.w);
+				}
+				else if (GSF[st].informat[f] == 9){
+					//default rho
+					fscanf (infile, "%lf",&rho[st]);
+				}
 				else if (GSF[st].informat[f] == 10){
 					//Sx
 					fscanf (infile, "%lf",&spin.x);
@@ -943,7 +979,10 @@ __host__ int Data::readic(int st){
 					elementsSpin.y = spin.z;
 #endif
 				}
-				else if (GSF[st].informat[f] == 13) fscanf (infile, "%d",&index);
+				else if (GSF[st].informat[f] == 13){
+					//index
+					fscanf (infile, "%d",&index);
+				}
 				else if (GSF[st].informat[f] == 14) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);
 				else if (GSF[st].informat[f] == 16) fscanf (infile, "%f",&aelimits.y);
@@ -963,6 +1002,7 @@ __host__ int Data::readic(int st){
 					elementsA.x = x.x;
 #endif
 					keplerian = 1;
+					kepCheck += 1;
 				}
 				else if (GSF[st].informat[f] == 24){
 					//e
@@ -971,6 +1011,7 @@ __host__ int Data::readic(int st){
 					elementsA.y = x.y;
 #endif
 					keplerian = 1;
+					kepCheck += 2;
 				}
 				else if (GSF[st].informat[f] == 25){
 					//inc
@@ -980,6 +1021,7 @@ __host__ int Data::readic(int st){
 					elementsA.z = x.z;
 #endif
 					keplerian = 1;
+					kepCheck += 4;
 				}
 				else if (GSF[st].informat[f] == 26){
 					//Omega
@@ -989,6 +1031,7 @@ __host__ int Data::readic(int st){
 					elementsB.x = v.x;
 #endif
 					keplerian = 1;
+					kepCheck += 8;
 				}
 				else if (GSF[st].informat[f] == 27){
 					//w
@@ -998,6 +1041,7 @@ __host__ int Data::readic(int st){
 					elementsB.y = v.y;
 #endif
 					keplerian = 1;
+					kepCheck += 16;
 				}
 				else if (GSF[st].informat[f] == 28){
 					//M
@@ -1007,6 +1051,7 @@ __host__ int Data::readic(int st){
 					elementsB.z = v.z;
 #endif
 					keplerian = 1;
+					kepCheck += 32;
 				}
 				else if (GSF[st].informat[f] == 38){
 					//P
@@ -1017,6 +1062,7 @@ __host__ int Data::readic(int st){
 #endif
 					keplerian = 1;
 					convertPToA = 1;
+					kepCheck += 1;
 				}
 				else if (GSF[st].informat[f] == 40){
 					//T
@@ -1027,6 +1073,7 @@ __host__ int Data::readic(int st){
 #endif
 					keplerian = 1;
 					convertTToM = 1;
+					kepCheck += 32;
 				}
 #if def_TTV > 0
 				else if (GSF[st].informat[f] == 29){
@@ -1158,7 +1205,18 @@ __host__ int Data::readic(int st){
 				elementsT.y = 0.0;
 #endif
 			}
+			if(keplerian == 0){
+				if(cartCheck != 63 || kepCheck != 0){
+					printf("Error, initial conditions are not complete. Must include x, y, z, vx, vy, vz \n");
+					return 0;
+				}
+			}
 			if(keplerian == 1){
+				if(kepCheck != 63 || cartCheck != 0){
+					printf("Error, initial conditions are not complete. Must include a (or P), e, inc, O, w, M (or T)\n");
+					return 0;
+				}
+
 #if def_TTV > 0
 				elementsA.w = x.w;		//m
 				elementsB.w = v.w;		//r
@@ -1196,7 +1254,14 @@ __host__ int Data::readic(int st){
 #endif
 			++ii;
 			if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
+		}// end of particle loop
+		//check now if the file is finished
+		er = fscanf (infile, "%lf",&skip);
+		if(er != -1){
+			printf("Error, initial condition file format is not correct\n");
+			return 0;
 		}
+
 	}
 	else{
 #if def_TTV > 0

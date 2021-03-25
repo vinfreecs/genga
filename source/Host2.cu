@@ -677,8 +677,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -692,8 +692,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -707,8 +707,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -722,8 +722,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -737,8 +737,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -752,8 +752,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				char t;
-				er = fscanf (paramfile, "%s", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -953,8 +953,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				}
 			}
 			else{
-				long long t;
-				er = fscanf (paramfile, "%lld", &t);
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1295,8 +1295,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 			}
 			else{
-				int t;
-				er = fscanf (paramfile, "%d", &t);
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1310,8 +1310,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 			}
 			else{
-				int t;
-				er = fscanf (paramfile, "%d", &t);
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -1614,8 +1614,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				
 			}
 			else{
-				int t;
-				er = fscanf (paramfile, "%d", &t);
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
