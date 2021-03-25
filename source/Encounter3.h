@@ -348,7 +348,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 				t2 = -t1;
 			}
 		}
-//printf("dt %d %d %g %g\n", i, j, t1, t2);
+//printf("dt %d %d %g %g | %g %g\n", i, j, t1, t2, sqrt(d0), sqrt(d1));
 		double delta = 100.0;
 		if(0 <= t1 && t1 <= 1){
 			double t12 = t1*t1;
@@ -371,7 +371,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
 
-//if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g\n", i, j, delta, enct, t1, t2);
+//if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g\n", i, j, sqrt(delta), enct, t1, t2);
 
 		if(delta < rcrit*rcrit){
 //printf("EEa %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcrit*rcrit, d0, d1, delta, t1, t2, MinMass);
@@ -793,7 +793,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 			for(int i = NT - 1; i >=0; --i){
 				if(B[i].y < BN2){
 					int Ns = atomicAdd(&Encpairs2_d[B[i].y].y,1);
-					B2[i].y = Ns;   //index in the group
+					B2[i].y = Ns;	//index in the group
 					Encpairs_d[NT + i].y = B2[i].y;
 				}
 			}

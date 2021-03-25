@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.116
+#define def_Version 3.117
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -89,7 +89,7 @@
 #define def_StopAtEncounterRadius 1.0	//factor in terms of Hill radii
 #define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
 #define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations only when both bodies are more massive than def_StopMinMass
-#define def_CollisionPrecision 1.0	//Tolerance for Collision time precision. In days. Default is 1.0
+#define def_CollisionPrecision 1.0e-6	//Tolerance for collision time precision. In units of physical radius fraction.
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
@@ -122,7 +122,7 @@
 //ignore the lock file and start GENGA anyway
 #define IgnoreLockFile 1
 
-#define def_SLevelsMax 1
+#define def_SLevelsMax 3
 
 //1: Do kick operation in large N runs in single precision, 0 use double precision
 #define def_KickFloat 0
@@ -154,7 +154,7 @@
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
-#define NmaxM 16
+#define NmaxM 32
 #define HCM_Bl2 (HCM_Bl - NmaxM - NmaxM / 2)
 
 #define KM_Bl 128

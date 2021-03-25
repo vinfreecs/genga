@@ -54,6 +54,23 @@ This file contains the execution time spent for the corresponding Coordinate Out
 The first column indicates the time step. This last entry in the file is used for the automated restart (restart timestep = -1).
 
 
+.. _CollisionsFile:
+
+The Collisions File: Collisions<name>.dat
+-----------------------------------------
+(See :ref:`Collisions`)
+
+In this file are listed the details of the collisions between particle i and j just after they collide.
+The precision of the collision output can be adjuted with the :literal:`Collision Precision` argument in the :literal:`param.dat` file
+(See :ref:`CollisionPrecision`). 
+
+    | time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
+    | .
+    | .
+    | .
+
+
+
 .. _FragmentsFile:
 
 The Fragments File: Fragments<name>.dat
@@ -63,7 +80,6 @@ The Fragments File: Fragments<name>.dat
 This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :literal:`param.dat` file is enabled. The file contains information about fragmentation and rotation reset events.
 
     | time index m r x y z vx vy vz Sx Sy Sz event
-    | .
     | .
     | .
     | .

@@ -11,11 +11,13 @@ GENGA is a hybrid symplectic N-body integrator, designed to integrate planet and
 pairs.
 
 [A Documentation of GENGA can be found here](https://bitbucket.org/sigrimm/genga/src/master/Documentation.md)
+[A new Documentation (work in progress) of GENGA can be found here](https://genga.readthedocs.io/en/latest/)
 
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
  ** News: **
 
+ * Version 3.117: Changed and improved Collision Precision, Units are now in physical radius fraction, instead of time.
  * Version 3.116: Changed treatment of Gas alpha for values other than 1.
  * Version 3.115: The Asteroid options (Yarkovsky and PR-drag) are moved from the 'define.h' file to the 'param.dat' file.
  * Version 3.114: The SERIAL_GROUPING option is moved from the 'define.h' file to the 'param.dat' file.

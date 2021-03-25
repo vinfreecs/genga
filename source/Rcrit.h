@@ -472,9 +472,9 @@ __host__ int Data::step(int noColl){
 		#else
 
 		  #if NoEncounters == 0
-		    er = step_M(noColl);
+			er = step_M(noColl);
 	 	  #else
-		    er = step_MSimple();
+			er = step_MSimple();
 		  #endif
 		#endif
 		if(er == 0) return 0;

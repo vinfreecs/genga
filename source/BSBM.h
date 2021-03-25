@@ -488,16 +488,28 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-//							int i = Colpairs_s[c].x;
-//							int j = Colpairs_s[c].y;
-							Coltime = fmin(Coltime_s[c], Coltime);
-//printf("Coltime %d %d %.20g %g %g %.20g %d\n", Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
+							int i = Colpairs_s[c].x;
+							int j = Colpairs_s[c].y;
+
+							//Calculate real separation at the end of the time step
+							double dx = xt_s[i].x - xt_s[j].x;
+							double dy = xt_s[i].y - xt_s[j].y;
+							double dz = xt_s[i].z - xt_s[j].z;
+							double d = sqrt(dx * dx + dy * dy + dz * dz);
+							double R = vt_s[i].w + vt_s[j].w;
+//							double dR = (R - d) / R;
+//printf("dR %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
+							if( (R - d) / R > CollisionPrecision_c[0]){
+								//bodies are already overlapping
+								Coltime = fmin(Coltime_s[c], Coltime);
+							}
+
 						}
 						Coltime_s[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d\n", Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0]);
 					}
 					__syncthreads();
-					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0] / (sgnt * dt1)){
+					if(Coltime_s[0] == 10.0){
 						if(idy == 0) {
 							for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 								int i = Colpairs_s[c].x;

@@ -413,7 +413,6 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 						}
 						if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass);
-
 						}
 						if(noColl == 1 && colt == 100.0){
 							delta = 100.0;
@@ -470,16 +469,28 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					if(idy == 0){
 						double Coltime = 10.0;
 						for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
-							//int i = Colpairs_s[c].x;
-							//int j = Colpairs_s[c].y;
-							Coltime = fmin(Coltime_s[c], Coltime);
-//printf("Coltime BSB  %d %d %.20g %g %g %.20g %d\n", Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Coltime, t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, n);
+							int i = Colpairs_s[c].x;
+							int j = Colpairs_s[c].y;
+
+							//Calculate real separation at the end of the time step
+							double dx = xt_s[i].x - xt_s[j].x;
+							double dy = xt_s[i].y - xt_s[j].y;
+							double dz = xt_s[i].z - xt_s[j].z;
+							double d = sqrt(dx * dx + dy * dy + dz * dz);
+							double R = vt_s[i].w + vt_s[j].w;
+//							double dR = (R - d) / R;
+//printf("dR %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
+							if( (R - d) / R > CollisionPrecision_c[0]){
+								//bodies are already overlapping
+								Coltime = fmin(Coltime_s[c], Coltime);
+							}
+
 						}
 						Coltime_s[0] = Coltime;
-//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d %.20g\n", Coltime_s[0], t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0], 1.0 - CollisionPrecision_c[0]/(sgnt * dt1));
+//printf("ColtimeT %.20g %g %g %g %d %d %d %d %d\n", Coltime_s[0], t / dayUnit, dt1 / dayUnit, (1.0 - Coltime) * dt1, tt, ff, n, Ncol_s[0], Ncoll_d[0]);
 					}
 					__syncthreads();
-					if(Coltime_s[0] > 1.0 - CollisionPrecision_c[0]/(sgnt * dt1)){
+					if(Coltime_s[0] == 10.0){
 						if(idy == 0) {
 							for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 								int i = Colpairs_s[c].x;

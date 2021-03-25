@@ -53,7 +53,15 @@ Stellar parameters
 - Inner truncation radius = 0.5
 - Outer truncation radius = 50.0
 - Order of integrator = 2
+
+Memory options
+--------------
+
 - Maximum encounter pairs = 512
+- | Nframents: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+  | (See :ref:`SmallBodies`)
+
+
 - Use aeGrid = 0
 - aeGrid amin = 0
 - aeGrid amax = 5
@@ -111,8 +119,6 @@ Non-Newtonian forces
    - 1: enable rotation reset model and fragmentation model for test particles.
 
 - Asteroid collisional velocity V, in m/s (See :ref:`SmallBodies`)
-- | Nframents: Number of additional memory size for debris particles, in particle numbers, (default 0). 
-  | (See :ref:`SmallBodies`)
 
 other
 -----
@@ -136,8 +142,20 @@ other
 - Stop at Encounter Radius = 1
 - Stop at Collision = 0
 - Stop Minimum Mass = 0.0
-- Collision Precision = 1.0
+
+Options for collisions
+----------------------
+
+- | Collision Precision in units of a physical radius fraction. (default :math:`1.0^{-6}`)
+  | This parameter sets the tolerance of the detected collision time. See :ref:`CollisionPrecision`.
+  | Can not be smaller than :math:`1.0^{-10}`.
+
+
 - Collision Time Shift = 1.0
+
+B
+-
+
 - | Serial Grouping: Flag for exact reproducible results.
   | See :ref:`SerialGrouping`
 

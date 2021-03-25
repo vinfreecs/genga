@@ -180,7 +180,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 //double Msun2si = Msun2 * def_Solarmass * def_Solarmass;
 //double tausi = tau * 60.0 * 60.0 * 24.0 / 0.017;
 //double G = 6.674E-11;
-//volatile double ttsi = 3.0 * G * Msun2si * R5 * ir7 * love * tausi / (def_AU * def_AU);     //R5 * AU^5 * ir7 / AU^7 = R5 * ir7 / AU^2
+//volatile double ttsi = 3.0 * G * Msun2si * R5 * ir7 * love * tausi / (def_AU * def_AU);	//R5 * AU^5 * ir7 / AU^7 = R5 * ir7 / AU^2
 //printf("%d %g %g %g %g %g %g %g %g\n", id, tausi, Msun, v4.w, 1.0/ir, love, tau, tt, ttsi);
 
 			Psun = tsun * tausun;
@@ -773,7 +773,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			omega3.y = spin.y * iI;
 			omega3.z = spin.z * iI;
 
-			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);   //angular velocity in 1 / day * 0.017
+			double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z);	//angular velocity in 1 / day * 0.017
 			omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0);					//in 1 / s
 
 			//compute probability of rotation reset

@@ -25,6 +25,7 @@ Options
 .. toctree::
    :maxdepth: 2
 
+   Collisions.rst
    SerialGrouping.rst
 
 

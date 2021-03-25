@@ -2020,6 +2020,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error: Collision Precision not valid! %g\n", P.CollisionPrecision);
 		return 0;
 	}
+	if(P.CollisionPrecision <= 1.0e-10){
+		printf("Error: Collision Precision too small! %g  Limit is at 1.0e-10\n", P.CollisionPrecision);
+		return 0;
+	}
 
 
 	if(P.SLevels > def_SLevelsMax){
