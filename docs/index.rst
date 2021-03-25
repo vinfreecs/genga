@@ -1,5 +1,7 @@
-GENGA documentation
-===================
+GENGA documentation (work in progress)
+======================================
+
+This new documentation is not yet complete.
 
 
 Setup
