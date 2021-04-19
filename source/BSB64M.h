@@ -14,11 +14,15 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, double *time_d, double3 *spin_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseForce, double MinMass, int UseTestParticles, const int SLevels, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	curandState random = random_d[idx];
+	if((noColl == 1 || noColl == -1) && BSstop_d[0] == 3){
+//if(idy == 0 && idx == 0)      printf("Stop BSB b\n");
+		return;
+	}
 	
 	int ii = idy / nb;
 	int jj = idy % nb;
@@ -423,14 +427,18 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 						double enct = 100.0;
 						double colt = 100.0;
 						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
-						if(noColl == 1 && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].y){
+						if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].y){
 							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
 						}
 						if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
-							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass);
+							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
 						}
-						if(noColl == 1 && colt == 100.0){
+						if((noColl == 1 || noColl == -1) && colt == 100.0){
 							delta = 100.0;
+						}
+						if((noColl == 1 || noColl == -1) && colt == 200.0){
+							noColl = 2;
+							BSstop_d[0] = 3;
 						}
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
@@ -494,9 +502,18 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 							double dz = xt_s[i].z - xt_s[j].z;
 							double d = sqrt(dx * dx + dy * dy + dz * dz);
 							double R = vt_s[i].w + vt_s[j].w;
-//							double dR = (R - d) / R;
+
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y){
+								R = vt_s[i].w * CollTshift_c[0] + vt_s[j].w * CollTshift_c[0];
+							}
+
+
+							double dR = (R - d) / R;
+
+							if(noColl == -1) dR = -dR;
+
 //printf("dR %d %d %.20g %.20g %.20g\n", i, j, d, R, dR); 
-							if( (R - d) / R > CollisionPrecision_c[0]){
+							if(dR > CollisionPrecision_c[0]){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}
@@ -513,11 +530,12 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 								int j = Colpairs_s[c].y;
 								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 									int nc = 0;
-									if(noColl == 0 || (noColl == 1 && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y)){
+									if(noColl == 0 || ((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y)){
 										nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
-										if(noColl == 1){
+										if(noColl == 1 || noColl == -1){
 											noColl = 2;
+											BSstop_d[0] = 3;
 										}
 									}
 									collide(random, xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
@@ -547,6 +565,11 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 
 					__syncthreads();
 					break;
+				}
+				if(BSstop_d[0] == 3){
+//if(idy == 0) printf("Stop BSB\n");
+					__syncthreads();
+					return;
 				}
 			}
 			if(f == 0) break;

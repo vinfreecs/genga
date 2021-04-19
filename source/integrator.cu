@@ -683,7 +683,7 @@ __host__ void  Data::SymplecticP(int E){
 }
 
 // *****************************************************
-// This function set the time factors for an irregular output step
+// This function sets the time factors for an irregular output step
 // dTau is the modified time step
 // Authors: Simon Grimm
 // June 2015
@@ -1175,8 +1175,8 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	}
 
 	if(P.SERIAL_GROUPING == 1){
-		printf("Using Serial Grouping, this disabels the tuning parameters\n");
-		fprintf(GSF[0].logfile, "Using Serial Grouping, this disabels the tuning parameters\n");
+		printf("Using Serial Grouping, this disables the tuning parameters\n");
+		fprintf(GSF[0].logfile, "Using Serial Grouping, this disables the tuning parameters\n");
 		if(EE == 0 || EE == 2){
 			PP = 4;
 			TX = 1;
@@ -1303,42 +1303,42 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 //printf(" %d | %d %d %d | %d %d %d | %d %d %d | %d %d %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9],  Nenc_m[10],  Nenc_m[11],  Nenc_m[12]);
 	for(int st = 0; st < 9; ++st)   cudaStreamCreate(&stream[st]);
 	
-	//if(Nenc_m[1] > 0) BSB2Step_kernel <2 * 16, 2> <<< (Nenc_m[1] + 15)/ 16, 2 * 16, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	//if(Nenc_m[1] > 0) BSB2Step_kernel <2, 2> <<< Nenc_m[1], 2, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	
-	if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	
-	
-	if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, index_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, index_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, index_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, index_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	
-/*
-	if(Nenc_m[1] > 0) BSA_kernel < 2 > <<< Nenc_m[1], 2 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[2] > 0) BSA_kernel < 4 > <<< Nenc_m[2], 4 , 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[3] > 0) BSA_kernel < 8 > <<< Nenc_m[3], 8 , 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[4] > 0) BSA_kernel < 16 > <<< Nenc_m[4], 16 , 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[5] > 0) BSA_kernel < 32 > <<< Nenc_m[5], 32 , 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-*/
-	
-	if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	//if(Nenc_m[1] > 0) BSB2Step_kernel <2 * 16, 2> <<< (Nenc_m[1] + 15)/ 16, 2 * 16, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	//if(Nenc_m[1] > 0) BSB2Step_kernel <2, 2> <<< Nenc_m[1], 2, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 
+	if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	
+    	
+	if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[5] > 0) BSBStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 
-	/*	
-	if(Nenc_m[1] > 0) BSA512_kernel < 2, 2 > <<< Nenc_m[1], 2 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[2] > 0) BSA512_kernel < 4, 4 > <<< Nenc_m[2], 4 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 1, N, NconstT,P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[3] > 0) BSA512_kernel < 8, 8 > <<< Nenc_m[3], 8 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 2, N, NconstT. P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[4] > 0) BSA512_kernel < 16, 16 > <<< Nenc_m[4], 16 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[5] > 0) BSA512_kernel < 32, 32 > <<< Nenc_m[5], 32 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[6] > 0) BSA512_kernel < 64, 64 > <<< Nenc_m[6], 64 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[7] > 0) BSA512_kernel < 128, 128 > <<< Nenc_m[7], 128 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[8] > 0) BSA512_kernel < 256, 256 > <<< Nenc_m[8], 256 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	/*
+	if(Nenc_m[1] > 0) BSA_kernel < 2 > <<< Nenc_m[1], 2 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[2] > 0) BSA_kernel < 4 > <<< Nenc_m[2], 4 , 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSA_kernel < 8 > <<< Nenc_m[3], 8 , 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[4] > 0) BSA_kernel < 16 > <<< Nenc_m[4], 16 , 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[5] > 0) BSA_kernel < 32 > <<< Nenc_m[5], 32 , 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	*/
+
+	if(Nenc_m[6] > 0) BSA_kernel < 64 > <<< Nenc_m[6], 64 , 0, stream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[7] > 0) BSA_kernel < 128 > <<< Nenc_m[7], 128 , 0, stream[6] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[8] > 0) BSA_kernel < 256 > <<< Nenc_m[8], 256 , 0, stream[7] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+ 
+
+/*		
+	if(Nenc_m[1] > 0) BSA512_kernel < 2, 2 > <<< Nenc_m[1], 2 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[2] > 0) BSA512_kernel < 4, 4 > <<< Nenc_m[2], 4 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSA512_kernel < 8, 8 > <<< Nenc_m[3], 8 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[4] > 0) BSA512_kernel < 16, 16 > <<< Nenc_m[4], 16 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[5] > 0) BSA512_kernel < 32, 32 > <<< Nenc_m[5], 32 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[6] > 0) BSA512_kernel < 64, 64 > <<< Nenc_m[6], 64 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[7] > 0) BSA512_kernel < 128, 128 > <<< Nenc_m[7], 128 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[8] > 0) BSA512_kernel < 256, 256 > <<< Nenc_m[8], 256 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+*/	
 	
-	//if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 8, N, NconstT, P.NencMax, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	//if(Nenc_m[9] > 0) BSA512_kernel < 512, 512 > <<< Nenc_m[9], 512 , 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, Encpairs_d, Encpairs2_d, dx_d, dv_d, dt, Msun_h[0].x, U_d, 8, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	
 
 	/*
@@ -1373,12 +1373,12 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 
 __host__ void Data::BSBMCall(int si, int noColl, double ll){
 	for(int st = 0; st < 6; ++st)  cudaStreamCreate(&stream[st]);
-	if(Nenc_m[1] > 0) BSBMStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 0, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[2] > 0) BSBMStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 1, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[3] > 0) BSBMStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 2, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[4] > 0) BSBMStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 3, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	if(Nenc_m[5] > 0) BSBMStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 4, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
-	//if(Nenc_m[6] > 0) BSBMStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 5, index_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d. P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[1] > 0) BSBMStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, stream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 0, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[2] > 0) BSBMStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, stream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 1, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSBMStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, stream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 2, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[4] > 0) BSBMStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, stream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 3, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[5] > 0) BSBMStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, stream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 4, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	//if(Nenc_m[6] > 0) BSBMStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, stream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 5, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d. P.UseForce, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	for(int st = 0; st < 6; ++st)  cudaStreamDestroy(stream[st]);
 	cudaDeviceSynchronize();
 }
@@ -1428,19 +1428,38 @@ printf("Backup step 1 %d %.20g %.20g %.20g\n", i, Coll_h[i * def_NColl] * 365.25
 				int2 ij;
 				ij.x = int(Coll_h[i * def_NColl + 1]);
 				ij.y = int(Coll_h[i * def_NColl + 13]);
+printf("Tshiftpairs %d %d\n", ij.x, ij.y);
 				cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
-				//IrregularStep(1.0 * ((Coll_h[i * def_NColl] * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
-			IrregularStep(1.0);
+
+				IrregularStep(1.0);
+
 				int N0 = Ncoll_m[0];
+				BSAstop_h[0] = 0;
+				cudaMemset(BSstop_d, 0, sizeof(int));
 				bStep(1);
 				cudaDeviceSynchronize();
+				error = cudaGetLastError();
+				if(error != 0){
+					printf("Backup step 1  error = %d = %s\n",error, cudaGetErrorString(error));
+					return 0;
+				}
+				//If all collisions are found, the number of collisions must be doubled now
+
+printf("N0 %d %d %d\n", NOld, N0, Ncoll_m[0]);
 				if(N0 == Ncoll_m[0]){
 printf("Revert time step\n");
 					IrregularStep(-1.0);
 printf("Backup step -1 %.20g %.20g %.20g\n", (time_h[0] - idt_h[0]) - idt_h[0], time_h[0] - idt_h[0], -1.0);
 					N0 = Ncoll_m[0];
-					bStep(1);
+					BSAstop_h[0] = 0;
+					cudaMemset(BSstop_d, 0, sizeof(int));
+					bStep(-1);
 					cudaDeviceSynchronize();
+					error = cudaGetLastError();
+					if(error != 0){
+						printf("Backup step -1  error = %d = %s\n",error, cudaGetErrorString(error));
+						return 0;
+					}
 					if(N0 == Ncoll_m[0]){
 						printf("Error: Collision time could not be reconstructed. Maybe CollTshift is too large.\n");
 						return 0;
@@ -1465,7 +1484,15 @@ printf("print Collision Tshift\n");
 printf("Backup step 2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0], (Coltime * 365.25 - (time_h[0] - idt_h[0])) / idt_h[0]);
 
 			IrregularStep(1.0 * ((Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
+			BSAstop_h[0] = 0;
+			cudaMemset(BSstop_d, 0, sizeof(int));
 			bStep(2);
+			cudaDeviceSynchronize();
+			error = cudaGetLastError();
+			if(error != 0){
+				printf("Backup step 2  error = %d = %s\n",error, cudaGetErrorString(error));
+				return 0;
+			}
 
 			time_h[0] = Coltime * 365.25;
 			CoordinateOutput(2);
@@ -1491,7 +1518,7 @@ printf("safe -1\n");
 #endif
 }
 
-__host__ int Data::CollisionMCall(){
+__host__ int Data::CollisionMCall(int noColl){
 #if def_TTV == 0
 	
 	
@@ -1500,13 +1527,114 @@ __host__ int Data::CollisionMCall(){
 		printf("Error: More Collisions than def_MaxColl, simulation stopped\n");
 		return 0;
 	}
-	printCollisions();
-	CollisionFlag = 1;
-	int NminFlag = remove();
-	if(NminFlag > 0){
-		stopSimulations();
+	int stopAtCollision = 0;
+	if(noColl == 0){
+		stopAtCollision = printCollisions();
 	}
-	Ncoll_m[0] = 0;
+	CollisionFlag = 1;
+
+	if(noColl == 0 && stopAtCollision == 1 && (P.StopAtCollision == 1 || P.CollTshift > 1.0)){
+
+printf("safe  1\n");
+		safe_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, 1);
+
+		if(P.CollTshift > 1.0){
+			//restore old step and increase radius 
+			int NOld = Ncoll_m[0];
+			for(int i = 0; i < NOld; ++i){
+
+printf("Backup step 1 %d %.20g\n", i, Coll_h[i * def_NColl] * 365.25);
+				int2 ij;
+				ij.x = int(Coll_h[i * def_NColl + 1]);
+				ij.y = int(Coll_h[i * def_NColl + 13]);
+printf("Tshiftpairs %d %d\n", ij.x, ij.y);
+				cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+
+				IrregularStep(1.0);
+
+				int N0 = Ncoll_m[0];
+				cudaMemset(BSstop_d, 0, sizeof(int));
+				bStepM(1);
+				cudaDeviceSynchronize();
+				error = cudaGetLastError();
+				if(error != 0){
+					printf("Backup step 1  error = %d = %s\n",error, cudaGetErrorString(error));
+					return 0;
+				}
+				//If all collisions are found, the number of collisions must be doubled now
+printf("N0 %d %d %d\n", NOld, N0, Ncoll_m[0]);
+
+				if(N0 == Ncoll_m[0]){
+printf("Revert time step\n");
+					IrregularStep(-1.0);
+printf("Backup step -1 %.20g\n", -1.0);
+					N0 = Ncoll_m[0];
+					cudaMemset(BSstop_d, 0, sizeof(int));
+					bStepM(-1);
+					cudaDeviceSynchronize();
+					error = cudaGetLastError();
+					if(error != 0){
+						printf("Backup step -1  error = %d = %s\n",error, cudaGetErrorString(error));
+						return 0;
+					}
+					if(N0 == Ncoll_m[0]){
+						printf("Error: Collision time could not be reconstructed. Maybe CollTshift is too large.\n");
+						return 0;
+					}
+
+				}
+
+			}
+			cudaDeviceSynchronize();
+			cudaMemcpy(Coll_h, Coll_d, sizeof(double) * def_NColl * Ncoll_m[0], cudaMemcpyDeviceToHost);	
+			printCollisionsTshift();
+printf("print Collision Tshift\n");
+		}
+
+		if(P.StopAtCollision == 1){
+			double Coltime = 1.0e100;
+			for(int i = 0; i < Ncoll_m[0]; ++i){
+				Coltime = fmin(Coltime, Coll_h[i * def_NColl]);
+			}
+printf("Backup step 2 %.20g\n", Coltime * 365.25);
+	//st
+			IrregularStep(1.0 * ((Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
+			cudaMemset(BSstop_d, 0, sizeof(int));
+			bStepM(2);
+			cudaDeviceSynchronize();
+			error = cudaGetLastError();
+			if(error != 0){
+				printf("Backup step 2  error = %d = %s\n",error, cudaGetErrorString(error));
+				return 0;
+			}
+
+			time_h[0] = Coltime * 365.25;
+			CoordinateOutput(2);
+			P.ci = -1;
+			return 0;
+		}
+
+
+		// P.StopAtCollision = 0
+printf("safe -1\n");
+		safe_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, -1);
+		IrregularStep(1.0);
+
+		int NminFlag = remove();
+		if(NminFlag > 0){
+			stopSimulations();
+		}
+		Ncoll_m[0] = 0;
+
+	}
+	else{
+
+		int NminFlag = remove();
+		if(NminFlag > 0){
+			stopSimulations();
+		}
+		Ncoll_m[0] = 0;
+	}
 #endif
 	return 1;
 }
@@ -1612,6 +1740,12 @@ __host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noCol
 	
 	int nt = min(N_h[0] + Nsmall_h[0], 512);
 	int nb = (N_h[0] + Nsmall_h[0] + nt - 1) / nt;
+
+	if((noColl == 1 || noColl == -1) && BSAstop_h[0] == 3){
+		printf("stop SEnc call b\n");
+		return; 
+	}
+
 	
 	if(noColl == 0 || SLevel > 0){	
 		setEnc3_kernel <<< nb, nt >>> (N_h[0] + Nsmall_h[0], Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, P.NencMax);
@@ -1723,6 +1857,13 @@ __host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noCol
 					cudaDeviceSynchronize();
 					BSCall(si, time, noColl, ll);
 					time += dt_h[0] / ll / dayUnit;
+
+					if(noColl == 1 || noColl == -1){
+						if(BSAstop_h[0] == 3){
+							printf("stop SEnc call\n");
+							return; 
+						}
+					}
 				}
 			}
 		}
@@ -1738,7 +1879,6 @@ __host__ int Data::bStep(int noColl){
 	fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 0, P.UseForce);
 	cudaDeviceSynchronize();
 
-	//BSCall(0, time_h[0], noColl, 1.0);
 	if(P.SLevels > 1){
 		if(Nencpairs2_h[0] > 0){
 			double time = time_h[0];
@@ -1757,7 +1897,22 @@ __host__ int Data::bStep(int noColl){
 	return 0;
 }
 
+__host__ int Data::bStepM(int noColl){
+	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, timeStep, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
 
+	KickM2Simple_kernel < KM_Bl, KM_Bl2, NmaxM, 1 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, v4b_d, a_d, dt_d, Kt[0], index_d, NT, Nst, Nstart);
+
+	HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 0 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, Msun_d, index_d, NT, Ct[0], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce, Nstart);
+	fgMSimple_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, xold_d, vold_d, dt_d, Msun_d, test_d, index_d, NT, FGt[0], 0, P.UseForce, Nstart);
+	cudaDeviceSynchronize();
+
+	BSBMCall(0, noColl, 1.0);
+
+	HCM2_kernel < HCM_Bl, HCM_Bl2, NmaxM, 0 > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, dt_d, Msun_d, index_d, NT, Ct[0], test_d, Nencpairs_d, Nencpairs2_d, Nenc_d, Nst, P.UseForce, Nstart);
+	KickM2Simple_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, v4b_d, a_d, dt_d, Kt[0], index_d, NT, Nst, Nstart);
+
+	return 0;
+}
 __host__ int Data::step_1kernel(int noColl){
 	//no Set Elements, no sort, noPoincare, no floatkick, no force
 	// moStopatEncounter, no writeEnc
@@ -2586,7 +2741,7 @@ __host__ int Data::step_M(int noColl){
 			if(enc == 0) return 0;
 		}
 		if(Ncoll_m[0] > 0){
-			int col = CollisionMCall();
+			int col = CollisionMCall(noColl);
 			if(col == 0) return 0;
 		}
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){

@@ -1698,6 +1698,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 			v4_d[id].x += vx;
 			v4_d[id].y += vy;
 			v4_d[id].z += vz;
+//printf("acc %d %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 			if(E == 1){
 				v4b_d[id] = v4_d[id];
 			}

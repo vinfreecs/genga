@@ -60,15 +60,32 @@ The Collisions File: Collisions<name>.dat
 -----------------------------------------
 (See :ref:`Collisions`)
 
-In this file are listed the details of the collisions between particle i and j just after they collide.
-The precision of the collision output can be adjuted with the :literal:`Collision Precision` argument in the :literal:`param.dat` file
-(See :ref:`CollisionPrecision`). 
+In this file are listed the details of the collisions between particle i and j.
+The precision of the collision output can be adjusted with the :literal:`Collision Precision` argument in the :literal:`param.dat` file
+(See :ref:`CollisionPrecision`).
+The file contains the following columns:
 
     | time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
     | .
     | .
     | .
 
+
+.. _CollisionsTshiftFile:
+
+The Tshift Collisions File: CollisionsTshift<name>.dat
+------------------------------------------------------
+(See :ref:`CollisionTshift`)
+
+In this file are listed the details of the backtraced collisions between particle i and j.
+The collison time shift option can be set by the :literal:`Collision Time Shift` argument in the :literal:`param.dat` file.
+This file is only created when :literal:`Collision Time Shift` is used.
+The file contains the following columns:
+
+    | time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Szj
+    | .
+    | .
+    | .
 
 
 .. _FragmentsFile:

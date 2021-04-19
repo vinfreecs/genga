@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.118
+#define def_Version 3.119
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -89,7 +89,7 @@
 #define def_StopAtEncounterRadius 1.0	//factor in terms of Hill radii
 #define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
 #define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations only when both bodies are more massive than def_StopMinMass
-#define def_CollisionPrecision 1.0e-6	//Tolerance for collision time precision. In units of physical radius fraction.
+#define def_CollisionPrecision 1.0e-4	//Tolerance for collision time precision. In units of physical radius fraction.
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
@@ -111,7 +111,7 @@
 #define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
-#define def_dtmin 1.0e-9		//minimal time step in Bulirsh Stoer 
+#define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames
 
 

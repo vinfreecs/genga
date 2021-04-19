@@ -146,12 +146,15 @@ other
 Options for collisions
 ----------------------
 
-- | Collision Precision in units of a physical radius fraction. (default :math:`1.0^{-6}`)
+- | Collision Precision, in units of a physical radius fraction. (default :math:`1.0^{-4}`)
   | This parameter sets the tolerance of the detected collision time. See :ref:`CollisionPrecision`.
   | Can not be smaller than :math:`1.0^{-10}`.
 
+- | Collision Time Shift, in units of a physical radius factor (default 1.0).
+  | Allows to backtrace collision at a point before the collision, when the bodies are separated by 
+  | an increased physical radius. 
+  | (See :ref:`CollisionTshift`)
 
-- Collision Time Shift = 1.0
 
 B
 -

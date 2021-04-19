@@ -75,6 +75,7 @@ public:
 	double *t1_d;
 	double *dtgr_d;
 	int *BSAstop_h, *BSAstop_d;
+	int *BSstop_d;
 	double *Coltime_d;
 
 	// G3 Data
@@ -282,6 +283,7 @@ public:
 
 	__host__ void SEnc(double &, int, double, int, int);
 	__host__ int bStep(int);
+	__host__ int bStepM(int);
 
 	__host__ void firstStep(int);
 	__host__ int step(int);
@@ -297,7 +299,7 @@ public:
 	__host__ void HCCall(const double);
 
 	__host__ int CollisionCall(int);
-	__host__ int CollisionMCall();
+	__host__ int CollisionMCall(int);
 	__host__ int RemoveCall();
 	__host__ int writeEncCall();
 	__host__ int writeEncMCall();

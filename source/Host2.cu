@@ -1965,6 +1965,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-sls") == 0){
 			P.SLSteps = atoi(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-collPrec") == 0){
+			P.CollisionPrecision = atof(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-collTshift") == 0){
+			P.CollTshift = atof(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;
@@ -2458,6 +2464,11 @@ __host__ int Host::icSize(int st){
 		printf("Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
 		return 0;
 	}
+	if(N_h[st] + Nsmall_h[st] == 0){
+		fprintf(masterfile,"Error in Simulation %s: No particles found\n", GSF[st].path);
+		printf("Error in Simulation %s: No particles found\n", GSF[st].path);
+		return 0;
+	}
 	
 	return 1;
 }
@@ -2600,6 +2611,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "FormatO: %d\n", P.FormatO);						// use only argument in simulation 0
 			fprintf(infofile, "NmaxM: %d\n", NmaxM);
 			fprintf(infofile, "Time step in days: %g \n", idt_h[st]);
+			fprintf(infofile, "Starting time: %g \n", ict_h[st]);
 			fprintf(infofile, "Output name: %s\n", GSF[st].X);
 			fprintf(infofile, "Energy output interval: %d\n", P.ei);				// use only argument in simulation 0
 			fprintf(infofile, "Coordinates output interval: %d\n", P.ci);				// use only argument in simulation 0

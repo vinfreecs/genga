@@ -355,14 +355,14 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	double rsq, vsq, r, v;
 	
 	if(id < NT + Nstart){
-		//printf("Rcrit %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
+//printf("Rcrit %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, index_d[id], x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
 		double Msun = Msun_d[st].x;
 		double n1 = n1_d[st];
 		double n2 = n2_d[st];
 		double Rcut = Rcut_d[st];
 		double RcutSun = RcutSun_d[st];
 		double dt = dt_d[st];
-		//printf("Rcrit %d %g %g %g %g %g %g %g %g\n", id, Msun, n1, n2, Rcut, RcutSun, dt, rcrit_d[id], rcritv_d[id]);		
+//printf("Rcrit %d %g %g %g %g %g %g %g %g\n", id, Msun, n1, n2, Rcut, RcutSun, dt, rcrit_d[id], rcritv_d[id]);		
 		if(StopAtCollision_c[0] != 0 || CollTshift_c[0] != 1.0){
 			if(f == 0){
 				x4i = x4_d[id];
@@ -400,6 +400,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		}
 		
 		__syncthreads();
+//printf("Rcrit %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, index_d[id], x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
 		
 		rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
 		vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z + 1.0e-30;

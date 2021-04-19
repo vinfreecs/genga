@@ -309,6 +309,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMalloc((void **) &t1_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &dtgr_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
+	cudaMalloc((void **) &BSstop_d, sizeof(int));
 	cudaMalloc((void **) &Coltime_d, sizeof(double));
 	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 > 0
@@ -2403,6 +2404,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(t1_d);
 	cudaFree(dtgr_d);
 	cudaFree(BSAstop_d);
+	cudaFree(BSstop_d);
 	cudaFree(Coltime_d);
 
 	cudaFree(aelimits_d);

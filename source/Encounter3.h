@@ -283,7 +283,7 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 // This function returns delta, the square of the minimal distanz
 // It sets colt, the collision time  0 < colt < 1.
 // It sets enct, the time of smallest distance. 0 < enct < 1
-__device__ double encounter1(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcrit, const double dt, const int i, const int j, double &enct, double &colt, const double MinMass){
+__device__ double encounter1(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcrit, const double dt, const int i, const int j, double &enct, double &colt, const double MinMass, const int noColl){
 
 //if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	if(i != j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
@@ -348,7 +348,8 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 				t2 = -t1;
 			}
 		}
-//printf("dt %d %d %g %g | %g %g\n", i, j, t1, t2, sqrt(d0), sqrt(d1));
+//if(i == 12888 && j == 11191) printf("d0d1  %d %d %g %g | %.12g %.12g %.12g | noColl: %d\n", i, j, t1, t2, rcrit, sqrt(d0), sqrt(d1), noColl);
+//if(i == 4969 && j == 530) printf("d0d1  %d %d %g %g | %.12g %.12g %.12g | noColl: %d\n", i, j, t1, t2, rcrit, sqrt(d0), sqrt(d1), noColl);
 		double delta = 100.0;
 		if(0 <= t1 && t1 <= 1){
 			double t12 = t1*t1;
@@ -372,15 +373,57 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 		delta = fmin(delta, d0);
 
 //if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g\n", i, j, sqrt(delta), enct, t1, t2);
+		double rcritsq = rcrit * rcrit;
 
-		if(delta < rcrit*rcrit){
-//printf("EEa %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcrit*rcrit, d0, d1, delta, t1, t2, MinMass);
+		if(delta < rcritsq){
+//printf("EEa %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritsq, d0, d1, delta, t1, t2, MinMass);
 			if(d0 == d1){
 				colt = 0.0;
 			}
-			else if((d0 >= rcrit*rcrit && d1 < rcrit*rcrit) || (d1 >= rcrit*rcrit && d0 < rcrit*rcrit)){
-				//linear interpolation of the collision time
-				colt = (rcrit*rcrit - d0) / (d1 - d0);
+			else{
+				double coltime = (rcritsq - d0) / (d1 - d0);
+				
+				if(noColl == 1){
+					//only report entering collisions, not leaving collisions
+					if(d1 <= rcritsq && d0 > rcritsq){
+						//linear interpolation of the collision time
+						colt = coltime;
+					}
+		
+					//find collision in between of time steps	
+					if(d0 >= rcritsq && d1 >= rcritsq){
+						colt = fmin(t1, t2);
+					}
+
+					if(d0 < 0.95 * rcritsq && d1 < 0.95 * rcritsq){
+//printf("%d %d are already overlapping %g %g %g\n", i, j, sqrt(d0), sqrt(d1), rcrit);
+						colt = 200.0;
+						return 100.0;
+					}
+
+				}
+				else if(noColl == -1){
+					//only report leaving collisions, not entering collisions
+					if(d0 <= rcritsq && d1 > rcritsq){
+						//linear interpolation of the collision time
+						colt = coltime;
+					}
+				}
+				else{
+					if((d0 >= rcritsq && d1 < rcritsq) || (d1 >= rcritsq && d0 < rcritsq)){
+						//linear interpolation of the collision time
+						colt = coltime;
+					}
+
+
+					//find collision in between of time steps	
+					if(d0 >= rcritsq && d1 >= rcritsq){
+						colt = fmin(t1, t2);
+					}
+
+
+				}
+//if(i == 12888 && j == 11191) printf("colt  %d %d %.12g %.12g | noColl: %d\n", i, j, coltime, colt, noColl);
 			}
 		}
 		return delta;

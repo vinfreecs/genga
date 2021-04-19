@@ -262,8 +262,9 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	double3 vij;
 	double3 rij;
 	double3 L;
-	if(noColl != 1){
+	if(noColl != 1 && noColl != -1){
 //printf("collide %d %d %g %g\n", (index[indexi]), (index[indexj]), time, rd);
+//printf("collide %d %d %g\n", (index[indexi]), (index[indexj]), time);
 
 		Coll[nc * def_NColl + 0] = time/365.25;
 		Coll[nc * def_NColl + 1] = (double)(index[indexi]);

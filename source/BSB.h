@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int NconstT, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, double3 *spin_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int NconstT, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 
 	int idy = threadIdx.x;
@@ -20,6 +20,10 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 	curandState random = random_d[idx];
 
+	if((noColl == 1 || noColl == -1) && BSstop_d[0] == 3){
+//if(idy == 0 && idx == 0)      printf("Stop BSB b\n");
+		return;
+	}
 //printf("BSB %d %d %g %g\n", idy, idx, StopMinMass_c[0], CollisionPrecision_c[0]);
 
 	int ii = idy / nb;
@@ -408,14 +412,18 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 						double enct = 100.0;
 						double colt = 100.0;
 						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
-						if(noColl == 1 && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].y){
+						if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].y){
 							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
 						}
 						if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
-							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass);
+							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
 						}
-						if(noColl == 1 && colt == 100.0){
+						if((noColl == 1 || noColl == -1) && colt == 100.0){
 							delta = 100.0;
+						}
+						if((noColl == 1 || noColl == -1) && colt == 200.0){
+							noColl = 2;
+							BSstop_d[0] = 3;
 						}
 //if( Encpairs2_d[start + ii].x == 0 &&  Encpairs2_d[start + jj + l].x == 1) printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, tt, ff, n);
 						if(delta < rcrit*rcrit){
@@ -478,9 +486,16 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							double dz = xt_s[i].z - xt_s[j].z;
 							double d = sqrt(dx * dx + dy * dy + dz * dz);
 							double R = vt_s[i].w + vt_s[j].w;
-//							double dR = (R - d) / R;
-//printf("dR %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
-							if( (R - d) / R > CollisionPrecision_c[0]){
+
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + j].x] == CollTshiftpairs_c[0].y){
+								R = vt_s[i].w * CollTshift_c[0] + vt_s[j].w * CollTshift_c[0];
+							}
+
+							double dR = (R - d) / R;
+							if(noColl == -1) dR = -dR;
+
+//printf("dR %d %d %.20g %.20g %.20g %g\n", i, j, d, R, dR, Coltime_s[c]);
+							if(dR > CollisionPrecision_c[0]){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}
@@ -497,11 +512,12 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 								int j = Colpairs_s[c].y;
 								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 									int nc = 0;
-									if(noColl == 0 || (noColl == 1 && index_d[Encpairs2_d[start + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + j].x] == CollTshiftpairs_c[0].y)){
+									if(noColl == 0 || ((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + j].x] == CollTshiftpairs_c[0].y)){
 										nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
-										if(noColl == 1){
+										if(noColl == 1 || noColl == -1){
 											noColl = 2;
+											BSstop_d[0] = 3;
 										}
 									}
 //printf("cTime coll BSB %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt /dayUnit, time + (t + dt1) / dayUnit, index_d[Encpairs2_d[start + i].x], index_d[Encpairs2_d[start + j].x], nc);
@@ -531,6 +547,11 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 					__syncthreads();
 					break;
+				}
+				if(BSstop_d[0] == 3){
+//if(idy == 0) printf("Stop BSB\n");
+					__syncthreads();
+					return;
 				}
 			}//end of n loop
 			if(f == 0) break;
