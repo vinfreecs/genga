@@ -88,6 +88,17 @@ The file contains the following columns:
     | .
 
 
+.. _OutCollisionFile:
+
+The Stop-at-collision-file: OutCollision.dat
+--------------------------------------------
+(See :ref:`StopAtCollision`)
+
+This file is only created when the :literal:`Stop at Collision` option is enabled. It contains all particles of the simulation at the time
+when the first collision occurred. The file contains the same columns as the normal output files. 
+ 
+
+
 .. _FragmentsFile:
 
 The Fragments File: Fragments<name>.dat

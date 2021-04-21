@@ -1479,7 +1479,10 @@ printf("print Collision Tshift\n");
 		if(P.StopAtCollision == 1){
 			double Coltime = 1.0e100;
 			for(int i = 0; i < Ncoll_m[0]; ++i){
-				Coltime = fmin(Coltime, Coll_h[i * def_NColl]);
+				if(Coll_h[i * def_NColl + 2] >= P.StopMinMass && Coll_h[i * def_NColl + 14] >= P.StopMinMass){
+					Coltime = fmin(Coltime, Coll_h[i * def_NColl]);
+				}
+ 
 			}
 printf("Backup step 2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[0], (Coltime * 365.25 - (time_h[0] - idt_h[0])) / idt_h[0]);
 
@@ -1594,7 +1597,9 @@ printf("print Collision Tshift\n");
 		if(P.StopAtCollision == 1){
 			double Coltime = 1.0e100;
 			for(int i = 0; i < Ncoll_m[0]; ++i){
-				Coltime = fmin(Coltime, Coll_h[i * def_NColl]);
+				if(Coll_h[i * def_NColl + 2] >= P.StopMinMass && Coll_h[i * def_NColl + 14] >= P.StopMinMass){
+					Coltime = fmin(Coltime, Coll_h[i * def_NColl]);
+				}
 			}
 printf("Backup step 2 %.20g\n", Coltime * 365.25);
 	//st

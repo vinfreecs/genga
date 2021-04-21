@@ -2035,7 +2035,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.SLevels > def_SLevelsMax){
 		printf("Error, Symplectic recursion levels bigger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
 		return 0;
-	} 
+	}
+	if(Nst > 1 && (P.SLevels > 1 || P.SLSteps > 2)){
+		printf("Error, Symplectic recursion levels are not supported in the multi simulation mode\n");
+		return 0;
+	}
 
 	if(log10(delta_h[st]) >= def_NFileNameDigits && P.FormatO == 0){
 		printf("Error, number of time steps larger than number of digits in the output filenames. Increase def_NFileNameDigits in the define.h file or use P.FormatO = 1.\n");

@@ -16,7 +16,8 @@ When a collision happens, the coordinates of the two involved bodies are reporte
 | The following parameters are relevant for the collision handling and can be set in the :literal:`param.dat` file:
 
 - :literal:`Collision Precision` in units of a physical radius fraction. (default :math:`1.0^{-4}`)
-- :literal:`Collision Time Shift`, in units of a physical radius factor. (default 1.0)
+- :literal:`Collision Time Shift`, in units of a physical radius factor. (default :math:`1.0`)
+- :literal:`Stop at Collision`, flag to stop simulations at the first collision time (default 0)
 
 - :literal:`def_MaxColl`
 
@@ -97,10 +98,10 @@ In :numref:`figCollision` is shown an example of the influence of the collision 
 
 .. _CollisionTshift:
 
-Backtrace Collisions
---------------------
+Backtrace Collisions (TShift)
+-----------------------------
 
-The :literal:`Collision Time Shift` argument, allows to backtrace a detected collision to a time prior to the real collision time, when the
+The :literal:`Collision Time Shift` argument allows to backtrace a detected collision to a time prior to the real collision time, when the
 two bodies were separated by a factor :math:`f` times their physical radii. The factor :math:`f` is set by 
 :literal:`Collision Time Shift`. This option is especially useful when more complex collision models than perfect mergers are used.
 Backtraced collisions are only calculated when the involved bodies really will collide. If they will miss a collision and undergo
@@ -120,4 +121,17 @@ In :numref:`figCollision3` is shown an example of a backtraced collision.
    The real collision (in red color) is backtraced until the time when the two bodies are separated by a factor :math:`f` times the sum of their 
    physical radii. In this example, we use :math:`f = 3`. The location of the backtraced collision is shown is blue color. 
 
+
+
+
+.. _StopAtCollision:
+
+Stop at Collision
+-----------------
+
+The :literal:`Stop at Collision` option allows to stop a simulation at the time when the first collision occurs. With this option enabled,
+GENGA integrates all bodies in the simulation to the exact -or backtraced - collision time. Since the time of the first collision does not
+correspond in general with an output time, GENGA creates a separate output file with the coordinates of all particles at the time of the first
+collision. See :ref:`OutCollisionFile`. This option is useful when collisions between bodies are resolved with an external code. Then GENGA can
+be stopped when (or before) a collision happens, the collision resolved externally, and finally GENGA restarted again. 
 

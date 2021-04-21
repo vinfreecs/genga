@@ -140,8 +140,6 @@ other
 - Report Encounters Radius = 3
 - Stop at Encounter = 0
 - Stop at Encounter Radius = 1
-- Stop at Collision = 0
-- Stop Minimum Mass = 0.0
 
 Options for collisions
 ----------------------
@@ -155,6 +153,14 @@ Options for collisions
   | an increased physical radius. 
   | (See :ref:`CollisionTshift`)
 
+- | Stop at Collision, flag to stop simulations at the first collision time (default 0).
+  | This option is not supported in the multi simulation mode.
+  | See :ref:`StopAtCollision` 
+
+  -  0: nothing happens.
+  -  1: stop simulation at the first collision time.
+
+- Stop Minimum Mass = 0.0
 
 B
 -

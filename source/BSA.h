@@ -531,6 +531,9 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 						if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].x && index_d[jg] == CollTshiftpairs_c[0].y){
 							rcrit = v4_s[idy].w * CollTshift_c[0] + v4_s[j].w * CollTshift_c[0];
 						}
+						if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].y && index_d[jg] == CollTshiftpairs_c[0].x){
+							rcrit = v4_s[idy].w * CollTshift_c[0] + v4_s[j].w * CollTshift_c[0];
+						}
 //printf("%d %d %d %d %d\n", Encpairs2_d[start + idy].x, Encpairs2_d[start + j].x, jg, j, idi);
 						if(idi > jg){
 							delta = encounter1(xt_s[idy], vt_s[idy], x4_s[idy], v4_s[idy], xt_s[j], vt_s[j], x4_s[j], v4_s[j], rcrit, dt1 * dtgr, idy, j, enct, colt, MinMass, noColl);
@@ -1091,6 +1094,9 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 							if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].x && index_d[j] == CollTshiftpairs_c[0].y){
 								rcrit = vold_d[idi].w * CollTshift_c[0] + vold_d[j].w * CollTshift_c[0];
 							}
+							if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].y && index_d[j] == CollTshiftpairs_c[0].x){
+								rcrit = vold_d[idi].w * CollTshift_c[0] + vold_d[j].w * CollTshift_c[0];
+							}
 
 							if(idi > j){
 								delta = encounter1(xt_d[idi], vt_d[idi], xold_d[idi], vold_d[idi], xt_d[j], vt_d[j], xold_d[j], vold_d[j], rcrit, dt1 * dtgr, idi, j, enct, colt, MinMass, noColl);
@@ -1548,6 +1554,10 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 						volatile int j = Encpairs_d[idi * NencMax + i].x;
 						double rcrit = vold_d[idi].w + vold_d[j].w;
 						if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].x && index_d[j] == CollTshiftpairs_c[0].y){
+							rcrit = vold_d[idi].w * CollTshift_c[0] + vold_d[j].w * CollTshift_c[0];
+
+						}
+						if((noColl == 1 || noColl == -1) && index_d[idi] == CollTshiftpairs_c[0].y && index_d[j] == CollTshiftpairs_c[0].x){
 							rcrit = vold_d[idi].w * CollTshift_c[0] + vold_d[j].w * CollTshift_c[0];
 
 						}
