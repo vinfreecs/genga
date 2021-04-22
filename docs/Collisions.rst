@@ -18,6 +18,9 @@ When a collision happens, the coordinates of the two involved bodies are reporte
 - :literal:`Collision Precision` in units of a physical radius fraction. (default :math:`1.0^{-4}`)
 - :literal:`Collision Time Shift`, in units of a physical radius factor. (default :math:`1.0`)
 - :literal:`Stop at Collision`, flag to stop simulations at the first collision time (default 0)
+- :literal:`Stop Minimum Mass`, used for :ref:`StopAtCollision`, (default :math:`0`).
+
+| Relevant parameters in the :ref:`Define` are:
 
 - :literal:`def_MaxColl`
 
@@ -135,3 +138,4 @@ correspond in general with an output time, GENGA creates a separate output file 
 collision. See :ref:`OutCollisionFile`. This option is useful when collisions between bodies are resolved with an external code. Then GENGA can
 be stopped when (or before) a collision happens, the collision resolved externally, and finally GENGA restarted again. 
 
+| A simulation is only stopped at a collision when **both** involved particles have a mass larger than :literal:`Stop Minimum Mass` (default 0).

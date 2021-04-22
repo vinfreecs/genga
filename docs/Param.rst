@@ -1,6 +1,10 @@
 Parameters in the param.dat file
 ================================
 
+All parameters in the :literal:`param.dat` file can be changed with recompiling GENGA.
+Most parameters are optional, if they are not included in the :literal:`param.dat` file,
+then their default values are used. The default values are set in the :literal:`define.h` file.
+
 Main parameters
 ---------------
 - | Time step in days
@@ -89,36 +93,36 @@ Memory options
 Non-Newtonian forces
 --------------------
 
-- Solar Constant : Solar constant at 1 AU in W / :math:`\text{m}^2` (default 1367.0)
+- :literal:`Solar Constant` : Solar constant at 1 AU in W / :math:`\text{m}^2` (default 1367.0)
 - Use force = 0
-- | Use Yarkovsky: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
+- | :literal:`Use Yarkovsky`: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
 
    - 0 (default): no Yarkovsky effect
    - 1: use Yarkovsky effect :math:`\mathbf{a_Y}` 
    - 2: use time averaged Yarkovsky effect :math:`\frac{da}{dt}`
 
-- Use Poynting-Robertson: Flag for Poynting-Robertson drag (See :ref:`PRdrag`)
+- :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson drag (See :ref:`PRdrag`)
 
    - 0 (default) : no Poynting-Robertson drag
    - 1: use Poynting-Roberston drag :math:`\mathbf{a_{PR}}`
    - 2: use time averaged Poynting-Robertson drag :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
 
-- Radiation Pressure Coefficient Qpr, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
-- | Asteroid emissivity eps
+- :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
+- | :literal:`Asteroid emissivity eps`
   | Thermal emissivity factor :math:`\epsilon` (See :ref:`Yarkovsky`)
-- | Asteroid density rho, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
+- | :literal:` Asteroid density rho`, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
  
-- Asteroid specific heat capacity C, in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
-- | Asteroid albedo A
+- :literal:`Asteroid specific heat capacity C`, in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
+- | :literal:`Asteroid albedo A`
   | Bond albedo (See :ref:`Yarkovsky`)
-- Asteroid thermal conductivity K, in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
+- :literal:`Asteroid thermal conductivity K`, in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
 
-- | Use Small Collisions: Flag to enable model for small bodies collisions (See :ref:`SmallBodies`)
+- | :literal:`Use Small Collisions`: Flag to enable model for small bodies collisions (See :ref:`SmallBodies`)
   
    - 0 (default): model is not enabled
    - 1: enable rotation reset model and fragmentation model for test particles.
 
-- Asteroid collisional velocity V, in m/s (See :ref:`SmallBodies`)
+- :literal:`Asteroid collisional velocity V`, in m/s (See :ref:`SmallBodies`)
 
 other
 -----
@@ -144,28 +148,29 @@ other
 Options for collisions
 ----------------------
 
-- | Collision Precision, in units of a physical radius fraction. (default :math:`1.0^{-4}`)
+- | :literal:`Collision Precision`, in units of a physical radius fraction. (default :math:`1.0^{-4}`)
   | This parameter sets the tolerance of the detected collision time. See :ref:`CollisionPrecision`.
   | Can not be smaller than :math:`1.0^{-10}`.
 
-- | Collision Time Shift, in units of a physical radius factor (default 1.0).
+- | :literal:`Collision Time Shift`, in units of a physical radius factor (default 1.0).
   | Allows to backtrace collision at a point before the collision, when the bodies are separated by 
   | an increased physical radius. 
   | (See :ref:`CollisionTshift`)
 
-- | Stop at Collision, flag to stop simulations at the first collision time (default 0).
+- | :literal:`Stop at Collision`, flag to stop simulations at the first collision time (default 0).
   | This option is not supported in the multi simulation mode.
   | See :ref:`StopAtCollision` 
 
   -  0: nothing happens.
   -  1: stop simulation at the first collision time.
 
-- Stop Minimum Mass = 0.0
+- | :literal:`Stop Minimum Mass`, used in :ref:`StopAtCollision`, (default :math:`0.0`)
+  | Simulations are only stoppen when **both** bodies have a mass larger than this value.
 
 B
 -
 
-- | Serial Grouping: Flag for exact reproducible results.
+- | :literal:`Serial Grouping`: Flag for exact reproducible results.
   | See :ref:`SerialGrouping`
 
    -  0: nothing happens.

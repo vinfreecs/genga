@@ -12,6 +12,7 @@ Setup
    :caption: Contents:
 
    Param.rst
+   Define.rst
 
 Output Files
 ~~~~~~~~~~~~
