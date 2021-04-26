@@ -110,7 +110,7 @@ Non-Newtonian forces
 - :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
 - | :literal:`Asteroid emissivity eps`
   | Thermal emissivity factor :math:`\epsilon` (See :ref:`Yarkovsky`)
-- | :literal:` Asteroid density rho`, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
+- | :literal:`Asteroid density rho`, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
  
 - :literal:`Asteroid specific heat capacity C`, in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
 - | :literal:`Asteroid albedo A`
@@ -150,7 +150,10 @@ Options for collisions
 
 - | :literal:`Collision Precision`, in units of a physical radius fraction. (default :math:`1.0^{-4}`)
   | This parameter sets the tolerance of the detected collision time. See :ref:`CollisionPrecision`.
-  | Can not be smaller than :math:`1.0^{-10}`.
+  | :math:`|`:literal:`Collision Precision`:math:`|` can not be smaller than :math:`1.0^{-10}`.
+
+  - :math:`precision` > 0: particles overlap slightly, :math:`r_{ij} < Ri + Rj`, :math:`r_{ij} > (Ri + Rj) \cdot (1 - precision)`
+  - :math:`precision` < 0: particles do not overlap, :math:`r_{ij} > Ri + Rj`, :math:`r_{ij} < (Ri + Rj) \cdot (1 + precision)`
 
 - | :literal:`Collision Time Shift`, in units of a physical radius factor (default 1.0).
   | Allows to backtrace collision at a point before the collision, when the bodies are separated by 
@@ -166,6 +169,10 @@ Options for collisions
 
 - | :literal:`Stop Minimum Mass`, used in :ref:`StopAtCollision`, (default :math:`0.0`)
   | Simulations are only stoppen when **both** bodies have a mass larger than this value.
+
+- | :literal:`Collision Model`, can be used to implement a different collision model
+  | The default (0) is used for a perfect merger collision.
+  | (See :ref:`Collisions`)
 
 B
 -

@@ -44,6 +44,7 @@ __host__ void Data::constantCopyDirectAcc(){
 	cudaMemcpyToSymbol(StopMinMass_c, &P.StopMinMass, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(CollisionPrecision_c, &P.CollisionPrecision, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(CollTshift_c, &P.CollTshift, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(CollisionModel_c, &P.CollisionModel, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(WriteEncounters_c, &P.WriteEncounters, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(WriteEncountersRadius_c, &P.WriteEncountersRadius, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(StopAtEncounter_c, &P.StopAtEncounter, sizeof(int), 0, cudaMemcpyHostToDevice);
@@ -1504,6 +1505,8 @@ printf("Backup step 2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[
 		}
 
 		Ncoll_m[0] = 0;
+		BSAstop_h[0] = 0;
+		cudaMemset(BSstop_d, 0, sizeof(int));
 	
 		// P.StopAtCollision = 0
 printf("safe -1\n");
@@ -1624,6 +1627,7 @@ printf("Backup step 2 %.20g\n", Coltime * 365.25);
 printf("safe -1\n");
 		safe_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, -1);
 		IrregularStep(1.0);
+		cudaMemset(BSstop_d, 0, sizeof(int));
 
 		int NminFlag = remove();
 		if(NminFlag > 0){

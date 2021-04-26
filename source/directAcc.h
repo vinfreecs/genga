@@ -258,13 +258,12 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 __device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
 
 //	double rd = curand_uniform(&random);
+	//This is a random number that can be used on a more complex collision model
 
-	double3 vij;
-	double3 rij;
-	double3 L;
+
 	if(noColl != 1 && noColl != -1){
 //printf("collide %d %d %g %g\n", (index[indexi]), (index[indexj]), time, rd);
-//printf("collide %d %d %g\n", (index[indexi]), (index[indexj]), time);
+//printf("collide %d %d %g CollisionModel: %d\n", (index[indexi]), (index[indexj]), time, CollisionModel_c[0]);
 
 		Coll[nc * def_NColl + 0] = time/365.25;
 		Coll[nc * def_NColl + 1] = (double)(index[indexi]);
@@ -292,6 +291,16 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 		Coll[nc * def_NColl + 23] = spin[indexj].y;
 		Coll[nc * def_NColl + 24] = spin[indexj].z;
 	}
+
+	//if(CollisionModel_c[0] != 0){
+		//Here another collision model can be implemented
+		//CollisionModel == 0 means perfect accretion
+	//}
+	//else{ ..... } 
+
+	double3 vij;
+	double3 rij;
+	double3 L;
 
 	double mimj = x4[i].w * x4[j].w;
 	double mtot = x4[i].w + x4[j].w;

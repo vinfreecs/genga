@@ -4,10 +4,13 @@ Collisions
 ==========
 
 A collision between two particles happens when the separation :math:`r_{ij}` between two bodies :math:`i` and :math:`j`
-gets smaller than the sum of their physical radii :math:`R_i + R_j`. The current version of GENGA treats collisions as
+gets smaller than (or close to) the sum of their physical radii :math:`R_i + R_j`. The current version of GENGA treats collisions as
 perfect inelastic mergers by forming one single bigger body. During this collision process, linear momentum is conserved,
 but not the energy, since a part of the kinetic energy and the potential self-energy is transferred into an internal energy
 :math:`U`. Angular momentum is conserved by transferring the angular momentum of the two bodies into the spin of the new body.
+
+The :literal:`Collision Model` option can be used to implement a different collision model than perfect merger. This can be done
+int the :literal:`collide` function in the file :literal:`directAcc.h`.
 
 
 When a collision happens, the coordinates of the two involved bodies are reported in the collision file (see :ref:`CollisionsFile`).
@@ -19,6 +22,8 @@ When a collision happens, the coordinates of the two involved bodies are reporte
 - :literal:`Collision Time Shift`, in units of a physical radius factor. (default :math:`1.0`)
 - :literal:`Stop at Collision`, flag to stop simulations at the first collision time (default 0)
 - :literal:`Stop Minimum Mass`, used for :ref:`StopAtCollision`, (default :math:`0`).
+- :literal:`Collision Model`, can be used to implement a different collision model. The default (0) is used for a perfect merger collision.
+
 
 | Relevant parameters in the :ref:`Define` are:
 
@@ -79,12 +84,18 @@ Collision precision
 The collision process is resolved during the Bulirsh-Stoer direct integration with discrete time steps. Therefore, a collision is 
 generally not detected at the exact collision time, but rather when the two particles already overlap by a small amount. 
 Using :literal:`Collision Precision = 1.0`, GENGA uses the coordinate from the Bulirsh-Stoer step when the collision is first detected. 
-This must be considered when using the data from the collision file or also directly within the code for further analysis. 
+This must be considered when using the data from the collision file or also directly within the code for further analysis.
 
-However it is possible to increase the collision precision with the :literal:`Collision Precision` parameter in the :literal:`param.dat`
-file. This parameter sets the tolerance of the collision detection. It is set in units of a radius fraction
-:math:`\frac{(R_i + R_j) - r_{ij}}{R_i + R_j}`, where :math:`R` is the physical radius and :math:`r_{ij}` the separation between
-the two bodies. The precision should not be set smaller than :math:`1.0^{-10}`.
+Using :literal:`Collision Precision < 1.0`, GENGA refines the collision time to :math:`\frac{(R_i + R_j) - r_{ij}}{R_i + R_j} < precision`,
+where :math:`r_{ij}` the separation between the two bodies, and :math:`R` the physical radius. In this way the reported coordinates
+from the collision slightly overlap. 
+
+  - :math:`precision` > 0: particles overlap slightly, :math:`r_{ij} < Ri + Rj`, :math:`r_{ij} > (Ri + Rj) \cdot (1 - precision)`
+
+Using a negative value for :literal:`Collision Precision < 1.0`, the reported coordinates at collision are not overlapping anymore. 
+  - :math:`precision` < 0: particles do not overlap, :math:`r_{ij} > Ri + Rj`, :math:`r_{ij} < (Ri + Rj) \cdot (1 + precision)`
+
+The precision should not be set smaller than :math:`1.0^{-10}`.
 When the exact time of a collision is important, a value of around :math:`1^{-4}` is recommended.
 Note that this parameter causes some more iterations in the Bulirsh-Stoer routine and can slightly increase the run time
 of a simulation.
@@ -109,6 +120,8 @@ two bodies were separated by a factor :math:`f` times their physical radii. The 
 :literal:`Collision Time Shift`. This option is especially useful when more complex collision models than perfect mergers are used.
 Backtraced collisions are only calculated when the involved bodies really will collide. If they will miss a collision and undergo
 a close flyby, then this option is not activated. This option can be combined with the :literal:`Collision Precision` option. 
+
+This option is only activated for bodies with a mass larger than :literal:`Stop Minimum Mass`. 
 
 Since multiple collisions can occur at a similar time, the backtrace option has to resolve every collision isolated. This can result
 in a longer run time of the code. Especially when many collisions occur. 

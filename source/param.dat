@@ -88,4 +88,5 @@ Stop at Collision = 0
 Stop Minimum Mass = 0.0
 Collision Precision = 1.0e-4
 Collision Time Shift = 1.0
+Collision Model = 0
 Serial Grouping = 0

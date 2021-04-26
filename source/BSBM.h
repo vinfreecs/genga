@@ -434,6 +434,10 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 						if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].x){
 							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
 						}
+						if(CollisionPrecision_c[0] < 0.0){
+							//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+							rcrit *= (1.0 - CollisionPrecision_c[0]);	
+						}
 
 						if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
 							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
@@ -513,14 +517,17 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y){
 								R = vt_s[i].w * CollTshift_c[0] + vt_s[j].w * CollTshift_c[0];
 							}
-
+							if(CollisionPrecision_c[0] < 0.0){
+								//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+								R *= (1.0 - CollisionPrecision_c[0]);	
+							}
 
 							double dR = (R - d) / R;
 
 							if(noColl == -1) dR = -dR;
 
 //printf("dRM %d %d %d %.20g %.20g %.20g | noColl: %d\n", si, i, j, d, R, dR, noColl);
-							if(dR > CollisionPrecision_c[0]){
+							if(dR > fabs(CollisionPrecision_c[0])){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}

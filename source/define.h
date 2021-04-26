@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.120
+#define def_Version 3.121
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -91,6 +91,7 @@
 #define def_StopMinMass 0.0		//when def_StopAtCollision = 1, then stop simulations only when both bodies are more massive than def_StopMinMass
 #define def_CollisionPrecision 1.0e-4	//Tolerance for collision time precision. In units of physical radius fraction.
 #define def_CollTshift 1.0		//Collision output before Collision happens, default is 1.0
+#define def_CollisionModel 0		//0 is perfect merger, other models can be added in directAcc.h
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
 #define def_SERIAL_GROUPING 0
@@ -256,9 +257,10 @@ double __shfld_xor(double x, int k) {
 __constant__ double  Rcut_c[1];
 __constant__ double  RcutSun_c[1];
 __constant__ int  StopAtCollision_c[1];
-__constant__ double  StopMinMass_c[1];
+__constant__ double StopMinMass_c[1];
 __constant__ double CollisionPrecision_c[1]; 
 __constant__ double CollTshift_c[1]; 
+__constant__ int CollisionModel_c[1];
 __constant__ int2 CollTshiftpairs_c[1]; 
 __constant__ int WriteEncounters_c[1]; 
 __constant__ double WriteEncountersRadius_c[1]; 
@@ -337,6 +339,7 @@ struct Parameter{
 	double StopMinMass;
 	double CollisionPrecision;
 	double CollTshift;
+	int CollisionModel;
 	int NAFvars;
 	int NAFn0;
 	int NAFnfreqs;

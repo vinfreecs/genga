@@ -24,7 +24,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 //if(idy == 0 && idx == 0)      printf("Stop BSB b\n");
 		return;
 	}
-//printf("BSB %d %d %g %g\n", idy, idx, StopMinMass_c[0], CollisionPrecision_c[0]);
+//printf("BSB %d %d %g %g %d\n", idy, idx, StopMinMass_c[0], CollisionPrecision_c[0], noColl);
 
 	int ii = idy / nb;
 	int jj = idy % nb;
@@ -418,6 +418,12 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 						if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].x){
 							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
 						}
+
+						if(CollisionPrecision_c[0] < 0.0){
+							//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+							rcrit *= (1.0 - CollisionPrecision_c[0]);	
+						}
+
 						if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
 							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
 						}
@@ -494,11 +500,16 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 								R = vt_s[i].w * CollTshift_c[0] + vt_s[j].w * CollTshift_c[0];
 							}
 
+							if(CollisionPrecision_c[0] < 0.0){
+								//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+								R *= (1.0 - CollisionPrecision_c[0]);	
+							}
+
 							double dR = (R - d) / R;
 							if(noColl == -1) dR = -dR;
 
 //printf("dR %d %d %.20g %.20g %.20g %g\n", i, j, d, R, dR, Coltime_s[c]);
-							if(dR > CollisionPrecision_c[0]){
+							if(dR > fabs(CollisionPrecision_c[0])){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}

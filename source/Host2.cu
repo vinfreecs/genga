@@ -439,6 +439,7 @@ __host__ void Host::Halloc(){
 	P.StopMinMass = def_StopMinMass;
 	P.CollisionPrecision = def_CollisionPrecision;
 	P.CollTshift = def_CollTshift;
+	P.CollisionModel = def_CollisionModel;
 	P.NAFvars = def_NAFvars;
 	P.NAFn0 = def_NAFn0;
 	P.NAFnfreqs = def_NAFnfreqs;
@@ -1641,7 +1642,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Stop Minumun Mass value is not valid!\n");
 					return 0;
 				}
-				
+	
 			}
 			else{
 				double t;
@@ -1656,7 +1657,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: Collision Precision value is not valid!\n");
 					return 0;
 				}
-				
+
 			}
 			else{
 				double t;
@@ -1676,6 +1677,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else{
 				double t;
 				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Collision Model =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.CollisionModel);
+				if(er <= 0){
+					printf("Error: Collison Model value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
 			}
 			fgets(sp, 3, paramfile);
 		}
@@ -2022,11 +2038,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		return 0;
 	}
 	
-	if(P.CollisionPrecision <= 0.0){
+	if(P.CollisionPrecision == 0.0){
 		printf("Error: Collision Precision not valid! %g\n", P.CollisionPrecision);
 		return 0;
 	}
-	if(P.CollisionPrecision <= 1.0e-10){
+	if(fabs(P.CollisionPrecision) <= 1.0e-10){
 		printf("Error: Collision Precision too small! %g  Limit is at 1.0e-10\n", P.CollisionPrecision);
 		return 0;
 	}
@@ -2065,7 +2081,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	//check peer to peer access for multi GPU runs:
 	for(int i = 1; i < P.ndev; ++i){
 		int check = 0;
-		cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[0]);       //check if device i can access device 0
+		cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[0]);	//check if device i can access device 0
 		fprintf(masterfile, "device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
 		printf("device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
 		if(check == 0){
@@ -2699,9 +2715,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "\n");
 			fprintf(infofile, "Angle units: %d\n", P.AngleUnits);
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
-			fprintf(infofile, "Number of devices: %d\n", P.ndev);                           // use only argument in simulation 0
+			fprintf(infofile, "Number of devices: %d\n", P.ndev);				// use only argument in simulation 0
 			for(int j = 0; j < P.ndev; ++j){
-				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);                     // use only argument in simulation 0
+				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);		// use only argument in simulation 0
 			}
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
 			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
@@ -2712,37 +2728,37 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st].x);
 			fprintf(infofile, "Minimal number of test particles: %d\n", Nmin[st].y);
-			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);              // use only argument in simulation 0
+			fprintf(infofile, "Test Particle Mode: %d\n", P.UseTestParticles);		// use only argument in simulation 0
 			fprintf(infofile, "Particle Minimum Mass : %g\n", P.MinMass);			// use only argument in simulation 0
 			fprintf(infofile, "Symplectic recursion Max levels : %d\n", def_SLevelsMax);	// use only argument in simulation 0
 			fprintf(infofile, "Symplectic recursion levels : %d\n", P.SLevels);		// use only argument in simulation 0
 			fprintf(infofile, "Symplectic recursion sub steps : %d\n", P.SLSteps);		// use only argument in simulation 0
-			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);                     // use only argument in simulation 0
-			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);               // use only argument in simulation 0
-			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax); 	                // use only argument in simulation 0
+			fprintf(infofile, "Restart time step: %lld\n", P.tRestart);			// use only argument in simulation 0
+			fprintf(infofile, "Order of Symplectic integrator: %d\n", P.SIO);		// use only argument in simulation 0
+			fprintf(infofile, "Maximum encounter pairs: %d\n", P.NencMax);			// use only argument in simulation 0
 			fprintf(infofile, "Nfragments: %d\n", P.Nfragments);				// use only argument in simulation 0
-			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);                           	// use only argument in simulation 0
-			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid emin: %f\n", Gridae.emin);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid emax: %f\n", Gridae.emax);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid imin: %f\n", Gridae.imin);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid imax: %f\n", Gridae.imax);                            // use only argument in simulation 0
-			fprintf(infofile, "aeGrid Na: %d\n", Gridae.Na);                                // use only argument in simulation 0
-			fprintf(infofile, "aeGrid Ne: %d\n", Gridae.Ne);                                // use only argument in simulation 0
-			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);                                // use only argument in simulation 0
-			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);                  // use only argument in simulation 0
-			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);                               // use only argument in simulation 0
+			fprintf(infofile, "Use aeGrid: %d\n", P.UseaeGrid);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid amin: %f\n", Gridae.amin);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid amax: %f\n", Gridae.amax);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid emin: %f\n", Gridae.emin);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid emax: %f\n", Gridae.emax);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid imin: %f\n", Gridae.imin);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid imax: %f\n", Gridae.imax);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid Na: %d\n", Gridae.Na);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid Ne: %d\n", Gridae.Ne);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid Ni: %d\n", Gridae.Ne);				// use only argument in simulation 0
+			fprintf(infofile, "aeGrid Count Start: %lld\n", Gridae.Start);			// use only argument in simulation 0
+			fprintf(infofile, "aeGrid name: %s\n", Gridae.X);				// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk: %d\n", P.Usegas);				// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk enhancement: %d\n", P.UsegasEnhance);		// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk potential: %d\n", P.UsegasPotential);		// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk drag: %d\n", P.UsegasDrag);			// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk tidal damping: %d\n", P.UsegasTidalDamping);	// use only argument in simulation 0
-			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);                        // use only argument in simulation 0
-			fprintf(infofile, "Gas alpha: %g\n", P.G_alpha);                                // use only argument in simulation 0
+			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);			// use only argument in simulation 0
+			fprintf(infofile, "Gas alpha: %g\n", P.G_alpha);				// use only argument in simulation 0
 			fprintf(infofile, "Gas beta: %g\n", P.G_beta);					// use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
-			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);                              // use only argument in simulation 0
+			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);				// use only argument in simulation 0
 			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
@@ -2759,6 +2775,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Stop collision minimum mass: %g\n", P.StopMinMass);
 			fprintf(infofile, "Collision precision: %g\n", P.CollisionPrecision);
 			fprintf(infofile, "Collision Time Shift: %g\n", P.CollTshift);
+			fprintf(infofile, "Collision Model: %d\n", P.CollisionModel);
 			fprintf(infofile, "Asteroid emissivity: %g\n", P.Asteroid_eps);
 			fprintf(infofile, "Asteroid density: %g\n", P.Asteroid_rho);
 			fprintf(infofile, "Asteroid specific heat capacity: %g\n", P.Asteroid_C);
