@@ -6,6 +6,8 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 
 #if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#else
+	int random = 0;
 #endif
 //printf("BSA %d %d %g\n", idy, idx, StopMinMass_c[0]);
 
@@ -741,6 +743,8 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 
 #if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#else
+	int random = 0;
 #endif
 	volatile double dt1 = dt;
 	volatile double dt2, dt22;
@@ -1544,6 +1548,8 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 
 #if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#else
+	int random = 0;
 #endif
 
 	int si = Encpairs2_d[ (st+2) * NT + idx].y;

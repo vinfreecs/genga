@@ -20,6 +20,8 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 
 #if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#else
+	int random = 0;
 #endif
 	if((noColl == 1 || noColl == -1) && BSstop_d[0] == 3){
 //if(idy == 0 && idx == 0)      printf("Stop BSB b\n");
