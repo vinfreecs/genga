@@ -4,7 +4,9 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
+#if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#endif
 //printf("BSA %d %d %g\n", idy, idx, StopMinMass_c[0]);
 
 	if((noColl == 1 || noColl == -1) && BSstop_d[0] == 3){
@@ -720,7 +722,9 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 //}
 ///*if(idi == 4077)*/ printf("final %g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, idi, NN, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, x4_d[idi].w, v4_d[idi].w);
 	}
+#if USE_RANDOM == 1
 	random_d[idx] = random;
+#endif
 }
 
 
@@ -735,8 +739,9 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 		return;
 	}
 
+#if USE_RANDOM == 1
 	curandState random = random_d[idx];
-
+#endif
 	volatile double dt1 = dt;
 	volatile double dt2, dt22;
 	volatile double t = 0.0;
@@ -1285,7 +1290,10 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 //if(idi == 0) printf("final %g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g\n", time, idi, NN, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w, rcritv_d[idi]);
 		}
 	}
+
+#if USE_RANDOM == 1
 	random_d[idx] = random;
+#endif
 }
 
 
@@ -1534,7 +1542,9 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 
 	int idx = blockIdx.y;	
 
+#if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#endif
 
 	int si = Encpairs2_d[ (st+2) * NT + idx].y;
 	int N2 = Encpairs2_d[si].y; //Number of bodies in  current BS simulation
@@ -1759,7 +1769,9 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 			}
 		}
 	}
+#if USE_RANDOM == 1
 	random_d[idx] = random;
+#endif
 }
 
 __global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, const int UseForce){

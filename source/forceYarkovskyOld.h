@@ -386,8 +386,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
 			//Mean Anomaly
-			double M = E - e * sin(E);
-
+			//double M = E - e * sin(E);
 
 //printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
 

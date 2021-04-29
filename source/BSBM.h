@@ -17,7 +17,9 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	
+#if USE_RANDOM == 1
 	curandState random = random_d[idx];
+#endif
 	if((noColl == 1 || noColl == -1) && BSstop_d[0] == 3){
 //if(idy == 0 && idx == 0)      printf("Stop BSBM b\n");
 		return;
@@ -601,6 +603,8 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 //printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z);
 
 	}
+#if USE_RANDOM == 1
 	random_d[idx] = random;
+#endif
 }
 

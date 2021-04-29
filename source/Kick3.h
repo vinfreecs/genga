@@ -1528,8 +1528,6 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		}
 	}
 
-	volatile double a;
-	volatile double b;
 	volatile double rx, ry, rz;
 	volatile double rsq, ir, ir3;
 	volatile double rcritv, rcritv2;
@@ -1659,11 +1657,8 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 		}
 	}
 
-	volatile double a;
-	volatile double b;
 	volatile double rx, ry, rz;
 	volatile double rsq, ir, ir3;
-	volatile double y, yy, K;
 	volatile double si, sj;
 	
 	for(volatile int j = Nmax - 1; j > 0; --j){
@@ -1782,8 +1777,6 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 		}
 	}
 
-	volatile double a;
-	volatile double b;
 	volatile double rx, ry, rz;
 	volatile double rsq, ir, ir3;
 	volatile double rcritv, rcritv2;
