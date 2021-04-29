@@ -780,6 +780,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * Asteroid_V_c[0]);
 			double p = 1.0e-18 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
 			p = p * 3600.0 * 24.0 * dt / dayUnit;					//probability per time step
+#if USE_RANDOM == 1
 			double rd = curand_uniform(&random);
 			int accept = -2;
 			if(rd < p) {
@@ -825,6 +826,7 @@ printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 
 				atomicMax(&nFragments_d[0], 1);
 			}
+#endif
 		}
 		random_d[id] = random;
 	}
@@ -838,6 +840,7 @@ printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
 __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
+#if USE_RANDOM == 1
 	int N = N_d[st];
 
 	int idy = threadIdx.x;
@@ -1055,6 +1058,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 			}
 		}
 	}
+#endif
 }
 
 __host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){

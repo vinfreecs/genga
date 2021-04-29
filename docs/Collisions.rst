@@ -87,12 +87,13 @@ Using :literal:`Collision Precision = 1.0`, GENGA uses the coordinate from the B
 This must be considered when using the data from the collision file or also directly within the code for further analysis.
 
 Using :literal:`Collision Precision < 1.0`, GENGA refines the collision time to :math:`\frac{(R_i + R_j) - r_{ij}}{R_i + R_j} < precision`,
-where :math:`r_{ij}` the separation between the two bodies, and :math:`R` the physical radius. In this way the reported coordinates
+where :math:`r_{ij}` the separation between the two bodies and :math:`R` the physical radius. In this way the reported coordinates
 from the collision slightly overlap. 
 
   - :math:`precision` > 0: particles overlap slightly, :math:`r_{ij} < Ri + Rj`, :math:`r_{ij} > (Ri + Rj) \cdot (1 - precision)`
 
-Using a negative value for :literal:`Collision Precision < 1.0`, the reported coordinates at collision are not overlapping anymore. 
+Using a negative value for :literal:`Collision Precision < 1.0`, the reported coordinates at collision are not overlapping, the distance
+between the two particles is slightly larger then the sum of the two radii. 
   - :math:`precision` < 0: particles do not overlap, :math:`r_{ij} > Ri + Rj`, :math:`r_{ij} < (Ri + Rj) \cdot (1 + precision)`
 
 The precision should not be set smaller than :math:`1.0^{-10}`.

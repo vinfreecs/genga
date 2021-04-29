@@ -237,8 +237,13 @@
 //----------------------------
 
 
-#define USE_RANDOM 1
-#include <curand_kernel.h>
+#define USE_RANDOM 1			//USE_RANDOM 1 is needed for def_TTV and for 'Use Small Collisions' > 0
+
+#if USE_RANDOM == 1
+  #include <curand_kernel.h>
+#else
+  #define curandState int
+#endif
 
 
 #ifndef STRUCT_H

@@ -336,7 +336,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
 
-#if USE_RANDOM
+#if USE_RANDOM == 1
 	srand48(time(NULL));
 	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
 #else
@@ -568,7 +568,7 @@ __global__ void BufferInit_kernel(double *coordinateBuffer_d, int N){
 	}
 }
 
-#if USE_RANDOM
+#if USE_RANDOM == 1
 __global__ void randomInit_kernel(curandState *random_d, int N){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -730,7 +730,7 @@ __host__ int Data::init(){
 		LI0_h[st] = 1.0;
 	}
 
-#if USE_RANDOM
+#if USE_RANDOM == 1
 	randomInit_kernel <<< (NconstT + 255) / 256, 256>>> (random_d, NconstT);
 #endif
 
@@ -2438,7 +2438,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(StopTime_d);
 #endif
 
-#if USE_RANDOM
+#if USE_RANDOM == 1
 	cudaFree(random_d);
 #endif
 

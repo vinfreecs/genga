@@ -2073,6 +2073,15 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		return 0;
 	}
 
+	if(P.UseSmallCollisions > 0 && USE_RANDOM != 1){
+		printf("Error, Use Small Collisions must use USE_RANDOM 1\n");
+		return 0;
+	}
+	if(def_TTV > 0 && USE_RANDOM != 1){
+		printf("Error, TTV must use USE_RANDOM 1\n");
+		return 0;
+	}
+
 	ForceFlag = 0;
 	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0){
 		ForceFlag = 1;
