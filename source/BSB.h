@@ -473,15 +473,14 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 								//in scales of planetary Radius
 								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
 							}
+//printf("Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
-//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
+//printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 								int ne = atomicAdd(NWriteEnc_d, 1);
 								if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
-								//check the following line ?
-								writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;
-								storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + t / dayUnit, spin_d);
+								storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
 								}
 							}
 						}

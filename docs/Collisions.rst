@@ -94,6 +94,7 @@ from the collision slightly overlap.
 
 Using a negative value for :literal:`Collision Precision < 1.0`, the reported coordinates at collision are not overlapping, the distance
 between the two particles is slightly larger then the sum of the two radii. 
+
   - :math:`precision` < 0: particles do not overlap, :math:`r_{ij} > Ri + Rj`, :math:`r_{ij} < (Ri + Rj) \cdot (1 + precision)`
 
 The precision should not be set smaller than :math:`1.0^{-10}`.
@@ -101,7 +102,8 @@ When the exact time of a collision is important, a value of around :math:`1^{-4}
 Note that this parameter causes some more iterations in the Bulirsh-Stoer routine and can slightly increase the run time
 of a simulation.
 
-In :numref:`figCollision` is shown an example of the influence of the collision precision. 
+In :numref:`figCollision` is shown an example of the influence of the collision precision, and in :numref:`figCollisionZoom` is shown a 
+zoomed region with different :literal:`Collision Precision` values. 
 
 .. figure:: plots/Collision.png  
    :name: figCollision
@@ -109,6 +111,12 @@ In :numref:`figCollision` is shown an example of the influence of the collision 
    Collision and merging of two bodies. In orange are shown the regular time steps before and after the collision. In thin green are shown
    the internal time steps of the Bulirsh-Stoer close encounter integration. A collision is reported when the two bodies already overlap (green color).
    By using a high collision precision, the collision located is resolved at the exact contact time (red color). 
+
+.. figure:: plots/CollisionZoom.png
+   :name: figCollisionZoom
+
+   Collision position of different :literal:`Collision Precision` values. A positive value leads to slightly overlapping bodies. With a
+   negative value, the bodies do not overlap, and the collision is reported slightly before the bodies really touch.  
 
 
 .. _CollisionTshift:

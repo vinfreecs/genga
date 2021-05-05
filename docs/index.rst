@@ -29,6 +29,7 @@ Options
    :maxdepth: 2
 
    Collisions.rst
+   Encounters.rst
    SerialGrouping.rst
 
 
@@ -49,6 +50,14 @@ Small body collision model
 
    SmallBodies.rst
 
+
+Integrator details
+~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   CloseEncounter.rst
 
 Bibliography
 ~~~~~~~~~~~~

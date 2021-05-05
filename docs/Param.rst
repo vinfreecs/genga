@@ -132,18 +132,31 @@ other
 - FormatT = 0
 - FormatP = 1
 - FormatO = 0
-- TTV file name = -
-- RV file name = -
-- TTV steps = 1
-- Print Transits = 0
-- Print RV = 0
-- Print MCMC = 0
-- MCMC NE = 0
-- MCMC Restart = 0
-- Report Encounters = 0
-- Report Encounters Radius = 3
-- Stop at Encounter = 0
-- Stop at Encounter Radius = 1
+
+
+Options for Encounters
+----------------------
+
+- | :literal:`Report Encounters`, flag to enable encounter information (default = 0).
+  | See :ref:`Report_Encounters`.
+
+  - 0: nothing happens.
+  - 1: Encounter events between two bodies, with a separation less than :literal:`Report Encounters Radius` times
+       the sum of their radii, are reported in the encounters-file. 
+
+- | :literal:`Report Encounters Radius`, used for :literal:`Report Encounters`, (default = 1.0).
+  | In units of physical radii.
+
+- | :literal:`Stop at Encounter`, flag to stop simulations when a close encounter between two bodies happens, (default = 0).
+  | See :ref:`StopAtEncounter`. 
+
+  - 0: nothing happens.
+  - 1: Simulations are stoppen when the separation between two bodies is less than :literal:`Stop at Encounter Radius` times
+       the Hill radius.
+
+- | :literal:`Stop at Encounter Radius`, used for :literal:`Stop at Encounter`, (default = 1.0).
+  | In units of Hill radii.
+
 
 Options for collisions
 ----------------------
@@ -182,4 +195,17 @@ B
 
    -  0: nothing happens.
    -  1: enable sorting step for exact reproducible results.
+
+
+Options for TTVs
+----------------
+
+- TTV file name = -
+- RV file name = -
+- TTV steps = 1
+- Print Transits = 0
+- Print RV = 0
+- Print MCMC = 0
+- MCMC NE = 0
+- MCMC Restart = 0
 

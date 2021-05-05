@@ -1,6 +1,6 @@
 #include "Orbit2.h"
 
-// **************************************
+// ****************************************
 //This function computes the terms m/r^3 between all pairs of bodies.
 //
 //Authors: Simon Grimm, Joachim Stadel
@@ -33,7 +33,7 @@ __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 //
-//****************************************/
+//***************************************
 __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 
 	double rsq, ir;
@@ -77,7 +77,8 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 				if(idy + i < N){
 					if(x4_d[idy + i].w > 0.0){
 						V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
-				}	}
+					}
+				}
 			}
 
 			__syncthreads();

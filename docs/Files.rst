@@ -98,6 +98,20 @@ This file is only created when the :literal:`Stop at Collision` option is enable
 when the first collision occurred. The file contains the same columns as the normal output files. 
  
 
+.. _EncounterFile:
+
+The encounter-file: Encounters<name>.dat
+----------------------------------------
+(See :ref:`Report_Encounters`)
+
+This file is only created when the :literal:`Report Encounters` option is enabled.
+It contains the details of each enconter event: 
+
+    | time indexi mi ri xi yi zi vxi vyi vzi Sxi Syi Szi indexj mj rj xj yj zj vxj vyj vzj Sxj Syj Sz
+    | .
+    | .
+    | . 
+
 
 .. _FragmentsFile:
 
