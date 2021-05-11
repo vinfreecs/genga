@@ -4,6 +4,7 @@ GENGA documentation (work in progress)
 This new documentation is not yet complete.
 
 
+
 Setup
 ~~~~~
 
@@ -11,6 +12,7 @@ Setup
    :maxdepth: 2
    :caption: Contents:
 
+   Run.rst
    Param.rst
    Define.rst
 
@@ -30,6 +32,8 @@ Options
 
    Collisions.rst
    Encounters.rst
+   Ejection.rst
+   aeGrid.rst
    SerialGrouping.rst
 
 

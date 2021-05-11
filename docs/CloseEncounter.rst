@@ -3,3 +3,4 @@
 Close Encounters
 ================
 
+:literal:`Maximum encounter pairs`

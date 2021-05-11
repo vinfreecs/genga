@@ -6,7 +6,7 @@ Output Files
 The Lock File: lock.dat
 -----------------------
 
-This file is created at the beginning of a GENGA simulation. The behaviour depens on the :literal:`IgnoreLockFile` in the :literal:`define.h` file. 
+This file is created at the beginning of a GENGA simulation. The behaviour depends on the :literal:`IgnoreLockFile` in the :literal:`define.h` file. 
 
 - | If it is set to 0, then GENGA can not be started again from time step 0.
   | The lock file prevents that output files are overwritten and lost.
@@ -19,6 +19,43 @@ Restarting GENGA from a time step > 0 is not affected by the lock file.
 The Master File: master.out
 ---------------------------
 The master file contains information about the used hardware and simulation progress. If an error occurs then the master file contains more details about that. The master file is not deleted at a new GENGA start.
+
+
+.. _OutFile:
+
+The Coordinate Output Files: Out<name>.dat
+------------------------------------------
+Depends on Format
+
+
+The number of digits in the output filenames can be changed with the :literal:`def_NFileNameDigits` parameter in the :literal:`define.h` file.
+
+.. _OutputsPerInterval:
+
+Number of outputs per interval
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+When this numer is largen than 1, then at each coordinate output interval, n consecutive outputs are written. 
+
+For example, when the following numbers are set
+
+- :literal:`Coordinates output interval` = 100 
+- :literal:`Number of outputs per interval` = 5,
+
+then the following time steps are written as outputs:
+0, 96, 97, 98, 99, 100, 196, 197, 198, 199, 200, ...
+
+
+.. _IrrOutFile:
+
+
+The Irregular Coordinate Output Files: OutIrr<name><time>.dat
+-------------------------------------------------------------
+These files are only created when the output calendar file is used. 
+The file contains the same structure as the :ref:`OutFile` but at the time specified in the calendar file. The number in the file
+name corresponds to the line in the calendar file.
+See :ref:`IrregularOutput`.
+
+The number of digits in the output filenames can be changed with the :literal:`def_NFileNameDigits` parameter in the :literal:`define.h` file.
 
 
 .. _EnergyFile:
@@ -46,6 +83,15 @@ At the :literal:`Energy output interval`, set in the :literal:`param.dat` file, 
 - LTotal: Total Angular Momentum
 - LRelativ: (LTotal_t - LTotal_0)/LTotal_0
 - ERelativ: (ETotal_t - ETotal_0)/ETotal_0
+
+.. _IrrEnergyFile:
+
+The Irregular Energy Output File: EnergyIrr<name>.dat
+-----------------------------------------------------
+This file is only created when the output calendar file is used.
+The file contains the same structure as the regular :ref:`EnergyFile`, but at output times, specified in the output calendar file.
+See :ref:`IrregularOutput`.
+
 
 
 The Execution Time File: time<name>.dat
@@ -113,6 +159,22 @@ It contains the details of each enconter event:
     | . 
 
 
+.. _EjectionFile:
+
+The ejection file: Ejections<name>.dat
+--------------------------------------
+(See :ref:`Ejections`)
+This file contains the details of all ejection events, in the format:
+
+    | time index m r x y z vx vy vz Sx Sy Sz case
+    | .
+    | .
+    | .
+
+
+with: case = -3 for bodies removed at the outher boundary,
+and case = -2 for bodies removed at the inner boundary. 
+
 .. _FragmentsFile:
 
 The Fragments File: Fragments<name>.dat
@@ -134,5 +196,21 @@ the 'event' indicates the following:
 
 Each new created fragment gets a new, increasing,  index number.
 This file permits to recronstruct the collision and fragmentation history of every particle.
+
+
+.. _aeCountFile:
+
+The a-e and a-i grid files: aeCount<grid name><time step>.dat
+-------------------------------------------------------------
+(See :ref:`aegrid`)
+These files are only written when the aegrid option is used.
+The files contain four matrices, separated by a blank line. 
+
+- a-e counts since the last coordinate output, size Na x Ne
+- a-e counts since the beginning of the simulation, size Na x Ne
+- a-i counts since the last coordinate output, size Na x Ni
+- a-i counts since the beginning of the simulation, size Na x Ni
+
+
 
 

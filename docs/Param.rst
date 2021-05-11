@@ -7,33 +7,66 @@ then their default values are used. The default values are set in the :literal:`
 
 Main parameters
 ---------------
-- | Time step in days
+- | :literal:`Time step in days`, (default = 6.0 days)
   | Should be minimal ca. 30 steps per orbit for the second order integrator.
+  | Can be set to negative values for an integration backward in time.
 
-- | Output name
-  | All output files will contain this name
+- | :literal:`Output name` (default = "test").
+  | All output files will contain this name,
 
-- | Energy output interval, (in timesteps)
+- | :literal:`Energy output interval`, Interval when energy information is written, in units of timesteps, (default = 100).
   | (See :ref:`EnergyFile`)
-  |  - when set to 0, then no energy output is written.
-  |  - when set to -1, then only the last energy output is written. 
 
+    - when set to 0, then no energy output is written.
+    - when set to -1, then only the very last energy output is written
+      (or when a simulation is stopped). 
 
-- Coordinates output interval = 100
-- Number of outputs per interval = 1
-- Coordinate output buffer = 1
-- Irregular output calendar = -
-- Integration steps = 100000
+- | :literal:`Coordinates output interval`, Interval when output coordinates are written to a file, in units of timesteps, (default = 100).
+  | (See :ref:`OutFile`)
+
+    - when set to 0, then no coordinate output is written.
+    - when set to -1, then only the very last coordinate output is written
+      (or when a simulation is stopped). 
+
+- | :literal:`Number of outputs per interval`, Can be used to write outputs at a number of consecutive time steps at each output Interval.
+  | In units of time steps.
+  | See :ref:`OutputsPerInterval`.
+  | (default = 1).
+
+- | :literal:`Coordinate output buffer`, can be used to temporarily store outputs in a GPU buffer before transferring the data back
+  | to the CPU. When outputs are written frequently, then this option can speed up the data transfer.
+  | In units of time steps.  
+  | (default = 1)
+  | The energy outputs within a buffer size are skipped in this mode.
+
+- | :literal:`Irregular output calendar`, filename of the irregular output calendar file,
+  | Can be use to write coordinate and energy outputs at specified times.
+  | See :ref:`IrregularOutput`
+
+    - :literal:`-` : nothing happens
+    - <calendar file name>: the calendar file is used and irregular output files are written.
+
+- | :literal:`Integration steps`, total number of time steps to run.
+  | (default = 1000 time steps)
+
+- Input file = initialplanet_2048.dat
+- Input file Format: << x y z m vx vy vz >>
+- Default rho = 2.0
+- Angle units = radians
+
 
 Stellar parameters
 ------------------
-- | Central Mass:
-  | Mass of the central star, in Solar Masses (default = 1) 
-- | Star Radius:
-  | Physical radius of the central star in AU (default = 0.00465475877 = Solar radius)
-- | Star Love Number:
+- | :literal:`Central Mass`
+  | Mass of the central star, in Solar Masses (default = 1.0) 
+
+- | :literal:`Star Radius`
+  | Physical radius of the central star in AU (default = 0.00465475877 AU = Solar radius)
+
+- | :literal:`Star Love Number`
   | Love number of the central star (default = 1.0)
-- | Star fluid Love Number:
+
+- | :literal:`Star fluid Love Number`
   | Fluid Love number of the central star (default = 1.0)
 - Star spin_x = 0.0
 - Star spin_y = 0.0
@@ -41,43 +74,101 @@ Stellar parameters
 - Star tau = 0.0
 
 
+Integrator options
+------------------
+
 - n1 = 3.0
 - n2 = 0.4
-- Input file = initialplanet_2048.dat
-- Input file Format: << x y z m vx vy vz >>
-- Angle units = radians
-- Default rho = 2.0
-- Use Test Particles = 0
-- Particle Minimum Mass = 0.0
+
+- | :literal:`Use Test Particles`, flag to enable test particle mode (default = 0)
+  | See :ref:`TestParticles`, and :literal:`Particle Minimum Mass`.
+  
+    - 0: full gravity mode, compute force between all pairs of particles.
+    - 1: test particle mode, small bodies do not affect other bodies.
+    - 2: semi active mode, small bodies do only affect large bodies but not other small bodies.
+
+- | :literal:`Particle Minimum Mass`, threshold mass between small and large particles (default = 0.0)
+  | All particles with a smaller mass than this value are treated as test particles (if :literal:`Use Test Particles > 0`).
+  | When :literal:`Use Test Particles = 0`, then this parameter has no affect. 
+
 - Restart timestep = 0
 - Symplectic recursion levels = 1
 - Symplectic recursion sub steps = 2
-- Minimum number of bodies = 1
-- Minimum number of test particles = 0
-- Inner truncation radius = 0.5
-- Outer truncation radius = 50.0
+
+- | :literal:`Minimum number of bodies`, (default = 0)
+  | When the number of bodies (not including test particles) gets smaller than this number, then the simulation will be stopped. 
+
+- | :literal:`Minimum number of test particles` (default = 0)
+  | when the number of test particles gets smaller than this number, then the simulation will be stopped.
+
+
+- | :literal:`Inner truncation radius`, in AU (default = 0.2)
+  | When the distance of a particle to the central mass is smaller than this number, then the particle is removed from the simulation.
+  | See :ref:`Ejections`
+
+- | :literal:`Outer truncation radius` in AU (default = 50.0)
+  | When the distance of a particle to the central mass is larger than this number, then the particle is removed from the simulation.
+  | See :ref:`Ejections`
+
 - Order of integrator = 2
+
 
 Memory options
 --------------
 
-- Maximum encounter pairs = 512
-- | Nframents: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+- | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512)
+  | (See :ref:`Close_Encounters`)
+
+- | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
   | (See :ref:`SmallBodies`)
 
 
-- Use aeGrid = 0
-- aeGrid amin = 0
-- aeGrid amax = 5
-- aeGrid emin = 0
-- aeGrid emax = 1
-- aeGrid imin = 0
-- aeGrid imax = 0.1
-- aeGrid Na = 10
-- aeGrid Ne = 10
-- aeGrid Ni = 10
-- aeGrid Start Count = 1
-- aeGrid name = A
+Options for the a-e and a-i grid
+--------------------------------
+See :ref:`aegrid`.
+
+- :literal:`Use aeGrid`, flag to enable the a-e and a-i grids, (default = 0)
+  
+  - 0: nothing happens
+  - 1; a-e and a-i grids are created
+
+- | :literal:`aeGrid amin`, minimal value of the same-major axis dimension, in AU.
+  |  (default = 0.0)
+
+- | :literal:`aeGrid amax`, maximal value of the same-major axis dimension, in AU.
+  |  (default = 5.0)
+
+- | :literal:`aeGrid emin`, minimal value of the eccentricity dimension.
+  |  (default = 0.0)
+
+- | :literal:`aeGrid emax`, maximal value of the eccentricity dimension.
+  |  (default = 1.0)
+
+- | :literal:`aeGrid imin`, minimal value of the inclination dimension, in radians.
+  |  (default = 0.0)
+
+- | :literal:`aeGrid imax`, maximal value of the inclination dimension, in radians.
+  |  (default = 0.1)
+
+- | :literal:`aeGrid Na`, number of points in the same-major axis dimension.
+  |  (default = 10)
+
+- | :literal:`aeGrid Ne`, number of points in the eccentricity dimension.
+  |  (default = 10)
+- | :literal:`aeGrid Ni`, number of points in the inclination dimension.
+  |  (default = 10)
+
+- | :literal:`aeGrid Start Count`, starting time step when a-e and a-i grid start, in units of time steps
+  |  (grids will start at the next bigger coordinate output step)
+  |  (default = 0)
+
+- | :literal:`aeGrid name`, name of the grid files.
+  |  (default = A)
+
+
+Options for the gas disk
+------------------------
+
 - Use gas disk = 0
 - Use gas disk potential = 1
 - Use gas disk enhancement = 0
@@ -134,7 +225,7 @@ other
 - FormatO = 0
 
 
-Options for Encounters
+Options for encounters
 ----------------------
 
 - | :literal:`Report Encounters`, flag to enable encounter information (default = 0).
