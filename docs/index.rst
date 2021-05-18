@@ -13,6 +13,7 @@ Setup
    :caption: Contents:
 
    Run.rst
+   InitialConditions.rst
    Param.rst
    Define.rst
 

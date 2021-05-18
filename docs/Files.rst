@@ -88,9 +88,10 @@ At the :literal:`Energy output interval`, set in the :literal:`param.dat` file, 
 
 The Irregular Energy Output File: EnergyIrr<name>.dat
 -----------------------------------------------------
+(See :ref:`IrregularOutput`)
+
 This file is only created when the output calendar file is used.
 The file contains the same structure as the regular :ref:`EnergyFile`, but at output times, specified in the output calendar file.
-See :ref:`IrregularOutput`.
 
 
 
@@ -164,6 +165,7 @@ It contains the details of each enconter event:
 The ejection file: Ejections<name>.dat
 --------------------------------------
 (See :ref:`Ejections`)
+
 This file contains the details of all ejection events, in the format:
 
     | time index m r x y z vx vy vz Sx Sy Sz case
@@ -179,8 +181,8 @@ and case = -2 for bodies removed at the inner boundary.
 
 The Fragments File: Fragments<name>.dat
 ---------------------------------------
-
 (See :ref:`SmallBodies`)
+
 This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :literal:`param.dat` file is enabled. The file contains information about fragmentation and rotation reset events.
 
     | time index m r x y z vx vy vz Sx Sy Sz event
@@ -203,6 +205,7 @@ This file permits to recronstruct the collision and fragmentation history of eve
 The a-e and a-i grid files: aeCount<grid name><time step>.dat
 -------------------------------------------------------------
 (See :ref:`aegrid`)
+
 These files are only written when the aegrid option is used.
 The files contain four matrices, separated by a blank line. 
 

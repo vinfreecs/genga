@@ -193,7 +193,15 @@ __host__ int Data::beforeTimeStepLoop1(){
 		er = tuneRcrit(RTX);
 		if(er == 0) return 0;
 		UseAcc = 1;
-		
+
+
+		KP = 1;
+		KTX = 1;
+		KTY = 256;
+		KP2 = 1;
+		KTX2 = 1;
+		KTY2 = 256;
+
 		if(P.UseTestParticles == 0){
 			er = tuneKick(0, KP, KTX, KTY);
 			if(er == 0) return 0;
@@ -994,7 +1002,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	}
 	if(EE == 2){
 		NN = N_h[0];
-		N1 = N_h[0] + Nsmall_h[0];	//TP 1 has to be run before
+		N1 = min(N_h[0] + Nsmall_h[0], 8192);	//TP 1 has to be run before
 		N0 = N_h[0];
 	}
 	int f = 0; //flag for comparison
@@ -1068,7 +1076,6 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	//for(int i = 0; i < 1; ++i){
 	//	for(int j = 0; j < 1; ++j){
 	//		for(int k = 0; k < 1; ++k){
-
 				int p = pp[i];
 				int tx = ttx[j];
 				int ty = tty[k];
@@ -1077,10 +1084,9 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 				if(tx * ty < min(32, NN)) continue;
 
 				//set Encpairs to zero
-				EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
-
 				cudaEventRecord(start, 0);	
 				for(int t = 0; t < T; ++t){
+					EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
 #if def_KickFloat == 0
 					acc4C_kernel <<< dim3( (((NN + p - 1)/ p) + tx - 1) / tx, 1, 1), dim3(tx,ty,1), tx * ty * p * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, N0, N1, P.NencMax, p, EE);
 #else
@@ -1092,7 +1098,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 				cudaEventSynchronize(stop);
 				cudaEventElapsedTime(&times, start, stop); //time in microseconds
 				error = cudaGetLastError();
-				if(error == 7){
+				if(error == 7 || error == 701){
 					//skip choices with too many resources requested
 					continue;
 
@@ -1140,7 +1146,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	//test now the total time for the kick operation	
 	cudaEventRecord(start, 0);	
 	for(int t = 0; t < T; ++t){
-	
+		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
 #if def_KickFloat == 0
 		acc4C_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, 0, NN, P.NencMax, KP, 0);
 #else

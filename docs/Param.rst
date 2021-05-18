@@ -15,14 +15,14 @@ Main parameters
   | All output files will contain this name,
 
 - | :literal:`Energy output interval`, Interval when energy information is written, in units of timesteps, (default = 100).
-  | (See :ref:`EnergyFile`)
+  | See :ref:`EnergyFile`
 
     - when set to 0, then no energy output is written.
     - when set to -1, then only the very last energy output is written
       (or when a simulation is stopped). 
 
 - | :literal:`Coordinates output interval`, Interval when output coordinates are written to a file, in units of timesteps, (default = 100).
-  | (See :ref:`OutFile`)
+  | See :ref:`OutFile`
 
     - when set to 0, then no coordinate output is written.
     - when set to -1, then only the very last coordinate output is written
@@ -49,10 +49,22 @@ Main parameters
 - | :literal:`Integration steps`, total number of time steps to run.
   | (default = 1000 time steps)
 
-- Input file = initialplanet_2048.dat
-- Input file Format: << x y z m vx vy vz >>
-- Default rho = 2.0
-- Angle units = radians
+- | :literal:`Input file`, (default = 'inital.dat')
+  | Filename (or path) of the initial conditions file
+  | The file must exist.
+  | See :ref:`InitialConditions` 
+
+- | :literal:`Input file Format`: Format of the initial conditions file. 
+  | (default = << x y z m vx vy vz >>)
+  | See :ref:`InitialConditionsFormat`
+
+- | :literal:`Default rho`, value for the densities when no value (no rho and no r) is given in :literal:`Input file Format`:
+  | in g/cm^3 (default = 2.0)
+  | See :ref:`InitialConditionsFormat`
+
+- | :literal:`Angle units` unit of angles in the initial conditions file, (default = radians)
+  | either 'radians' or 'degrees'.
+  | affects inc, O, w and M.
 
 
 Stellar parameters
@@ -68,6 +80,7 @@ Stellar parameters
 
 - | :literal:`Star fluid Love Number`
   | Fluid Love number of the central star (default = 1.0)
+
 - Star spin_x = 0.0
 - Star spin_y = 0.0
 - Star spin_z = 0.0
@@ -117,10 +130,10 @@ Memory options
 --------------
 
 - | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512)
-  | (See :ref:`Close_Encounters`)
+  | See :ref:`Close_Encounters`
 
 - | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
-  | (See :ref:`SmallBodies`)
+  | See :ref:`SmallBodies`
 
 
 Options for the a-e and a-i grid
@@ -215,14 +228,6 @@ Non-Newtonian forces
 
 - :literal:`Asteroid collisional velocity V`, in m/s (See :ref:`SmallBodies`)
 
-other
------
-
-- Set Elements file name = -
-- FormatS = 0
-- FormatT = 0
-- FormatP = 1
-- FormatO = 0
 
 
 Options for encounters
@@ -262,7 +267,7 @@ Options for collisions
 - | :literal:`Collision Time Shift`, in units of a physical radius factor (default 1.0).
   | Allows to backtrace collision at a point before the collision, when the bodies are separated by 
   | an increased physical radius. 
-  | (See :ref:`CollisionTshift`)
+  | See :ref:`CollisionTshift`
 
 - | :literal:`Stop at Collision`, flag to stop simulations at the first collision time (default 0).
   | This option is not supported in the multi simulation mode.
@@ -276,10 +281,16 @@ Options for collisions
 
 - | :literal:`Collision Model`, can be used to implement a different collision model
   | The default (0) is used for a perfect merger collision.
-  | (See :ref:`Collisions`)
+  | See :ref:`Collisions`
 
-B
--
+Other
+-----
+
+- Set Elements file name = -
+- FormatS = 0
+- FormatT = 0
+- FormatP = 1
+- FormatO = 0
 
 - | :literal:`Serial Grouping`: Flag for exact reproducible results.
   | See :ref:`SerialGrouping`
