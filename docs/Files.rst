@@ -21,6 +21,17 @@ The Master File: master.out
 The master file contains information about the used hardware and simulation progress. If an error occurs then the master file contains more details about that. The master file is not deleted at a new GENGA start.
 
 
+.. _tuningFile:
+
+The tuningParameters.dat file
+-----------------------------
+See :ref:`tuning`.
+
+If the kernel self tuning is enabled, then this file is created, containing the values of the kernel parameters.
+If the kernel self tuning is disabled, then kernel parameters can be read from this file. The later option can be useful 
+for performance measurement. 
+
+
 .. _OutFile:
 
 The Coordinate Output Files: Out<name>.dat
@@ -88,7 +99,7 @@ At the :literal:`Energy output interval`, set in the :literal:`param.dat` file, 
 
 The Irregular Energy Output File: EnergyIrr<name>.dat
 -----------------------------------------------------
-(See :ref:`IrregularOutput`)
+See :ref:`IrregularOutput`.
 
 This file is only created when the output calendar file is used.
 The file contains the same structure as the regular :ref:`EnergyFile`, but at output times, specified in the output calendar file.
@@ -105,7 +116,7 @@ The first column indicates the time step. This last entry in the file is used fo
 
 The Collisions File: Collisions<name>.dat
 -----------------------------------------
-(See :ref:`Collisions`)
+See :ref:`Collisions`.
 
 In this file are listed the details of the collisions between particle i and j.
 The precision of the collision output can be adjusted with the :literal:`Collision Precision` argument in the :literal:`param.dat` file
@@ -122,7 +133,7 @@ The file contains the following columns:
 
 The Tshift Collisions File: CollisionsTshift<name>.dat
 ------------------------------------------------------
-(See :ref:`CollisionTshift`)
+See :ref:`CollisionTshift`.
 
 In this file are listed the details of the backtraced collisions between particle i and j.
 The collison time shift option can be set by the :literal:`Collision Time Shift` argument in the :literal:`param.dat` file.
@@ -139,7 +150,7 @@ The file contains the following columns:
 
 The Stop-at-collision-file: OutCollision.dat
 --------------------------------------------
-(See :ref:`StopAtCollision`)
+See :ref:`StopAtCollision`.
 
 This file is only created when the :literal:`Stop at Collision` option is enabled. It contains all particles of the simulation at the time
 when the first collision occurred. The file contains the same columns as the normal output files. 
@@ -149,7 +160,7 @@ when the first collision occurred. The file contains the same columns as the nor
 
 The encounter-file: Encounters<name>.dat
 ----------------------------------------
-(See :ref:`Report_Encounters`)
+See :ref:`Report_Encounters`.
 
 This file is only created when the :literal:`Report Encounters` option is enabled.
 It contains the details of each enconter event: 
@@ -164,7 +175,7 @@ It contains the details of each enconter event:
 
 The ejection file: Ejections<name>.dat
 --------------------------------------
-(See :ref:`Ejections`)
+See :ref:`Ejections`.
 
 This file contains the details of all ejection events, in the format:
 
@@ -181,7 +192,7 @@ and case = -2 for bodies removed at the inner boundary.
 
 The Fragments File: Fragments<name>.dat
 ---------------------------------------
-(See :ref:`SmallBodies`)
+See :ref:`SmallBodies`.
 
 This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :literal:`param.dat` file is enabled. The file contains information about fragmentation and rotation reset events.
 
@@ -204,7 +215,7 @@ This file permits to recronstruct the collision and fragmentation history of eve
 
 The a-e and a-i grid files: aeCount<grid name><time step>.dat
 -------------------------------------------------------------
-(See :ref:`aegrid`)
+See :ref:`aegrid`.
 
 These files are only written when the aegrid option is used.
 The files contain four matrices, separated by a blank line. 

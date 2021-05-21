@@ -298,6 +298,14 @@ Other
    -  0: nothing happens.
    -  1: enable sorting step for exact reproducible results.
 
+- | :literal:`Do kernel tuning`: Flag to enable the self tuning routing of GPU kernel parameters.
+  | (default = 1)
+  | See :ref:`tuning`
+
+  - 0: if :ref:`tuningFile` is available, then read kernel parameters from that file.
+  - 0: if :ref:`tuningFile` is  not available, then use default values.
+  - 1: run kernel tuning at the beginning of the integration and write parameters to :ref:`tuningFile`.
+
 
 Options for TTVs
 ----------------

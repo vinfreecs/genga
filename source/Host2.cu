@@ -465,6 +465,7 @@ __host__ void Host::Halloc(){
 	sprintf(P.Gasfilename, "%s", "-");
 
 	P.SERIAL_GROUPING = def_SERIAL_GROUPING;
+	P.doTuning = def_doTuning;
 	
 	char format[def_Ninformat];
 	sprintf(format, def_InputFileFormat);
@@ -1892,6 +1893,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Do kernel tuning =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.doTuning);
+				if(er <= 0){
+					printf("Error: Do kernel tuning value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Undefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -2633,6 +2649,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
 			fprintf(infofile, "KickFloat, kick in float precision: %d\n", def_KickFloat);
 			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
+			fprintf(infofile, "Do kernel tuning: %d\n", P.doTuning);				// use only argument in simulation 0
 			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0

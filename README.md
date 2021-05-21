@@ -18,6 +18,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.124: Added 'Do kernel tuning' parameter.
  * Version 3.117: Changed and improved Collision Precision, Units are now in physical radius fraction, instead of time.
  * Version 3.116: Changed treatment of Gas alpha for values other than 1.
  * Version 3.115: The Asteroid options (Yarkovsky and PR-drag) are moved from the 'define.h' file to the 'param.dat' file.

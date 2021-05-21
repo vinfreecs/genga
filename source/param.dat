@@ -90,3 +90,4 @@ Collision Precision = 1.0e-4
 Collision Time Shift = 1.0
 Collision Model = 0
 Serial Grouping = 0
+Do kernel tuning = 1

@@ -74,3 +74,29 @@ When starting a new simulation, then old OutIrr<name>.dat files and EnergyIrr<na
 When the multi simulation mode is used, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
 
 The number of digits in the output filenames can be changed with the :literal:`def_NFileNameDigits` parameter in the :literal:`define.h` file.
+
+
+
+.. _tuning:
+
+Use self tuning kernel parameters
+---------------------------------
+
+GPU kernels need to be configured with kernel parameters. These are the number of threads per threadblock and the number of threadblocks.
+The performance of a GPU code can depend on the specified parameters. Also depending on the used initial conditions and the used GPU type,
+the best choice of the kernel parameters can be different. 
+Therefore GENGA uses a self tuning routine to determine the best choice at the beginning of the simulations. The used parameters
+are reported in :ref:`tuningFile`. If the tuning routine is not enabled, then this file can be used to set the parameters.
+If the file does not exist and if the tuning routine is enabled, then default values are used for the parameters.
+
+
+If :ref:`SerialGrouping` is used, then always the default values are used. The reason is that a different choice of kernel parameters
+can lead to a different rounding error array summations. 
+
+When the performance of GENGA measured with a profiling tool (e.g nvprof or nsys) then, GENGA should be run first with the tuning routine
+enabled, to write the :ref:`tuningFile`. And in a second step, the profiling can be done without the tuning routine. The reason for this
+is that the tuning routine is running some kernels many times, which affects the profiling statistics. 
+
+
+The tuning routine can be enabled with the :literal:`Do kernel tuning` parameter in the :literal:`param.dat` file.
+

@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.123
+#define def_Version 3.124
 
 #define OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -95,6 +95,7 @@
 #define def_SLevels 1			//Number of recursive symplectic sub step levels
 #define def_SLSteps 2			//number of time steps per level
 #define def_SERIAL_GROUPING 0
+#define def_doTuning 1			//Flag to enable kernel tunings
 // --------------------------------
 
 
@@ -357,6 +358,7 @@ struct Parameter{
 	int SLevels;
 	int SLSteps;
 	int SERIAL_GROUPING;
+	int doTuning;
 };
 
 struct elements{

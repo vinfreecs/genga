@@ -186,39 +186,114 @@ __host__ int Data::beforeTimeStepLoop1(){
 	cudaDeviceSynchronize();
 	cudaMemset(Energy_d, 0, NEnergyT*sizeof(double));
 
-	//Tune kernel parameters
 	if(Nst == 1){
-		er = tuneFG(FTX);
-		if(er == 0) return 0;
-		er = tuneRcrit(RTX);
-		if(er == 0) return 0;
-		UseAcc = 1;
 
-
+		//set default kernel parameters
+		FTX = 128;
+		RTX = 128;
+		FrTX = 128;
 		KP = 1;
 		KTX = 1;
 		KTY = 256;
 		KP2 = 1;
 		KTX2 = 1;
 		KTY2 = 256;
+		UseAcc = 1;
 
-		if(P.UseTestParticles == 0){
-			er = tuneKick(0, KP, KTX, KTY);
-			if(er == 0) return 0;
+		FILE *tuneFile;
+
+		if(P.doTuning == 0){
+
+			//check if tuneParameters file exists.
+			tuneFile = fopen("tuningParameters.dat", "r");
+			if(tuneFile == NULL){
+				printf("tuningParameters.dat file not available, use default settings\n");
+				GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+				fprintf(GSF[0].logfile, "tuningParameters.dat file not available, use default settings\n");
+				fclose(GSF[0].logfile);
+			}
+			else{
+				printf("Read tuningParameters.dat file\n");
+			
+				char skip[16];	
+				fscanf(tuneFile, "%s %d", skip, &FTX);
+				fscanf(tuneFile, "%s %d", skip, &RTX);
+				fscanf(tuneFile, "%s %d", skip, &KP);
+				fscanf(tuneFile, "%s %d", skip, &KTX);
+				fscanf(tuneFile, "%s %d", skip, &KTY);
+				fscanf(tuneFile, "%s %d", skip, &KP2);
+				fscanf(tuneFile, "%s %d", skip, &KTX2);
+				fscanf(tuneFile, "%s %d", skip, &KTY2);
+				fscanf(tuneFile, "%s %d", skip, &FrTX);
+				fscanf(tuneFile, "%s %d", skip, &UseAcc);
+
+				fclose(tuneFile);
+
+
+				printf("FTX %d\n", FTX);
+				printf("RTX %d\n", RTX);
+				printf("KP %d\n", KP);
+				printf("KTX %d\n", KTX);
+				printf("KTY %d\n", KTY);
+				printf("KP2 %d\n", KP2);
+				printf("KTX2 %d\n", KTX2);
+				printf("KTY2 %d\n", KTY2);
+				printf("FrTX %d\n", FrTX);
+				printf("UseAcc %d\n", UseAcc);
+
+				GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+				fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
+				fprintf(GSF[0].logfile, "FTX %d\n", FTX);
+				fprintf(GSF[0].logfile, "RTX %d\n", RTX);
+				fprintf(GSF[0].logfile, "KP %d\n", KP);
+				fprintf(GSF[0].logfile, "KTX %d\n", KTX);
+				fprintf(GSF[0].logfile, "KTY %d\n", KTY);
+				fprintf(GSF[0].logfile, "KP2 %d\n", KP2);
+				fprintf(GSF[0].logfile, "KTX2 %d\n", KTX2);
+				fprintf(GSF[0].logfile, "KTY2 %d\n", KTY2);
+				fprintf(GSF[0].logfile, "FrTX %d\n", FrTX);
+				fprintf(GSF[0].logfile, "UseAcc %d\n", UseAcc);
+				fclose(GSF[0].logfile);
+		
+			}
 		}
-		if(P.UseTestParticles == 1){
-			er = tuneKick(1, KP, KTX, KTY);
+		else{
+			//Tune kernel parameters
+			er = tuneFG(FTX);
 			if(er == 0) return 0;
-		}
-		if(P.UseTestParticles == 2){
-			er = tuneKick(1, KP, KTX, KTY);
+			er = tuneRcrit(RTX);
 			if(er == 0) return 0;
-			er = tuneKick(2, KP2, KTX2, KTY2);
-			if(er == 0) return 0;
-		}
-		if(ForceFlag > 0){
-			er = tuneForce(FrTX);
-			if(er == 0) return 0;
+			if(P.UseTestParticles == 0){
+				er = tuneKick(0, KP, KTX, KTY);
+				if(er == 0) return 0;
+			}
+			if(P.UseTestParticles == 1){
+				er = tuneKick(1, KP, KTX, KTY);
+				if(er == 0) return 0;
+			}
+			if(P.UseTestParticles == 2){
+				er = tuneKick(1, KP, KTX, KTY);
+				if(er == 0) return 0;
+				er = tuneKick(2, KP2, KTX2, KTY2);
+				if(er == 0) return 0;
+			}
+			if(ForceFlag > 0){
+				er = tuneForce(FrTX);
+				if(er == 0) return 0;
+			}
+
+			tuneFile = fopen("tuningParameters.dat", "w");
+			fprintf(tuneFile, "FTX %d\n", FTX);
+			fprintf(tuneFile, "RTX %d\n", RTX);
+			fprintf(tuneFile, "KP %d\n", KP);
+			fprintf(tuneFile, "KTX %d\n", KTX);
+			fprintf(tuneFile, "KTY %d\n", KTY);
+			fprintf(tuneFile, "KP2 %d\n", KP2);
+			fprintf(tuneFile, "KTX2 %d\n", KTX2);
+			fprintf(tuneFile, "KTY2 %d\n", KTY2);
+			fprintf(tuneFile, "FrTX %d\n", FrTX);
+			fprintf(tuneFile, "UseAcc %d\n", UseAcc);
+			fclose(tuneFile);
 		}
 	}
 
@@ -1163,7 +1238,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	accTime = times;
 
 	if(kickTime > 0.0f && accTime > 0.0f){
-		 if(kickTime < accTime){
+		if(kickTime < accTime){
 			UseAcc = 0;
 		}
 	}
