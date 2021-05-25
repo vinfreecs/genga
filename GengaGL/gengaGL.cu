@@ -26,15 +26,18 @@ GLuint colorsVBO;
 struct cudaGraphicsResource* positionsVBO_CUDA;
 struct cudaGraphicsResource* colorsVBO_CUDA;
 static long long ts = 1;
-static GLdouble anglex = 0.0; //angle to rotate system around z axis
-static GLdouble angley = 0.0; //angle to rotate z axis
-static GLdouble omegax = 0.0; // speed to rotate around z axis to fix planet positions
+static GLdouble anglex = 0.0;	//angle to rotate system around z axis
+static GLdouble angley = 0.0;	//angle to rotate z axis
+static GLdouble omegax = 0.0;	//speed to rotate around z axis to fix planet positions
+static GLdouble movex = 0.0;	//shift along x axis
+static GLdouble movey = 0.0;	//shift along y axis
 static GLdouble zoom = 1.0;
 static GLdouble izoom = 1.0;
-static GLdouble pointsize = 1.5;
+static GLdouble pointsize = 2.0;
 GLdouble yold = 0.0;
 GLdouble xold = 0.0;
 GLint mouseMove = 0;
+GLint translate = 0;
 GLint nold = 0;
 static GLint stop = 0;
 
@@ -174,10 +177,35 @@ void display(){
 
 	anglex -= omegax;
 
-        glLoadIdentity();
+	glLoadIdentity();
 	gluLookAt(0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 0, 1, 0);
-        glRotated(angley, 1.0, 0.0, 0.0);
-        glRotated(anglex, 0.0, 0.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	double time;
+	time = D.time_h[0] / 365.25;
+
+	glEnable(GL_LINE_SMOOTH);
+
+	//print time and length scale
+	glPushMatrix();
+	glColor3d(0.0, 100.0, 0.0);
+	glScaled(0.002, 0.002, 0.002);
+	glTranslated(1400.0, -2800, 0.0);
+	sprintf(mtext, "%6.2g AU", izoom);
+	for(int i = 0; i < 10; ++i){
+		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, mtext[i]);
+	}
+	glColor3d(1.0, 1.0, 1.0);
+	glTranslated(-5100, 0.0, 0.0);
+	sprintf(mtext, "%10g yr", time);
+	for(int i = 0; i < 14; ++i){
+		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, mtext[i]);
+	}
+	glPopMatrix();
+
+	glTranslated(movex, movey, 0.0);
+	glRotated(angley, 1.0, 0.0, 0.0);
+	glRotated(anglex, 0.0, 0.0, 1.0);
 	glScaled(zoom, zoom, zoom);
 
 	double4 *positions;
@@ -190,8 +218,6 @@ void display(){
 	cudaGraphicsResourceGetMappedPointer((void**)&colors, &num_bytes, colorsVBO_CUDA);
 
 
-	double time;
-	time = D.time_h[0] / 365.25;
 	if(stop == 0){
 		for(int i = 0; i < 1; ++i){
 			D.timeStep = ts;
@@ -215,7 +241,6 @@ void display(){
 	cudaGraphicsUnmapResources(1, &colorsVBO_CUDA, 0);
 
 	// Render from buffer object
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_DOUBLE, 32, 0);
@@ -239,6 +264,8 @@ glPointSize(pointsize);
 	anglex += omegax;
 glPointSize(1.0);
 
+
+
 	//Draw Axis in scale
 	glColor3d(0, 100, 0);
 	glBegin(GL_LINES);
@@ -254,27 +281,6 @@ glPointSize(1.0);
 	glVertex3d(0.0, 0.0, izoom);
 	glEnd();
 
-	glEnable(GL_LINE_SMOOTH);
-
-	//Print time
-	glColor3d(1.0, 1.0, 1.0);
-	glRotated(-anglex, 0.0, 0.0, 1.0);
-	glRotated(-angley, 1.0, 0.0, 0.0);
-	glScaled(izoom, izoom, izoom);
-	glScaled(0.002, 0.002, 0.002);
-	glTranslated(-2800.0, -2800.0, 0.0);
-
-	sprintf(mtext, "%10g yr", time);
-	for(int i = 0; i < 14; ++i){
-		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, mtext[i]);
-	}
-
-	glTranslated(2800.0, 0.0, 0.0);
-	sprintf(mtext, "%6.2g AU", izoom);
-	for(int i = 0; i < 10; ++i){
-		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, mtext[i]);
-	}
-	// Swap buffers
 
 	anglex -= omegax;
 	glutSwapBuffers();
@@ -332,24 +338,37 @@ void mouse(int button, int state, int x, int y){
 	}
 }
 void mouse_move (int x, int y){
-	if(mouseMove == 1){
-		double dy = yold - y;
-		angley -= dy * 0.2;
-  		yold = y;
-		double dx = xold - x;
-		anglex -= dx * 0.2;
-  		xold = x;
+	if(translate == 0){
+		if(mouseMove == 1){
+			double dy = yold - y;
+			angley -= dy * 0.2;
+			yold = y;
+			double dx = xold - x;
+			anglex -= dx * 0.2;
+			xold = x;
+		}
+		if(mouseMove == 2){
+			double dy = yold - y;
+			omegax -= dy * 0.001;
+			yold = y;
+		}
 	}
-	if(mouseMove == 2){
-		double dy = yold - y;
-		omegax -= dy * 0.001;
-  		yold = y;
+	else{
+		if(mouseMove == 1){
+			double dy = yold - y;
+			movey += dy * 0.1;
+			yold = y;
+			double dx = xold - x;
+			movex -= dx * 0.1;
+			xold = x;
+		}
 	}
 }
 
 void keyPressed (unsigned char key, int x, int y){
-	if (key == 'r') pointsize *= 0.95;
-	if (key == 't') pointsize /= 0.95;
+	if (key == 'r') pointsize += 1.0;
+	if (key == 't') pointsize -= 1.0;
+	if(pointsize < 1) pointsize = 1.0;
 	if (key == 'p'){
 		if(stop == 0) stop = 1;
 		else stop = 0;
@@ -358,8 +377,23 @@ void keyPressed (unsigned char key, int x, int y){
 		if(stop == 0) stop = 1;
 		else stop = 0;
 	}
+	if (key == 'a') translate = 1;
+	if (key == 'o'){
+		movex = 0.0;
+		movey = 0.0;
+		anglex = 0.0;
+		angley = 0.0;
+		omegax = 0.0;
+		zoom = 1.0;
+		izoom = 1.0;
+		pointsize = 2.0;
+	}
 }
-
+void keyUp (unsigned char key, int x, int y){
+	if (key == 'a'){
+		translate = 0;
+	}
+}
 
 int main(int argc, char*argv[]){
 
@@ -374,6 +408,7 @@ int main(int argc, char*argv[]){
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouse_move);
 	glutKeyboardFunc(keyPressed);
+	glutKeyboardUpFunc(keyUp);
 
 	cudaError_t error;
 
@@ -397,13 +432,13 @@ int main(int argc, char*argv[]){
 	}
 
 	if(RRestart == 0){
-       		printf("Start GENGA\n");
-        	fprintf(H.masterfile,"Start GENGA\n");
+		printf("Start GENGA\n");
+		fprintf(H.masterfile,"Start GENGA\n");
 	}
 	if(RRestart == 1){
-       		printf("Restart GENGA\n");
+		printf("Restart GENGA\n");
 		fprintf(H.masterfile,"\n \n **************************************** \n \n");
-        	fprintf(H.masterfile,"Restart GENGA\n");
+		fprintf(H.masterfile,"Restart GENGA\n");
 	}
 
 #if SERIAL_GROUPING > 0
@@ -439,7 +474,7 @@ int main(int argc, char*argv[]){
 //	fprintf(D.masterfile, "Set device error = %d = %s\n",error, cudaGetErrorString(error));
 
 	//Allocate memory for parameters on the device:
-        H.Calloc();
+	H.Calloc();
 	H.Info();
 
 	//Determine the start points of the individual simulations
@@ -474,7 +509,7 @@ int main(int argc, char*argv[]){
 
 	if(error != 0){
 		fprintf(D.masterfile, "GL position error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("GL position error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("GL position error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -485,7 +520,7 @@ int main(int argc, char*argv[]){
 
 	if(error != 0){
 		fprintf(D.masterfile, "GL color error = %d = %s\n",error, cudaGetErrorString(error));
-        	printf("GL color error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("GL color error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 	cudaMalloc((void **) &MLimits_d, 2 * sizeof(double));
