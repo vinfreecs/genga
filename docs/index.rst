@@ -12,9 +12,11 @@ Setup
    :maxdepth: 2
    :caption: Contents:
 
+   Setup.rst
    Run.rst
    InitialConditions.rst
    Param.rst
+   ConsoleArguments.rst
    Define.rst
 
 Output Files
@@ -35,6 +37,7 @@ Options
    Encounters.rst
    Ejection.rst
    aeGrid.rst
+   SetElements.rst
    SerialGrouping.rst
 
 

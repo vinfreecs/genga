@@ -929,7 +929,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 		for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1018,7 +1018,7 @@ __global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 
 		for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1101,7 +1101,7 @@ __global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 
 		for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1199,7 +1199,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 		for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1245,7 +1245,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
 				for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1344,7 +1344,7 @@ __global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 
 		for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
@@ -1390,7 +1390,7 @@ __global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
 				for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);

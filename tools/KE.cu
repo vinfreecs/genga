@@ -116,8 +116,8 @@ int main(int argc, char*argv[]){
 	long long int kmax = 100;
 	long long int step = 1;
 	char X[160];
-	char inputfilename[160];
-	char outputfilename[160];
+	char inputfilename[260];
+	char outputfilename[260];
 	FILE *inputfile;
 	int useCollfile = 0;		//reads Collisionfile and transforms into aei
 	double Msun = 1.0;

@@ -5,8 +5,43 @@ Running GENGA
 Start GENGA
 -----------
 
-Ignore lock.dat file
+Before running GENGA, an initial conditions file must be provided, as described in :ref:`InitialConditions`.
+An example of an initial conditions file with 2048 planetesimals is provided in the GENGA repository (initialplanet_2048.dat).
 
+All relevant user parameters can be set in the :literal:`param.dat` file, as described in :ref:`ParamFile`.
+An example is also provided in the source directory.
+
+GENGA can be started with::
+
+    ./genga [options]
+
+where :literal:`[options]` are optional user parameters as described in :ref:`ConsoleArguments`.
+
+When GENGA is started again in the same directory, then all files are overwritten with the new simulation data.
+To prevent GENGA from overwriting data, the lock.file option can be used (See :ref:`IgnoreLockFile`).
+
+
+.. _Restart:
+
+Restart GENGA to continue simulations
+-------------------------------------
+
+A simulation can be restarted from each coordinate output file by using the :literal:`-R` time step console argument or by setting
+a restart time in the 'param.dat' file. Before restarting a simulation things in the param.dat file can be changed if necessary,
+but the Output name must be the same as in the original run. To be able to restart a simulation, the corresponding coordinate output file,
+the corresponding line in the energy file and the time file, and if used, the corresponding aeGrid file, must exist.
+Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files are not deleted and the new data is added at the end of these files.
+But the coordinate output files are OVERWRITTEN with the new data. By restarting a simulation the values of E0 and the inner Energy are read from
+the original run and are reused.
+One can also use a coordinate output file to start a new simulation run with totally different parameters by using the Output file as a new initial
+condition file. The :literal:`Input file Format` should then be of the form << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
+
+When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified
+when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file, the IgnoreLockFile
+flag in the define.h file can be set to 1.
+
+With the restart time -1, GENGA searches automatically for the last output and restarts directly from there. To determine the last output, the last entry
+in the time file is used.
 
 
 
@@ -100,3 +135,53 @@ is that the tuning routine is running some kernels many times, which affects the
 
 The tuning routine can be enabled with the :literal:`Do kernel tuning` parameter in the :literal:`param.dat` file.
 
+
+
+.. _GengaGL:
+
+
+GengaGL: Real time visualization with openGL
+--------------------------------------------
+
+GENGA offers the option to view a real time visualization of a simulation by using openGL. Thi option can only be used with a GPU that is 
+connected directly to the monitor. Typically, GPUs in a computer cluster can not be used for this. GENGA uses the CUDA openGL interoperability 
+to visualize the simulated particle directly with the GPU. No data transfer to the CPU is needed, therefore only very little extra run time is
+added to the simulation. 
+
+
+To compile GENGA with openGL, GLUT must be installed. In Ubuntu this can be installed with the freeglut3-dev package. 
+
+The GENGA - openGL interoperability code is included in the GengaGL directory and can be compiled with the provided Makefile in the same way as
+the original GENGA code.
+
+GengaGL can be started with::
+
+	./gengaGL [options]
+
+When GengaGL is started, then a window with the visualization is created.
+At the origin, the axis of the coordinate system is plotted.
+On the bottom left, the time of the integration is shown. On the bottom right, the scale of the coordinate system axis is indicated.
+The color of the particles correspond to the masses of the bodies. Red indicates the largest masses, yellow the smallest masses.
+Massless particles are plotted in white color. 
+
+
+The following options can be used to interact with the visualization:
+
+- Left click and move the mouse to rotate around the z-axis and the y-axis.
+- Right click and move the mouse up or down to change the rotation speed of the reference frame.
+- Press 'a' + left click and move the mouse to shift the origin.
+- Press space, 'p' or middle click to pause the simulation. Press again to continue.
+- Use the scroll option to zoom in and out of the visualization.
+- Press 'r' to increase the point size of the particles.
+- press 't' to decrease the point size of the particles.
+- Press 'o' to reset to the original visualization settings.
+
+
+
+In :numref:`figGengaGL` is shown a screenshot of GengaGL.
+
+.. figure:: plots/gengaGL.png  
+   :name: figGengaGL
+
+   Screenshot of the GENGA real time visualization tool using openGL. Shown is the inner part of the Solar System, including
+   Jupiter and the asteroid belt. The trojans are nicely visible on the Lagrange points of Jupiter.

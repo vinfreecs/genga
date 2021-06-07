@@ -438,7 +438,7 @@ __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doubl
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);

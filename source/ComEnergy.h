@@ -50,7 +50,7 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, cons
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -74,7 +74,7 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, cons
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -130,7 +130,7 @@ __global__ void comd2_kernel(double4 *vold_d, const int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -154,7 +154,7 @@ __global__ void comd2_kernel(double4 *vold_d, const int N){
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -238,7 +238,7 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -274,7 +274,7 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		if(warp == 0){
 			p = p_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
@@ -346,7 +346,7 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
 		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
 		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);

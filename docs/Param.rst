@@ -1,3 +1,5 @@
+.. _ParamFile:
+
 Parameters in the param.dat file
 ================================
 
@@ -66,6 +68,11 @@ Main parameters
   | either 'radians' or 'degrees'.
   | affects inc, O, w and M.
 
+- | :literal:`Restart timestep`, can be used to continue a finished simulation or the restart at a given time step
+  | - 0: Start a new simulation, old files are overwritten (default). 
+  | - > 0: Restart GENGA at this time step. 
+  | - -1: Continue at the last written output time step.
+  | See :ref:`Restart`
 
 Stellar parameters
 ------------------
@@ -104,7 +111,6 @@ Integrator options
   | All particles with a smaller mass than this value are treated as test particles (if :literal:`Use Test Particles > 0`).
   | When :literal:`Use Test Particles = 0`, then this parameter has no affect. 
 
-- Restart timestep = 0
 - Symplectic recursion levels = 1
 - Symplectic recursion sub steps = 2
 

@@ -32,7 +32,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 //if(id < 1024) printf("Scan a %d %d %d\n", id, idy, t1);
 
 	for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 		t2 = __shfl_up(t1, i);
@@ -55,7 +55,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
 			for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 				t2 = __shfl_up(t1, i);
@@ -120,7 +120,7 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 //if(idy < 32) printf("Scan a %d %d\n", idy, t1);
 
 	for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 		t2 = __shfl_up(t1, i);
@@ -144,7 +144,7 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
 			for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 				t2 = __shfl_up(t1, i);
@@ -221,7 +221,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 //printf("Scan a %d %d %d\n", 0, idy, t1);
 
 	for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 		t2 = __shfl_up(t1, i);
@@ -254,7 +254,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
 			for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 				t2 = __shfl_up(t1, i);
@@ -315,7 +315,7 @@ __global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 //printf("Scan a %d %d %d\n", 0, idy, t1);
 
 	for(int i = 1; i < 32; i*=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
 #else
 		t2 = __shfl_up(t1, i);

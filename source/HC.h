@@ -55,7 +55,7 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 		a += __shfld_xor(a, i);
@@ -79,7 +79,7 @@ __global__ void HC32d1_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 //if(idx == 1) printf("HCcy %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HCcz %d %.20g %d %d\n", id, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 				a += __shfld_xor(a, i);
@@ -150,7 +150,7 @@ __global__ void HC32d2_kernel(double3 *a_d, const int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 		a += __shfld_xor(a, i);
@@ -174,7 +174,7 @@ __global__ void HC32d2_kernel(double3 *a_d, const int N){
 //if(idx == 1) printf("HC2cy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HC2cz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 				a += __shfld_xor(a, i);
@@ -274,7 +274,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 		a += __shfld_xor(a, i);
@@ -307,7 +307,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 1) printf("HCcy %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 //if(idx == 2) printf("HCcz %d %d %.20g %d %d\n", 0, idy, a, blockDim.x, warpSize);
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				a += __shfl_xor_sync(0xffffffff, a, i, 32);
 #else
 				a += __shfld_xor(a, i);
@@ -380,7 +380,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
 		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
 		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);

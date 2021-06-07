@@ -8,10 +8,24 @@ It also contains constants and additional parameters for GENGA.
 When a value is changed in this file, then GENGA needs to be recompiled.
 
 
+.. _OldShuffle:
+
+Use old Shuffle
+---------------
+CUDA has replaced the shuffle functions :literal:`__shfl_xor` to a new function :literal:`__shfl_xor_sync`.
+GENGA offers a flag to switch between the two versions.
+If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :literal:`define.h` file must be set to 1.
+ 
+- 0: use new sync shuffle version (default)
+- 1: use old shuffle version
+
+
+.. _IgnoreLockFile:
+
 Ignore Lock File
 ----------------
 
-- | :literal:`IgnoreLockFile`, flag to set the behaviour of starting (not restarting) a new simulation
+- | :literal:`def_IgnoreLockFile`, flag to set the behaviour of starting (not restarting) a new simulation
     - 0: When previous output files exist, then GENGA can only be started again after deleting the :literal:`lock.dat` file.
          This option prevents that existing data is overwritten. 
     - 1: GENGA can be started even if previous files exist. Previous files are deleted and overwritten.

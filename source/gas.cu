@@ -773,7 +773,7 @@ __global__ void gasEnergyd1_kernel(double *Energy_d, double4 *vold_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 		U += __shfld_xor(U, i);
@@ -793,7 +793,7 @@ __global__ void gasEnergyd1_kernel(double *Energy_d, double4 *vold_d, int N){
 		if(warp == 0){
 			U = U_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 				U += __shfld_xor(U, i);
@@ -841,7 +841,7 @@ __global__ void gasEnergyd2_kernel(double *U_d, double4 *vold_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 		U += __shfld_xor(U, i);
@@ -861,7 +861,7 @@ __global__ void gasEnergyd2_kernel(double *U_d, double4 *vold_d, int N){
 		if(warp == 0){
 			U = U_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 				U += __shfld_xor(U, i);
@@ -903,7 +903,7 @@ __global__ void gasEnergya_kernel(double *Energy_d, double *U_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 		U += __shfld_xor(U, i);
@@ -931,7 +931,7 @@ __global__ void gasEnergya_kernel(double *Energy_d, double *U_d, int N){
 		if(warp == 0){
 			U = U_s[threadIdx.x];
 			for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 				U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 				U += __shfld_xor(U, i);
@@ -977,7 +977,7 @@ __global__ void gasEnergyc_kernel(double *Energy_d, double *U_d, int N){
 	__syncthreads();
 
 	for(int i = 16; i >= 1; i/=2){
-#if OldShuffle == 0
+#if def_OldShuffle == 0
 		U += __shfl_xor_sync(0xffffffff, U, i, 32);
 #else
 		U += __shfld_xor(U, i);
