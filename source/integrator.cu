@@ -456,10 +456,16 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 			RemoveCall();
 		}
 	}
-	
+
 	//Print Energy and log information//
-	if((P.ei > 0 && timeStep % P.ei == 0) || interrupt == 1 || (P.ei < 0 && timeStep == P.deltaT)){
-		if(bufferCount + 1 >= P.Buffer || interrupt == 1 || (P.ei < 0 && timeStep == P.deltaT)){
+	int CallEnergy = 0;
+	if(interrupt == 1) CallEnergy = 1;
+	if(P.ei < 0 && timeStep == P.deltaT) CallEnergy = 1;
+	if(P.ci < 0 && timeStep == P.deltaT) CallEnergy = 1;
+	if(P.ci > 0 && timeStep % P.ci == 0) CallEnergy = 1;
+
+	if((P.ei > 0 && timeStep % P.ei == 0) || CallEnergy == 1){
+		if(bufferCount + 1 >= P.Buffer || CallEnergy == 1){
 			er = EnergyOutput(0);
 			if(er == 0) return 0;
 		}
