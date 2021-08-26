@@ -379,6 +379,7 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 				v4_d[idy + i].x += p.x * iMsun;
 				v4_d[idy + i].y += p.y * iMsun;
 				v4_d[idy + i].z += p.z * iMsun;
+//printf("comC +1 %d %.20g %.20g %.20g %.20g %g | %.20g\n", idy + i, p.x, p.y, p.z, p.w, iMsun, p.x * iMsun);
 			}
 			if(m >= 0.0 && f == -1){
 				//Convert to Democratic coordinates
@@ -386,6 +387,7 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 				v4_d[idy + i].x -= p.x * iMsunp;
 				v4_d[idy + i].y -= p.y * iMsunp;
 				v4_d[idy + i].z -= p.z * iMsunp;
+//printf("comC -1 %d %.20g %.20g %.20g %.20g %g | %.20g\n", idy + i, p.x, p.y, p.z, p.w, iMsunp, p.x * iMsunp);
 			}
 		}
 	}
@@ -685,4 +687,6 @@ __global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		v4_d[id].z -= p_s[idy].z * iMsunp;
 	}
 }
+
+
 #endif

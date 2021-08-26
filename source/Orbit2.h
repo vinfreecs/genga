@@ -296,7 +296,7 @@ public:
 	__host__ int ttv_step();
 	
 	__host__ void comCall(const int);
-	__host__ void HCCall(const double);
+	__host__ void HCCall(const double, const int);
 
 	__host__ int CollisionCall(int);
 	__host__ int CollisionMCall(int);

@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_d, int *N_d, double *dt_d, double4 *Msun_d, int *index_d, double *time_d, int *NBS_d, const int UseForce, const double MinMass, const int UseTestParticles, int Nst, double *TransitTime_d, int2 *NtransitsT_d){
+__global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_d, int *N_d, double *dt_d, double4 *Msun_d, int *index_d, double *time_d, int *NBS_d, const int UseGR, const double MinMass, const int UseTestParticles, int Nst, double *TransitTime_d, int2 *NtransitsT_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -70,7 +70,7 @@ __global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_
 		x4_s[idy] = xold_d[idi];  
 		v4_s[idy] = vold_d[idi];  
 //if(itransit == 0) printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
-		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
 			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;

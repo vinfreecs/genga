@@ -204,7 +204,25 @@ Non-Newtonian forces
 --------------------
 
 - :literal:`Solar Constant` : Solar constant at 1 AU in W / :math:`\text{m}^2` (default 1367.0)
-- Use force = 0
+
+- | :literal:`Use GR`: Flag to enable General Relativity corrections (See :ref:`GR`)
+   - 0 (default): no GR correction
+   - 1: use GR Hamiltonian splitting 
+   - 2: use implicit midpoint with GR force
+   - 3: use GR force directly (not symplectic) 
+
+
+- | :literal:`Use force` : Old parameter to enable GR, tidal or rotational deformation.
+- | This parameter is outdated, use :literal:`Use GR` ..... instead.
+   - 0 (default) no force applied
+   - 1: Use GR correction with Hamiltonian splitting
+   - 2: Use tidal forces
+   - 4: Use rotational deformation
+   - 3: GR + tidal force
+   - 5: GR + rotational deformation
+   - 6: tidal force + rotation deformation
+   - 7: GR + tidal force + rotation deformation
+
 - | :literal:`Use Yarkovsky`: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
 
    - 0 (default): no Yarkovsky effect

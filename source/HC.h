@@ -1,6 +1,275 @@
 #include "define.h"
 
 
+//This function is needed fot the pseudovelocity conversion
+//It is the right hand side of equation 32 from Saha & Tremaine 1994
+//vv is pseudovelocity
+__device__ void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, double vvz, double &fx, double &fy, double &fz){
+
+	double c2 = def_cm * def_cm;
+
+	double vsq = vvx * vvx + vvy * vvy + vvz * vvz;
+	double rsq = x * x + y * y + z * z;
+	double r = sqrt(rsq);
+
+	double t = 1.0 - 1.0/c2 * (vsq * 0.5 + 3.0 * mu / r);
+
+	fx = vvx * t;
+	fy = vvy * t;
+	fz = vvz * t;
+}
+
+
+//This function converts pseudovelocities to true velocities
+//See Saha & Tremaine 1994
+__global__ void convertPseudovToV(double4 *x4_d, double4 *v4_d, double Msun, int N){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if(id < N){
+
+		double c2 = def_cm * def_cm;
+
+		double mu = def_ksq * (Msun + x4_d[id].w);
+		//use here Jacoby masses from Saha Tremaine
+
+
+		double vsq = v4_d[id].x * v4_d[id].x + v4_d[id].y * v4_d[id].y + v4_d[id].z * v4_d[id].z;
+		double rsq = x4_d[id].x * x4_d[id].x + x4_d[id].y * x4_d[id].y + x4_d[id].z * x4_d[id].z;
+		double r = sqrt(rsq);
+
+		double t = 1.0 - 1.0/c2 * (vsq * 0.5 + 3.0 * mu / r);
+
+//printf("%d %.20g %.20g %.20g | %.20g %.20g %.20g\n", i, vx[i], vy[i], vz[i], vx[i] * t, vy[i] * t, vz[i] * t);
+
+		v4_d[id].x *= t;
+		v4_d[id].y *= t;
+		v4_d[id].z *= t;
+
+	}
+}
+
+//This function converts velocities to pseudovelocities
+//See Saha & Tremaine 1994
+__global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int N){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if(id < N){
+
+		double mu = def_ksq * (Msun + x4_d[id].w);
+		//use here Jacoby masses from Saha Tremaine
+
+		double xi = x4_d[id].x;
+		double yi = x4_d[id].y;
+		double zi = x4_d[id].z;
+
+		double vxi = v4_d[id].x;
+		double vyi = v4_d[id].y;
+		double vzi = v4_d[id].z;
+
+		//first guess of pseudovelocity
+		double vvx0 = vxi;
+		double vvy0 = vyi;
+		double vvz0 = vzi;
+
+		//second guess of pseudovelocity
+		double vvx1 = vvx0 * 0.01;
+		double vvy1 = vvy0 * 0.01;
+		double vvz1 = vvz0 * 0.01;
+
+		double fx0;
+		double fy0;
+		double fz0;
+
+		FPseudoV(mu, xi, yi, zi, vvx0, vvy0, vvz0, fx0, fy0, fz0);
+		fx0 -= vxi;
+		fy0 -= vyi;
+		fz0 -= vzi;
+
+		double fx1;
+		double fy1;
+		double fz1;
+
+		FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
+		fx1 -= vxi;
+		fy1 -= vyi;
+		fz1 -= vzi;
+
+		for(int k = 0; k < 30; ++k){
+
+			double tx = vvx1 - (vvx1 - vvx0) / (fx1 - fx0) * fx1;
+			double ty = vvy1 - (vvy1 - vvy0) / (fy1 - fy0) * fy1;
+			double tz = vvz1 - (vvz1 - vvz0) / (fz1 - fz0) * fz1;
+
+			int Stop = 0;
+			if(fabs(fx1 - fx0) < 1.0e-18){
+				tx = vvx1;
+				++Stop;
+			}
+			if(fabs(fy1 - fy0) < 1.0e-18){
+				ty = vvy1;
+				++Stop;
+			}
+			if(fabs(fz1 - fz0) < 1.0e-18){
+				tz = vvz1;
+				++Stop;
+			}
+
+			vvx0 = vvx1;
+			vvy0 = vvy1;
+			vvz0 = vvz1;
+
+			fx0 = fx1;
+			fy0 = fy1;
+			fz0 = fz1;
+
+			vvx1 = tx;
+			vvy1 = ty;
+			vvz1 = tz;
+
+			if(Stop == 3) break;
+
+			FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
+			fx1 -= vxi;
+			fy1 -= vyi;
+			fz1 -= vzi;
+
+//printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", i, k, vx[i], vy[i], vz[i], vvx1, vvy1, vvz1, fx1, fy1, fz1);
+
+		}
+		v4_d[id].x = vvx1;
+		v4_d[id].y = vvy1;
+		v4_d[id].z = vvz1;
+	}
+}
+
+__global__ void convertPseudovToVM(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, int NT){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	
+	if(id < NT){
+		int st = index_d[id] / def_MaxIndex;
+
+		double c2 = def_cm * def_cm;
+
+		double mu = def_ksq * (Msun_d[st].x + x4_d[id].w);
+		//use here Jacoby masses from Saha Tremaine
+
+
+		double vsq = v4_d[id].x * v4_d[id].x + v4_d[id].y * v4_d[id].y + v4_d[id].z * v4_d[id].z;
+		double rsq = x4_d[id].x * x4_d[id].x + x4_d[id].y * x4_d[id].y + x4_d[id].z * x4_d[id].z;
+		double r = sqrt(rsq);
+
+		double t = 1.0 - 1.0/c2 * (vsq * 0.5 + 3.0 * mu / r);
+
+//printf("%d %.20g %.20g %.20g | %.20g %.20g %.20g\n", i, vx[i], vy[i], vz[i], vx[i] * t, vy[i] * t, vz[i] * t);
+
+		v4_d[id].x *= t;
+		v4_d[id].y *= t;
+		v4_d[id].z *= t;
+
+	}
+}
+
+//This function converts velocities to pseudovelocities
+//See Saha & Tremaine 1994
+__global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, int NT){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if(id < NT){
+
+		int st = index_d[id] / def_MaxIndex;
+
+		double mu = def_ksq * (Msun_d[st].x + x4_d[id].w);
+		//use here Jacoby masses from Saha Tremaine
+
+		double xi = x4_d[id].x;
+		double yi = x4_d[id].y;
+		double zi = x4_d[id].z;
+
+		double vxi = v4_d[id].x;
+		double vyi = v4_d[id].y;
+		double vzi = v4_d[id].z;
+
+		//first guess of pseudovelocity
+		double vvx0 = vxi;
+		double vvy0 = vyi;
+		double vvz0 = vzi;
+
+		//second guess of pseudovelocity
+		double vvx1 = vvx0 * 0.01;
+		double vvy1 = vvy0 * 0.01;
+		double vvz1 = vvz0 * 0.01;
+
+		double fx0;
+		double fy0;
+		double fz0;
+
+		FPseudoV(mu, xi, yi, zi, vvx0, vvy0, vvz0, fx0, fy0, fz0);
+		fx0 -= vxi;
+		fy0 -= vyi;
+		fz0 -= vzi;
+
+		double fx1;
+		double fy1;
+		double fz1;
+
+		FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
+		fx1 -= vxi;
+		fy1 -= vyi;
+		fz1 -= vzi;
+
+		for(int k = 0; k < 30; ++k){
+
+			double tx = vvx1 - (vvx1 - vvx0) / (fx1 - fx0) * fx1;
+			double ty = vvy1 - (vvy1 - vvy0) / (fy1 - fy0) * fy1;
+			double tz = vvz1 - (vvz1 - vvz0) / (fz1 - fz0) * fz1;
+
+			int Stop = 0;
+			if(fabs(fx1 - fx0) < 1.0e-18){
+				tx = vvx1;
+				++Stop;
+			}
+			if(fabs(fy1 - fy0) < 1.0e-18){
+				ty = vvy1;
+				++Stop;
+			}
+			if(fabs(fz1 - fz0) < 1.0e-18){
+				tz = vvz1;
+				++Stop;
+			}
+
+			vvx0 = vvx1;
+			vvy0 = vvy1;
+			vvz0 = vvz1;
+
+			fx0 = fx1;
+			fy0 = fy1;
+			fz0 = fz1;
+
+			vvx1 = tx;
+			vvy1 = ty;
+			vvz1 = tz;
+
+			if(Stop == 3) break;
+
+			FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
+			fx1 -= vxi;
+			fy1 -= vyi;
+			fz1 -= vzi;
+
+//printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", i, k, vx[i], vy[i], vz[i], vvx1, vvy1, vvz1, fx1, fy1, fz1);
+
+		}
+		v4_d[id].x = vvx1;
+		v4_d[id].y = vvy1;
+		v4_d[id].z = vvz1;
+	}
+}
+
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction formula to calculate the sum in log(N) steps.
@@ -209,7 +478,7 @@ __global__ void HC32d2_kernel(double3 *a_d, const int N){
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseForce){
+__global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -220,7 +489,7 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 		x4_d[id].y += a.y * dtiMsun;
 		x4_d[id].z += a.z * dtiMsun;
 //if(id == 0) printf("HC B %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a.x, a.y, a.z, x4_d[id].x, x4_d[id].y, x4_d[id].z);
-		if(UseForce & 1){
+		if(UseGR == 1){
 			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];
 			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
@@ -242,13 +511,14 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseForce){
+__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseGR){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
 	double a = 0.0;
 	double vi;
+
 
 	for(int i = 0; i < N; i += blockDim.x * gridDim.x){	//gridDim.x is for multiple block reduce
 		if(idy + i < N){
@@ -336,7 +606,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 0 && idy + i == 0) printf("HCx %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
 //if(idx == 1 && idy + i == 0) printf("HCy %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
 //if(idx == 2 && idy + i == 0) printf("HCz %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
-			if(UseForce & 1){
+			if(UseGR == 1){
 				double c2 = def_cm * def_cm;
 				double4 v4 = v4_d[idy];
 				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
@@ -360,7 +630,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseForce){
+__global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseGR){
 
 	int idy = threadIdx.x;
 
@@ -401,7 +671,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 		x4_d[idy].z += a.z * dtiMsun;
 //if(idy == 12) printf("HC B %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", idy, a.x, a.y, a.z, x4_d[idy].x, x4_d[idy].y, x4_d[idy].z, dtiMsun);
 //printf("HC %d %.20e %.20e %.20e %.20e %.20e %.20e\n", idy, x4_d[idy].w, x4_d[idy].x, a.x, a.y, a.z, dtiMsun);
-		if(UseForce & 1){
+		if(UseGR == 1){
 			double c2 = def_cm * def_cm;
 			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 			double vcdt = 2.0 * vsq / c2 * dt;
@@ -413,21 +683,32 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 }
 
 
-__host__ void Data::HCCall(const double Ct){
+//First call f = 1;
+//Second call f = -1;
+__host__ void Data::HCCall(const double Ct, const int f){
+
+	if(P.UseGR == 1 && f == 1){
+		convertVToPseidov <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
+	}
+
 	//HC
 	if(N_h[0] + Nsmall_h[0] <= 32){
-		HC32c_kernel <<< 1, 32 >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+		HC32c_kernel <<< 1, 32 >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 	}
 	else if(N_h[0] + Nsmall_h[0] <= 512){
 		int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
-		HC32a_kernel <<< 3, nn * 32 >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+		HC32a_kernel <<< 3, nn * 32 >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 	}
 	else{
 		int nct = 512;
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
 		HC32d2_kernel <<< 3, ((ncb + 31) / 32) * 32  >>> (a_d, ncb);
-		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseForce);
+		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+	}
+
+	if(P.UseGR == 1 && f == -1){
+		convertPseudovToV <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
 	}
 
 }
@@ -448,7 +729,7 @@ __host__ void Data::HCCall(const double Ct){
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 *Msun_d, int *index_d, const int NT, const double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, const int Nst, const int UseForce, const int Nstart){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 *Msun_d, int *index_d, const int NT, const double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, const int Nst, const int UseGR, const int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;
@@ -682,7 +963,7 @@ __global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 
 //printf("HCx %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].x, p_s[idy].x, dtiMsun);
 //printf("HCy %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].y, p_s[idy].y, dtiMsun);
 //printf("HCz %d %d %.20e %.20e %.20e\n", E, id, x4_d[id].z, p_s[idy].z, dtiMsun);
-		if(UseForce & 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
+		if(UseGR == 1){// GR part depending on velocity only (see Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double4 v4 = v4_d[id];
 			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;

@@ -109,11 +109,11 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			double test;
 			float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
 			unsigned int aecount = 0u;
-			int UseForce = 0;
+			int UseGR = 0;
 			int index = 0;
 			int id = 0;
 //printf("fg %d %d %g %g %.10g | %.10g %.10g %.10g\n", si, idx, time, dt_s[ity], x4.w, x4.x, x4.y, x4.z); 
-			fgfull(x4, v4, dt_s[ity], def_ksq * Msun, test, test, Msun, aelimits, aecount, NULL, NULL, si, id, index, UseForce);
+			fgfull(x4, v4, dt_s[ity], def_ksq * Msun, test, test, Msun, aelimits, aecount, NULL, NULL, si, id, index, UseGR);
 
 			//HC
 			a = {0.0, 0.0, 0.0};

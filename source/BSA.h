@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, const int UseForce, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -91,7 +91,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 			j1 = Encpairs_d[NT + j1g].y;
 		}
 //printf("BS2 %d %d %d %d %d %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne);
-		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
 			double rsq = x4_s[idy].x * x4_s[idy].x + x4_s[idy].y * x4_s[idy].y + x4_s[idy].z * x4_s[idy].z;
@@ -730,7 +730,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseForce, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double3 *spin_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -778,7 +778,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 			Ne = Encpairs_d[idi].y;
 		}
 		if(Ne >= 0){
-			if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+			if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 				double c2 = def_cm * def_cm;
 				double mu = def_ksq * Msun;
 				double rsq = xold_d[idi].x * xold_d[idi].x + xold_d[idi].y * xold_d[idi].y + xold_d[idi].z * xold_d[idi].z;
@@ -821,7 +821,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
-						if(UseForce & 1){
+						if(UseGR == 1){
 							dtgr = dtgr_d[idi];
 						}
 						else dtgr = 1.0;
@@ -858,7 +858,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
-						if(UseForce & 1){
+						if(UseGR == 1){
 							dtgr = dtgr_d[idi];
 						}
 						else dtgr = 1.0;
@@ -899,7 +899,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 						}
 						if(Ne >= 0){
 							volatile double dtgr;
-							if(UseForce & 1){
+							if(UseGR == 1){
 								dtgr = dtgr_d[idi];
 							}
 							else dtgr = 1.0;
@@ -934,7 +934,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 						}
 						if(Ne >= 0){
 							volatile double dtgr;
-							if(UseForce & 1){
+							if(UseGR == 1){
 								dtgr = dtgr_d[idi];
 							}
 							else dtgr = 1.0;
@@ -970,7 +970,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 					}
 					if(Ne >= 0){
 						volatile double dtgr;
-						if(UseForce & 1){
+						if(UseGR == 1){
 							dtgr = dtgr_d[idi];
 						}
 						else dtgr = 1.0;
@@ -1097,7 +1097,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 							Ne = Encpairs_d[idi].y;
 						}
 						volatile double dtgr;
-						if(UseForce & 1){
+						if(UseGR == 1){
 							dtgr = dtgr_d[idi];
 						}
 						else dtgr = 1.0;
@@ -1777,12 +1777,12 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 #endif
 }
 
-__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, const int UseForce){
+__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
-		if(UseForce & 1){// GR time rescale (Saha & Tremaine 1994)
+		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = ksqMsun;
 			double rsq = x4_d[id].x * x4_d[id].x + x4_d[id].y * x4_d[id].y + x4_d[id].z * x4_d[id].z;
@@ -1803,7 +1803,7 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;
 	int N = N_h[0] + Nsmall_h[0];
-	BSA_setdt_kernel <<< (N + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseForce);
+	BSA_setdt_kernel <<< (N + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseGR);
 	BSAstop_h[0] = 0;
 	for(int f = 0; f < 100000; ++f){
 		for(int n = 1; n <= 8; ++n){

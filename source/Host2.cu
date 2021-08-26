@@ -411,6 +411,7 @@ __host__ void Host::Halloc(){
 	P.UsegasDrag = def_UsegasDrag;
 	P.UsegasTidalDamping = def_UsegasTidalDamping;
 	P.UseForce = def_UseForce;
+	P.UseGR = def_UseGR;
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.UsePR = def_UsePR;
@@ -1362,6 +1363,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use GR =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseGR);
+				if(er <= 0){
+					printf("Error: Use GR value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Use Yarkovsky =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.UseYarkovsky);
@@ -2099,9 +2114,15 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 
 	ForceFlag = 0;
-	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0){
+	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0){
 		ForceFlag = 1;
 	}
+	//set UseGR when old UseForce is used, chose Hamiltonian splitting
+	if(P.UseForce == 1){
+		P.UseGR = 1;
+	}
+
+
 
 	//check peer to peer access for multi GPU runs:
 	for(int i = 1; i < P.ndev; ++i){
@@ -2785,7 +2806,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas beta: %g\n", P.G_beta);					// use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0
 			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);				// use only argument in simulation 0
-			fprintf(infofile, "Use force: %d\n", P.UseForce);				// use only argument in simulation 0
+			fprintf(infofile, "Use force (Old): %d\n", P.UseForce);				// use only argument in simulation 0
+			fprintf(infofile, "Use GR: %d\n", P.UseGR);					// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0

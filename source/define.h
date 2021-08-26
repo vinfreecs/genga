@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.126
+#define def_Version 3.127
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -69,6 +69,7 @@
 #define def_G_Sigma_10 2000		 //surface density at 1AU
 #define def_Mgiant  1.0E-4
 #define def_UseForce 0			//Use additional forces, which can be specified in the file force.h
+#define def_UseGR 0			//Flag for GR, 1:Hamiltonian splitting, 2, implicit midpoint
 #define def_UseYarkovsky 0
 #define def_UsePR 0
 #define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
@@ -309,6 +310,7 @@ struct Parameter{
 	int UsegasDrag;
 	int UsegasTidalDamping;
 	int UseForce;
+	int UseGR;
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int UsePR;			//Poynting Robertson drag

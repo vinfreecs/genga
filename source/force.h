@@ -11,8 +11,7 @@
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int Nstart, int si){
-
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int Nstart, int si){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
@@ -43,7 +42,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 		double A, B;
 
-		if((UseForce & 1) && x4.w >= 0.0){
+		if(UseGR == 1 && x4.w >= 0.0){
 			// GR symplectic
 			// GR part depending on position only (see Saha & Tremaine 1994)
 			double mu = def_ksq * (Msun + x4.w);
@@ -53,8 +52,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			a3.y -= B * x4.y;
 			a3.z -= B * x4.z;
 		}
-/*
-		if((UseForce >> 7 & 1) && x4.w >= 0.0){
+
+		if(UseGR == 3 && x4.w >= 0.0){
 			// GR force
 			// GR  see Fabrycky 2010 equation 2
 			double csq = def_cm * def_cm;
@@ -73,18 +72,17 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		}
 
 		double eta;
-		if((UseForce >> 8 & 1) && x4.w >= 0.0){
+		if(UseGR == 2 && x4.w >= 0.0){
 			// GR  see Fabrycky 2010 equation 2
 			//first part of implicit function
-			double c = 10065.3201686;//c in AU / day * dayUnit
-			double csq = c * c;
+			double csq = def_cm * def_cm;
 
 			A = def_ksq * (Msun + x4.w) * ir;
 			B = A * ir / csq;
 			eta = Msun * x4.w / ((Msun + x4.w) * (Msun + x4.w));
 		}
 
-*/
+
 /*
 		if((UseForce >> 1 & 1) && x4.w > 0.0){
 			//Tidal force see Fabrycky 2010 equation 3
@@ -172,6 +170,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 			volatile double tsun = 3.0 * def_ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
 			volatile double t = 3.0 * def_ksq * Msun2 * R5 * ir8 * love / x4.w;
+//printf("tidal %d %g %g\n", id, love,  tau);
 
 
 //volatile double tt = 3.0 * def_ksq * Msun2 * R5 * ir7 * love * tau;
@@ -196,7 +195,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			t3.x = ( omegasun3.y * x4.z) - (omegasun3.z * x4.y);
 			t3.y = (-omegasun3.x * x4.z) + (omegasun3.z * x4.x);
 			t3.z = ( omegasun3.x * x4.y) - (omegasun3.y * x4.x);
-
+//printf("tidal %d %g %g %g %g %g %g\n", id, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z);
 
 		}
 		if((UseForce >> 2 & 1) && x4.w > 0.0){
@@ -237,12 +236,12 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		}
 
 		// **********************************************************
-		// Now add the velocity dependent terms and interate the 
+		// Now add the velocity dependent terms and iterate the 
 		// implicit midpoint method
 		// **********************************************************
 
 
-		if((UseForce >> 1 & 1 || UseForce >> 8 & 1) && x4.w > 0.0){
+		if((UseForce >> 1 & 1 || UseGR == 2) && x4.w >= 0.0){
 			double3 a3t, a3told;
 			double4 v4t = v4;
 			a3told.x = 0.0;
@@ -255,8 +254,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 				a3t.x = 0.0;
 				a3t.y = 0.0;
 				a3t.z = 0.0;
-	/*
-				if(UseForce >> 8 & 1){
+	
+				if(UseGR == 2){
 					// GR  see Fabrycky 2010 equation 2
 					double vsq = (v4t.x * v4t.x + v4t.y * v4t.y + v4t.z * v4t.z);
 					double rd = (x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z) * ir; 
@@ -268,12 +267,12 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 					a3t.y += B * (C * v4t.y - D * x4.y * ir);
 					a3t.z += B * (C * v4t.z - D * x4.z * ir);
 				}
-	*/
-				if(UseForce >> 1 & 1){
+	
+				if(UseForce >> 1 & 1 && x4.w > 0.0){
 					//Tidal Force see Bolmont et al 2015 equation 6
 					double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
 					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);  // -3 + 1 = -2
-
+//printf("t %d %d %g %g %g %g\n", id, k, F1, F2, Psun, P);
 					a3t.x += (F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x);
 					a3t.y += (F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y);
 					a3t.z += (F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z);
@@ -287,6 +286,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 				}
 
 				a3told = a3t;
+//printf("tidal2 %d %g %g %g %g\n", id, x4.w, a3t.x, a3t.y, a3t.z);
 			}
 
 			a3.x += a3t.x;
@@ -298,6 +298,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		v4.x += a3.x * dt;
 		v4.y += a3.y * dt;
 		v4.z += a3.z * dt;
+//printf("Force %d %g %g %g %g\n", id, x4.w, a3.x, a3.y, a3.z);
 // printf("Force %d %g %g %g %g\n", id, x4.w, v4.x, v4.y, v4.z);
 		if(si == 1){
 			v4_d[id] = v4;

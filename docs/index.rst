@@ -47,6 +47,7 @@ Forces
 .. toctree::
    :maxdepth: 2
 
+   GR.rst
    Yarkovsky.rst
    PRdrag.rst
 
