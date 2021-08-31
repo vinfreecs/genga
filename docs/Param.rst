@@ -220,7 +220,7 @@ Non-Newtonian forces
    - 4: Use rotational deformation
    - 3: GR + tidal force
    - 5: GR + rotational deformation
-   - 6: tidal force + rotation deformation
+   - 6: Tidal force + rotation deformation
    - 7: GR + tidal force + rotation deformation
 
 - | :literal:`Use Yarkovsky`: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
