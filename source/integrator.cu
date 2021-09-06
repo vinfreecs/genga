@@ -1008,7 +1008,7 @@ __host__ int Data::tuneForce(int &TX){
 		cudaEventRecord(start, 0);
 		//revert fg operation
 		//launch with si = -1
-		force <<< (NN + tx - 1) / tx, tx >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 0);
+		force <<< (NN + tx - 1) / tx, tx >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 0);
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in microseconds
@@ -2167,7 +2167,7 @@ __host__ int Data::step_16(int noColl){
 		comCall(1);
 		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
@@ -2250,7 +2250,7 @@ __host__ int Data::step_16(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+				if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
@@ -2271,7 +2271,7 @@ __host__ int Data::step_16(int noColl){
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
@@ -2337,7 +2337,7 @@ __host__ int Data::step_largeN(int noColl){
 		comCall(1);
 		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
@@ -2442,7 +2442,7 @@ __host__ int Data::step_largeN(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+				if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
@@ -2499,7 +2499,7 @@ printf("****** %d %d %d | %d %d %d %d\n", i, N_h[0], (((N_h[0] + KP - 1)/ KP) + 
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
@@ -2569,7 +2569,7 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
@@ -2688,7 +2688,7 @@ __host__ int Data::step_small(int noColl){
 					//GasAccCall(time_d, dt_d, Kt[si]);
 					GasAccCall2_small(time_d, dt_d, Kt[si]);
 				}
-				if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+				if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
@@ -2728,7 +2728,7 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, 0, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseForce, P.UseGR, P.UseTides, 0, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX, FrTX >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
@@ -2809,7 +2809,7 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce, P.UseGR, Nstart, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce, P.UseGR, P.UseTides, Nstart, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
@@ -2871,7 +2871,7 @@ __host__ int Data::step_M(int noColl){
 			if(ForceFlag > 0){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
-				if(P.UseForce > 0 || P.UseGR > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, NT, Nst, P.UseForce, P.UseGR, Nstart, 1);
+				if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[si], time_d, NT, Nst, P.UseForce, P.UseGR, P.UseTides, Nstart, 1);
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
@@ -2888,7 +2888,7 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseForce > 0 || P.UseGR > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce, P.UseGR, Nstart, 1);
+		if(P.UseForce > 0 || P.UseGR > 0 || P.UseTides > 0) force <<< (NT + 127) / 128, 128  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseForce, P.UseGR, P.UseTides, Nstart, 1);
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);

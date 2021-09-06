@@ -412,6 +412,7 @@ __host__ void Host::Halloc(){
 	P.UsegasTidalDamping = def_UsegasTidalDamping;
 	P.UseForce = def_UseForce;
 	P.UseGR = def_UseGR;
+	P.UseTides = def_UseTides;
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.UsePR = def_UsePR;
@@ -1377,6 +1378,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Use Tides =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseTides);
+				if(er <= 0){
+					printf("Error: Use Tides value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Use Yarkovsky =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.UseYarkovsky);
@@ -2114,14 +2129,16 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 
 	ForceFlag = 0;
-	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0){
+	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0){
 		ForceFlag = 1;
 	}
 	//set UseGR when old UseForce is used, chose Hamiltonian splitting
-	if(P.UseForce == 1){
+	if(P.UseForce & 1){
 		P.UseGR = 1;
 	}
-
+	if(P.UseForce >> 1 & 1){
+		P.UseTides = 1;
+	}
 
 
 	//check peer to peer access for multi GPU runs:
@@ -2808,6 +2825,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas Mgiant: %g\n", P.G_Mgiant);				// use only argument in simulation 0
 			fprintf(infofile, "Use force (Old): %d\n", P.UseForce);				// use only argument in simulation 0
 			fprintf(infofile, "Use GR: %d\n", P.UseGR);					// use only argument in simulation 0
+			fprintf(infofile, "Use Tides: %d\n", P.UseTides);				// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0

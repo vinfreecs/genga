@@ -11,7 +11,7 @@
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int Nstart, int si){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int UseTides, int Nstart, int si){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
@@ -83,8 +83,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		}
 
 
-/*
-		if((UseForce >> 1 & 1) && x4.w > 0.0){
+
+		if((UseTides == 2) && x4.w > 0.0){
 			//Tidal force see Fabrycky 2010 equation 3
 			double R2 = v4.w * v4.w;
 			double R5 = R2 * R2 * v4.w;
@@ -92,11 +92,12 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			double ir7 = ir3 * ir3 * ir;
 
 			double E = -3.0 * love_d[id].x * def_ksq * Msun * Msun * R5 / x4.w * ir7;
-
+//printf("%d %g %g\n", id, E * ir, E * x4.x * ir);
 			a3.x += E * x4.x * ir;
 			a3.y += E * x4.y * ir;	
 			a3.z += E * x4.z * ir;
 		}
+/*
 		if(UseForce >> 2 & 1){
 			//Rotational Force see Fabrycky 2010 equation 4
 			double Rsun2 = Msun_d[st].y * Msun_d[st].y;
@@ -129,7 +130,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		double F1;
 		double P, Psun;
 		double3 t2, t3;
-		if((UseForce >> 1 & 1 || UseForce >> 2 & 1) && x4.w > 0.0){
+		if((UseTides == 1 || UseForce >> 2 & 1) && x4.w > 0.0){
 			Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			Rsun3 = Rsun2 * Msun_d[st].y;
 			Rsun5 = Rsun3 * Rsun2;
@@ -158,7 +159,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			ir7 = ir5 * ir2;
 			ir8 = ir5 * ir3;
 		}
-		if((UseForce >> 1 & 1) && x4.w > 0.0){
+		if((UseTides == 1) && x4.w > 0.0){
 			//Tidal Force see Bolmont et al 2015 equation 5
 			double Msun2 = Msun * Msun;
 			double lovesun = Msun_d[st].z;
@@ -170,7 +171,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 
 			volatile double tsun = 3.0 * def_ksq * m2 * Rsun5 * ir8 * lovesun / x4.w;
 			volatile double t = 3.0 * def_ksq * Msun2 * R5 * ir8 * love / x4.w;
-//printf("tidal %d %g %g\n", id, love,  tau);
+//printf("tidal %d %g %g | %g %g | %g %g\n", id, love, tau, lovesun, tausun, tsun, t);
 
 
 //volatile double tt = 3.0 * def_ksq * Msun2 * R5 * ir7 * love * tau;
@@ -241,7 +242,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		// **********************************************************
 
 
-		if((UseForce >> 1 & 1 || UseGR == 2) && x4.w >= 0.0){
+		if((UseTides == 1 || UseGR == 2) && x4.w >= 0.0){
 			double3 a3t, a3told;
 			double4 v4t = v4;
 			a3told.x = 0.0;
@@ -268,11 +269,11 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 					a3t.z += B * (C * v4t.z - D * x4.z * ir);
 				}
 	
-				if(UseForce >> 1 & 1 && x4.w > 0.0){
+				if(UseTides == 1 && x4.w > 0.0){
 					//Tidal Force see Bolmont et al 2015 equation 6
 					double rv = x4.x * v4t.x + x4.y * v4t.y + x4.z * v4t.z;
 					double F2 = F1 - 2.0 * rv * ir2 * (Psun + P);  // -3 + 1 = -2
-//printf("t %d %d %g %g %g %g\n", id, k, F1, F2, Psun, P);
+//printf("t %d %d %g %g %g %g %g\n", id, k, F1, F2 * x4.x, P * t2.x + Psun * t3.x, - (P + Psun) * v4t.x, (F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x));
 					a3t.x += (F2 * x4.x + P * t2.x + Psun * t3.x - (P + Psun) * v4t.x);
 					a3t.y += (F2 * x4.y + P * t2.y + Psun * t3.y - (P + Psun) * v4t.y);
 					a3t.z += (F2 * x4.z + P * t2.z + Psun * t3.z - (P + Psun) * v4t.z);
