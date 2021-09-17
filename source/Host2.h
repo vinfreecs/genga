@@ -42,8 +42,10 @@ public:
 	double *n2_h, *n2_d;			//factor for velocity
 	int *N_h, *N_d;				//number of bodies
 	int *Nsmall_h, *Nsmall_d;		//number of test particles
-	double4 *Msun_h, *Msun_d;		//Mass of the star, Radius, Love Number, fluid Love Number
-	double4 *Spinsun_h, *Spinsun_d;		//Spin of the star x, y, z and time lag
+	double2 *Msun_h, *Msun_d;		//Mass of the star, Radius, Love Number, fluid Love Number
+	double4 *Spinsun_h, *Spinsun_d;		//Spin of the star x, y, z and Ic
+	double3 *Lovesun_h, *Lovesun_d;		//Love number of the star, fluid Love number, time lag
+	
 	double *idt_h, *idt_d;			//initial time step 
 	double *ict_h, *ict_d;			//initial time
 	double *Rcut_h, *Rcut_d;		//inner truncation radius

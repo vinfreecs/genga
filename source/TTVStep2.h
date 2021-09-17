@@ -555,7 +555,7 @@ if(id == 1) printf("pp %d %14.8e %d %d\n", id * N0 + i, pp, Nt, NtOld);
 // Author: Simon Grimm
 // February 2020
 // *******************************************************************************************
-__global__ void TTVstep3(int *index_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, double4 *elementsP_d, double *elementsSA_d, int2 *elementsC_d, int2 *NtransitsT_d, double4 *Msun_d, double *elementsM_d, int NT, int N0, int Nst, int mcmcNE){
+__global__ void TTVstep3(int *index_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, double4 *elementsP_d, double *elementsSA_d, int2 *elementsC_d, int2 *NtransitsT_d, double2 *Msun_d, double *elementsM_d, int NT, int N0, int Nst, int mcmcNE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -2170,7 +2170,7 @@ if(i == 0) printf("contract2\n");
 //EE = 4: DEMCMC
 //EE = 5: ADAGRAD
 //EE = 10 Refine
-__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
+__global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double2 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -2659,7 +2659,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 }
 
 //quadratic estimation for period
-__global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
+__global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double2 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -2798,7 +2798,7 @@ __global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *
 }
 
 //quadratic estimation for period
-__global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double4 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
+__global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double2 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -3103,7 +3103,7 @@ __global__ void setJ_kernel(double4 *elementsP_d, int Nst){
 	}
 
 }
-__global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, int Nst, int N0, double4 *Msun_d, double *elementsM_d, int ittv, int mcmcNE, int EE){
+__global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, int Nst, int N0, double2 *Msun_d, double *elementsM_d, int ittv, int mcmcNE, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;

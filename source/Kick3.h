@@ -450,7 +450,7 @@ __global__ void kick32C_kernel(double4 *x4_d, double4 *v4_d, double3 *ab_d, int 
 	}
 }
 
-__global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
+__global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double2 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -513,7 +513,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 		ab_d[id].z = a.z;
 	}
 }
-__global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double4 *Msun_d, int *Ntransit_d, int *Transit_d, double *time_d, double *idt_d, double *ict_d, long long timeStep, int Nst,int Nstart){
+__global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, int *index_d, int N, double *dt_d, double Kt, double2 *Msun_d, int *Ntransit_d, int *Transit_d, double *time_d, double *idt_d, double *ict_d, long long timeStep, int Nst,int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -1708,7 +1708,7 @@ __global__ void KickM2Simple_kernel(double4 *x4_d, double4 *v4_d, double4 *v4b_d
 	}
 }
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double4 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
+__global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, double2 *Msun_d, int *Ntransit_d, int *Transit_d, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;

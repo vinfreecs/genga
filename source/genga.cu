@@ -149,7 +149,7 @@ if(ittv % MCMC_NQ == 0){
 }
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double2) * D.Nst, cudaMemcpyDeviceToHost);
 		
 	if(ittv <= 0) D.modifyElementsCall(ittv, 0); //initialize ensemble walkers
 	else D.modifyElementsCall(ittv, 4);
@@ -177,7 +177,7 @@ if(ittv % MCMC_NQ == 0){
 
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double2) * D.Nst, cudaMemcpyDeviceToHost);
 		
 	//hypertune
 	if(ittv > 0 && ittv % 2 == 0) tuneHyperParameters <<< (D.Nst + 127) / 128, 128 >>>(D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst,ittv);
@@ -210,7 +210,7 @@ if(ittv % MCMC_NQ == 0){
 
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double2) * D.Nst, cudaMemcpyDeviceToHost);
 		
 	if(ittv == 0)D.modifyElementsCall(ittv, -1);
 
@@ -226,7 +226,7 @@ if(ittv % MCMC_NQ == 0){
 
 	SetTTVP1 <<< (D.NT + 127) / 128, 128 >>> (D.n1_d, D.rcrit_d, D.rcritv_d, D.index_d, D.n1_h[0], D.NT, D.N_h[0], D.Nst);
 	cudaMemcpy(D.index_h, D.index_d, sizeof(int) * D.NT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double4) * D.Nst, cudaMemcpyDeviceToHost);
+	cudaMemcpy(D.Msun_h, D.Msun_d, sizeof(double2) * D.Nst, cudaMemcpyDeviceToHost);
 		
 	if(ittv == 0)D.modifyElementsCall(ittv, 5);
 

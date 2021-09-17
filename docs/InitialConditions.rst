@@ -61,6 +61,7 @@ Possible arguments are:
 - k2: potential Love number of degree 2, dimensionless (default = 0.0).
 - k2f: fluid Love number of degree 2, dimensionless (default = 0.0).
 - tau: time lag in day / 0.0172020989 (See :ref:`Units`) (default = 0.0).
+- Ic: moment of inertia, dimensionless (See :ref:`Units`) (default = 0.4).
 - :literal:`-`: skip column, optional.
 
 
@@ -133,11 +134,94 @@ from the initial condition file and computes the radius.
 Units
 -----
 
-velocity
-Spin
-Time of first transit
-time lag
+The units in GENGA are chose such that the solar mass :math:`M_\odot = 1`, the gravitational constant :math:`G = 1`
+and the distance from the Sun to Earth :math:`AU = 1`.
 
+With :math:`G = 6.67408 \cdot 10^-11 \text{m}^3 \text{kg}^{-1} \text{s}^{-2} = 0.01720209895^2 \text{AU}^3 \text{M}_\odot^{-1} \text{day}^{-2}`,
+and the Gaussian gravitational constant :math:`k = 0.01720209895`.
+
+Therefore, we need
+
+.. math::
+
+  G = 0.01720209895^2 \text{AU}^3 \text{M}_\odot^{-1} \text{day}^{-2} = 1.0 \, \text{day'}^{-2}
+  
+and 
+
+.. math::
+
+  1 \, \text{day'} = \text{day} / 0.01720209895,
+
+That means that all time units must be rescaled with 0.01720209895.
+
+
+
+Time
+^^^^
+
+The time units are given now as :math:`[time] = \text{day} / 0.01720209895`
+An exception is the time step, it is given in days, and converted internally to code units.
+
+Masses
+^^^^^^
+Masses are given in Solar masses.
+
+Distances, Radii
+^^^^^^^^^^^^^^^^
+All distances and radii are given in Astronomical Units, AU.
+Example: The distance from the Sun to the Earth is 1 AU.
+
+Velocities
+^^^^^^^^^^
+| [v] = AU / day' = AU / day * 0.01720209895.
+| To convert velocities from AU / day to AU / day', they must be divided by 0.01720209895.
+| Example: The Earth's orbital velocity is 30 km / s = 0.01720209895 AU / day.
+| In GENGA units, this is 1.0 AU / day'.
+
+.. _UnitsSpin:
+
+Spin
+^^^^
+| [spin] = :math:`M_{\odot} AU^2 / day' =  M_{\odot} AU^2 / day \cdot 0.01720209895`
+| To convert the spin from :math:`M_{\odot} AU^2 / day` to :math:`M_{\odot} AU^2 / day'`, it must be divided by 0.01720209895.
+| The spin is computed as
+
+.. math::
+
+  \vec{S} = \vec{\Omega} \cdot I,
+
+with the angular rotation rate :math:`\vec{\Omega} = \frac{2 \pi}{P}` the rotation period :math:`P`
+(in units of day') and the moment of inertia :math:`I`:
+
+.. math::
+
+  I = I_c m r^2
+
+The parameter :math:`I_c` defines the inner structure of the body. :math:`I_c = 2/5` is a solid sphere
+with uniform density.
+
+Example: The Sun has a rotational period :math:`P` of 27.5 days, a mass of 1.0 :math:`M_\odot` and a radius of 0.00464 AU.
+We assume :math:`I_c = 0.07`.
+
+.. math::
+  S = \frac{2 \pi}{27.5 \text{days} \cdot 0.01720209895} \cdot 0.07 \cdot 1.0 M_{\odot} \cdot (0.00464 AU)^2
+  = 0.00002001703 \, M_{\odot} AU^2 / day'
+
+Time lag
+^^^^^^^^
+The time lag is given in units of day' = day / 0.0172020989. 
+
+The time lag :math:`tau` is related (approximatly) to the tidal quality factor :math:`Q` via 
+:cite:p:`EfroimskyLainey2007`:
+
+.. math::
+  \tau = \frac{\arctan{(1/Q)}}{2 | n - \omega | },
+
+with the mean motion of the planet :math:`n` and the rotation rate of the star :math:`\omega`. 
+
+
+Time of first transit
+^^^^^^^^^^^^^^^^^^^^^
 
 .. _aeLimits:
 

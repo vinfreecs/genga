@@ -328,6 +328,9 @@ __host__ int assignInformat(char *ff, int &format){
 	else if(strcmp(ff, "gw") == 0){		//gamma w
 		format = 43;
 	}
+	else if(strcmp(ff, "Ic") == 0){		//Moment of Inertia
+		format = 44;
+	}
 	else if(strcmp(ff, ">>") == 0){
 		return 2;
 	}
@@ -368,8 +371,9 @@ __host__ void Host::Halloc(){
 	n2_h = (double*)malloc(Nst*sizeof(double));
 	N_h = (int*)malloc(Nst*sizeof(int));
 	Nsmall_h = (int*)malloc(Nst*sizeof(int));
-	Msun_h = (double4*)malloc(Nst*sizeof(double4));
+	Msun_h = (double2*)malloc(Nst*sizeof(double2));
 	Spinsun_h = (double4*)malloc(Nst*sizeof(double4));
+	Lovesun_h = (double3*)malloc(Nst*sizeof(double3));
 	idt_h = (double*)malloc(Nst*sizeof(double));
 	ict_h = (double*)malloc(Nst*sizeof(double));
 	Rcut_h = (double*)malloc(Nst*sizeof(double));
@@ -496,12 +500,13 @@ __host__ void Host::Halloc(){
 		Nsmall_h[st] = 0;
 		Msun_h[st].x = def_CentralMass;
 		Msun_h[st].y = def_CentralRadius;
-		Msun_h[st].z = def_CentralK2;
-		Msun_h[st].w = def_CentralK2f;
 		Spinsun_h[st].x = def_StarSpinx;
 		Spinsun_h[st].y = def_StarSpiny;
 		Spinsun_h[st].z = def_StarSpinz;
-		Spinsun_h[st].w = def_StarTau;
+		Spinsun_h[st].w = def_StarIc;
+		Lovesun_h[st].x = def_StarK2;
+		Lovesun_h[st].y = def_StarK2f;
+		Lovesun_h[st].z = def_StarTau;
 		idt_h[st] = def_TimeStep;
 		ict_h[st] = 0.0;
 		Rcut_h[st] = def_Rcut;
@@ -794,7 +799,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Star Love Number =") == 0){
 			
-			er = fscanf (paramfile, "%lf", &Msun_h[st].z);
+			er = fscanf (paramfile, "%lf", &Lovesun_h[st].x);
 			
 			if(er <= 0){
 				printf("Error: Star Love Number is not valid!\n");
@@ -804,10 +809,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		else if(strcmp(sp, "Star fluid Love Number =") == 0){
 			
-			er = fscanf (paramfile, "%lf", &Msun_h[st].w);
+			er = fscanf (paramfile, "%lf", &Lovesun_h[st].y);
 			
 			if(er <= 0){
 				printf("Error: Star fluid Love Number is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Star tau =") == 0){
+			
+			er = fscanf (paramfile, "%lf", &Lovesun_h[st].z);
+			
+			if(er <= 0){
+				printf("Error: Star tau is not valid!\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
@@ -842,12 +857,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
-		else if(strcmp(sp, "Star tau =") == 0){
+		else if(strcmp(sp, "Star Ic =") == 0){
 			
 			er = fscanf (paramfile, "%lf", &Spinsun_h[st].w);
 			
 			if(er <= 0){
-				printf("Error: Star tau is not valid!\n");
+				printf("Error: Star Ic is not valid!\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
@@ -2625,8 +2640,9 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &n2_d,Nst*sizeof(double));
 	cudaMalloc((void **) &N_d,Nst*sizeof(int));
 	cudaMalloc((void **) &Nsmall_d,Nst*sizeof(int));
-	cudaMalloc((void **) &Msun_d,Nst*sizeof(double4));
+	cudaMalloc((void **) &Msun_d,Nst*sizeof(double2));
 	cudaMalloc((void **) &Spinsun_d,Nst*sizeof(double4));
+	cudaMalloc((void **) &Lovesun_d,Nst*sizeof(double3));
 	cudaMalloc((void **) &idt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &ict_d,Nst*sizeof(double));
 	cudaMalloc((void **) &Rcut_d,Nst*sizeof(double));
@@ -2638,8 +2654,9 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(n1_d, n1_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(n2_d, n2_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(N_d, N_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
+	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
+	cudaMemcpy(Lovesun_d, Lovesun_h, Nst*sizeof(double3), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -2715,12 +2732,13 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Integration steps: %lld\n", delta_h[st]);
 			fprintf(infofile, "Central Mass: %g\n", Msun_h[st].x);
 			fprintf(infofile, "Star Radius: %g\n", Msun_h[st].y);
-			fprintf(infofile, "Star Love Number: %g\n", Msun_h[st].z);
-			fprintf(infofile, "Star fluid Love Number: %g\n", Msun_h[st].w);
+			fprintf(infofile, "Star Love Number: %g\n", Lovesun_h[st].x);
+			fprintf(infofile, "Star fluid Love Number: %g\n", Lovesun_h[st].y);
+			fprintf(infofile, "Star tau: %g\n", Lovesun_h[st].z);
 			fprintf(infofile, "Star spin_x: %g\n", Spinsun_h[st].x);
 			fprintf(infofile, "Star spin_y: %g\n", Spinsun_h[st].y);
 			fprintf(infofile, "Star spin_z: %g\n", Spinsun_h[st].z);
-			fprintf(infofile, "Star tau: %g\n", Spinsun_h[st].w);
+			fprintf(infofile, "Star Ic: %g\n", Spinsun_h[st].w);
 			fprintf(infofile, "Solar Constant: %g\n", P.SolarConstant);				// use only argument in simulation 0
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
@@ -2774,6 +2792,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 41) fprintf(infofile, "TL ");
 				else if(GSF[st].informat[f] == 42) fprintf(infofile, "Rc "); //critical radius
 				else if(GSF[st].informat[f] == 43) fprintf(infofile, "gw "); //gamma w in MCMC
+				else if(GSF[st].informat[f] == 44) fprintf(infofile, "Ic "); //moment of Inertia
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
@@ -3568,6 +3587,7 @@ __host__ int Host::freeHost(){
 	free(Nsmall_h);
 	free(Msun_h);
 	free(Spinsun_h);
+	free(Lovesun_h);
 	free(idt_h);
 	free(ict_h);
 	free(Rcut_h);
@@ -3582,6 +3602,7 @@ __host__ int Host::freeHost(){
 	cudaFree(Nsmall_d);
 	cudaFree(Msun_d);
 	cudaFree(Spinsun_d);
+	cudaFree(Lovesun_d);
 	cudaFree(idt_d);
 	cudaFree(ict_d);
 	cudaFree(Rcut_d);

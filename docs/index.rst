@@ -48,6 +48,7 @@ Forces
    :maxdepth: 2
 
    GR.rst
+   Tides.rst
    Yarkovsky.rst
    PRdrag.rst
 

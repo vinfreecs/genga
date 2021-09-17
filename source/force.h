@@ -11,7 +11,7 @@
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_d, double3 *love_d, double4 *Msun_d, double4 *Spinsun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int UseTides, int Nstart, int si){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int UseTides, int Nstart, int si){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
@@ -24,7 +24,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		double4 x4 = x4_d[id];
 		double4 v4 = v4_d[id];
 		double Msun = Msun_d[st].x;			//This is the mass of the central star
-		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star
+		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star and the moment of inertia
+		double3 Lovesun = Lovesun_d[st];		//This is the Love number, fluid Love numer and time lag
 		double dt = dt_d[st] * Kt;			//This is the time step to do
 //		double time = time_d[st] / 365.25;		//This is the time in years
 
@@ -102,12 +103,13 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			//Rotational Force see Fabrycky 2010 equation 4
 			double Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			double Rsun5 = Rsun2 * Rsun2 * Msun_d[st].y;
-			double lovesun = Msun_d[st].z;
+			double lovesun = Lovesun.x;
 			double ir2 = ir * ir;
 			double ir4 = ir2 * ir2;
 
 			//compute rotation vector from spin vector
-			double iI = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double Icsun = Spinsun.w;
+			double iI = 1.0 / (Icsun * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			double3 omegasun3;
 			omegasun3.x = Spinsun.x * iI;
 			omegasun3.y = Spinsun.y * iI;
@@ -140,14 +142,16 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 			R5 = R3 * R2;
 
 			//compute rotation vector from spin vector
-			double iIsun = 5.0 / (2.0 * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double Icsun = Spinsun.w;
+			double iIsun = 1.0 / (Icsun * Msun * Rsun2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			omegasun3.x = Spinsun.x * iIsun;
 			omegasun3.y = Spinsun.y * iIsun;
 			omegasun3.z = Spinsun.z * iIsun;
 //printf("omegaS %d %g %g %g\n", id, Spinsun.z, 1.0 / omegasun3.z / dayUnit, 1.0/iIsun, omegasun3.z * dayUnit);
 
 			//compute rotation vector from spin vector
-			double iI = 5.0 / (2.0 * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double Ic = spin_d[id].w;
+			double iI = 1.0 / (Ic * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			omega3.x = spin_d[id].x * iI;
 			omega3.y = spin_d[id].y * iI;
 			omega3.z = spin_d[id].z * iI;
@@ -162,8 +166,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		if((UseTides == 1) && x4.w > 0.0){
 			//Tidal Force see Bolmont et al 2015 equation 5
 			double Msun2 = Msun * Msun;
-			double lovesun = Msun_d[st].z;
-			double tausun = Spinsun_d[st].w;
+			double lovesun = Lovesun.x;
+			double tausun = Lovesun.z;
 
 			double m2 = x4.w * x4.w;
 			double love = love_d[id].x;
@@ -201,7 +205,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double3 *spin_
 		}
 		if((UseForce >> 2 & 1) && x4.w > 0.0){
 			//Rotational Force see Bolmont et al 2015 equation 15
-			double lovesunf = Msun_d[st].w;
+			double lovesunf = Lovesun.y;
 			double lovef = love_d[st].y;
 
 			double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
@@ -331,7 +335,7 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
 // March 2017
 // Authors: Simon Grimm
 // *****************************************************************
-__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double4 *Msun_d, double *dt_d, double *time_d, int N, int Nst, int EE){
+__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double2 *Msun_d, double *dt_d, double *time_d, int N, int Nst, int EE){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -741,7 +745,7 @@ if(setElements_c[i] == 13){
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int st, double *Fragments_d, double time, int *nFragments_d){
 
 	int N = N_d[st];
 
@@ -755,7 +759,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 
 		volatile double4 x4 = x4_d[id];
 		volatile double4 v4 = v4_d[id];
-		double3 spin = spin_d[id];
+		double4 spin = spin_d[id];
 		curandState random = random_d[id];
 	
 		if(x4.w >= 0.0){
@@ -769,7 +773,8 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			}
 
 			//compute rotation vector from spin vector
-			double iI = 5.0 / (2.0 * M * v4.w * v4.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double Ic = spin.w;
+			double iI = 1.0 / (Ic * M * v4.w * v4.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			double3 omega3;
 			omega3.x = spin.x * iI;
 			omega3.y = spin.y * iI;
@@ -796,7 +801,7 @@ printf("A %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
-				double S = 2.0 / 5.0 * M * v4.w * v4.w * omega;
+				double S = Ic * M * v4.w * v4.w * omega;
 				double u = curand_uniform(&random);
 				double theta = curand_uniform(&random) * 2.0 * M_PI;
 				//sign
@@ -841,7 +846,7 @@ printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
 #if USE_RANDOM == 1
 	int N = N_d[st];
 
@@ -950,15 +955,16 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 					v4_d[ii + N + Nsmall].z = vz;
 					v4_d[ii + N + Nsmall].w = r;
 
+					double4 spin;
+					spin.w = spin_d[ii + N + Nsmall].w;
 
-					double S = 2.0 / 5.0 * m * r * r * omega;
+					double S = spin.w * m * r * r * omega;
 					u = curand_uniform(&random);
 					theta = curand_uniform(&random) * 2.0 * M_PI;
 					//sign
 					s = curand_uniform(&random);;
 
 					double t2 = S * sqrt(1.0 - u * u);
-					double3 spin;
 					spin.x = t2 * cos(theta);
 					spin.y = t2 * sin(theta);
 					spin.z = S * u;
@@ -1063,7 +1069,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 #endif
 }
 
-__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
+__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
 	int st = 0;
 	nFragments_m[0] = -1;
 	fragment_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
@@ -1073,7 +1079,7 @@ __host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 		MaxIndex += nFragments_m[0];
 	}
 }
-__host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d){
+__host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d){
 	int st = 0;
 	nFragments_m[0] = -1;
 	rotation_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
@@ -1090,7 +1096,7 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -1104,7 +1110,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
-		double3 spin = spin_d[id];
+		double4 spin = spin_d[id];
 
 		if(x4i.w >= 0.0){
 
@@ -1153,7 +1159,8 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double3 *spin_d, in
 			double e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
 
 			//compute rotation vector from spin vector
-			double iI = 5.0 / (2.0 * m * v4i.w * v4i.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+			double Ic = spin.w;
+			double iI = 1.0 / (Ic * m * v4i.w * v4i.w); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 			double3 omega3;
 			omega3.x = spin.x * iI;
 			omega3.y = spin.y * iI;
@@ -1411,7 +1418,7 @@ __device__ void alpha(double e){
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;

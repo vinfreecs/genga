@@ -419,7 +419,7 @@ __host__ void Data::comCall(const int f){
 // October  2015
 // ***********************************************************
 template <int Bl, int Bl2, int Nmax >
-__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double4 *Msun_d, int *index_d, int *NBS_d, int NT, double *test_d, int ff, int Nstart){
+__global__ void comM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double2 *Msun_d, int *index_d, int *NBS_d, int NT, double *test_d, int ff, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;

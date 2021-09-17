@@ -24,7 +24,7 @@ public:
 	double4 *xold_d;
 	double4 *vold_d;
 	int *index_h, *index_d;
-	double3 *spin_h, *spin_d;
+	double4 *spin_h, *spin_d;
 	double3 *love_h, *love_d;
 	double3 *a_d;
 	double *rcrit_h, *rcrit_d;
@@ -61,8 +61,8 @@ public:
 	int *indexbb_d;
 	double *rcritb_d, *rcritvb_d;
 	double *rcritbb_d, *rcritvbb_d;
-	double3 *spinb_d;
-	double3 *spinbb_d;
+	double4 *spinb_d;
+	double4 *spinbb_d;
 
 	//arrays for BSA
 	double4 *xt_d;
@@ -174,8 +174,8 @@ public:
 	int *indexbb_h;
 	double *rcritb_h, *rcritvb_h;
 	double *rcritbb_h, *rcritvbb_h;
-	double3 *spinb_h;
-	double3 *spinbb_h;
+	double4 *spinb_h;
+	double4 *spinbb_h;
 
 	double3 *vcom_h;
 
@@ -265,8 +265,8 @@ public:
 	__host__ void CoordinateToBuffer(int, int, double);
 
 	//Energy
-	__host__ void EnergyCall(int, double4 *, double4 *, double3 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int, int);
-	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double3 *, double, int, double *, double *, double3 *, int, int);
+	__host__ void EnergyCall(int, double4 *, double4 *, double4 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int, int);
+	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double4 *, double, int, double *, double *, double3 *, int, int);
 
 	//integrator
 	__host__ void SymplecticP(int);
@@ -346,7 +346,7 @@ private:
 	__host__ void resize(int, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

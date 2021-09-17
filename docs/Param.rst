@@ -88,10 +88,25 @@ Stellar parameters
 - | :literal:`Star fluid Love Number`
   | Fluid Love number of the central star (default = 1.0)
 
-- Star spin_x = 0.0
-- Star spin_y = 0.0
-- Star spin_z = 0.0
-- Star tau = 0.0
+- | :literal:`Star tau`
+  | Time lag for tidal force of the central star (default = 0.0)
+
+- | :literal:`Star spin_x`
+  | X- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
+  | (See :ref:`UnitsSpin`) 
+
+- | :literal:`Star spin_y`
+  | Y- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
+  | (See :ref:`UnitsSpin`) 
+
+- | :literal:`Star spin_z`
+  | Z- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
+  | (See :ref:`UnitsSpin`) 
+
+- | :literal:`Star Ic`
+  | Moment of inertia of the central star, dimensionless (I/(MR^2) (default = 0.4)
+  | This is used to convert between spin and rotational period.
+  | (See :ref:`UnitsSpin`) 
 
 
 Integrator options
@@ -212,9 +227,14 @@ Non-Newtonian forces
    - 2: use implicit midpoint with GR force
    - 3: use GR force directly (not symplectic) 
 
+- | :literal:`Use Tides`: Flag to enable tidal forces (See :ref:`Tides`)
+
+   - 0 (default): no tidal forces
+   - 1: use tidal forces
+
 
 - | :literal:`Use force` : Old parameter to enable GR, tidal or rotational deformation.
-  | This parameter is outdated, use :literal:`Use GR` ..... instead.
+  | This parameter is outdated, use :literal:`Use GR`, :literal:`Use Tides` or  ..... instead.
 
    - 0 (default) no force applied
    - 1: Use GR correction with Hamiltonian splitting

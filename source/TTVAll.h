@@ -22,7 +22,7 @@ __device__ void  acc_ttv(double3 &ac, double4 &x4i, double4 &x4j, int j, int i){
 
 //ny = 4
 template <const int ny>
-__global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double dt0, double4 *Msun_d, const int N, const int Nst, const int nsteps, double *time_d, double *timeold_d, double *lastTransitTime_d, int *transitIndex_d, int2 *NtransitsT_d, double *TransitTime_d, double2 *TransitTimeObs_d, int2 *EpochCount_d, double *TTV_d, const int PrintTransits){
+__global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dt_d, const double dt0, double2 *Msun_d, const int N, const int Nst, const int nsteps, double *time_d, double *timeold_d, double *lastTransitTime_d, int *transitIndex_d, int2 *NtransitsT_d, double *TransitTime_d, double2 *TransitTimeObs_d, int2 *EpochCount_d, double *TTV_d, const int PrintTransits){
 
 	int idx = threadIdx.x;
 

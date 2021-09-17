@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSRVStep_kernel(double4 *xold_d, double4 *vold_d, int *N_d, double dt, double4 *Msun_d, int *index_d, double time, int *NBS_d, const int UseGR, const double MinMass, const int UseTestParticles, int Nst, double2 *RV_d, int2 *NRVT_d){
+__global__ void BSRVStep_kernel(double4 *xold_d, double4 *vold_d, int *N_d, double dt, double2 *Msun_d, int *index_d, double time, int *NBS_d, const int UseGR, const double MinMass, const int UseTestParticles, int Nst, double2 *RV_d, int2 *NRVT_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 

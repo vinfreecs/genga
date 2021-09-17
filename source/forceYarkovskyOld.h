@@ -14,7 +14,7 @@
 //h3 angular momentum vector
 //h norm of angular momentum vector |r x v|
 //dt time step in day / 0.017
-__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double3 spin, const double3 h3, const double h, const double dt){
+__device__ void Yarkovski(double &a, const double e, double m, const double mu, const double R, const double4 spin, const double3 h3, const double h, const double dt){
 
 	//material constants
 //A = 0.0;
@@ -44,7 +44,8 @@ if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in
 	double t2 = (1.0 - Asteroid_A_c[0]) * 3.0 * F / (9.0 * n * Asteroid_rho_c[0] * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
 
 	//compute rotation vetor from spin vector
-	double iI = 5.0 / (2.0 * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+	double Ic = spin.w;
+	double iI = 1.0 / (Ic * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 	double3 omega3;
 	omega3.x = spin.x * iI;
 	omega3.y = spin.y * iI;
@@ -144,7 +145,7 @@ if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double3 spin, const double3 h3, const double h, const double dt){
+__device__ void Yarkovski2(double &a, const double e, double m, const double Msun, const double R, const double4 spin, const double3 h3, const double h, const double dt){
 
 	//material constants
 //A = 0.0;
@@ -174,7 +175,8 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double t2 = (1.0 - Asteroid_A_c[0]) * 3.0 * F / (9.0 * n * Asteroid_rho_c[0] * RR * def_c); // a factor of 4 is cancelled with da/dt, n = nu / (2pi)
 
 	//compute rotation vector from spin vector
-	double iI = 5.0 / (2.0 * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+	double Ic = spin.w;
+	double iI = 1.0 / (Ic * m * R * R); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
 	double3 omega3;
 	omega3.x = spin.x * iI;
 	omega3.y = spin.y * iI;
@@ -262,7 +264,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 }	
 
-__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int *index_d, double4 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
@@ -274,7 +276,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double3 *spin_d, int
 
 		double4 x4i = x4_d[id];
 		double4 v4i = v4_d[id];
-		double3 spini = spin_d[id];
+		double4 spini = spin_d[id];
 
 		int st = 0;
 

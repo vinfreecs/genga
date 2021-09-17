@@ -144,7 +144,7 @@ __global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int
 	}
 }
 
-__global__ void convertPseudovToVM(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, int NT){
+__global__ void convertPseudovToVM(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, int NT){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -175,7 +175,7 @@ __global__ void convertPseudovToVM(double4 *x4_d, double4 *v4_d, int *index_d, d
 
 //This function converts velocities to pseudovelocities
 //See Saha & Tremaine 1994
-__global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, double4 *Msun_d, int NT){
+__global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, int NT){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
@@ -729,7 +729,7 @@ __host__ void Data::HCCall(const double Ct, const int f){
 //
 //*****************************************
 template <int Bl, int Bl2, int Nmax, int E>
-__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double4 *Msun_d, int *index_d, const int NT, const double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, const int Nst, const int UseGR, const int Nstart){
+__global__ void HCM2_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double2 *Msun_d, int *index_d, const int NT, const double Ct, double *test_d, int *Nencpairs_d, int *Nencpairs2_d, int *Nenc_d, const int Nst, const int UseGR, const int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * Bl2 + idy - Nmax + Nstart;

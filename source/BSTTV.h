@@ -12,7 +12,7 @@
 // ****************************************
 
 template< int NN, int nb>
-__global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_d, int *N_d, double *dt_d, double4 *Msun_d, int *index_d, double *time_d, int *NBS_d, const int UseGR, const double MinMass, const int UseTestParticles, int Nst, double *TransitTime_d, int2 *NtransitsT_d){
+__global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_d, int *N_d, double *dt_d, double2 *Msun_d, int *index_d, double *time_d, int *NBS_d, const int UseGR, const double MinMass, const int UseTestParticles, int Nst, double *TransitTime_d, int2 *NtransitsT_d){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 

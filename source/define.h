@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.128
+#define def_Version 3.129
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -24,12 +24,13 @@
 #define def_IntegrationSteps 1000
 #define def_CentralMass 1.0
 #define def_CentralRadius 0.00465475877
-#define def_CentralK2 1.0
-#define def_CentralK2f 1.0
+#define def_StarK2 1.0
+#define def_StarK2f 1.0
+#define def_StarTau 0.0
 #define def_StarSpinx 0.0
 #define def_StarSpiny 0.0
 #define def_StarSpinz 0.0
-#define def_StarTau 0.0
+#define def_StarIc 0.4			//Moment of inertia
 #define def_SolarConstant 1367.0	//Solar Constant at 1 AU in W /m^2
 #define def_n1 3.0
 #define def_n2 0.4

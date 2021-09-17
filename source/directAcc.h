@@ -255,7 +255,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double3 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
+__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double4 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
 
 #if USE_RANDOM == 1
 //	double rd = curand_uniform(&random);
@@ -347,6 +347,8 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	spin[indexi].y += spin[indexj].y + L.y;
 	spin[indexi].z += spin[indexj].z + L.z;
 
+//add here Ic for new body
+
 	v4[j].x = 0.0;
 	v4[j].y = 0.0;
 	v4[j].z = 0.0;
@@ -358,6 +360,8 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	spin[indexj].x = 0.0;
 	spin[indexj].y = 0.0;
 	spin[indexj].z = 0.0;
+	spin[indexj].w = 0.0;
+	
 
 	if(x4[i].w < x4[j].w){
 		index[indexi] = index[indexj];
@@ -407,7 +411,7 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 // April 2016
 //
 //****************************************
-__device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double3 *spin){
+__device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double4 *spin){
 
 //printf("Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], index[indexi]);
 	Coll[nc * 25 + 0] = time/365.25;

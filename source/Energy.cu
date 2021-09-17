@@ -123,7 +123,7 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 //September 2019
 // ****************************************
 template <int Bl>
-__global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
+__global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
 	int idy = threadIdx.x;
 
 
@@ -566,7 +566,7 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spi
 //August 2016
 // ****************************************
 template <int Bl>
-__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
+__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
 	int idy = threadIdx.x;
 
 	__shared__ double T_s[Bl];
@@ -797,7 +797,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double3 *spin
 //Authors: Simon Grimm
 //August 2016
 // *************************************
-__host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
+__host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
 	if(Nsmall == 0){
 		switch(NB){
 			case 16:{
@@ -858,7 +858,7 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *sp
 //Authors: Simon Grimm
 //April 2016
 // *************************************3
-__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double3 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N, int Nsmall){
+__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N, int Nsmall){
 	if(Nsmall == 0){
 		switch(NB){
 			case 16:{
