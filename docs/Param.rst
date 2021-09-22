@@ -232,9 +232,14 @@ Non-Newtonian forces
    - 0 (default): no tidal forces
    - 1: use tidal forces
 
+- | :literal:`Use Rotational Deformation`: Flag to enable rotational deformation forces (See :ref:`RotationalDeformation`)
+
+   - 0 (default): no rotational deformation force
+   - 1: use rotational deformation force
+
 
 - | :literal:`Use force` : Old parameter to enable GR, tidal or rotational deformation.
-  | This parameter is outdated, use :literal:`Use GR`, :literal:`Use Tides` or  ..... instead.
+  | This parameter is outdated, use :literal:`Use GR`, :literal:`Use Tides` or :literal:`Use Rotational Deformation` instead.
 
    - 0 (default) no force applied
    - 1: Use GR correction with Hamiltonian splitting

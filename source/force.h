@@ -11,7 +11,7 @@
 // June 2016
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseForce, int UseGR, int UseTides, int Nstart, int si){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseGR, int UseTides, int UseRotationalDeformation, int Nstart, int si){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
@@ -98,8 +98,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			a3.y += E * x4.y * ir;	
 			a3.z += E * x4.z * ir;
 		}
-/*
-		if(UseForce >> 2 & 1){
+
+		if(UseRotationalDeformation == 2){
 			//Rotational Force see Fabrycky 2010 equation 4
 			double Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			double Rsun5 = Rsun2 * Rsun2 * Msun_d[st].y;
@@ -123,7 +123,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			a3.y += F * x4.y * ir;	
 			a3.z += F * x4.z * ir;
 		}
-*/
+
 		double3 omega3;
 		double3 omegasun3;
 		double Rsun2, Rsun3, Rsun5;
@@ -132,7 +132,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 		double F1;
 		double P, Psun;
 		double3 t2, t3;
-		if((UseTides == 1 || UseForce >> 2 & 1) && x4.w > 0.0){
+		if((UseTides == 1 || UseRotationalDeformation == 1) && x4.w > 0.0){
 			Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			Rsun3 = Rsun2 * Msun_d[st].y;
 			Rsun5 = Rsun3 * Rsun2;
@@ -203,7 +203,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 //printf("tidal %d %g %g %g %g %g %g\n", id, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z);
 
 		}
-		if((UseForce >> 2 & 1) && x4.w > 0.0){
+		if((UseRotationalDeformation == 1) && x4.w > 0.0){
 			//Rotational Force see Bolmont et al 2015 equation 15
 			double lovesunf = Lovesun.y;
 			double lovef = love_d[st].y;
@@ -213,6 +213,10 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
 			volatile double Csun = x4.w * lovesunf * omegasun2 * Rsun5 / 6.0;
 			volatile double Cp = Msun * lovef * omega2 * R5 / 6.0;
+//double J2 = lovef * omega2 * R3 / (3.0 * x4.w);
+//double J2sun = lovesunf * omegasun2 * Rsun3 / (3.0 * Msun);
+//printf("J2 %d %g %g\n", id, J2, J2sun);
+
 
 			volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
 			volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
