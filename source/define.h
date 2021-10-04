@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.130
+#define def_Version 3.131
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -261,6 +261,21 @@ double __shfld_xor(double x, int k) {
 	int2 a = *reinterpret_cast<int2*>(&x);
 	a.x = __shfl_xor(a.x, k);
 	a.y = __shfl_xor(a.y, k);
+	return *reinterpret_cast<double*>(&a);
+}
+
+__device__ inline
+double __shfld_up(double x, int k) {
+	int2 a = *reinterpret_cast<int2*>(&x);
+	a.x = __shfl_up(a.x, k);
+	a.y = __shfl_up(a.y, k);
+	return *reinterpret_cast<double*>(&a);
+}
+__device__ inline
+double __shfld_down(double x, int k) {
+	int2 a = *reinterpret_cast<int2*>(&x);
+	a.x = __shfl_down(a.x, k);
+	a.y = __shfl_down(a.y, k);
 	return *reinterpret_cast<double*>(&a);
 }
 #endif

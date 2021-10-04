@@ -73,7 +73,6 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		r3ij.x = x4j.x - x4i.x;
 		r3ij.y = x4j.y - x4i.y;
 		r3ij.z = x4j.z - x4i.z;
-
 		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 		rcritv = fmax(rcritvi, rcritvj);
 
@@ -100,19 +99,19 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
 			if( rsq >= def_pc * rcritv2) sb = s;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s);
+//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s, rsq);
 		}
 		else{
 			if(rsq <= 0.01 * rcritv2){
 				s = 0.0;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 0, 1.0 / ir, s);
+//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, 0.0, 1.0 / ir, s, rsq);
 
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
 				s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
+//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s, rsq);
 
 			}
 		}
@@ -924,19 +923,20 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			double4 x4j = x4_d[idy];
 			double rcritvj = rcritv_d[idy];
 			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
-//printf("Kick1 %d %d %g %g %g %g %g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
+//printf("Kick1 %d %d %g %g %.20g %.20g %.20g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
 		}
 
+		__syncthreads();
 
-		for(int i = 16; i >= 1; i/=2){
+		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 			a.x += __shfld_xor(a.x, i);
 			a.y += __shfld_xor(a.y, i);
@@ -946,9 +946,11 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			b.y += __shfld_xor(b.y, i);
 			b.z += __shfld_xor(b.z, i);
 #endif
+//if(idx == 0 && i >= 16) printf("KickA %d %d %.20g %.20g\n", idy, i, a.x, b.x);
 		}
 
 		if(idy == 0){
+//printf("Kick %d %g %.20g %.20g %.20g | %.20g %.20g %.20g\n", idx, x4_d[idx].w, a.x, a.y, a.z, b.x, b.y, b.z);
 			if(E >= 1){
 				v4_d[idx].x += __dmul_rn(a.x, dtksq);
 				v4_d[idx].y += __dmul_rn(a.y, dtksq);
@@ -1016,16 +1018,17 @@ __global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 //printf("Kick1 %d %d %g %g %g %g %g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
 		}
 
+		__syncthreads();
 
-		for(int i = 16; i >= 1; i/=2){
+		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 			a.x += __shfld_xor(a.x, i);
 			a.y += __shfld_xor(a.y, i);
@@ -1099,16 +1102,17 @@ __global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
 		}
 
+		__syncthreads();
 
-		for(int i = 16; i >= 1; i/=2){
+		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 			a.x += __shfld_xor(a.x, i);
 			a.y += __shfld_xor(a.y, i);
@@ -1191,22 +1195,25 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 		__syncthreads();
 
 
-		if(idy < N){
-			double4 x4j = x4_d[idy];
-			double rcritvj = rcritv_d[idy];
-			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		for(int i = 0; i < N; i += blockDim.x){
+			if(i + idy < N){
+				double4 x4j = x4_d[i + idy];
+				double rcritvj = rcritv_d[i + idy];
+				acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, i + idy, idx, NencMax, test); 
+			}
 		}
 
+		__syncthreads();
 
-		for(int i = 16; i >= 1; i/=2){
+		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 			a.x += __shfld_xor(a.x, i);
 			a.y += __shfld_xor(a.y, i);
@@ -1216,12 +1223,15 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			b.y += __shfld_xor(b.y, i);
 			b.z += __shfld_xor(b.z, i);
 #endif
+//if(idx == 0 && i >= 16) printf("KickA %d %d %.20g %.20g\n", idy, i, a.x, b.x);
 		}
 
 		if(blockDim.x > warpSize){
 			//reduce across warps
-			__shared__ double3 a_s[32];
-			__shared__ double3 b_s[32];
+			extern __shared__ double3 Kick32c_s[];
+			double3 *a_s = Kick32c_s;			//size: warpSize
+			double3 *b_s = (double3*)&a_s[warpSize];	//size: warpSize
+
 			int lane = threadIdx.x % warpSize;
 			int warp = threadIdx.x / warpSize;
 			if(warp == 0){
@@ -1244,15 +1254,15 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			if(warp == 0){
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
-				for(int i = 16; i >= 1; i/=2){
+				for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 		
-					b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-					b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-					b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+					b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+					b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+					b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 					a.x += __shfld_xor(a.x, i);
 					a.y += __shfld_xor(a.y, i);
@@ -1262,6 +1272,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 					b.y += __shfld_xor(b.y, i);
 					b.z += __shfld_xor(b.z, i);
 #endif
+//if(idx == 0 && i >= 16) printf("KickA2 %d %d %.20g %.20g\n", idy, i, a.x, b.x);
 
 				}
 				if(lane == 0){
@@ -1277,6 +1288,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 
 
 		if(idy == 0){
+//printf("Kick %d %g %.20g %.20g %.20g | %.20g %.20g %.20g\n", idx, x4_d[idx].w, a.x, a.y, a.z, b.x, b.y, b.z);
 			if(E >= 1){
 				v4_d[idx].x += __dmul_rn(a.x, dtksq);
 				v4_d[idx].y += __dmul_rn(a.y, dtksq);
@@ -1332,26 +1344,29 @@ __global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 		__syncthreads();
 
 
-		if(idy < N){
-			float4 x4j;
-			x4j.x = x4_d[idy].x;
-			x4j.y = x4_d[idy].y;
-			x4j.z = x4_d[idy].z;
-			x4j.w = x4_d[idy].w;
-			float rcritvj = rcritv_d[idy];
-			acc_df<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, idy, idx, NencMax, test); 
+		for(int i = 0; i < N; i += blockDim.x){
+			if(i + idy < N){
+				float4 x4j;
+				x4j.x = x4_d[i + idy].x;
+				x4j.y = x4_d[i + idy].y;
+				x4j.z = x4_d[i + idy].z;
+				x4j.w = x4_d[i + idy].w;
+				float rcritvj = rcritv_d[i + idy];
+				acc_df<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, i + idy, idx, NencMax, test); 
+			}
 		}
 
+		__syncthreads();
 
-		for(int i = 16; i >= 1; i/=2){
+		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 			a.x += __shfld_xor(a.x, i);
 			a.y += __shfld_xor(a.y, i);
@@ -1365,8 +1380,10 @@ __global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 		if(blockDim.x > warpSize){
 			//reduce across warps
-			__shared__ float3 a_s[32];
-			__shared__ float3 b_s[32];
+			extern __shared__ float3 Kick32cf_s[];
+			float3 *a_s = Kick32cf_s;			//size: warpSize
+			float3 *b_s = (float3*)&a_s[warpSize];	//size: warpSize
+
 			int lane = threadIdx.x % warpSize;
 			int warp = threadIdx.x / warpSize;
 			if(warp == 0){
@@ -1389,15 +1406,15 @@ __global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			if(warp == 0){
 				a = a_s[threadIdx.x];
 				b = b_s[threadIdx.x];
-				for(int i = 16; i >= 1; i/=2){
+				for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-					a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-					a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-					a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 
-					b.x += __shfl_xor_sync(0xffffffff, b.x, i, 32);
-					b.y += __shfl_xor_sync(0xffffffff, b.y, i, 32);
-					b.z += __shfl_xor_sync(0xffffffff, b.z, i, 32);
+					b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
+					b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
+					b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
 #else
 					a.x += __shfld_xor(a.x, i);
 					a.y += __shfld_xor(a.y, i);

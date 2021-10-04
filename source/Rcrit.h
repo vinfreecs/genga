@@ -453,13 +453,8 @@ __host__ void Data::firstStep(int noColl){
 	else{
 		if(P.UseTestParticles > 0) firstKick_small(noColl);
 		else{
-			switch( NB[0] ) {
-				case 16: firstKick_16(noColl);
-				break;
-				case 32: firstKick_16(noColl);
-				break;
-			}
-			if(NB[0] > 32) firstKick_largeN(noColl);
+			if(NB[0] <= WarpSize) firstKick_16(noColl);
+			else firstKick_largeN(noColl);
 		}
 	}
 }
@@ -488,13 +483,8 @@ __host__ int Data::step(int noColl){
 		}
 		//check the number of massive particles
 		else{
-			switch(NB[0]){
-				case 16: er = step_16(noColl);
-				break;
-				case 32: er = step_16(noColl);
-				break;
-			}
-			if(NB[0] > 32) er = step_largeN(noColl);
+			if(NB[0] <= WarpSize) er =  step_16(noColl);
+			else er = step_largeN(noColl);
 			if(er == 0) return 0;
 		}
 	}

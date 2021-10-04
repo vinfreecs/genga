@@ -205,6 +205,8 @@ public:
 	cudaError_t error;
 	cudaEvent_t KickEvent;
 	cudaStream_t copyStream;
+	cudaStream_t BSStream[12];
+	cudaStream_t hstream[16];
 
 	__host__ Data(long long);
 	__host__ int beforeTimeStepLoop1();
@@ -239,7 +241,6 @@ public:
 	__host__ void constantCopy2();
 	__host__ void constantCopySC(double *, double *);
 	//output
-	cudaStream_t *hstream;
 	__host__ int firstoutput(int);
 	__host__ void firstInfo();
 	__host__ void firstInfoB();

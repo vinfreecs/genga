@@ -34,7 +34,7 @@ __device__ double  PE(double4 x4i, double4 x4j, int i, int j){
 //March 2014
 //
 //***************************************
-__device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
+__device__ inline double PESun(double4 x4i, double ksqMsun){
 
 	double rsq, ir;
 	double a = 0.0;
@@ -57,57 +57,78 @@ __device__ inline double PESun(double4 x4i, double ksqMsun, double &test){
 //Authors: Simon Grimm
 //August 2016
 // ****************************************
-template <int Bl>
-__global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, double *test_d, int st, int N){
+__global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, int st, int N){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	__shared__ volatile double V_s[Bl];
-	double test;
-
-	for(int i = 0; i < Bl; i += blockDim.x){
-		V_s[idy + i] = 0.0;
-	}
-	__syncthreads();
+	double V = 0.0;
 
 	if(idx < N){
 		if(x4_d[idx].w > 0.0){
 			for(int i = 0; i < N; i += blockDim.x){
 				if(idy + i < N){
 					if(x4_d[idy + i].w > 0.0){
-						V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
+						V += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
 					}
 				}
 			}
 
 			__syncthreads();
-			int s = blockDim.x/2;
-			for(int i = 6; i < log2f(blockDim.x); ++i){
-				if( idy < s ) {
-					V_s[idy] += V_s[idy + s];
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+#else
+				V += __shfld_xor(V, i);
+#endif
+//if(i >= 16) printf("VEa %d %d %.20g\n", i, idy, V);
+			
+			}
+			if(blockDim.x > warpSize){
+				//reduce across warps
+				extern __shared__ double VE_s[];
+
+				int lane = threadIdx.x % warpSize;
+				int warp = threadIdx.x / warpSize;
+				if(warp == 0){
+					VE_s[threadIdx.x] = 0.0;
 				}
 				__syncthreads();
-				s /= 2;
-			}
 
-			if(idy < 32){
-				if(blockDim.x >= 64) V_s[idy] += V_s[idy + 32];
-				if(blockDim.x >= 32) V_s[idy] += V_s[idy + 16];
-				if(blockDim.x >= 16) V_s[idy] += V_s[idy + 8];
-				if(blockDim.x >= 8) V_s[idy] += V_s[idy + 4];
-				if(blockDim.x >= 4) V_s[idy] += V_s[idy + 2];
-				if(blockDim.x >= 2) V_s[idy] += V_s[idy + 1];
-			}
+				if(lane == 0){
+					VE_s[warp] = V;
+				}
 
+				__syncthreads();
+				//reduce previous warp results in the first warp
+				if(warp == 0){
+					V = VE_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+					for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+						V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+#else
+						V += __shfld_xor(V, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+					}
+					if(lane == 0){
+						VE_s[0] = V;
+					}
+				}
+				__syncthreads();
+
+				V = VE_s[0];
+//printf("VEe %d %.20g\n", idy, V);
+			}
 			__syncthreads();
 
 			if(idy == 0){
-				V_s[0] *= 0.5 * def_ksq * x4_d[idx].w;
-				V_s[0] += PESun(x4_d[idx], def_ksq * Msun, test);
+				V *= 0.5 * def_ksq * x4_d[idx].w;
+				V += PESun(x4_d[idx], def_ksq * Msun);
 
-				Energy_d[idx] = V_s[0];
-
+				Energy_d[idx] = V;
+//printf("%d %.20g\n", idx, V);
 			}
 		}
 		else Energy_d[idx] = 0.0;
@@ -122,242 +143,260 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 //Authors: Simon Grimm
 //September 2019
 // ****************************************
-template <int Bl>
 __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
+
 	int idy = threadIdx.x;
 
+	double T = 0.0;
+	double V = 0.0;
+	double mtot = 0.0;
+	double3 p, s, L;
 
-	//separate shared memory reduction sums, because it would not been enough shared memory available to do all together
+	p.x = 0.0;
+	p.y = 0.0;
+	p.z = 0.0;
+
+	s.x = 0.0;
+	s.y = 0.0;
+	s.z = 0.0;
+
+	L.x = 0.0;
+	L.y = 0.0;
+	L.z = 0.0;
+
+	extern __shared__ double TE_s[];
+	double *T_s = TE_s;                             //size: warpSize
+	double *V_s = (double*)&T_s[warpSize];          //size: warpSize
+	double *m_s = (double*)&V_s[warpSize];          //size: warpSize
+	double3 *p_s = (double3*)&m_s[warpSize];        //size: warpSize
+	double3 *s_s = (double3*)&p_s[warpSize];        //size: warpSize
+	double3 *L_s = (double3*)&s_s[warpSize];        //size: warpSize
+
+
 
 	//--------------------------------------------
 	//calculate s_s and p_s first
 	//--------------------------------------------
-	double3 s0, p0;
-	__shared__ volatile double3 p_s[Bl];
-	__shared__ volatile double3 s_s[Bl];
-	{
-
-		for(int i = 0; i < Bl; i += blockDim.x){
-			p_s[idy + i].x = 0.0;
-			p_s[idy + i].y = 0.0;
-			p_s[idy + i].z = 0.0;
-			s_s[idy + i].x = 0.0;
-			s_s[idy + i].y = 0.0;
-			s_s[idy + i].z = 0.0;
-		}
-		__syncthreads();
-
-
-		for(int i = 0; i < N; i += blockDim.x){
-			if(idy + i < N){
-				double m = x4_d[idy + i].w;
-				if(m >= 0.0){
-					p_s[idy].x += m * v4_d[idy + i].x;
-					p_s[idy].y += m * v4_d[idy + i].y;
-					p_s[idy].z += m * v4_d[idy + i].z;
-					s_s[idy].x += m * x4_d[idy + i].x;
-					s_s[idy].y += m * x4_d[idy + i].y;
-					s_s[idy].z += m * x4_d[idy + i].z;
-				}
+	for(int i = 0; i < N; i += blockDim.x){
+		if(idy + i < N){
+			double m = x4_d[idy + i].w;
+			if(m >= 0.0){
+				s.x += m * x4_d[idy + i].x;
+				s.y += m * x4_d[idy + i].y;
+				s.z += m * x4_d[idy + i].z;
+				p.x += m * v4_d[idy + i].x;
+				p.y += m * v4_d[idy + i].y;
+				p.z += m * v4_d[idy + i].z;
 			}
 		}
-
-		__syncthreads();
-
-		int s = blockDim.x/2;
-		for(int i = 6; i < log2f(blockDim.x); ++i){
-			if( idy < s ) {
-				p_s[idy].x += p_s[idy + s].x;
-				p_s[idy].y += p_s[idy + s].y;
-				p_s[idy].z += p_s[idy + s].z;
-				s_s[idy].x += s_s[idy + s].x;
-				s_s[idy].y += s_s[idy + s].y;
-				s_s[idy].z += s_s[idy + s].z;
-			}
-			__syncthreads();
-			s /= 2;
-		}
-
-		if(idy < 32){
-			if(blockDim.x >= 64) p_s[idy].x += p_s[idy + 32].x;
-			if(blockDim.x >= 32) p_s[idy].x += p_s[idy + 16].x;
-			if(blockDim.x >= 16) p_s[idy].x += p_s[idy + 8].x;
-			if(blockDim.x >= 8) p_s[idy].x += p_s[idy + 4].x;
-			if(blockDim.x >= 4) p_s[idy].x += p_s[idy + 2].x;
-			if(blockDim.x >= 2) p_s[idy].x += p_s[idy + 1].x;
-
-			if(blockDim.x >= 64) p_s[idy].y += p_s[idy + 32].y;
-			if(blockDim.x >= 32) p_s[idy].y += p_s[idy + 16].y;
-			if(blockDim.x >= 16) p_s[idy].y += p_s[idy + 8].y;
-			if(blockDim.x >= 8) p_s[idy].y += p_s[idy + 4].y;
-			if(blockDim.x >= 4) p_s[idy].y += p_s[idy + 2].y;
-			if(blockDim.x >= 2) p_s[idy].y += p_s[idy + 1].y;
-
-			if(blockDim.x >= 64) p_s[idy].z += p_s[idy + 32].z;
-			if(blockDim.x >= 32) p_s[idy].z += p_s[idy + 16].z;
-			if(blockDim.x >= 16) p_s[idy].z += p_s[idy + 8].z;
-			if(blockDim.x >= 8) p_s[idy].z += p_s[idy + 4].z;
-			if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
-			if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
-
-			if(blockDim.x >= 64) s_s[idy].x += s_s[idy + 32].x;
-			if(blockDim.x >= 32) s_s[idy].x += s_s[idy + 16].x;
-			if(blockDim.x >= 16) s_s[idy].x += s_s[idy + 8].x;
-			if(blockDim.x >= 8) s_s[idy].x += s_s[idy + 4].x;
-			if(blockDim.x >= 4) s_s[idy].x += s_s[idy + 2].x;
-			if(blockDim.x >= 2) s_s[idy].x += s_s[idy + 1].x;
-
-			if(blockDim.x >= 64) s_s[idy].y += s_s[idy + 32].y;
-			if(blockDim.x >= 32) s_s[idy].y += s_s[idy + 16].y;
-			if(blockDim.x >= 16) s_s[idy].y += s_s[idy + 8].y;
-			if(blockDim.x >= 8) s_s[idy].y += s_s[idy + 4].y;
-			if(blockDim.x >= 4) s_s[idy].y += s_s[idy + 2].y;
-			if(blockDim.x >= 2) s_s[idy].y += s_s[idy + 1].y;
-
-			if(blockDim.x >= 64) s_s[idy].z += s_s[idy + 32].z;
-			if(blockDim.x >= 32) s_s[idy].z += s_s[idy + 16].z;
-			if(blockDim.x >= 16) s_s[idy].z += s_s[idy + 8].z;
-			if(blockDim.x >= 8) s_s[idy].z += s_s[idy + 4].z;
-			if(blockDim.x >= 4) s_s[idy].z += s_s[idy + 2].z;
-			if(blockDim.x >= 2) s_s[idy].z += s_s[idy + 1].z;
-
-		}
-		__syncthreads();
-		s0.x = s_s[0].x;	
-		s0.y = s_s[0].y;	
-		s0.z = s_s[0].z;	
-		p0.x = p_s[0].x;	
-		p0.y = p_s[0].y;	
-		p0.z = p_s[0].z;
-
 	}
-	//--------------------------------------------
 	__syncthreads();
-	__shared__ volatile double V_s[Bl];
-	__shared__ volatile double T_s[Bl];
-	__shared__ volatile double m_s[Bl];
-	__shared__ volatile double mtot;
 
-	//reuse shared memory allocation 
-	volatile double3 *L_s = s_s;
-	double test;
-	
-	mtot = 0.0;
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		s.x += __shfl_xor_sync(0xffffffff, s.x, i, warpSize);
+		s.y += __shfl_xor_sync(0xffffffff, s.y, i, warpSize);
+		s.z += __shfl_xor_sync(0xffffffff, s.z, i, warpSize);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+		s.x += __shfld_xor(s.x, i);
+		s.y += __shfld_xor(s.y, i);
+		s.z += __shfld_xor(s.z, i);
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+#endif
+	}
+	__syncthreads();
 
-	for(int i = 0; i < Bl; i += blockDim.x){
-		V_s[idy + i] = 0.0;
-		T_s[idy + i] = 0.0;
-		m_s[idy + i] = 0.0;
-		L_s[idy + i].x = 0.0;
-		L_s[idy + i].y = 0.0;
-		L_s[idy + i].z = 0.0;
+	if(blockDim.x > warpSize){
+		//reduce across warps
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			s_s[threadIdx.x].x = 0.0;
+			s_s[threadIdx.x].y = 0.0;
+			s_s[threadIdx.x].z = 0.0;
+			p_s[threadIdx.x].x = 0.0;
+			p_s[threadIdx.x].y = 0.0;
+			p_s[threadIdx.x].z = 0.0;
+		}
+		__syncthreads();
+
+		if(lane == 0){
+			s_s[warp] = s;
+			p_s[warp] = p;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			s = s_s[threadIdx.x];
+			p = p_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				s.x += __shfl_xor_sync(0xffffffff, s.x, i, warpSize);
+				s.y += __shfl_xor_sync(0xffffffff, s.y, i, warpSize);
+				s.z += __shfl_xor_sync(0xffffffff, s.z, i, warpSize);
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+				s.x += __shfld_xor(s.x, i);
+				s.y += __shfld_xor(s.y, i);
+				s.z += __shfld_xor(s.z, i);
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				s_s[0] = s;
+				p_s[0] = p;
+			}
+		}
+		__syncthreads();
+
+		s = s_s[0];
+		p = p_s[0];
+//printf("VEe %d %.20g\n", idy, V);
 	}
 
+	//--------------------------------------------
 	__syncthreads();
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
 			if(m >= 0.0){
-				m_s[idy] += m;
-				V_s[idy] += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
-				T_s[idy] += 0.5 * m * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+				mtot += m;
+				V += PE(x4_d[idx], x4_d[idy + i], idx, idy + i);
+				T += 0.5 * m * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
 				//convert to barycentric positions
 				double3 x4h;
-				x4h.x = x4_d[idy + i].x - s0.x / Msun;
-				x4h.y = x4_d[idy + i].y - s0.y / Msun;
-				x4h.z = x4_d[idy + i].z - s0.z / Msun;
-				L_s[idy].x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
-				L_s[idy].y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
-				L_s[idy].z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
-//printf("L ejection 1 %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
+				x4h.x = x4_d[idy + i].x - s.x / Msun;
+				x4h.y = x4_d[idy + i].y - s.y / Msun;
+				x4h.z = x4_d[idy + i].z - s.z / Msun;
+				L.x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
+				L.y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
+				L.z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
+//printf("L ejection 1 %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
 
 			}
 		}
 	}
 
 	__syncthreads();
-	int s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			m_s[idy] += m_s[idy + s];
-			V_s[idy] += V_s[idy + s];
-			T_s[idy] += T_s[idy + s];
-			L_s[idy].x += L_s[idy + s].x;
-			L_s[idy].y += L_s[idy + s].y;
-			L_s[idy].z += L_s[idy + s].z;
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		mtot += __shfl_xor_sync(0xffffffff, mtot, i, warpSize);
+		V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+		T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+		L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+		L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+		L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+		mtot += __shfld_xor(mtot, i);
+		V += __shfld_xor(V, i);
+		T += __shfld_xor(T, i);
+		L.x += __shfld_xor(L.x, i);
+		L.y += __shfld_xor(L.y, i);
+		L.z += __shfld_xor(L.z, i);
+#endif
+	}
+	__syncthreads();
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			m_s[threadIdx.x] = 0.0;
+			V_s[threadIdx.x] = 0.0;
+			T_s[threadIdx.x] = 0.0;
+			L_s[threadIdx.x].x = 0.0;
+			L_s[threadIdx.x].y = 0.0;
+			L_s[threadIdx.x].z = 0.0;
 		}
 		__syncthreads();
-		s /= 2;
+
+		if(lane == 0){
+			m_s[warp] = mtot;
+			V_s[warp] = V;
+			T_s[warp] = T;
+			L_s[warp] = L;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			mtot = m_s[threadIdx.x];
+			V = V_s[threadIdx.x];
+			T = T_s[threadIdx.x];
+			L = L_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				mtot += __shfl_xor_sync(0xffffffff, mtot, i, warpSize);
+				V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+				T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+				L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+				L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+				L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+				mtot += __shfld_xor(mtot, i);
+				V += __shfld_xor(V, i);
+				T += __shfld_xor(T, i);
+				L.x += __shfld_xor(L.x, i);
+				L.y += __shfld_xor(L.y, i);
+				L.z += __shfld_xor(L.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				m_s[0] = mtot;
+				V_s[0] = V;
+				T_s[0] = T;
+				L_s[0] = L;
+			}
+		}
+		__syncthreads();
+
+		mtot = m_s[0];
+		V = V_s[0];
+		T = T_s[0];
+		L = L_s[0];
+//printf("VEe %d %.20g\n", idy, V);
 	}
-
-	if(idy < 32){
-		if(blockDim.x >= 64) V_s[idy] += V_s[idy + 32];
-		if(blockDim.x >= 32) V_s[idy] += V_s[idy + 16];
-		if(blockDim.x >= 16) V_s[idy] += V_s[idy + 8];
-		if(blockDim.x >= 8) V_s[idy] += V_s[idy + 4];
-		if(blockDim.x >= 4) V_s[idy] += V_s[idy + 2];
-		if(blockDim.x >= 2) V_s[idy] += V_s[idy + 1];
-		
-		if(blockDim.x >= 64) T_s[idy] += T_s[idy + 32];
-		if(blockDim.x >= 32) T_s[idy] += T_s[idy + 16];
-		if(blockDim.x >= 16) T_s[idy] += T_s[idy + 8];
-		if(blockDim.x >= 8) T_s[idy] += T_s[idy + 4];
-		if(blockDim.x >= 4) T_s[idy] += T_s[idy + 2];
-		if(blockDim.x >= 2) T_s[idy] += T_s[idy + 1];
-		
-		if(blockDim.x >= 64) m_s[idy] += m_s[idy + 32];
-		if(blockDim.x >= 32) m_s[idy] += m_s[idy + 16];
-		if(blockDim.x >= 16) m_s[idy] += m_s[idy + 8];
-		if(blockDim.x >= 8) m_s[idy] += m_s[idy + 4];
-		if(blockDim.x >= 4) m_s[idy] += m_s[idy + 2];
-		if(blockDim.x >= 2) m_s[idy] += m_s[idy + 1];
-
-		if(blockDim.x >= 64) L_s[idy].x += L_s[idy + 32].x;
-		if(blockDim.x >= 32) L_s[idy].x += L_s[idy + 16].x;
-		if(blockDim.x >= 16) L_s[idy].x += L_s[idy + 8].x;
-		if(blockDim.x >= 8) L_s[idy].x += L_s[idy + 4].x;
-		if(blockDim.x >= 4) L_s[idy].x += L_s[idy + 2].x;
-		if(blockDim.x >= 2) L_s[idy].x += L_s[idy + 1].x;
-
-		if(blockDim.x >= 64) L_s[idy].y += L_s[idy + 32].y;
-		if(blockDim.x >= 32) L_s[idy].y += L_s[idy + 16].y;
-		if(blockDim.x >= 16) L_s[idy].y += L_s[idy + 8].y;
-		if(blockDim.x >= 8) L_s[idy].y += L_s[idy + 4].y;
-		if(blockDim.x >= 4) L_s[idy].y += L_s[idy + 2].y;
-		if(blockDim.x >= 2) L_s[idy].y += L_s[idy + 1].y;
-
-		if(blockDim.x >= 64) L_s[idy].z += L_s[idy + 32].z;
-		if(blockDim.x >= 32) L_s[idy].z += L_s[idy + 16].z;
-		if(blockDim.x >= 16) L_s[idy].z += L_s[idy + 8].z;
-		if(blockDim.x >= 8) L_s[idy].z += L_s[idy + 4].z;
-		if(blockDim.x >= 4) L_s[idy].z += L_s[idy + 2].z;
-		if(blockDim.x >= 2) L_s[idy].z += L_s[idy + 1].z;
-	}
-
 	__syncthreads();
-	if(idy == 0){
-		V_s[0] *= def_ksq * x4_d[idx].w;
 
-		V_s[0] += PESun(x4_d[idx], def_ksq * Msun, test);
-		double Tsun0 = 0.5 / Msun * ( p0.x * p0.x + p0.y * p0.y + p0.z * p0.z);
-		
-		mtot = Msun + m_s[0] - x4_d[idx].w;
+	mtot = Msun + mtot - x4_d[idx].w;
+	if(idy == 0){
+		V *= def_ksq * x4_d[idx].w;
+
+		V += PESun(x4_d[idx], def_ksq * Msun);
+		double Tsun0 = 0.5 / Msun * ( p.x * p.x + p.y * p.y + p.z * p.z);
 		
 		double3 Vsun;
-		Vsun.x = -p0.x / Msun + x4_d[idx].w * v4_d[idx].x/mtot;
-		Vsun.y = -p0.y / Msun + x4_d[idx].w * v4_d[idx].y/mtot;
-		Vsun.z = -p0.z / Msun + x4_d[idx].w * v4_d[idx].z/mtot;
-		
+		Vsun.x = -p.x / Msun + x4_d[idx].w * v4_d[idx].x/mtot;
+		Vsun.y = -p.y / Msun + x4_d[idx].w * v4_d[idx].y/mtot;
+		Vsun.z = -p.z / Msun + x4_d[idx].w * v4_d[idx].z/mtot;
+	
 		double Tsun1 = 0.5 * Msun * (Vsun.x * Vsun.x + Vsun.y * Vsun.y + Vsun.z * Vsun.z);
 		
-		*U_d += -Tsun1 + Tsun0 + T_s[0] + V_s[0];
+		*U_d += -Tsun1 + Tsun0 + T + V;
 
 
-		L_s[0].x += (s0.y * p0.z - s0.z * p0.y) / Msun;
-		L_s[0].y += (s0.z * p0.x - s0.x * p0.z) / Msun;
-		L_s[0].z += (s0.x * p0.y - s0.y * p0.x) / Msun;
-		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+		L.x += (s.y * p.z - s.z * p.y) / Msun;
+		L.y += (s.z * p.x - s.x * p.z) / Msun;
+		L.z += (s.x * p.y - s.y * p.x) / Msun;
+		volatile double Ltot = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 //printf("Ltot ejection 1 %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
 		LI_d[0] += Ltot;
 
@@ -365,9 +404,9 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 	__syncthreads();	
 
 
-	s0.x -= x4_d[idx].w * x4_d[idx].x;
-	s0.y -= x4_d[idx].w * x4_d[idx].y;
-	s0.z -= x4_d[idx].w * x4_d[idx].z;
+	s.x -= x4_d[idx].w * x4_d[idx].x;
+	s.y -= x4_d[idx].w * x4_d[idx].y;
+	s.z -= x4_d[idx].w * x4_d[idx].z;
 
 
 	double3 vcom;
@@ -381,10 +420,10 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 		vcom_d[0].y = vcom.y;
 		vcom_d[0].z = vcom.z;
 	}
-	
+
 	__syncthreads();
 	
-	for (int i = 0; i < N; i += blockDim.x){
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			v4_d[idy + i].x += vcom.x;
 			v4_d[idy + i].y += vcom.y;
@@ -400,76 +439,91 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 	// ---------------------------------------------
 	//redo p_s now
 	// ---------------------------------------------
-	for(int i = 0; i < Bl; i += blockDim.x){
-		p_s[idy + i].x = 0.0;
-		p_s[idy + i].y = 0.0;
-		p_s[idy + i].z = 0.0;
-	}
-		__syncthreads();
 
+	p.x = 0.0;
+	p.y = 0.0;
+	p.z = 0.0;
+
+	__syncthreads();
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
 			if(m >= 0.0){
-				p_s[idy].x += m * v4_d[idy + i].x;
-				p_s[idy].y += m * v4_d[idy + i].y;
-				p_s[idy].z += m * v4_d[idy + i].z;
+				p.x += m * v4_d[idy + i].x;
+				p.y += m * v4_d[idy + i].y;
+				p.z += m * v4_d[idy + i].z;
 			}
 		}
 	}
 
 	__syncthreads();
 
-	s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			p_s[idy].x += p_s[idy + s].x;
-			p_s[idy].y += p_s[idy + s].y;
-			p_s[idy].z += p_s[idy + s].z;
-		}
-		__syncthreads();
-		s /= 2;
-	}
-
-	if(idy < 32){
-		if(blockDim.x >= 64) p_s[idy].x += p_s[idy + 32].x;
-		if(blockDim.x >= 32) p_s[idy].x += p_s[idy + 16].x;
-		if(blockDim.x >= 16) p_s[idy].x += p_s[idy + 8].x;
-		if(blockDim.x >= 8) p_s[idy].x += p_s[idy + 4].x;
-		if(blockDim.x >= 4) p_s[idy].x += p_s[idy + 2].x;
-		if(blockDim.x >= 2) p_s[idy].x += p_s[idy + 1].x;
-
-		if(blockDim.x >= 64) p_s[idy].y += p_s[idy + 32].y;
-		if(blockDim.x >= 32) p_s[idy].y += p_s[idy + 16].y;
-		if(blockDim.x >= 16) p_s[idy].y += p_s[idy + 8].y;
-		if(blockDim.x >= 8) p_s[idy].y += p_s[idy + 4].y;
-		if(blockDim.x >= 4) p_s[idy].y += p_s[idy + 2].y;
-		if(blockDim.x >= 2) p_s[idy].y += p_s[idy + 1].y;
-
-		if(blockDim.x >= 64) p_s[idy].z += p_s[idy + 32].z;
-		if(blockDim.x >= 32) p_s[idy].z += p_s[idy + 16].z;
-		if(blockDim.x >= 16) p_s[idy].z += p_s[idy + 8].z;
-		if(blockDim.x >= 8) p_s[idy].z += p_s[idy + 4].z;
-		if(blockDim.x >= 4) p_s[idy].z += p_s[idy + 2].z;
-		if(blockDim.x >= 2) p_s[idy].z += p_s[idy + 1].z;
-
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+#endif
 	}
 	__syncthreads();
-	p0.x = p_s[0].x;	
-	p0.y = p_s[0].y;	
-	p0.z = p_s[0].z;
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			p_s[threadIdx.x].x = 0.0;
+			p_s[threadIdx.x].y = 0.0;
+			p_s[threadIdx.x].z = 0.0;
+		}
+		__syncthreads();
+
+		if(lane == 0){
+			p_s[warp] = p;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			p = p_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				p_s[0] = p;
+			}
+		}
+		__syncthreads();
+		p = p_s[0];
+	}
+
+	__syncthreads();
+
 	// ------------------------------------------------------
 
 	// ------------------------------------------------------
 	//redo now L calculation without the ejected particle
 	// ------------------------------------------------------
-	for(int i = 0; i < Bl; i += blockDim.x){
-		T_s[idy + i] = 0.0;
-		L_s[idy + i].x = 0.0;
-		L_s[idy + i].y = 0.0;
-		L_s[idy + i].z = 0.0;
-	}
+	T = 0.0;
+	L.x = 0.0;
+	L.y = 0.0;
+	L.z = 0.0;
 
 	__syncthreads();
 
@@ -477,75 +531,96 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
 			if(m >= 0.0){
-				T_s[idy] += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
+				T += 0.5 *x4_d[idy + i].w * (v4_d[idy + i].x * v4_d[idy + i].x +  v4_d[idy + i].y * v4_d[idy + i].y + v4_d[idy + i].z * v4_d[idy + i].z);
 				//convert to barycentric positions
 				double3 x4h;
-				x4h.x = x4_d[idy + i].x - s0.x / Msun;
-				x4h.y = x4_d[idy + i].y - s0.y / Msun;
-				x4h.z = x4_d[idy + i].z - s0.z / Msun;
-				L_s[idy].x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
-				L_s[idy].y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
-				L_s[idy].z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
-//printf("L ejection 2 %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
+				x4h.x = x4_d[idy + i].x - s.x / Msun;
+				x4h.y = x4_d[idy + i].y - s.y / Msun;
+				x4h.z = x4_d[idy + i].z - s.z / Msun;
+				L.x += m * (x4h.y * v4_d[idy + i].z - x4h.z * v4_d[idy + i].y) + spin_d[idy + i].x;
+				L.y += m * (x4h.z * v4_d[idy + i].x - x4h.x * v4_d[idy + i].z) + spin_d[idy + i].y;
+				L.z += m * (x4h.x * v4_d[idy + i].y - x4h.y * v4_d[idy + i].x) + spin_d[idy + i].z;
+//printf("L ejection 2 %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
 
 			}
 		}
 	}
 
 	__syncthreads();
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+		L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+		L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+		L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+		T += __shfld_xor(T, i);
+		L.x += __shfld_xor(L.x, i);
+		L.y += __shfld_xor(L.y, i);
+		L.z += __shfld_xor(L.z, i);
+#endif
+	}
+	__syncthreads();
 
-	s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			T_s[idy] += T_s[idy + s];
-			L_s[idy].x += L_s[idy + s].x;
-			L_s[idy].y += L_s[idy + s].y;
-			L_s[idy].z += L_s[idy + s].z;
+	if(blockDim.x > warpSize){
+		//reduce across warps
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			T_s[threadIdx.x] = 0.0;
+			L_s[threadIdx.x].x = 0.0;
+			L_s[threadIdx.x].y = 0.0;
+			L_s[threadIdx.x].z = 0.0;
 		}
 		__syncthreads();
-		s /= 2;
-	}
 
+		if(lane == 0){
+			T_s[warp] = T;
+			L_s[warp] = L;
+		}
 
-	if(idy < 32){
-		if(blockDim.x >= 64) T_s[idy] += T_s[idy + 32];
-		if(blockDim.x >= 32) T_s[idy] += T_s[idy + 16];
-		if(blockDim.x >= 16) T_s[idy] += T_s[idy + 8];
-		if(blockDim.x >= 8) T_s[idy] += T_s[idy + 4];
-		if(blockDim.x >= 4) T_s[idy] += T_s[idy + 2];
-		if(blockDim.x >= 2) T_s[idy] += T_s[idy + 1];
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			T = T_s[threadIdx.x];
+			L = L_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+				L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+				L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+				L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+				T += __shfld_xor(T, i);
+				L.x += __shfld_xor(L.x, i);
+				L.y += __shfld_xor(L.y, i);
+				L.z += __shfld_xor(L.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				T_s[0] = T;
+				L_s[0] = L;
+			}
+		}
+		__syncthreads();
 
-		if(blockDim.x >= 64) L_s[idy].x += L_s[idy + 32].x;
-		if(blockDim.x >= 32) L_s[idy].x += L_s[idy + 16].x;
-		if(blockDim.x >= 16) L_s[idy].x += L_s[idy + 8].x;
-		if(blockDim.x >= 8) L_s[idy].x += L_s[idy + 4].x;
-		if(blockDim.x >= 4) L_s[idy].x += L_s[idy + 2].x;
-		if(blockDim.x >= 2) L_s[idy].x += L_s[idy + 1].x;
-
-		if(blockDim.x >= 64) L_s[idy].y += L_s[idy + 32].y;
-		if(blockDim.x >= 32) L_s[idy].y += L_s[idy + 16].y;
-		if(blockDim.x >= 16) L_s[idy].y += L_s[idy + 8].y;
-		if(blockDim.x >= 8) L_s[idy].y += L_s[idy + 4].y;
-		if(blockDim.x >= 4) L_s[idy].y += L_s[idy + 2].y;
-		if(blockDim.x >= 2) L_s[idy].y += L_s[idy + 1].y;
-
-		if(blockDim.x >= 64) L_s[idy].z += L_s[idy + 32].z;
-		if(blockDim.x >= 32) L_s[idy].z += L_s[idy + 16].z;
-		if(blockDim.x >= 16) L_s[idy].z += L_s[idy + 8].z;
-		if(blockDim.x >= 8) L_s[idy].z += L_s[idy + 4].z;
-		if(blockDim.x >= 4) L_s[idy].z += L_s[idy + 2].z;
-		if(blockDim.x >= 2) L_s[idy].z += L_s[idy + 1].z;
+		T = T_s[0];
+		L = L_s[0];
+//printf("VEe %d %.20g\n", idy, V);
 	}
 
 	__syncthreads();
 	if(idy == 0){
-		L_s[0].x += (s0.y * p0.z - s0.z * p0.y) / Msun;
-		L_s[0].y += (s0.z * p0.x - s0.x * p0.z) / Msun;
-		L_s[0].z += (s0.x * p0.y - s0.y * p0.x) / Msun;
-		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+		L.x += (s.y * p.z - s.z * p.y) / Msun;
+		L.y += (s.z * p.x - s.x * p.z) / Msun;
+		L.z += (s.x * p.y - s.y * p.x) / Msun;
+		volatile double Ltot = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 //printf("Ltot ejection 2 %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
 		LI_d[0] -= Ltot;
-		*U_d -= T_s[0];
+		*U_d -= T;
 
 	}
 }
@@ -565,228 +640,263 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 //Authors: Simon Grimm
 //August 2016
 // ****************************************
-template <int Bl>
-__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *test_d, double *Energy0_d, double *LI0_d, int st, int N, int E){
+__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, int st, int N, int EE){
 	int idy = threadIdx.x;
 
-	__shared__ double T_s[Bl];
-	__shared__ double V_s[Bl];
-	__shared__ double E_s[Bl];
-	__shared__ double3 p_s[Bl];
-	__shared__ double3 s_s[Bl];
-	__shared__ double3 L_s[Bl];
+	double T = 0.0;
+	double V = 0.0;
+	double E = 0.0;
+	double3 p, s, L;
 
+	p.x = 0.0;
+	p.y = 0.0;
+	p.z = 0.0;
 
-	for(int i = 0; i < Bl; i += blockDim.x){
-		T_s[idy + i] = 0.0;
-		V_s[idy + i] = 0.0;
-		E_s[idy + i] = 0.0;
-		L_s[idy + i].x = 0.0;
-		L_s[idy + i].y = 0.0;
-		L_s[idy + i].z = 0.0;
+	s.x = 0.0;
+	s.y = 0.0;
+	s.z = 0.0;
 
-		s_s[idy + i].x = 0.0;
-		s_s[idy + i].y = 0.0;
-		s_s[idy + i].z = 0.0;
-		p_s[idy + i].x = 0.0;
-		p_s[idy + i].y = 0.0;
-		p_s[idy + i].z = 0.0;
-	}
+	L.x = 0.0;
+	L.y = 0.0;
+	L.z = 0.0;
+
+	extern __shared__ double TE_s[];
+	double *T_s = TE_s;				//size: warpSize
+	double *V_s = (double*)&T_s[warpSize];		//size: warpSize
+	double *E_s = (double*)&V_s[warpSize];		//size: warpSize
+	double3 *p_s = (double3*)&E_s[warpSize];	//size: warpSize
+	double3 *s_s = (double3*)&p_s[warpSize];	//size: warpSize
+	double3 *L_s = (double3*)&s_s[warpSize];	//size: warpSize
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			double m = x4_d[idy + i].w;
 			if(m > 0.0){
-				s_s[idy].x += m * x4_d[idy + i].x;
-				s_s[idy].y += m * x4_d[idy + i].y;
-				s_s[idy].z += m * x4_d[idy + i].z;
-				p_s[idy].x += m * v4_d[idy + i].x;
-				p_s[idy].y += m * v4_d[idy + i].y;
-				p_s[idy].z += m * v4_d[idy + i].z;
+				s.x += m * x4_d[idy + i].x;
+				s.y += m * x4_d[idy + i].y;
+				s.z += m * x4_d[idy + i].z;
+				p.x += m * v4_d[idy + i].x;
+				p.y += m * v4_d[idy + i].y;
+				p.z += m * v4_d[idy + i].z;
 			}
 		}
 	}
 	__syncthreads();
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		s.x += __shfl_xor_sync(0xffffffff, s.x, i, warpSize);
+		s.y += __shfl_xor_sync(0xffffffff, s.y, i, warpSize);
+		s.z += __shfl_xor_sync(0xffffffff, s.z, i, warpSize);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+		s.x += __shfld_xor(s.x, i);
+		s.y += __shfld_xor(s.y, i);
+		s.z += __shfld_xor(s.z, i);
+		p.x += __shfld_xor(p.x, i);
+		p.y += __shfld_xor(p.y, i);
+		p.z += __shfld_xor(p.z, i);
+#endif
+	}
 
+	if(blockDim.x > warpSize){
+		//reduce across warps
 
-	int s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			s_s[idy].x += s_s[idy + s].x;
-			s_s[idy].y += s_s[idy + s].y;
-			s_s[idy].z += s_s[idy + s].z;
-			p_s[idy].x += p_s[idy + s].x;
-			p_s[idy].y += p_s[idy + s].y;
-			p_s[idy].z += p_s[idy + s].z;
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			s_s[threadIdx.x].x = 0.0;
+			s_s[threadIdx.x].y = 0.0;
+			s_s[threadIdx.x].z = 0.0;
+			p_s[threadIdx.x].x = 0.0;
+			p_s[threadIdx.x].y = 0.0;
+			p_s[threadIdx.x].z = 0.0;
 		}
 		__syncthreads();
-		s /= 2;
+
+		if(lane == 0){
+			s_s[warp] = s;
+			p_s[warp] = p;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			s = s_s[threadIdx.x];
+			p = p_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				s.x += __shfl_xor_sync(0xffffffff, s.x, i, warpSize);
+				s.y += __shfl_xor_sync(0xffffffff, s.y, i, warpSize);
+				s.z += __shfl_xor_sync(0xffffffff, s.z, i, warpSize);
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+				s.x += __shfld_xor(s.x, i);
+				s.y += __shfld_xor(s.y, i);
+				s.z += __shfld_xor(s.z, i);
+				p.x += __shfld_xor(p.x, i);
+				p.y += __shfld_xor(p.y, i);
+				p.z += __shfld_xor(p.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				s_s[0] = s;
+				p_s[0] = p;
+			}
+		}
+		__syncthreads();
+
+		s = s_s[0];
+		p = p_s[0];
+//printf("VEe %d %.20g\n", idy, V);
 	}
-	
-	if(idy < 32){
-		volatile double3 *p = p_s;
-		volatile double3 *s = s_s;
-		if(blockDim.x >= 64) s[idy].x += s[idy + 32].x;
-		if(blockDim.x >= 32) s[idy].x += s[idy + 16].x;
-		if(blockDim.x >= 16) s[idy].x += s[idy + 8].x;
-		if(blockDim.x >= 8) s[idy].x += s[idy + 4].x;
-		if(blockDim.x >= 4) s[idy].x += s[idy + 2].x;
-		if(blockDim.x >= 2) s[idy].x += s[idy + 1].x;
 
-		if(blockDim.x >= 64) s[idy].y += s[idy + 32].y;
-		if(blockDim.x >= 32) s[idy].y += s[idy + 16].y;
-		if(blockDim.x >= 16) s[idy].y += s[idy + 8].y;
-		if(blockDim.x >= 8) s[idy].y += s[idy + 4].y;
-		if(blockDim.x >= 4) s[idy].y += s[idy + 2].y;
-		if(blockDim.x >= 2) s[idy].y += s[idy + 1].y;
-
-		if(blockDim.x >= 64) s[idy].z += s[idy + 32].z;
-		if(blockDim.x >= 32) s[idy].z += s[idy + 16].z;
-		if(blockDim.x >= 16) s[idy].z += s[idy + 8].z;
-		if(blockDim.x >= 8) s[idy].z += s[idy + 4].z;
-		if(blockDim.x >= 4) s[idy].z += s[idy + 2].z;
-		if(blockDim.x >= 2) s[idy].z += s[idy + 1].z;
-
-		if(blockDim.x >= 64) p[idy].x += p[idy + 32].x;
-		if(blockDim.x >= 32) p[idy].x += p[idy + 16].x;
-		if(blockDim.x >= 16) p[idy].x += p[idy + 8].x;
-		if(blockDim.x >= 8) p[idy].x += p[idy + 4].x;
-		if(blockDim.x >= 4) p[idy].x += p[idy + 2].x;
-		if(blockDim.x >= 2) p[idy].x += p[idy + 1].x;
-
-		if(blockDim.x >= 64) p[idy].y += p[idy + 32].y;
-		if(blockDim.x >= 32) p[idy].y += p[idy + 16].y;
-		if(blockDim.x >= 16) p[idy].y += p[idy + 8].y;
-		if(blockDim.x >= 8) p[idy].y += p[idy + 4].y;
-		if(blockDim.x >= 4) p[idy].y += p[idy + 2].y;
-		if(blockDim.x >= 2) p[idy].y += p[idy + 1].y;
-
-		if(blockDim.x >= 64) p[idy].z += p[idy + 32].z;
-		if(blockDim.x >= 32) p[idy].z += p[idy + 16].z;
-		if(blockDim.x >= 16) p[idy].z += p[idy + 8].z;
-		if(blockDim.x >= 8) p[idy].z += p[idy + 4].z;
-		if(blockDim.x >= 4) p[idy].z += p[idy + 2].z;
-		if(blockDim.x >= 2) p[idy].z += p[idy + 1].z;
-	}
 	__syncthreads();
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
-			V_s[idy] += Energy_d[idy + i];
+			V += Energy_d[idy + i];
 			double4 x4 = x4_d[idy + i];
 			double4 v4 = v4_d[idy + i];
 			if(x4.w > 0.0){
-				T_s[idy] += 0.5 * x4.w * (v4.x * v4.x +  v4.y * v4.y + v4.z * v4.z);
+				T += 0.5 * x4.w * (v4.x * v4.x +  v4.y * v4.y + v4.z * v4.z);
 			}
 			//convert to barycentric positions
 			double3 x4h;
-			x4h.x = x4.x - s_s[0].x / Msun;
-			x4h.y = x4.y - s_s[0].y / Msun;
-			x4h.z = x4.z - s_s[0].z / Msun;
-			L_s[idy].x += x4.w * (x4h.y * v4.z - x4h.z * v4.y) + spin_d[idy + i].x;
-			L_s[idy].y += x4.w * (x4h.z * v4.x - x4h.x * v4.z) + spin_d[idy + i].y;
-			L_s[idy].z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_d[idy + i].z;
-//printf("L %d %.20g %.20g %.20g\n", idy, L_s[idy].x, L_s[idy].y, L_s[idy].z);
+			x4h.x = x4.x - s.x / Msun;
+			x4h.y = x4.y - s.y / Msun;
+			x4h.z = x4.z - s.z / Msun;
+			L.x += x4.w * (x4h.y * v4.z - x4h.z * v4.y) + spin_d[idy + i].x;
+			L.y += x4.w * (x4h.z * v4.x - x4h.x * v4.z) + spin_d[idy + i].y;
+			L.z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_d[idy + i].z;
+//printf("VTa  %d %.20g %.20g\n", idy, V, T);
+//printf("L %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
 		}
 	}
-	E_s[idy] = V_s[idy] + T_s[idy];
+	E = V + T;
 	__syncthreads();
 
-	s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			T_s[idy] += T_s[idy + s];
-			V_s[idy] += V_s[idy + s];
-			E_s[idy] += E_s[idy + s];
-			L_s[idy].x += L_s[idy + s].x;
-			L_s[idy].y += L_s[idy + s].y;
-			L_s[idy].z += L_s[idy + s].z;
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+		V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+		E += __shfl_xor_sync(0xffffffff, E, i, warpSize);
+		L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+		L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+		L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+		T += __shfld_xor(T, i);
+		V += __shfld_xor(V, i);
+		E += __shfld_xor(E, i);
+		L.x += __shfld_xor(L.x, i);
+		L.y += __shfld_xor(L.y, i);
+		L.z += __shfld_xor(L.z, i);
+#endif
+	}
+//printf("VTb  %d %.20g %.20g\n", idy, V, T);
+	if(blockDim.x > warpSize){
+		//reduce across warps
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			T_s[threadIdx.x] = 0.0;
+			V_s[threadIdx.x] = 0.0;
+			E_s[threadIdx.x] = 0.0;
+			L_s[threadIdx.x].x = 0.0;
+			L_s[threadIdx.x].y = 0.0;
+			L_s[threadIdx.x].z = 0.0;
 		}
 		__syncthreads();
-		s /= 2;
+
+		if(lane == 0){
+			T_s[warp] = T;
+			V_s[warp] = V;
+			E_s[warp] = E;
+			L_s[warp] = L;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			T = T_s[threadIdx.x];
+			V = V_s[threadIdx.x];
+			E = E_s[threadIdx.x];
+			L = L_s[threadIdx.x];
+//printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
+				V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
+				E += __shfl_xor_sync(0xffffffff, E, i, warpSize);
+				L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
+				L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
+				L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
+#else
+				T += __shfld_xor(T, i);
+				V += __shfld_xor(V, i);
+				E += __shfld_xor(E, i);
+				L.x += __shfld_xor(L.x, i);
+				L.y += __shfld_xor(L.y, i);
+				L.z += __shfld_xor(L.z, i);
+#endif
+//printf("VEd %d %d %.20g\n", i, idy, V);
+			}
+			if(lane == 0){
+				T_s[0] = T;
+				V_s[0] = V;
+				E_s[0] = E;
+				L_s[0] = L;
+			}
+		}
+		__syncthreads();
+
+		T = T_s[0];
+		V = V_s[0];
+		E = E_s[0];
+		L = L_s[0];
+//printf("VEe %d %.20g\n", idy, V);
 	}
 
-	if(idy < 32){
-		volatile double *T = T_s;
-		volatile double *V = V_s;
-		volatile double *Es = E_s;
-		volatile double3 *L = L_s;
-		if(blockDim.x >= 64) T[idy] += T[idy + 32];
-		if(blockDim.x >= 32) T[idy] += T[idy + 16];
-		if(blockDim.x >= 16) T[idy] += T[idy + 8];
-		if(blockDim.x >= 8) T[idy] += T[idy + 4];
-		if(blockDim.x >= 4) T[idy] += T[idy + 2];
-		if(blockDim.x >= 2) T[idy] += T[idy + 1];
-
-		if(blockDim.x >= 64) V[idy] += V[idy + 32];
-		if(blockDim.x >= 32) V[idy] += V[idy + 16];
-		if(blockDim.x >= 16) V[idy] += V[idy + 8];
-		if(blockDim.x >= 8) V[idy] += V[idy + 4];
-		if(blockDim.x >= 4) V[idy] += V[idy + 2];
-		if(blockDim.x >= 2) V[idy] += V[idy + 1];
-
-		if(blockDim.x >= 64) Es[idy] += Es[idy + 32];
-		if(blockDim.x >= 32) Es[idy] += Es[idy + 16];
-		if(blockDim.x >= 16) Es[idy] += Es[idy + 8];
-		if(blockDim.x >= 8) Es[idy] += Es[idy + 4];
-		if(blockDim.x >= 4) Es[idy] += Es[idy + 2];
-		if(blockDim.x >= 2) Es[idy] += Es[idy + 1];
-
-		if(blockDim.x >= 64) L[idy].x += L[idy + 32].x;
-		if(blockDim.x >= 32) L[idy].x += L[idy + 16].x;
-		if(blockDim.x >= 16) L[idy].x += L[idy + 8].x;
-		if(blockDim.x >= 8) L[idy].x += L[idy + 4].x;
-		if(blockDim.x >= 4) L[idy].x += L[idy + 2].x;
-		if(blockDim.x >= 2) L[idy].x += L[idy + 1].x;
-
-		if(blockDim.x >= 64) L[idy].y += L[idy + 32].y;
-		if(blockDim.x >= 32) L[idy].y += L[idy + 16].y;
-		if(blockDim.x >= 16) L[idy].y += L[idy + 8].y;
-		if(blockDim.x >= 8) L[idy].y += L[idy + 4].y;
-		if(blockDim.x >= 4) L[idy].y += L[idy + 2].y;
-		if(blockDim.x >= 2) L[idy].y += L[idy + 1].y;
-
-		if(blockDim.x >= 64) L[idy].z += L[idy + 32].z;
-		if(blockDim.x >= 32) L[idy].z += L[idy + 16].z;
-		if(blockDim.x >= 16) L[idy].z += L[idy + 8].z;
-		if(blockDim.x >= 8) L[idy].z += L[idy + 4].z;
-		if(blockDim.x >= 4) L[idy].z += L[idy + 2].z;
-		if(blockDim.x >= 2) L[idy].z += L[idy + 1].z;
-	}
 
 	__syncthreads();
 	if(idy == 0){
-		volatile double Tsun = 0.5 / Msun * (p_s[0].x*p_s[0].x + p_s[0].y*p_s[0].y + p_s[0].z*p_s[0].z);  
+		volatile double Tsun = 0.5 / Msun * (p.x*p.x + p.y*p.y + p.z*p.z);  
 		//Lsun
-//printf("Lsum %d %.20g %.20g %.20g\n", idy, L_s[0].x, L_s[0].y, L_s[0].z);
-		L_s[0].x += (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun;
-		L_s[0].y += (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun;
-		L_s[0].z += (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun;
-//printf("LSun %.20g %.20g %.20g\n", (s_s[0].y * p_s[0].z - s_s[0].z * p_s[0].y) / Msun, (s_s[0].z * p_s[0].x - s_s[0].x * p_s[0].z) / Msun, (s_s[0].x * p_s[0].y - s_s[0].y * p_s[0].x) / Msun);
-//printf("Lsum+ %d %.20g %.20g %.20g\n", idy, L_s[0].x, L_s[0].y, L_s[0].z);
-		volatile double Ltot = sqrt(L_s[0].x * L_s[0].x + L_s[0].y * L_s[0].y + L_s[0].z * L_s[0].z);
+//printf("Lsum %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
+		L.x += (s.y * p.z - s.z * p.y) / Msun;
+		L.y += (s.z * p.x - s.x * p.z) / Msun;
+		L.z += (s.x * p.y - s.y * p.x) / Msun;
+//printf("LSun %.20g %.20g %.20g\n", (s.y * p.z - s.z * p.y) / Msun, (s.z * p.x - s.x * p.z) / Msun, (s.x * p.y - s.y * p.x) / Msun);
+//printf("Lsum+ %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
+		volatile double Ltot = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 //printf("Ltot %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
-		V_s[0] *= def_Kg;
-		T_s[0] *= def_Kg;
-		E_s[0] *= def_Kg;
+		V *= def_Kg;
+		T *= def_Kg;
+		E *= def_Kg;
 		Tsun *= def_Kg;
-		Energy_d[0] = V_s[0];
-		Energy_d[1] = T_s[0] + Tsun;
+		Energy_d[0] = V;
+		Energy_d[1] = T + Tsun;
 		Energy_d[2] = LI_d[st] * def_Kg;
 		Energy_d[3] = U_d[st] * def_Kg;
-		Energy_d[4] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
+		Energy_d[4] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
 		Energy_d[5] = (Ltot + LI_d[st]) * def_Kg;
 
-		if(E == 0){
+		if(EE == 0){
 
-			Energy0_d[st] = T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun;
+			Energy0_d[st] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
 			LI0_d[st] = (Ltot + LI_d[st]) * def_Kg;
 			Energy_d[7] = 0.0;
 			Energy_d[6] = 0.0;
 		}
-		if(E == 1){
+		if(EE == 1){
 			Energy_d[6] = ((Ltot + LI_d[st]) * def_Kg - LI0_d[st]) / LI0_d[st]; 
-			Energy_d[7] = ((T_s[0] + V_s[0] + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
+			Energy_d[7] = ((T + V + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
 		}
 	}
 }
@@ -797,60 +907,10 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 //Authors: Simon Grimm
 //August 2016
 // *************************************
-__host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
-	if(Nsmall == 0){
-		switch(NB){
-			case 16:{
-				potentialEnergy_kernel < 32 > <<< N, 16, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 32 > <<< 1, 16, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 32:{
-				potentialEnergy_kernel < 64 > <<< N, 32, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 64 > <<< 1, 32, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 64:{
-				potentialEnergy_kernel < 64 > <<< N, 64, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 64 > <<< 1, 64, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 128:{
-				potentialEnergy_kernel < 128 > <<< N, 128,  0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 128 > <<< 1, 128, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 256:{
-				potentialEnergy_kernel < 256 > <<< N, 256, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 256 > <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 512:{
-				potentialEnergy_kernel < 512 > <<< N, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 256 > <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 1024:{
-				potentialEnergy_kernel < 512 > <<< N, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 256 > <<< 1, 256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-			case 2048:{
-				potentialEnergy_kernel < 512 > <<< N, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-				kineticEnergy_kernel < 256 > <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
-			};
-			break;
-		}
-		if(NB > 2048){
-			potentialEnergy_kernel < 512 > <<< N, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N);
-			kineticEnergy_kernel < 256 > <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N, E);
+__host__ void Data::EnergyCall(int NBT, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
 
-		}
-	}
-	else{
-		potentialEnergy_kernel < 512 > <<< N + Nsmall, 512, 0, hstream>>> (x4_d, v4_d, Msun, Energy_d, test_d, st, N + Nsmall);
-		kineticEnergy_kernel < 256 > <<< 1 ,256, 0, hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, test_d, Energy0_d, LI0_d, st, N + Nsmall, E);
-	}
+	potentialEnergy_kernel  <<< N + Nsmall, min(NBT, 512), WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, Msun, Energy_d, st, N + Nsmall);
+	kineticEnergy_kernel <<< 1, min(NBT, 512), 12 * WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, Energy0_d, LI0_d, st, N + Nsmall, E);
 }
 // *************************************
 //This function calls the EjectionEnergy kernels
@@ -858,47 +918,7 @@ __host__ void Data::EnergyCall(int NB, double4 *x4_d, double4 *v4_d, double4 *sp
 //Authors: Simon Grimm
 //April 2016
 // *************************************3
-__host__ void Data::EjectionEnergyCall(int NB, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N, int Nsmall){
-	if(Nsmall == 0){
-		switch(NB){
-			case 16:{
-				EjectionEnergy_kernel < 32 > <<<1, 16>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 32:{
-				EjectionEnergy_kernel < 64 > <<<1, 32>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 64:{
-				EjectionEnergy_kernel < 64 > <<<1, 64>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 128:{
-				EjectionEnergy_kernel < 128 > <<<1, 128>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 256:{
-				EjectionEnergy_kernel < 256 > <<<1, 256>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 512:{
-				EjectionEnergy_kernel < 512 > <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 1024:{
-				EjectionEnergy_kernel < 512 > <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-			break;
-			case 2048:{
-				EjectionEnergy_kernel < 512 > <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-			};
-		}
-		if(NB > 2048){
-			EjectionEnergy_kernel < 512 > <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N);
-		}
-	}
-	else{
-		EjectionEnergy_kernel < 512 > <<<1, 512>>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N + Nsmall);
-	}
+__host__ void Data::EjectionEnergyCall(int NBT, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N, int Nsmall){
+	EjectionEnergy_kernel <<<1, min(NBT, 512), 12 * WarpSize * sizeof(double) >>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N + Nsmall);
 }
 

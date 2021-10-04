@@ -755,7 +755,9 @@ __global__ void gasEnergyd1_kernel(double *Energy_d, double4 *vold_d, int N){
 
 	double U = 0.0;
 
-	__shared__ double U_s[32];
+	extern __shared__ double gasd1_s[];
+	double *U_s = gasd1_s;
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -772,9 +774,9 @@ __global__ void gasEnergyd1_kernel(double *Energy_d, double4 *vold_d, int N){
 //printf("%d %g\n", idy, U_s[idy]);
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		U += __shfl_xor_sync(0xffffffff, U, i, 32);
+		U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 		U += __shfld_xor(U, i);
 #endif
@@ -792,9 +794,9 @@ __global__ void gasEnergyd1_kernel(double *Energy_d, double4 *vold_d, int N){
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			U = U_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				U += __shfl_xor_sync(0xffffffff, U, i, 32);
+				U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 				U += __shfld_xor(U, i);
 #endif
@@ -826,7 +828,9 @@ __global__ void gasEnergyd2_kernel(double *U_d, double4 *vold_d, int N){
 
 	double U = 0.0;
 
-	__shared__ double U_s[32];
+	extern __shared__ double gasd2_s[];
+	double *U_s = gasd2_s;
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -840,9 +844,9 @@ __global__ void gasEnergyd2_kernel(double *U_d, double4 *vold_d, int N){
 //printf("u %d %g\n", idy, U);
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		U += __shfl_xor_sync(0xffffffff, U, i, 32);
+		U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 		U += __shfld_xor(U, i);
 #endif
@@ -860,9 +864,9 @@ __global__ void gasEnergyd2_kernel(double *U_d, double4 *vold_d, int N){
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			U = U_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				U += __shfl_xor_sync(0xffffffff, U, i, 32);
+				U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 				U += __shfld_xor(U, i);
 #endif
@@ -902,9 +906,9 @@ __global__ void gasEnergya_kernel(double *Energy_d, double *U_d, int N){
 //printf("%d %g\n", idy, U_s[idy]);
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		U += __shfl_xor_sync(0xffffffff, U, i, 32);
+		U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 		U += __shfld_xor(U, i);
 #endif
@@ -914,7 +918,9 @@ __global__ void gasEnergya_kernel(double *Energy_d, double *U_d, int N){
 
 	if(blockDim.x > warpSize){
 		//reduce across warps
-		__shared__ double U_s[32];
+		extern __shared__ double gasa_s[];
+		double *U_s = gasa_s;
+
 		int lane = threadIdx.x % warpSize;
 		int warp = threadIdx.x / warpSize;
 		if(warp == 0){
@@ -930,9 +936,9 @@ __global__ void gasEnergya_kernel(double *Energy_d, double *U_d, int N){
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			U = U_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				U += __shfl_xor_sync(0xffffffff, U, i, 32);
+				U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 				U += __shfld_xor(U, i);
 #endif
@@ -976,9 +982,9 @@ __global__ void gasEnergyc_kernel(double *Energy_d, double *U_d, int N){
 //printf("%d %g\n", idy, U_s[idy]);
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		U += __shfl_xor_sync(0xffffffff, U, i, 32);
+		U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
 #else
 		U += __shfld_xor(U, i);
 #endif
@@ -1053,18 +1059,18 @@ __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, 
 //This function calls the Gas Energy kernel
 __host__ void Data::gasEnergyCall(double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int N, int Nsmall){
 
-	if(N + Nsmall <= 32){
-		gasEnergyc_kernel <<< 1, 32, 0, hstream>>> (Energy_d, U_d, N + Nsmall);
+	if(N + Nsmall <= WarpSize){
+		gasEnergyc_kernel <<< 1, WarpSize, 0, hstream>>> (Energy_d, U_d, N + Nsmall);
 	}
 	else if(N + Nsmall <= 512){
-		int nn = (N + Nsmall + 31) / 32;
-		gasEnergya_kernel <<< 1, nn * 32, 0, hstream>>> (Energy_d, U_d, N + Nsmall);
+		int nn = (N + Nsmall + WarpSize - 1) / WarpSize;
+		gasEnergya_kernel <<< 1, nn * WarpSize, WarpSize * sizeof(double), hstream>>> (Energy_d, U_d, N + Nsmall);
 	}
 	else{
 		int nct = 512;
 		int ncb = min((N + Nsmall + nct - 1) / nct, 1024);
-		gasEnergyd1_kernel <<< ncb, nct, 0, hstream>>> (Energy_d, vold_d, N + Nsmall);
-		gasEnergyd2_kernel <<< 1, ((ncb + 31) / 32) * 32, 0, hstream>>> (U_d, vold_d, ncb);
+		gasEnergyd1_kernel <<< ncb, nct, WarpSize * sizeof(double), hstream>>> (Energy_d, vold_d, N + Nsmall);
+		gasEnergyd2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double), hstream>>> (U_d, vold_d, ncb);
 	}
 }
 __host__ void Data::gasEnergyMCall(double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int N){

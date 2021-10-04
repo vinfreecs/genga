@@ -437,11 +437,11 @@ __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doubl
 
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		a.x += __shfl_xor_sync(0xffffffff, a.x, i, 32);
-		a.y += __shfl_xor_sync(0xffffffff, a.y, i, 32);
-		a.z += __shfl_xor_sync(0xffffffff, a.z, i, 32);
+		a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+		a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+		a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
 #else
 		a.x += __shfld_xor(a.x, i);
 		a.y += __shfld_xor(a.y, i);

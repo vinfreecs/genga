@@ -68,10 +68,10 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			double3 a = {0.0, 0.0, 0.0};
 			for(int j = 0; j < N; ++j){
 				double4 x4j;
-				x4j.x = __shfl_sync(0xffffffff, x4.x, ity * blockDim.x + j, 32);
-				x4j.y = __shfl_sync(0xffffffff, x4.y, ity * blockDim.x + j, 32);
-				x4j.z = __shfl_sync(0xffffffff, x4.z, ity * blockDim.x + j, 32);
-				x4j.w = __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, 32);
+				x4j.x = __shfl_sync(0xffffffff, x4.x, ity * blockDim.x + j, warpSize);
+				x4j.y = __shfl_sync(0xffffffff, x4.y, ity * blockDim.x + j, warpSize);
+				x4j.z = __shfl_sync(0xffffffff, x4.z, ity * blockDim.x + j, warpSize);
+				x4j.w = __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, warpSize);
 //printf("Kick %d %d %d %.20g %.20g\n", si, idx, j, x4.w, x4j.w);
 				acc_ttv(a, x4, x4j, j, idx);
 			}
@@ -86,12 +86,12 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			for(int j = 0; j < N; ++j){
 				double4 v4j;
 				double mj;
-				//by using with = 32, all sources lines in the warp start at 0, thereforre ity * blockDim.x sets the new starting point
+				//by using with = warpSize, all sources lines in the warp start at 0, therefore ity * blockDim.x sets the new starting point
 				//using a width of 8 would also work, but is not as flexible
-				v4j.x = __shfl_sync(0xffffffff, v4.x, ity * blockDim.x + j, 32);	
-				v4j.y = __shfl_sync(0xffffffff, v4.y, ity * blockDim.x + j, 32);
-				v4j.z = __shfl_sync(0xffffffff, v4.z, ity * blockDim.x + j, 32);
-				mj =    __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, 32);
+				v4j.x = __shfl_sync(0xffffffff, v4.x, ity * blockDim.x + j, warpSize);	
+				v4j.y = __shfl_sync(0xffffffff, v4.y, ity * blockDim.x + j, warpSize);
+				v4j.z = __shfl_sync(0xffffffff, v4.z, ity * blockDim.x + j, warpSize);
+				mj =    __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, warpSize);
 				a.x += mj * v4j.x;
 				a.y += mj * v4j.y;
 				a.z += mj * v4j.z;
@@ -120,10 +120,10 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			for(int j = 0; j < N; ++j){
 				double4 v4j;
 				double mj;
-				v4j.x = __shfl_sync(0xffffffff, v4.x, ity * blockDim.x + j, 32);
-				v4j.y = __shfl_sync(0xffffffff, v4.y, ity * blockDim.x + j, 32);
-				v4j.z = __shfl_sync(0xffffffff, v4.z, ity * blockDim.x + j, 32);
-				mj =    __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, 32);
+				v4j.x = __shfl_sync(0xffffffff, v4.x, ity * blockDim.x + j, warpSize);
+				v4j.y = __shfl_sync(0xffffffff, v4.y, ity * blockDim.x + j, warpSize);
+				v4j.z = __shfl_sync(0xffffffff, v4.z, ity * blockDim.x + j, warpSize);
+				mj =    __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, warpSize);
 				a.x += mj * v4j.x;
 				a.y += mj * v4j.y;
 				a.z += mj * v4j.z;
@@ -138,10 +138,10 @@ __global__ void ttv_step_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			a = {0.0, 0.0, 0.0};
 			for(int j = 0; j < N; ++j){
 				double4 x4j;
-				x4j.x = __shfl_sync(0xffffffff, x4.x, ity * blockDim.x + j, 32);
-				x4j.y = __shfl_sync(0xffffffff, x4.y, ity * blockDim.x + j, 32);
-				x4j.z = __shfl_sync(0xffffffff, x4.z, ity * blockDim.x + j, 32);
-				x4j.w = __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, 32);
+				x4j.x = __shfl_sync(0xffffffff, x4.x, ity * blockDim.x + j, warpSize);
+				x4j.y = __shfl_sync(0xffffffff, x4.y, ity * blockDim.x + j, warpSize);
+				x4j.z = __shfl_sync(0xffffffff, x4.z, ity * blockDim.x + j, warpSize);
+				x4j.w = __shfl_sync(0xffffffff, x4.w, ity * blockDim.x + j, warpSize);
 //printf("Kick %d %d %g %g\n", idx, j, x4.x, x4j.x);
 				acc_ttv(a, x4, x4j, j, idx);
 			}

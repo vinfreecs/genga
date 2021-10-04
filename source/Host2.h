@@ -23,6 +23,7 @@ public:
 	int devCount;
 	int runtimeVersion;
 	int driverVersion;
+	int WarpSize;
 
 	int MultiSim;
 	int interrupt;				//signal handling

@@ -22,7 +22,10 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, cons
 
 	double4 p = {0.0, 0.0, 0.0, 0.0};
 
-	__shared__ double4 p_s[32];
+	extern __shared__ double4 comd1_s[];
+	double4 *p_s = comd1_s;
+
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -49,19 +52,20 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, cons
 
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 		p.x += __shfld_xor(p.x, i);
 		p.y += __shfld_xor(p.y, i);
 		p.z += __shfld_xor(p.z, i);
 		p.w += __shfld_xor(p.w, i);
 #endif
-	}
+//if(i >= 16) printf("d1A %d %d %.20g\n", idy, i, p.x);
+ 	}
 	__syncthreads();
 
 	if(blockDim.x > warpSize){
@@ -73,18 +77,19 @@ __global__ void comd1_kernel(double4 *x4_d, double4 *v4_d, double4 *vold_d, cons
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			p = p_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 				p.x += __shfld_xor(p.x, i);
 				p.y += __shfld_xor(p.y, i);
 				p.z += __shfld_xor(p.z, i);
 				p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("d1B %d %d %.20g\n", idy, i, p.x);
 			}
 		}
 	}
@@ -111,7 +116,9 @@ __global__ void comd2_kernel(double4 *vold_d, const int N){
 
 	double4 p = {0.0, 0.0, 0.0, 0.0};
 
-	__shared__ double4 p_s[32];
+	extern __shared__ double4 comd2_s[];
+	double4 *p_s = comd2_s;
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -129,18 +136,19 @@ __global__ void comd2_kernel(double4 *vold_d, const int N){
 
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 		p.x += __shfld_xor(p.x, i);
 		p.y += __shfld_xor(p.y, i);
 		p.z += __shfld_xor(p.z, i);
 		p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("d2A %d %d %.20g\n", idy, i, p.x);
 	}
 	__syncthreads();
 
@@ -153,18 +161,19 @@ __global__ void comd2_kernel(double4 *vold_d, const int N){
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			p = p_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 				p.x += __shfld_xor(p.x, i);
 				p.y += __shfld_xor(p.y, i);
 				p.z += __shfld_xor(p.z, i);
 				p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("d2B %d %d %.20g\n", idy, i, p.x);
 			}
 		}
 	}
@@ -237,24 +246,27 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	}
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 		p.x += __shfld_xor(p.x, i);
 		p.y += __shfld_xor(p.y, i);
 		p.z += __shfld_xor(p.z, i);
 		p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("BA %d %d %.20g\n", idy, i, p.x);
 	}
 
 	__syncthreads();
 	if(blockDim.x > warpSize){
 		//reduce across warps
-		__shared__ double4 p_s[32];
+		extern __shared__ double4 comB_s[];
+		double4 *p_s = comB_s;
+
 		int lane = threadIdx.x % warpSize;
 		int warp = threadIdx.x / warpSize;
 		if(warp == 0){
@@ -273,18 +285,19 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			p = p_s[threadIdx.x];
-			for(int i = 16; i >= 1; i/=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-				p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-				p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-				p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+				p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+				p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+				p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+				p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 				p.x += __shfld_xor(p.x, i);
 				p.y += __shfld_xor(p.y, i);
 				p.z += __shfld_xor(p.z, i);
 				p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("BB %d %d %.20g\n", idy, i, p.x);
 			}
 			if(lane == 0){
 				p_s[0] = p;
@@ -345,18 +358,19 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	}
 	__syncthreads();
 
-	for(int i = 16; i >= 1; i/=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		p.x += __shfl_xor_sync(0xffffffff, p.x, i, 32);
-		p.y += __shfl_xor_sync(0xffffffff, p.y, i, 32);
-		p.z += __shfl_xor_sync(0xffffffff, p.z, i, 32);
-		p.w += __shfl_xor_sync(0xffffffff, p.w, i, 32);
+		p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+		p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+		p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+		p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
 #else
 		p.x += __shfld_xor(p.x, i);
 		p.y += __shfld_xor(p.y, i);
 		p.z += __shfld_xor(p.z, i);
 		p.w += __shfld_xor(p.w, i);
 #endif
+//if(i >= 16) printf("C %d %d %.20g\n", idy, i, p.x);
 	}
 
 	__syncthreads();
@@ -394,18 +408,18 @@ __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 }
 
 __host__ void Data::comCall(const int f){
-	if(N_h[0] + Nsmall_h[0] <= 32){
-		comC_kernel <<< 1, 32 >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
+	if(N_h[0] + Nsmall_h[0] <= WarpSize){
+		comC_kernel <<< 1, WarpSize >>>(x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
 	}
 	else if(N_h[0] + Nsmall_h[0] <= 512){
-		int nn = (N_h[0] + Nsmall_h[0] + 31) / 32;
-		comB_kernel <<< 1, nn * 32 >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
+		int nn = (N_h[0] + Nsmall_h[0] + WarpSize - 1) / WarpSize;
+		comB_kernel <<< 1, nn * WarpSize, WarpSize * sizeof(double4) >>> (x4_d, v4_d, vcom_d, Msun_h[0].x, N_h[0] + Nsmall_h[0], f);
 	}
 	else{
 		int nct = 512;
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
-		comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
-		comd2_kernel <<< 1, ((ncb + 31) / 32) * 32  >>> (vold_d, ncb);
+		comd1_kernel <<< dim3(ncb, 1, 1), dim3(nct, 1, 1), WarpSize * sizeof(double4) >>> (x4_d, v4_d, vold_d, N_h[0] + Nsmall_h[0]);
+		comd2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double4)  >>> (vold_d, ncb);
 		comd3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, vold_d, vcom_d, Msun_h[0].x,  N_h[0] + Nsmall_h[0], f);
 	}
 

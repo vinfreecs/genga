@@ -292,14 +292,12 @@ __host__ void Data::firstInfoB(){
 }
 
 __host__ int Data::firstEnergy(){
-	cudaStream_t hstream[16];
 
-	for(int hst = 0; hst < 16; ++hst) cudaStreamCreate(&hstream[hst]);
 	for(int st = 0; st < Nst; ++st){
 		int NBS = NBS_h[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 0);
+		EnergyCall(NBT[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 0);
 	}
-	for(int hst = 0; hst < 16; ++hst) cudaStreamDestroy(hstream[hst]);
+	cudaDeviceSynchronize();
 	error = cudaGetLastError();
 	fprintf(masterfile,"Energy error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
@@ -311,10 +309,8 @@ __host__ int Data::firstEnergy(){
 
 //This function calls the Energy function and prints information
 __host__ int Data::EnergyOutput(int irregular){
-	cudaStream_t hstream[16];
 	FILE *Energyfile;
 	for(int hst = 0; hst < 16; ++hst){
-		cudaStreamCreate(&hstream[hst]);
 		error = cudaGetLastError();
 		if(error != 0){
 			printf("Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
@@ -335,13 +331,12 @@ __host__ int Data::EnergyOutput(int irregular){
 		int NE = NEnergy[st];
 		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NE, test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 1);
 	}
-	for(int hst = 0; hst < 16; ++hst){
-		cudaStreamDestroy(hstream[hst]);
-		error = cudaGetLastError();
-		if(error != 0){
-			printf("Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
-			return 0;
-		}
+
+	cudaDeviceSynchronize();
+	error = cudaGetLastError();
+	if(error != 0){
+		printf("Energy error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+		return 0;
 	}
 
 	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst*sizeof(double), cudaMemcpyDeviceToHost);

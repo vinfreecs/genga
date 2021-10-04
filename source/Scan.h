@@ -17,7 +17,9 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 	int t1 = 0;
 	int t2 = 0;
 
-	__shared__ int t_s[32];
+	extern __shared__ int Scand1_s[];
+	int *t_s = Scand1_s;
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -31,13 +33,13 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 	__syncthreads();
 //if(id < 1024) printf("Scan a %d %d %d\n", id, idy, t1);
 
-	for(int i = 1; i < 32; i*=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+		t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 		t2 = __shfl_up(t1, i);
 #endif
-		if(idy % 32 >= i) t1 += t2;
+		if(idy % warpSize >= i) t1 += t2;
 	}		
 	__syncthreads();
 
@@ -46,7 +48,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 	if(blockDim.x > warpSize){
 		//reduce across warps
 
-		if(lane == 31){
+		if(lane == warpSize - 1){
 			t_s[warp] = t1;
 		}
 
@@ -54,22 +56,22 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
-			for(int i = 1; i < 32; i*=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+				t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 				t2 = __shfl_up(t1, i);
 #endif
 				if(lane >= i) t1 += t2;
 			}
 		}
-		if(idy < blockDim.x / 32){
+		if(idy < blockDim.x / warpSize){
 			t_s[idy] = t1;
 		}
 
 		__syncthreads();
 
-		if(idy >= 32){
+		if(idy >= warpSize){
 			t0 += t_s[warp - 1];
 		}
 	}
@@ -105,7 +107,9 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 	int t1 = 0;
 	int t2 = 0;
 
-	__shared__ int t_s[32];
+	extern __shared__ int Scand2_s[];
+	int *t_s = Scand2_s;
+
 	int lane = threadIdx.x % warpSize;
 	int warp = threadIdx.x / warpSize;
 
@@ -119,13 +123,13 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 	__syncthreads();
 //if(idy < 32) printf("Scan a %d %d\n", idy, t1);
 
-	for(int i = 1; i < 32; i*=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+		t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 		t2 = __shfl_up(t1, i);
 #endif
-		if(idy % 32 >= i) t1 += t2;
+		if(idy % warpSize >= i) t1 += t2;
 	}		
 	__syncthreads();
 //if(idy < 32) printf("Scan b %d %d\n", idy, t1);
@@ -135,7 +139,7 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 	if(blockDim.x > warpSize){
 		//reduce across warps
 
-		if(lane == 31){
+		if(lane == warpSize - 1){
 			t_s[warp] = t1;
 		}
 
@@ -143,22 +147,22 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
-			for(int i = 1; i < 32; i*=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+				t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 				t2 = __shfl_up(t1, i);
 #endif
 				if(lane >= i) t1 += t2;
 			}
 		}
-		if(idy < blockDim.x / 32){
+		if(idy < blockDim.x / warpSize){
 			t_s[idy] = t1;
 		}
 
 		__syncthreads();
 
-		if(idy >= 32){
+		if(idy >= warpSize){
 			t0 += t_s[warp - 1];
 		}
 	}
@@ -220,13 +224,13 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 	__syncthreads();
 //printf("Scan a %d %d %d\n", 0, idy, t1);
 
-	for(int i = 1; i < 32; i*=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+		t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 		t2 = __shfl_up(t1, i);
 #endif
-		if(idy % 32 >= i) t1 += t2;
+		if(idy % warpSize >= i) t1 += t2;
 //printf("Scan a %d %d %d\n", i, idy, t1);
 	}		
 //printf("Scan A %d %d %d\n", 0, idy, t1);
@@ -237,7 +241,9 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 
 	if(blockDim.x > warpSize){
 		//reduce across warps
-		__shared__ int t_s[32];
+		extern __shared__ int Scana_s[];
+		int *t_s = Scana_s;
+
 		int lane = threadIdx.x % warpSize;
 		int warp = threadIdx.x / warpSize;
 		if(warp == 0){
@@ -245,7 +251,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 		}
 		__syncthreads();
 
-		if(lane == 31){
+		if(lane == warpSize - 1){
 			t_s[warp] = t1;
 		}
 
@@ -253,9 +259,9 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 		//reduce previous warp results in the first warp
 		if(warp == 0){
 			t1 = t_s[threadIdx.x];
-			for(int i = 1; i < 32; i*=2){
+			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-				t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+				t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 				t2 = __shfl_up(t1, i);
 #endif
@@ -263,13 +269,13 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 //printf("Scan b %d %d %d\n", i, idy, t1);
 			}
 		}
-		if(idy < blockDim.x / 32){
+		if(idy < blockDim.x / warpSize){
 			t_s[idy] = t1;
 		}
 
 		__syncthreads();
 
-		if(idy >= 32){
+		if(idy >= warpSize){
 			t0 += t_s[warp - 1];
 		}
 	}
@@ -314,13 +320,13 @@ __global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 	__syncthreads();
 //printf("Scan a %d %d %d\n", 0, idy, t1);
 
-	for(int i = 1; i < 32; i*=2){
+	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
-		t2 = __shfl_up_sync(0xffffffff, t1, i, 32);
+		t2 = __shfl_up_sync(0xffffffff, t1, i, warpSize);
 #else
 		t2 = __shfl_up(t1, i);
 #endif
-		if(idy % 32 >= i) t1 += t2;
+		if(idy % warpSize >= i) t1 += t2;
 //printf("Scan a %d %d %d\n", i, idy, t1);
 	}		
 
@@ -333,7 +339,7 @@ __global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 			Encpairs3_d[(t1 - 1) * NencMax + 1] = idy;
 		}
 	}
-	if(idy == 31){
+	if(idy == warpSize - 1){
 		Nencpairs3_d[0] = t1;
 	}
 }
