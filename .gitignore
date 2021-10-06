@@ -4,5 +4,10 @@ source/genga
 GengaGL/gengaGL
 tools/KE
 
+#HIP
+HIP/*.h
+HIP/*.cpp
+HIP/Makefile
+
 # Sphinx
 docs/_build
