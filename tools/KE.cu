@@ -3,6 +3,7 @@
 #include <math.h>
 #include <cuda.h>
 
+//in parabolic orbits, a is used as the periapsis distance q
 
 void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc, double &Omega, double &w, double &Theta, double &E, double &M){
 
@@ -60,8 +61,20 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	if(t < -1.0) t = -1.0;
 	if(t > 1.0) t = 1.0;
 	Theta = acos(t);
-	if(u < 0.0) Theta = 2.0 * M_PI - Theta;
-
+	if(u < 0.0){
+		if(e < 1.0 - 1.0e-10){
+			//elliptic
+			Theta = 2.0 * M_PI - Theta;
+		}
+		else if(e > 1.0 + 1.0e-10){
+			//hyperbolic
+			Theta = -Theta;
+		}
+		else{
+			//parabolic
+			Theta = - Theta;
+		}
+	}
 
 	//Non circular, equatorial orbit
 	if(e > 1.0e-10 && inc < 1.0e-10){
@@ -86,28 +99,66 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 		if(t < -1.0) t = -1.0;
 		if(t > 1.0) t = 1.0;
 		Theta = acos(t);
-		if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+		if(x4i.z < 0.0){
+			if(e < 1.0 - 1.0e-10){
+				//elliptic
+				Theta = 2.0 * M_PI - Theta;
+			}
+			else if(e > 1.0 + 1.0e-10){
+				//hyperbolic
+				Theta = -Theta;
+			}
+			else{
+				//parabolic
+				Theta = -Theta;
+			}
+		}
 	}
 	if(w == 0 && Omega == 0.0){
 		Theta = acos(x4i.x * ir);
-		if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
-
+		if(x4i.y < 0.0){
+			if(e < 1.0 - 1.0e-10){
+				//elliptic
+				Theta = 2.0 * M_PI - Theta;
+			}
+			else if(e > 1.0 + 1.0e-10){
+				//hyperbolic
+				Theta = -Theta;
+			}
+			else{
+				//parabolic
+				Theta = -Theta;
+			}
+		}
 	}
 
-	//Eccentric Anomaly
-	E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
-	if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-
-	//Mean Anomaly
-	M = E - e * sin(E);
-
-	if(e >= 1){
-		E = acosh((e + t) / (1.0 + e * t));
+	if(e < 1.0 - 1.0e-10){
+		//Eccentric Anomaly
+		E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 		if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-		M = E - e * sinh(E);
+
+		//Mean Anomaly
+		M = E - e * sin(E);
 	}
+	else if(e > 1.0 + 1.0e-10){
+		//Hyperbolic Anomaly
+		//named still E instead of H or F
+		E = acosh((e + t) / (1.0 + e * t));
+		if(Theta < 0.0) E = - E;
 
+		M = e * sinh(E) - E;
+	}
+	else{
+		//Parabolic Anomaly
+		E = tan(Theta * 0.5);
 
+		if(E > M_PI) E = E - 2.0 * M_PI;
+
+		M = E + E * E * E / 3.0;
+
+		//use a to store q
+		a = h * h / mu * 0.5;
+	}
 }
 
 int main(int argc, char*argv[]){

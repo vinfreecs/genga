@@ -30,7 +30,19 @@ if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
 	double F = SolarConstant_c[0] / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
-	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+	double n;
+	if(e < 1.0 - 1.0e-10){
+		//Elliptic
+		n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+	}
+	else if(e > 1.0 + 1.0e-10){
+		//hyperbolic
+		n = sqrt(mu / (-a * a * a)); //mean motion in 1 / day * 0.017 
+	}
+	else{
+		//parabolic
+		n = sqrt(mu); //mean motion in 1 / day * 0.017 
+	}
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
 
 	double Ts4 = (1.0 - Asteroid_A_c[0]) * F / (Asteroid_eps_c[0] * def_sigma);
@@ -165,7 +177,19 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
 	double F = SolarConstant_c[0] / (d * d);		//scaled heliocentric distance, F = SEarth * (aEarth/a)^2
 	
-	double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+	double n;
+	if(e < 1.0 - 1.0e-10){
+		//Elliptic
+		n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+	}
+	else if(e > 1.0 + 1.0e-10){
+		//hyperbolic
+		n = sqrt(mu / (-a * a * a)); //mean motion in 1 / day * 0.017 
+	}
+	else{
+		//parabolic
+		n = sqrt(mu); //mean motion in 1 / day * 0.017 
+	}
 	n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
 
 	double Ts4 = (1.0 - Asteroid_A_c[0]) * F / (Asteroid_eps_c[0] * def_sigma);
@@ -230,6 +254,9 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double ilS = sqrt(Asteroid_rho_c[0] * Asteroid_C_c[0] * n / Asteroid_K_c[0]);
 	double ThetaS = t1 * sqrt(n);
 	double eta = sqrt(1.0 - e * e);
+	if(e > 1.0) eta = sqrt(e * e - 1.0);
+
+
 
 	double X = s2 * RR * ilS;
 	double lamda = ThetaS / X * sqrt(sqrt(eta * eta * eta));
@@ -297,6 +324,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double4 *spin_d, int
 			}
 			double a, e, inc, Omega, w, Theta, E;
 		
+//printf("K0 %d %g %g %g %g %g %g %g %g\n", id, x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 
 			double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
 			double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
@@ -349,8 +377,20 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double4 *spin_d, int
 			if(t < -1.0) t = -1.0;
 			if(t > 1.0) t = 1.0;
 			Theta = acos(t);
-			if(u < 0.0) Theta = 2.0 * M_PI - Theta;
-
+			if(u < 0.0){
+				if(e < 1.0 - 1.0e-10){
+					//elliptic
+					Theta = 2.0 * M_PI - Theta;
+				}
+				else if(e > 1.0 + 1.0e-10){
+					//hyperbolic
+					Theta = -Theta;
+				}
+				else{
+					//parabolic
+					Theta = - Theta;
+				}
+			}
 
 			//Non circular, equatorial orbit
 			if(e > 1.0e-10 && inc < 1.0e-10){
@@ -375,71 +415,158 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double4 *spin_d, int
 				if(t < -1.0) t = -1.0;
 				if(t > 1.0) t = 1.0;
 				Theta = acos(t);
-				if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+				if(x4i.z < 0.0){
+					if(e < 1.0 - 1.0e-10){
+						//elliptic
+						Theta = 2.0 * M_PI - Theta;
+					}
+					else if(e > 1.0 + 1.0e-10){
+						//hyperbolic
+						Theta = -Theta;
+					}
+					else{
+						//parabolic
+						Theta = -Theta;
+					}
+				}
 			}
 			if(w == 0 && Omega == 0.0){
 				Theta = acos(x4i.x * ir);
-				if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
+				if(x4i.y < 0.0){
+					if(e < 1.0 - 1.0e-10){
+						//elliptic
+						Theta = 2.0 * M_PI - Theta;
+					}
+					else if(e > 1.0 + 1.0e-10){
+						//hyperbolic
+						Theta = -Theta;
+					}
+					else{
+						//parabolic
+						Theta = -Theta;
+					}
 
+				}
 			}
 
-			//Eccentric Anomaly
-			E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
-			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+			if(e < 1.0 - 1.0e-10){
+				//Eccentric Anomaly
+				E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
+				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
-			//Mean Anomaly
-			//double M = E - e * sin(E);
+				//Mean Anomaly
+				//double M = E - e * sin(E);
+			}
+			else if(e > 1.0 + 1.0e-10){
+				//Hyperbolic Anomaly
+				//named still E instead of H or F
+				E = acosh((e + t) / (1.0 + e * t));
+				if(Theta < 0.0) E = - E;
 
-//printf("K %g %g %g %g %g %g %g\n", a, e, inc, Omega, w, E, Theta);
+				//M = e * sinh(E) - E;
+			}
+			else{
+				//Parabolic Anomaly
+				E = tan(Theta * 0.5);
+				if(E > M_PI) E = E - 2.0 * M_PI;
 
-			//modify elements
+				//M = E + E * E * E / 3.0;
+
+				//use a to store q
+				a = h * h / mu * 0.5;
+			}
+
+
+//printf("K1 %d %.20g %.20g %g %g %g %g %g\n", id, a, e, inc, Omega, w, E, Theta);
+
+			if(e < 1.0){
+
+				//modify elements
 #if PVERSION == 1
-			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
+				Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
 #endif
 #if PVERSION == 2
-			Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
+				Yarkovski(a, e, x4i.w, mu, v4i.w, spini, h3, h, dt);
 #endif
 #if PVERSION == 3
-			Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt);
+				Yarkovski2(a, e, x4i.w, Msun, v4i.w, spini, h3, h, dt);
 #endif
-			//Convert to Cartesian Coordinates
+				//Convert to Cartesian Coordinates
 
-			double cw = cos(w);
-			double sw = sin(w);
-			double cOmega = cos(Omega);
-			double sOmega = sin(Omega);
-			double ci = cos(inc);
-			double si = sin(inc);
+//printf("K2 %d %.20g %.20g %g %g %g %g %g\n", id, a, e, inc, Omega, w, E, Theta);
 
-			double3 P3;
-			P3.x = cw * cOmega - sw * ci * sOmega;
-			P3.y = cw * sOmega + sw * ci * cOmega;
-			P3.z = sw * si;
+				double cw = cos(w);
+				double sw = sin(w);
+				double cOmega = cos(Omega);
+				double sOmega = sin(Omega);
+				double ci = cos(inc);
+				double si = sin(inc);
 
-			double3 Q3;
-			Q3.x = -sw * cOmega - cw * ci * sOmega;
-			Q3.y = -sw * sOmega + cw * ci * cOmega;
-			Q3.z = cw * si;
+				double3 P3;
+				P3.x = cw * cOmega - sw * ci * sOmega;
+				P3.y = cw * sOmega + sw * ci * cOmega;
+				P3.z = sw * si;
 
-			double cE = cos(E);
-			double sE = sin(E);
-			double t1 = a * (cE - e);
-			double t2 = a * sqrt(1.0 - e * e) * sE;
+				double3 Q3;
+				Q3.x = -sw * cOmega - cw * ci * sOmega;
+				Q3.y = -sw * sOmega + cw * ci * cOmega;
+				Q3.z = cw * si;
 
-			x4i.x =  t1 * P3.x + t2 * Q3.x;
-			x4i.y =  t1 * P3.y + t2 * Q3.y;
-			x4i.z =  t1 * P3.z + t2 * Q3.z;
+				double cE = cos(E);
+				double sE = sin(E);
 
-			double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-			t1 = -sE;
-			t2 = sqrt(1.0 - e * e) * cE;
+				double t0, t1, t2;
 
-			v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
-			v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
-			v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
-			x4_d[id] = x4i;
-			v4_d[id] = v4i;
-	//printf("%g %g %g %g %g %g %g %g\n", x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
+				if(e < 1.0 - 1.0e-10){
+					//eplliptic
+					t1 = a * (cE - e);
+					t2 = a * sqrt(1.0 - e * e) * sE;
+				}
+				else if(e > 1.0 + 1.0e-10){
+					//hyperbolic
+					t1 = a * (cosh(E) - e);
+					t2 = -a * sqrt(e * e - 1.0) * sinh(E);
+				}
+				else{
+					//parabolic
+					// a is assumed to be q, p = 2q, p = h^2/mu
+					double r = 2 * a /(1.0 + cos(Theta));
+					t1 = r * cos(Theta);
+					t2 = r * sin(Theta);
+				}
+		
+				x4i.x =  t1 * P3.x + t2 * Q3.x;
+				x4i.y =  t1 * P3.y + t2 * Q3.y;
+				x4i.z =  t1 * P3.z + t2 * Q3.z;
+
+				if(e < 1.0 - 1.0e-10){
+					//elliptic
+					t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+					t1 = -sE;
+					t2 = sqrt(1.0 - e * e) * cE;
+				}
+				else if(e > 1.0 + 1.0e-10){
+					//hyperbolic
+					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+					double r = a * ( 1.0 - e * cosh(E));
+					t0 = sqrt(-mu * a) / r;
+					t1 = -sinh(E);
+					t2 = sqrt(e * e - 1.0) * cosh(E);
+				}
+				else{
+					//parabolic
+					t0 = mu / sqrt(2.0 * a * mu);
+					t1 = -sin(Theta);
+					t2 = 1.0 +  cos(Theta);
+				}
+
+				v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
+				v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
+				v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+			}
+//printf("K3 %d %g %g %g %g %g %g %g %g\n", id, x4i.x, x4i.y, x4i.z, x4i.w, v4i.x, v4i.y, v4i.z, v4i.w);
 		}	
 	}
 }

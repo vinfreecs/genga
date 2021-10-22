@@ -1440,15 +1440,46 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 //printf("A KtoC m:%g r:%g a:%g e:%g i:%g O:%g w:%g M:%g\n", x.w, v.w, x.x, x.y, x.z, v.x ,v.y, v.z);
 
 	double mu = def_ksq * (Msun + x.w);
-	
-	//Eccentric Anomaly
-	double E = M + e * 0.5;
-	double Eold = E;
-	for(int j = 0; j < 32; ++j){
-		E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
-		if(fabs(E - Eold) < 1.0e-15) break;
-		Eold = E;
+
+	double E;
+	if(e < 1.0 - 1.0e-10){	
+		//Eccentric Anomaly
+		E = M + e * 0.5;
+		double Eold = E;
+		for(int j = 0; j < 32; ++j){
+			E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
+			if(fabs(E - Eold) < 1.0e-15) break;
+			Eold = E;
+		}
 	}
+	else if(e > 1.0 + 1.0e-10){
+		//hyperbolic
+		//E is assumed to be the hyperbolic eccentricity 
+		E = M;
+		double Eold = E;
+		for(int j = 0; j < 32; ++j){
+			E = E + (E - e * sinh(E) + M) / (e * cosh(E) - 1.0);
+			if(fabs(E - Eold) < 1.0e-15) break;
+			Eold = E;
+		}
+
+	}
+	else{
+		//parabolic, solve Barkers equation 
+		// M = D + D^3 / 3, 
+		// use cot(s) = 1.5 * M  -> s = pi / 2 - atan(1.5 * M)
+
+		//double s = M_PI * 0.5 - atan(1.5 * M);
+		E = M;
+		double Eold = E;
+		for(int j = 0; j < 32; ++j){
+			E = E - (E + E * E * E / 3.0 - M) / (1.0 + E * E);
+			if(fabs(E - Eold) < 1.0e-15) break;
+			Eold = E;
+		}
+
+	}
+
 
 	double cw = cos(w);
 	double sw = sin(w);
@@ -1467,17 +1498,67 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 
 	double cE = cos(E);
 	double sE = sin(E);
-	double t1 = a * (cE - e);
-	double t2 = a * sqrt(1.0 - e * e) * sE;
+
+	double t0, t1, t2;
+
+	if(e < 1.0 - 1.0e-10){
+		//elliptic
+
+		//double r = a * ( 1.0 - e * cE);
+		//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+		//double t1 = r * cos(Theta); 
+		//double t2 = r * sin(Theta); 
+		t1 = a * (cE - e);
+		t2 = a * sqrt(1.0 - e * e) * sE;
+	}
+	else if(e > 1.0 + 1.0e-10){
+		//hyperbolic
+		//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+		//or
+		//double r = a * ( 1.0 - e * cosh(E));
+		//t1 = r * cos(Theta); 
+		//t2 = r * sin(Theta); 
+		t1 = a * (cosh(E) - e);
+		t2 = -a * sqrt(e * e - 1.0) * sinh(E);
+	}
+	else{
+		//parabolic
+		// a is assumed to be q, p = 2q, p = h^2/mu
+		double Theta = 2.0 * atan(E);
+		double r = 2 * a /(1.0 + cos(Theta));
+		t1 = r * cos(Theta);
+		t2 = r * sin(Theta);
+	}
 
 
 	x.x =  t1 * Px + t2 * Qx;
 	x.y =  t1 * Py + t2 * Qy;
 	x.z =  t1 * Pz + t2 * Qz;
 
-	double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-	t1 = -sE;
-	t2 = sqrt(1.0 - e * e) * cE;
+	if(e < 1.0 - 1.0e-10){
+		//elliptic
+		t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+		t1 = -sE;
+		t2 = sqrt(1.0 - e * e) * cE;
+	}
+	else if(e > 1.0 + 1.0e-10){
+		//hyperbolic
+		//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+		double r = a * ( 1.0 - e * cosh(E));
+		t0 = sqrt(-mu * a) / r;
+		t1 = -sinh(E);
+		t2 = sqrt(e * e - 1.0) * cosh(E);
+	}
+	else{
+		//parabolic
+		double Theta = 2.0 * atan(E);
+		t0 = mu / sqrt(2.0 * a * mu);
+		t1 = -sin(Theta);
+		t2 = 1.0 +  cos(Theta);
+	}
+
+
+
 	v.x = t0 * (t1 * Px + t2 * Qx);
 	v.y = t0 * (t1 * Py + t2 * Qy);
 	v.z = t0 * (t1 * Pz + t2 * Qz);

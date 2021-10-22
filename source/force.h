@@ -470,8 +470,20 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				if(t < -1.0) t = -1.0;
 				if(t > 1.0) t = 1.0;
 				Theta = acos(t);
-				if(u < 0.0) Theta = 2.0 * M_PI - Theta;
-
+				if(u < 0.0){
+					if(e < 1.0 - 1.0e-10){
+						//elliptic
+						Theta = 2.0 * M_PI - Theta;
+					}
+					else if(e > 1.0 + 1.0e-10){
+						//hyperbolic
+						Theta = -Theta;
+					}
+					else{
+						//parabolic
+						Theta = - Theta;
+					}
+				}
 
 				//Non circular, equatorial orbit
 				if(e > 1.0e-10 && inc < 1.0e-10){
@@ -497,23 +509,58 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					if(t < -1.0) t = -1.0;
 					if(t > 1.0) t = 1.0;
 					Theta = acos(t);
-					if(x4i.z < 0.0) Theta = 2.0 * M_PI - Theta;
+					if(x4i.z < 0.0){
+						if(e < 1.0 - 1.0e-10){
+							//elliptic
+							Theta = 2.0 * M_PI - Theta;
+						}
+						else if(e > 1.0 + 1.0e-10){
+							//hyperbolic
+							Theta = -Theta;
+						}
+						else{
+							//parabolic
+							Theta = -Theta;
+						}
+					}
 				}
 				if(w == 0 && Omega == 0.0){
 					Theta = acos(x4i.x * ir);
-					if(x4i.y < 0.0) Theta = 2.0 * M_PI - Theta;
-
+					if(x4i.y < 0.0){
+						if(e < 1.0 - 1.0e-10){
+							//elliptic
+							Theta = 2.0 * M_PI - Theta;
+						}
+						else if(e > 1.0 + 1.0e-10){
+							//hyperbolic
+							Theta = -Theta;
+						}
+						else{
+							//parabolic
+							Theta = -Theta;
+						}
+					}
 				}
 
-				//Eccentric Anomaly
-				E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
-				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-		
-
-				if(e >= 1){
-					E = acosh((e + t) / (1.0 + e * t));
+				if(e < 1.0 - 1.0e-10){
+					//Eccentric Anomaly
+					E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 					if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 				}
+				else if(e > 1.0 + 1.0e-10){
+					//Hyperbolic Anomaly
+					//named still E instead of H or F
+					E = acosh((e + t) / (1.0 + e * t));
+					if(Theta < 0.0) E = - E;
+				}
+				else{
+					//Parabolic Anomaly
+					E = tan(Theta * 0.5);
+					if(E > M_PI) E = E - 2.0 * M_PI;
+					//use a to store q
+					a = h * h / mu * 0.5;
+				}
+
 
 //printf("K0 %.10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
 			}
@@ -696,16 +743,58 @@ if(setElements_c[i] == 13){
 
 				double cE = cos(E);
 				double sE = sin(E);
-				double t1 = a * (cE - e);
-				double t2 = a * sqrt(1.0 - e * e) * sE;
+
+				double t0, t1, t2;
+
+				if(e < 1.0 - 1.0e-10){
+					//elliptic
+					t1 = a * (cE - e);
+					t2 = a * sqrt(1.0 - e * e) * sE;
+				}
+				else if(e > 1.0 + 1.0e-10){
+					//hyperbolic
+					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+					//or
+					//double r = a * ( 1.0 - e * cosh(E));
+					//t1 = r * cos(Theta); 
+					//t2 = r * sin(Theta); 
+					t1 = a * (cosh(E) - e);
+					t2 = -a * sqrt(e * e - 1.0) * sinh(E);
+				}
+				else{
+					//parabolic
+					// a is assumed to be q, p = 2q, p = h^2/mu
+					double r = 2 * a /(1.0 + cos(Theta));
+					t1 = r * cos(Theta);
+					t2 = r * sin(Theta);
+				}
+
 
 				x4i.x =  t1 * Px + t2 * Qx;
 				x4i.y =  t1 * Py + t2 * Qy;
 				x4i.z =  t1 * Pz + t2 * Qz;
 
-				double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-				t1 = -sE;
-				t2 = sqrt(1.0 - e * e) * cE;
+				if(e < 1.0 - 1.0e-10){
+					//elliptic
+					t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
+					t1 = -sE;
+					t2 = sqrt(1.0 - e * e) * cE;
+				}
+				else if(e > 1.0 + 1.0e-10){
+					//hyperbolic
+					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
+					double r = a * ( 1.0 - e * cosh(E));
+					t0 = sqrt(-mu * a) / r;
+					t1 = -sinh(E);
+					t2 = sqrt(e * e - 1.0) * cosh(E);
+				}
+				else{
+				//parabolic
+					t0 = mu / sqrt(2.0 * a * mu);
+					t1 = -sin(Theta);
+					t2 = 1.0 +  cos(Theta);
+				}
+
 
 				v4i.x = t0 * (t1 * Px + t2 * Qx);
 				v4i.y = t0 * (t1 * Py + t2 * Qy);
@@ -1139,7 +1228,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 			double ir = 1.0 / sqrt(rsq);
 			double ia = 2.0 * ir - vsq / mu;
 
-			double a = fabs(1.0 / ia);
+			double a = 1.0 / ia;
 
 			double3 h3;
 			h3.x = ( x4i.y * v4i.z) - (x4i.z * v4i.y);
@@ -1147,9 +1236,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 			h3.z = ( x4i.x * v4i.y) - (x4i.y * v4i.x);
 
 			double h = sqrt(h3.x * h3.x + h3.y * h3.y + h3.z * h3.z);
-		
-			double n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
-			n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
+
 	
 			//longitude of ascending node
 			double nn = sqrt(h3.x * h3.x + h3.y * h3.y);
@@ -1161,6 +1248,21 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 			e3.z = ( v4i.x * h3.y - v4i.y * h3.x) / mu - x4i.z * ir;
 		
 			double e = sqrt(e3.x * e3.x + e3.y * e3.y + e3.z * e3.z); 
+
+			double n;
+			if(e < 1.0 - 1.0e-10){
+				//Elliptic
+				n = sqrt(mu / (a * a * a)); //mean motion in 1 / day * 0.017 
+			}
+			else if(e > 1.0 + 1.0e-10){
+				//hyperbolic
+				n = sqrt(mu / (-a * a * a)); //mean motion in 1 / day * 0.017 
+			}
+			else{
+				//parabolic
+				n = sqrt(mu); //mean motion in 1 / day * 0.017 
+			}
+			n *= dayUnit / (24.0 * 3600.0);  //mean motion  in 1 / s;
 
 			//compute rotation vector from spin vector
 			double Ic = spin.w;
@@ -1186,7 +1288,20 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 				if(t < -1.0) t = -1.0;
 				if(t > 1.0) t = 1.0;
 				Theta = acos(t);
-				if(u < 0.0) Theta = 2.0 * M_PI - Theta;
+				if(u < 0.0){
+					if(e < 1.0 - 1.0e-10){
+						//elliptic
+						Theta = 2.0 * M_PI - Theta;
+					}
+					else if(e > 1.0 + 1.0e-10){
+						//hyperbolic
+						Theta = -Theta;
+					}
+					else{
+						//parabolic
+						Theta = - Theta;
+					}
+				}
 	
 				sp = (omega3.x * e3.x + omega3.y * e3.y + omega3.z * e3.z) / e;
 				double3 q3;
@@ -1230,20 +1345,36 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 				sp = 0.0;
 				sq = 0.0;
 			}
-			//Eccentric Anomaly
-			double E = acos((e + t) / (1.0 + e * t));
-			if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
-			//Mean Anomaly
-			double M = E - e * sin(E);
-
-			if(e >= 1){
-				E = acosh((e + t) / (1.0 + e * t));
+			double E, M;
+			if(e < 1.0 - 1.0e-10){
+				//Eccentric Anomaly
+				E = acos((e + t) / (1.0 + e * t));
 				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
-				M = E - e * sinh(E);
-				
 
+				//Mean Anomaly
+				double M = E - e * sin(E);
 			}
+			else if(e > 1.0 + 1.0e-10){
+				//Hyperbolic Anomaly
+				//named still E instead of H or F
+				E = acosh((e + t) / (1.0 + e * t));
+				if(Theta < 0.0) E = - E;
+
+				M = e * sinh(E) - E;
+			}
+			else{
+				//Parabolic Anomaly
+				E = tan(Theta * 0.5);
+				if(E > M_PI) E = E - 2.0 * M_PI;
+
+				M = E + E * E * E / 3.0;
+
+				//use a to store q
+				a = h * h / mu * 0.5;
+			}
+
+
 //printf("a %d %g %g %g %g %g %g %g %g %g %g %g\n", id, a, e, m, RR, omega, v4i.x, v4i.y, v4i.z,  Theta, E, M);
 
 			double3 rs3;
@@ -1303,12 +1434,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 
 			double WD = t2 / (1.0 + lamda);
 
-			if(omega != 0.0){
+			if(omega != 0.0 && e < 1.0){
 				a3.x += WD * (Gsd * rs3.x + Gcd * srs3.x);
 				a3.y += WD * (Gsd * rs3.y + Gcd * srs3.y);
 				a3.z += WD * (Gsd * rs3.z + Gcd * srs3.z);
 			}
-//		printf("D %d %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g\n", id, a3.x, a3.y, a3.z, srs3.x, srs3.y, srs3.z, Gcd, Gsd, WD, lamda);
+//printf("D %d %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g %.10g\n", id, a3.x, a3.y, a3.z, srs3.x, srs3.y, srs3.z, Gcd, Gsd, WD, lamda);
 			}
 			
 			//seasonal
@@ -1355,12 +1486,12 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 
 			double WS = (sp * alpha * (cM * Gcd - sM * Gsd) + sq * beta * (sM * Gcd + cM * Gsd)) / (1.0 + lamda);
 			double aS = t2 * WS;
-			if(omega != 0.0){
+			if(omega != 0.0 && e < 1.0){
 				a3.x += aS * omega3.x;
 				a3.y += aS * omega3.y;
 				a3.z += aS * omega3.z;
 			}
-//		printf("S %d %g %g %g %.10g %.10g %.10g %.10g %.10g %g %g %g %g %g\n", id, a3.x, a3.y, a3.z, sp, sq, sp * sp + sq * sq, RR, Gcd, Gsd, n, lamda, sM, cM);
+//printf("S %d %g %g %g %.10g %.10g %.10g %.10g %.10g %g %g %g %g %g\n", id, a3.x, a3.y, a3.z, sp, sq, sp * sp + sq * sq, RR, Gcd, Gsd, n, lamda, sM, cM);
 			}
 
 			a3.x *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit); //in AU /day^2 * 0.017^2
@@ -1619,8 +1750,6 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
-
-	//Compute the Kepler Elements
 
 	if(id < N + Nstart){
 		if(x4_d[id].w >= 0.0){

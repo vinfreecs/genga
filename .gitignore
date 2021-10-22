@@ -3,6 +3,7 @@ readme
 source/genga
 GengaGL/gengaGL
 tools/KE
+tools/CoordinatesTransformation
 
 #HIP
 HIP/*.h

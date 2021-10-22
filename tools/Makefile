@@ -1,4 +1,4 @@
-SM=30
+SM=35
 ARCH = -arch sm_$(SM)
 source = KE.cu
 headers = 
