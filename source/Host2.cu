@@ -2316,6 +2316,8 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(GSF[st].ejectfilename, "%sEjections%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].encounterfilename, "%sEncounters%s.dat", GSF[st].path, GSF[st].X);
 		sprintf(GSF[st].fragmentfilename, "%sFragments%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].starfilename, "%sStar%s.dat", GSF[st].path, GSF[st].X);
+		sprintf(GSF[st].starIrrfilename, "%sStarIrr%s.dat", GSF[st].path, GSF[st].X);
 		
 		//create files or erase content//
 		if(P.tRestart == 0){
@@ -2347,6 +2349,11 @@ __host__ int Host::Param(int argc, char*argv[]){
 			if(P.UseSmallCollisions > 0){
 				tfile = fopen(GSF[st].fragmentfilename, "w");
 				fclose(tfile);  
+			}
+
+			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
+				tfile = fopen(GSF[st].starfilename, "w");
+				fclose(tfile);
 			}
 		}
 		

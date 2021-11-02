@@ -273,7 +273,7 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 		}
 	}
 	__syncthreads();
-//	if(idx > 980)	printf("A %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
+//if(idx == 4147)	printf("A %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
 
 	int s = Bl/2;
 

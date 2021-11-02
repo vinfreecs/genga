@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.132
+#define def_Version 3.133
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -467,6 +467,8 @@ struct GSFiles{
 	char ejectfilename[128];
 	char encounterfilename[128];
 	char fragmentfilename[128];
+	char starfilename[128];
+	char starIrrfilename[128];
 	char X[128];
 	int informat[def_Ninformat];
 	char path[128];

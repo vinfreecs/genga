@@ -58,7 +58,6 @@ then the following time steps are written as outputs:
 
 .. _IrrOutFile:
 
-
 The Irregular Coordinate Output Files: OutIrr<name><time>.dat
 -------------------------------------------------------------
 These files are only created when the output calendar file is used. 
@@ -187,6 +186,33 @@ This file contains the details of all ejection events, in the format:
 
 with: case = -3 for bodies removed at the outher boundary,
 and case = -2 for bodies removed at the inner boundary. 
+
+
+.. _StarFile:
+
+The stellar evolution file: Star<name>.dat
+------------------------------------------
+See :ref:`Tides`.
+
+This file is only produced when :literal:`Use Tides` or :literal:`Use Rotational Deformation` are enabled.
+The file contains the parameters of the star in the format:
+
+    | time mass radius Spin_x Spin_y Spin_z Ic Love-number fluid-Love-number time-lag
+    | .
+    | .
+    | .
+
+
+.. _IrrStarFile:
+
+The Irregular stellar evolution file: StarIrr<name>.dat
+-------------------------------------------------------
+See :ref:`Tides`.
+
+
+This file is only created when the output calendar file is used.
+The file contains the same structure as the regular :ref:`StarFile`, but at output times, specified in the output calendar file.
+
 
 .. _FragmentsFile:
 

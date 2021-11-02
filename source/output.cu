@@ -133,25 +133,42 @@ __host__ int Data::firstoutput(int irregular){
 			double skip;
 			double Et;
 			char Ets[160];
+			int er = 0;
 			if(readIrrEnergyFile == 0){
 				Energyfile = fopen(GSF[st].Energyfilename, "r");
 				sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
+
+				fscanf (Energyfile, "%lf",&Et);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&LI_h[st]);
+				fscanf (Energyfile, "%lf",&U_h[st]);
+				fscanf (Energyfile, "%lf",&Energy0_h[st]);
+				fscanf (Energyfile, "%lf",&LI0_h[st]);
+				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+	
+				U_h[st] /= def_Kg;
+				LI_h[st] /= def_Kg;
 			}
 			else{
+				//read only initial energy and angular momentum
 				Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
 				sprintf(Ets, "%.16g", (ict_h[st] * 365.25) / 365.25);
+
+				fscanf (Energyfile, "%lf",&Et);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&skip);
+				fscanf (Energyfile, "%lf",&Energy0_h[st]);
+				fscanf (Energyfile, "%lf",&LI0_h[st]);
+				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
 			}
-			int er = 0;
-			fscanf (Energyfile, "%lf",&Et);
-			fscanf (Energyfile, "%lf",&skip);
-			fscanf (Energyfile, "%lf",&skip);
-			fscanf (Energyfile, "%lf",&skip);
-			fscanf (Energyfile, "%lf",&LI_h[st]);
-			fscanf (Energyfile, "%lf",&U_h[st]);
-			fscanf (Energyfile, "%lf",&Energy0_h[st]);
-			fscanf (Energyfile, "%lf",&LI0_h[st]);
-			fscanf (Energyfile, "%lf",&skip);
-			er = fscanf (Energyfile, "%lf",&skip);
+
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 			while(Et * tsign < atof(Ets) * tsign){
 				fscanf (Energyfile, "%lf",&Et);
@@ -165,6 +182,10 @@ __host__ int Data::firstoutput(int irregular){
 				fscanf (Energyfile, "%lf",&skip);
 				er = fscanf (Energyfile, "%lf",&skip);
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
+	
+				U_h[st] /= def_Kg;
+				LI_h[st] /= def_Kg;
+
 				if(Et * tsign >= atof(Ets) * tsign) break;
 
 				if(er <= 0){
@@ -176,16 +197,63 @@ __host__ int Data::firstoutput(int irregular){
 				printf("Error: In Simulation %s: Restart time step not valid %g %g\n", GSF[st].path, atof(Ets), Et);
 				return 0;
 			}
+//printf("Energy %g %g %g %g\n", Energy0_h[0], U_h[0] * def_Kg, LI0_h[0], LI_h[0] * def_Kg);
 
-			U_h[st] /= def_Kg;
-			LI_h[st] /= def_Kg;
 
 			fclose(Energyfile);
-
 			cudaMemcpy(Energy0_d + st, Energy0_h + st, sizeof(double), cudaMemcpyHostToDevice);
 			cudaMemcpy(U_d + st, U_h + st, sizeof(double), cudaMemcpyHostToDevice);
 			cudaMemcpy(LI_d + st, LI_h + st, sizeof(double), cudaMemcpyHostToDevice);
 			cudaMemcpy(LI0_d + st, LI0_h + st, sizeof(double), cudaMemcpyHostToDevice);
+
+			if(irregular == 0 && (P.UseTides > 0 || P.UseRotationalDeformation > 0)){
+				//print star file
+				FILE *starfile;
+				int er = 0;
+				starfile = fopen(GSF[st].starfilename, "r");
+
+				fscanf (Energyfile, "%lf",&Et);
+				fscanf (Energyfile, "%lf",&Msun_h[st].x);
+				fscanf (Energyfile, "%lf",&Msun_h[st].y);
+				fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
+				fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
+				fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
+				fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
+				fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
+				fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
+				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
+
+//printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
+				while(Et * tsign < atof(Ets) * tsign){
+					fscanf (Energyfile, "%lf",&Et);
+					fscanf (Energyfile, "%lf",&Msun_h[st].x);
+					fscanf (Energyfile, "%lf",&Msun_h[st].y);
+					fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
+					fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
+					fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
+					fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
+					fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
+					fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
+					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
+//printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
+					if(Et * tsign >= atof(Ets) * tsign) break;
+
+					if(er <= 0){
+						break;
+					}				
+				}
+				if(er <= 0){
+					fprintf(masterfile, "Error: In Simulation %s: Restart time step not valid for star file %g %g\n", GSF[st].path, atof(Ets), Et);
+					printf("Error: In Simulation %s: Restart time step not valid for star file %g %g\n", GSF[st].path, atof(Ets), Et);
+					return 0;
+				}
+	
+				cudaMemcpy(Msun_d + st, Msun_h + st, sizeof(double2), cudaMemcpyHostToDevice);
+				cudaMemcpy(Spinsun_d + st, Spinsun_h + st, sizeof(double4), cudaMemcpyHostToDevice);
+				cudaMemcpy(Lovesun_d + st, Lovesun_h + st, sizeof(double3), cudaMemcpyHostToDevice);
+//printf("Spin %g %g\n", Et, Spinsun_h[st].z);
+				fclose(starfile);
+			}
 		}
 	}
 	return 1;
@@ -245,6 +313,25 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		if(x4_h[j].w >= 0.0) fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
 		if(P.FormatP == 0) fclose(outputfile);
+	}
+
+	if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		for(int st = 0; st < Nst; ++st){
+			//print star file
+			FILE *starfile;
+			if(irregular == 0 || irregular == 3){ 
+				starfile = fopen(GSF[st].starfilename, "a");
+			}
+			else{
+				starfile = fopen(GSF[st].starIrrfilename, "a");
+			}
+			cudaMemcpy(Msun_h + st, Msun_d + st, sizeof(double2), cudaMemcpyDeviceToHost);
+			cudaMemcpy(Spinsun_h + st, Spinsun_d + st, sizeof(double4), cudaMemcpyDeviceToHost);
+			cudaMemcpy(Lovesun_h + st, Lovesun_d + st, sizeof(double3), cudaMemcpyDeviceToHost);
+			fprintf(starfile, "%.16g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, Msun_h[st].x, Msun_h[st].y, Spinsun_h[st].x, Spinsun_h[st].y, Spinsun_h[st].z, Spinsun_h[st].w, Lovesun_h[st].x, Lovesun_h[st].y, Lovesun_h[st].z);
+
+			fclose(starfile);
+		}
 	}
 }
 

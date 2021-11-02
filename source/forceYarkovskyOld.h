@@ -226,7 +226,11 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double ThetaD = t1 * sqrt(omega);
 	double X = s2 * RR * ilD;
 	double lamda = ThetaD / X;
+
+	//double lamda = Asteroid_K_c[0] / (Asteroid_eps_c[0] * def_sigma * Ts * Ts * Ts * s2 * RR);
+
 	double L = lamda / (1.0 + lamda);
+//printf("D %g %g %g %g\n", ilD, X, lamda, L);
 
 	double cX = cos(X);
 	double sX = sin(X);
@@ -247,6 +251,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 
 	double WD = Gsd / (1.0 + lamda);
 	dadtD = -2.0 * t2 * WD * cgamma;	// in m/s	
+//printf("dadtD %g %g %g\n", t2, WD, cgamma);
 	}
 	
 	//seasonal
@@ -281,6 +286,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 
 	double WS = Gsd / (1.0 + lamda);
 	dadtS = t2 * WS * sgamma2; // in m/s
+//printf("dadtS %g %g %g\n", t2, WS, sgamma2);
 	}
 
 	double dadt = (dadtD + dadtS) / (def_AU * dayUnit) * 24.0 * 3600.0; //in AU / day * 0.017

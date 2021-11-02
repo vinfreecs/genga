@@ -4,6 +4,8 @@ Tidal Forces
 ============
 
 Tidal Forces can be enabled with the :literal:`Use Tides` parameter in the :literal:`param.dat` file.
+The tidal forces evolve the spin of the particles and spin of the central star. The evolution of the
+stellar spin is reported in :ref:`StarFile`.
 
 
 Parameters for the tidal forces:
@@ -69,6 +71,39 @@ where :math:`\mathbf{e}_{ri}` is the radial unit vector, and :math:`\mathbf{\Ome
 
 Since the equation :eq:`eq_apn` depends on the positions and the velocities, the GR corrections must by
 applied with the implicit midpoint method. In that way the symplectic nature of the integration is conserved.
+
+
+Tidal spin evolution
+--------------------
+
+Additionally to the caused acceleration on the particles, the tidal force also generates a torque which changes the spin of the particles
+and the central star.
+
+Thistidal torque is given as 
+
+.. math::
+
+    \mathbf{N} = \mathbf{r} \times \mathbf{F_\theta},
+
+with the transverse component of the tidal force :math:`\mathbf{F_\theta}`. 
+
+With the relation
+
+.. math::
+
+    \mathbf{r} \times (\mathbf{\Omega} \times \mathbf{e}_r) - \mathbf{r} \times \frac{\mathbf{v}}{r} = 
+    \mathbf{\Omega}r - (\mathbf{r} \cdot \mathbf{\Omega}) \mathbf{e}_r - \mathbf{e}_r \times \mathbf{v},
+
+the tidal torque can be written as:
+
+.. math::
+
+    \mathbf{N}_i = P_{to,i} \left[ \mathbf{\Omega}_i r_i - (\mathbf{r}_i \cdot \mathbf{\Omega}_i) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
+
+.. math::
+
+    \mathbf{N}_\star = P_{to,\star} \left[ \mathbf{\Omega}_\star ri - (\mathbf{r}_i \cdot \mathbf{\Omega}_\star) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
+
 
 Test and comparison
 -------------------

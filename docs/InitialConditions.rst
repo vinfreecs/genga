@@ -159,22 +159,33 @@ That means that all time units must be rescaled with 0.01720209895.
 Time
 ^^^^
 
-The time units are given now as :math:`[time] = \text{day} / 0.01720209895`
+| The time units are given now as :math:`[time] = \text{day} / 0.01720209895 =` day'. 
+| To convert time from day to day', it must be multiplicated by 0.01720209895.
+
+Example: 1 min = 0.0006944 day = 0.00001194 day'. 
+
 An exception is the time step, it is given in days, and converted internally to code units.
 
 Masses
 ^^^^^^
-Masses are given in Solar masses.
+Masses are given in Solar masses (:math:`M_\odot`).
+
+| Example: The Sun has a mass of 1 :math:`M_\odot`.
+| The Earth has a mass of :math:`3.003 \cdot 10^{-6} M_\odot`.
+
 
 Distances, Radii
 ^^^^^^^^^^^^^^^^
 All distances and radii are given in Astronomical Units, AU.
-Example: The distance from the Sun to the Earth is 1 AU.
+
+| Example: The distance from the Sun to the Earth is 1 AU.
+| The Earth radius is :math:`4.2635 \cdot 10^{-5}` AU.
 
 Velocities
 ^^^^^^^^^^
 | [v] = AU / day' = AU / day * 0.01720209895.
 | To convert velocities from AU / day to AU / day', they must be divided by 0.01720209895.
+
 | Example: The Earth's orbital velocity is 30 km / s = 0.01720209895 AU / day.
 | In GENGA units, this is 1.0 AU / day'.
 
@@ -209,9 +220,12 @@ We assume :math:`I_c = 0.07`.
 
 Time lag
 ^^^^^^^^
-The time lag is given in units of day' = day / 0.0172020989. 
+| The time lag :math:`\tau` is given in units of day' = day / 0.0172020989. 
+| To convert :math:`\tau` from day to day', it must be multiplicated by 0.01720209895.
 
-The time lag :math:`tau` is related (approximatly) to the tidal quality factor :math:`Q` via 
+Example: 1 min = 0.0006944 day = 0.00001194 day'. 
+
+The time lag :math:`\tau` is related (approximately) to the tidal quality factor :math:`Q` via 
 :cite:p:`EfroimskyLainey2007`:
 
 .. math::
