@@ -49,7 +49,7 @@ Forces
 
    GR.rst
    Tides.rst
-   RotatioanlDeformation.rst
+   RotationalDeformation.rst
    Yarkovsky.rst
    PRdrag.rst
 

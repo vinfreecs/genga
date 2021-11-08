@@ -209,46 +209,8 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			//F1 * x4i.xyz is the nondissipative radial part of the acceleration
 
 		}
-		if((UseRotationalDeformation == 1) && x4.w > 0.0){
-			//Rotational Force see Bolmont et al 2015 equation 15
-			double lovesunf = Lovesun.y;
-			double lovef = love_d[st].y;
 
-			double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
-
-			double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
-			volatile double Csun = x4.w * lovesunf * omegasun2 * Rsun5 / 6.0;
-			volatile double Cp = Msun * lovef * omega2 * R5 / 6.0;
-//double J2 = lovef * omega2 * R3 / (3.0 * x4.w);
-//double J2sun = lovesunf * omegasun2 * Rsun3 / (3.0 * Msun);
-//printf("J2 %d %g %g\n", id, J2, J2sun);
-
-
-			volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
-			volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
-
-			volatile double F1 = -3.0 * ir5 * (Csun + Cp);
-			if(omegasun2 != 0.0){
-				F1 += 15.0 * ir7 * Csun * r_omegasun * r_omegasun / omegasun2;
-			}
-			if(omega2 != 0.0){
-				F1 += 15.0 * ir7 * Cp * r_omega * r_omega / omega2; 
-			}
-
-			volatile double F2 = 0.0;
-			volatile double F3 = 0.0;
-			if(omegasun2 != 0.0){
-				F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
-			}
-			if(omega2 != 0.0){
-				F3 = -6.0 * ir5 * Cp * r_omega / omega2;
-			}
-			
-
-			a3.x += (F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x) / x4.w;
-			a3.y += (F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y) / x4.w;
-			a3.z += (F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z) / x4.w;
-		}
+		double mred = Msun / (x4.w + Msun);
 
 		// **********************************************************
 		// Now add the velocity dependent terms and iterate the 
@@ -256,7 +218,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 		// **********************************************************
 
 
-		if((UseTides == 1 || UseGR == 2) && x4.w >= 0.0){
+		if((UseTides == 1 || UseRotationalDeformation == 1 || UseGR == 2) && x4.w >= 0.0){
 			double3 a3t, a3told;
 			double4 v4t = v4;
 			a3told.x = 0.0;
@@ -264,17 +226,18 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			a3told.z = 0.0;
 
 			double3 T3t, T3sunt;	//torque
-			T3t.x = 0.0;
-			T3t.y = 0.0;
-			T3t.z = 0.0;
-			T3sunt.x = 0.0;
-			T3sunt.y = 0.0;
-			T3sunt.z = 0.0;
+			double3 T3told, T3suntold;	//torque
+			T3told.x = 0.0;
+			T3told.y = 0.0;
+			T3told.z = 0.0;
+			T3suntold.x = 0.0;
+			T3suntold.y = 0.0;
+			T3suntold.z = 0.0;
+
 
 			double4 Spint = Spin;
 			double4 Spinsunt = Spinsun;
 
-			double mred = Msun / (x4.w + Msun);
 			
 			for(int k = 0; k < 30; ++k){
 			//for(int k = 0; k < 1; ++k){
@@ -282,6 +245,12 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 				a3t.x = 0.0;
 				a3t.y = 0.0;
 				a3t.z = 0.0;
+				T3t.x = 0.0;
+				T3t.y = 0.0;
+				T3t.z = 0.0;
+				T3sunt.x = 0.0;
+				T3sunt.y = 0.0;
+				T3sunt.z = 0.0;
 	
 				if(UseGR == 2){
 					// GR  see Fabrycky 2010 equation 2
@@ -321,20 +290,73 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 					double fdz = (P * t2.z - P * v4t.z) * x4.w;
 //printf("P %d %d %g %g %g %g %g\n", id, k, P, t2.x, v4t.x, x4.x, mred);
 
-					T3t.x = -mred * ( x4.y * fdz - x4.z * fdy);
-					T3t.y = -mred * (-x4.x * fdz + x4.z * fdx);
-					T3t.z = -mred * ( x4.x * fdy - x4.y * fdx);
+					T3t.x += -mred * ( x4.y * fdz - x4.z * fdy);
+					T3t.y += -mred * (-x4.x * fdz + x4.z * fdx);
+					T3t.z += -mred * ( x4.x * fdy - x4.y * fdx);
 
 					fdx = (Psun * t3.x - Psun * v4t.x) * x4.w;
 					fdy = (Psun * t3.y - Psun * v4t.y) * x4.w;
 					fdz = (Psun * t3.z - Psun * v4t.z) * x4.w;
 
-					T3sunt.x = -mred * ( x4.y * fdz - x4.z * fdy);
-					T3sunt.y = -mred * (-x4.x * fdz + x4.z * fdx);
-					T3sunt.z = -mred * ( x4.x * fdy - x4.y * fdx);
+					T3sunt.x += -mred * ( x4.y * fdz - x4.z * fdy);
+					T3sunt.y += -mred * (-x4.x * fdz + x4.z * fdx);
+					T3sunt.z += -mred * ( x4.x * fdy - x4.y * fdx);
 
 //printf("T %d %d %g %g %g | %g %g %g\n", id, k, T3t.x, T3t.y, T3t.z, T3sunt.x, T3sunt.y, T3sunt.z);
 				}
+				if((UseRotationalDeformation == 1) && x4.w > 0.0){
+					//Rotational Force see Bolmont et al 2015 equation 15
+					double lovesunf = Lovesun.y;
+					double lovef = love_d[st].y;
+
+					double omegasun2 = omegasun3.x * omegasun3.x + omegasun3.y * omegasun3.y + omegasun3.z * omegasun3.z; 	//angular velocity in 1 / day * 0.017
+
+					double omega2 = omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z; 	//angular velocity in 1 / day * 0.017
+					volatile double Csun = x4.w * lovesunf * omegasun2 * Rsun5 / 6.0;
+					volatile double Cp = Msun * lovef * omega2 * R5 / 6.0;
+//double J2 = lovef * omega2 * R3 / (3.0 * x4.w);
+//double J2sun = lovesunf * omegasun2 * Rsun3 / (3.0 * Msun);
+//printf("J2 %d %g %g\n", id, J2, J2sun);
+
+
+					volatile double r_omegasun = x4.x * omegasun3.x + x4.y * omegasun3.y + x4.z * omegasun3.z;
+					volatile double r_omega = x4.x * omega3.x + x4.y * omega3.y + x4.z * omega3.z;
+
+					volatile double F1 = -3.0 * ir5 * (Csun + Cp);
+					if(omegasun2 != 0.0){
+						F1 += 15.0 * ir7 * Csun * r_omegasun * r_omegasun / omegasun2;
+					}
+					if(omega2 != 0.0){
+						F1 += 15.0 * ir7 * Cp * r_omega * r_omega / omega2; 
+					}
+
+					volatile double F2 = 0.0;
+					volatile double F3 = 0.0;
+					if(omegasun2 != 0.0){
+						F2 = -6.0 * ir5 * Csun * r_omegasun / omegasun2;
+					}
+					if(omega2 != 0.0){
+						F3 = -6.0 * ir5 * Cp * r_omega / omega2;
+					}
+//printf("F %d %g %g %g %g %g %g\n", id, F3, F2, Cp, Csun, r_omegasun, r_omega);
+					
+
+					a3t.x += (F1 * x4.x + F2 * omegasun3.x + F3 * omega3.x) / x4.w;
+					a3t.y += (F1 * x4.y + F2 * omegasun3.y + F3 * omega3.y) / x4.w;
+					a3t.z += (F1 * x4.z + F2 * omegasun3.z + F3 * omega3.z) / x4.w;
+
+
+					//spin evolution
+					T3t.x += -mred * F3 * ( x4.y * omega3.z - x4.z * omega3.y);
+					T3t.y += -mred * F3 * (-x4.x * omega3.z + x4.z * omega3.x);
+					T3t.z += -mred * F3 * ( x4.x * omega3.y - x4.y * omega3.x);
+
+					T3sunt.x += -mred * F2 * ( x4.y * omegasun3.z - x4.z * omegasun3.y);
+					T3sunt.y += -mred * F2 * (-x4.x * omegasun3.z + x4.z * omegasun3.x);
+					T3sunt.z += -mred * F2 * ( x4.x * omegasun3.y - x4.y * omegasun3.x);
+//printf("T %d %d %g %g |  %g %g %g | %g %g %g\n", id, 0, F3, F2, T3.x, T3.y, T3.z, T3sun.x, T3sun.y, T3sun.z);
+				}
+
 				v4t.x = v4.x + 0.5 * dt * a3t.x;
 				v4t.y = v4.y + 0.5 * dt * a3t.y;
 				v4t.z = v4.z + 0.5 * dt * a3t.z;
@@ -357,12 +379,29 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 				omegasun3.y = Spinsunt.y * iIsun;
 				omegasun3.z = Spinsunt.z * iIsun;
 
-				if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
+
+				int stop = 1;
+				if(fabs(a3t.x - a3told.x) >= 1.0e-15) stop = 0;
+				if(fabs(a3t.y - a3told.y) >= 1.0e-15) stop = 0;
+				if(fabs(a3t.z - a3told.z) >= 1.0e-15) stop = 0;
+
+				if(fabs(T3t.x - T3told.x) >= 1.0e-15) stop = 0;
+				if(fabs(T3t.y - T3told.y) >= 1.0e-15) stop = 0;
+				if(fabs(T3t.z - T3told.z) >= 1.0e-15) stop = 0;
+
+				if(fabs(T3sunt.x - T3suntold.x) >= 1.0e-15) stop = 0;
+				if(fabs(T3sunt.y - T3suntold.y) >= 1.0e-15) stop = 0;
+				if(fabs(T3sunt.z - T3suntold.z) >= 1.0e-15) stop = 0;
+
+				//if(fabs(a3t.x - a3told.x) < 1.0e-15 && fabs(a3t.y - a3told.y) < 1.0e-15 && fabs(a3t.z - a3told.z) < 1.0e-15){
+				if(stop == 1){
 //if(k > 1) printf("k %d %d\n", id, k);
 					break;
 				}
 
 				a3told = a3t;
+				T3told = T3t;
+				T3suntold = T3sunt;
 //printf("tidal2 %d %g %g %g %g\n", id, x4.w, a3t.x, a3t.y, a3t.z);
 			}
 

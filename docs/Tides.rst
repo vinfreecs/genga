@@ -76,16 +76,16 @@ applied with the implicit midpoint method. In that way the symplectic nature of 
 Tidal spin evolution
 --------------------
 
-Additionally to the caused acceleration on the particles, the tidal force also generates a torque which changes the spin of the particles
-and the central star.
+Additionally to the acceleration on the particles, the tidal force generates a torque,  which changes the spin of
+the particles and of the central star.
 
-Thistidal torque is given as 
+This tidal torque is given as 
 
 .. math::
 
-    \mathbf{N} = \mathbf{r} \times \mathbf{F_\theta},
+    \mathbf{N}_T = \mathbf{r} \times \mathbf{F}_{T\theta},
 
-with the transverse component of the tidal force :math:`\mathbf{F_\theta}`. 
+with the transverse component of the tidal force :math:`\mathbf{F}_{T\theta}`. 
 
 With the relation
 
@@ -98,11 +98,26 @@ the tidal torque can be written as:
 
 .. math::
 
-    \mathbf{N}_i = P_{to,i} \left[ \mathbf{\Omega}_i r_i - (\mathbf{r}_i \cdot \mathbf{\Omega}_i) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
+    \mathbf{N}_{Ti} = P_{to,i} \left[ \mathbf{\Omega}_i r_i - (\mathbf{r}_i \cdot \mathbf{\Omega}_i) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
 
 .. math::
 
-    \mathbf{N}_\star = P_{to,\star} \left[ \mathbf{\Omega}_\star ri - (\mathbf{r}_i \cdot \mathbf{\Omega}_\star) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
+    \mathbf{N}_{T\star} = P_{to,\star} \left[ \mathbf{\Omega}_\star ri - (\mathbf{r}_i \cdot \mathbf{\Omega}_\star) \mathbf{e}_{ri} - \mathbf{e}_{ri} \times \mathbf{v}_i \right]
+
+
+By using heliocentric coordinates, the spin evolution is takes the form :cite:p:`Bolmont2015`
+
+.. math::
+
+    \frac{d}{dt} (I_\star \mathbf{\Omega}_\star) = - \sum_{j=1}^N \frac{m_\star}{m_\star + m_j} \mathbf{N}_{T\star}
+
+and
+
+.. math::
+
+    \frac{d}{dt} (I_i \mathbf{\Omega}_i) = - \frac{m_\star}{m_\star + m_i} \mathbf{N}_{Ti},
+
+with the moment of inertia :math:`I`.
 
 
 Test and comparison

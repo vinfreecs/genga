@@ -64,7 +64,51 @@ Then the force due to the rotational deformation is given as :cite:p:`Bolmont201
 
 .. math::
 
-   \mathbf{F_r} = \left\{ - \frac{3}{r^5_i} \left( C_\star + C_i\right) \right. \\ \nonumber
+   \mathbf{F_R} = \left\{ - \frac{3}{r^5_i} \left( C_\star + C_i\right) \right. \\ \nonumber
    \left. + \frac{15}{r^7_i} \left[ C_\star \frac{(\mathbf{r}_i \cdot \mathbf{\Omega}_\star)^2}{\mathbf{\Omega}_\star^2} +  C_i \frac{(\mathbf{r}_i \cdot \mathbf{\Omega}_i)^2}{\mathbf{\Omega}_i^2} \right] \right\} \mathbf{r}_i \\ \nonumber
     - \frac{6}{r^5_i} \left( C_\star \frac{\mathbf{r}_i \cdot \mathbf{\Omega}_\star}{\mathbf{\Omega}_\star^2} \mathbf{\Omega}_\star
     + C_i \frac{\mathbf{r}_i \cdot \mathbf{\Omega}_i}{\mathbf{\Omega}_i^2} \mathbf{\Omega}_i\right).
+
+
+
+Rotaional deformation spin evolution
+------------------------------------
+
+Additionally to the acceleration on the particles, the rotational deformation force generates a torque,  which changes the spin of
+the particles and of the central star.
+
+This rotational deformation torque is given as
+
+.. math::
+
+    \mathbf{N}_R = \mathbf{r} \times \mathbf{F}_{R\theta},
+
+with the transverse component of the tidal force :math:`\mathbf{F_{r\theta}}`.
+
+It can be written following :cite:p:`Bolmont2015` as
+
+.. math::
+
+	\mathbf{N}_{R\star} = - \frac{6}{r^5_i}  C_\star \frac{\mathbf{r}_i \cdot \mathbf{\Omega}_\star}{\mathbf{\Omega}_\star^2}  \left( \mathbf{r}_i \times \mathbf{\Omega}_\star \right)
+
+and
+
+.. math::
+
+	\mathbf{N}_{Ri} = - \frac{6}{r^5_i}  C_i \frac{\mathbf{r}_i \cdot \mathbf{\Omega}_i}{\mathbf{\Omega}_i^2}  \left( \mathbf{r}_i \times \mathbf{\Omega}_i \right).
+
+
+By using heliocentric coordinates, the spin evolution is takes the form :cite:p:`Bolmont2015`
+
+.. math::
+
+    \frac{d}{dt} (I_\star \mathbf{\Omega}_\star) = - \sum_{j=1}^N \frac{m_\star}{m_\star + m_j} \mathbf{N}_{R\star}
+
+and
+
+.. math::
+
+    \frac{d}{dt} (I_i \mathbf{\Omega}_i) = - \frac{m_\star}{m_\star + m_i} \mathbf{N}_{Ri},
+
+with the moment of inertia :math:`I`.
+
