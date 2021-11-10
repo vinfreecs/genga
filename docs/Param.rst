@@ -5,7 +5,7 @@ Parameters in the param.dat file
 
 All parameters in the :literal:`param.dat` file can be changed with recompiling GENGA.
 Most parameters are optional, if they are not included in the :literal:`param.dat` file,
-then their default values are used. The default values are set in the :literal:`define.h` file.
+then their default values are used. The default values are set in the :ref:`define.h<Define>` file.
 
 Main parameters
 ---------------
@@ -112,8 +112,12 @@ Stellar parameters
 Integrator options
 ------------------
 
-- n1 = 3.0
-- n2 = 0.4
+- | :literal:`n1`: Parameter to set critical radius for close encounters (default = 3.0).
+  | See :ref:`n1n2`
+
+- | :literal:`n2`: Parameter to set critical radius for close encounters (default = 0.4).
+  | See :ref:`n1n2`
+
 
 - | :literal:`Use Test Particles`, flag to enable test particle mode (default = 0)
   | See :ref:`TestParticles`, and :literal:`Particle Minimum Mass`.
@@ -153,7 +157,7 @@ Memory options
 - | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512)
   | See :ref:`Close_Encounters`
 
-- | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+- | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default = 0). 
   | See :ref:`SmallBodies`
 
 
@@ -337,11 +341,32 @@ Options for collisions
 Other
 -----
 
-- Set Elements file name = -
-- FormatS = 0
-- FormatT = 0
-- FormatP = 1
-- FormatO = 0
+- | :literal:`Set Elements file name`: file name for the set-element table.
+  | See :ref:`SetElements`.
+
+  -  :literal:`-`: no file, set-elements function is not used (default)
+  -  < data table file name>: This file is used to read the set-elements data table.
+
+- | :literal:`FormatS`: Output file format for multi simulation run.
+
+  -  0: all simulations write to different files in their sub simulation directories (default).
+  -  1: all simulations write to the same file in the master directory. 
+
+- | :literal:`FormatT`: Output file format for time steps.
+
+  -  0: all time steps are written to different files (default).
+  -  1: all time steps are written to the same file.
+
+- | :literal:`FormatP`: Output file format for particles.
+
+  -  0: all particles are written to different files.
+  -  1: all particles are written to the same file (default).
+
+- | :literal:`FormatO`: Output file format for file names.
+
+  -  0: file names contain time steps (default).
+  -  1: file names contain output steps.
+
 
 - | :literal:`Serial Grouping`: Flag for exact reproducible results.
   | See :ref:`SerialGrouping`

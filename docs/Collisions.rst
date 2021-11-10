@@ -25,7 +25,7 @@ When a collision happens, the coordinates of the two involved bodies are reporte
 - :literal:`Collision Model`, can be used to implement a different collision model. The default (0) is used for a perfect merger collision.
 
 
-| Relevant parameters in the :ref:`Define` are:
+| Relevant parameters in the :ref:`define.h<Define>` file are:
 
 - :literal:`def_MaxColl`
 

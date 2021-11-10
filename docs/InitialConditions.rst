@@ -129,6 +129,7 @@ from the initial condition file and computes the radius.
 
 
 
+
 .. _Units:
 
 Units
@@ -236,15 +237,5 @@ with the mean motion of the planet :math:`n` and the rotation rate of the star :
 
 Time of first transit
 ^^^^^^^^^^^^^^^^^^^^^
-
-.. _aeLimits:
-
-aeLimits
---------
-
-The aeLimits can be used to check how much time a specific body spends in a given range in semi-major axis and eccentricity. The limits of this range can be set with the
-:literal:`amin`, :literal:`amax`, :literal:`emin` and :literal:`emax` parameters in the initial condition file. When the corresponding particle spends time in the given
-range in a-e space, then a counter is increased. The values of the counter is included in :ref:`OutFile`.
-These values can be useful in a stability analysis of planetary systems. 
-
+The time of first transit is given in Barycentric Julian Date (BJD).
 

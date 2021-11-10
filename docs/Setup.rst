@@ -8,7 +8,7 @@ Requirements
 GENGA runs on Nvidia GPUs with compute capability of 3.0 or higher. To be able to use the code, one has to install the Cuda Toolkit first,
 as described below.
 We strongly recommend using a recent CUDA version to get the full performance and correct results.
-If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :literal:`define.h` file must be set to 1.
+If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :ref:`define.h<Define>` file must be set to 1.
 (See :ref:`OldShuffle`)
 
 Install CUDA
@@ -17,8 +17,8 @@ Install CUDA
 Linux
 ^^^^^
 
-| Install the gcc compiler (for example,in Ubuntu install build-essential package) 
-| Download the CUDA toolkit from here: https://developer.nvidia.com/cuda-downloads .
+| Install the gcc compiler (for example, in Ubuntu install build-essential package) 
+| Download the CUDA toolkit from: https://developer.nvidia.com/cuda-downloads .
 | Install the CUDA toolkit.
 | Reboot
 | Run :literal:`nvidia-smi` to check CUDA and the available GPUs.
@@ -27,7 +27,8 @@ Linux
 GCC version
 ^^^^^^^^^^^
 It can happen that the used CUDA version needs an older GCC version than the current one on the system. In that case, either a newer CUDA version, or an older gcc version should be installed. Use the following compile option to tell CUDA to use an older GCC version (for example 7.0)::
-  -ccbin=g++-7
+
+	-ccbin=g++-7
 
 
 .. Comment.
@@ -48,7 +49,7 @@ It can happen that the used CUDA version needs an older GCC version than the cur
 
 Compile GENGA
 -------------
-If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :literal:`define.h` file must be set to 1.
+If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :ref:`define.h<Define>` file must be set to 1.
 (See :ref:`OldShuffle`)
 
 GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, 
@@ -56,8 +57,13 @@ a list of all Nvidia GPUS with their compute capabilities can be found here: htt
 
 
 The source code of GENGA and a Makefile is included in the source directory. To compile GENGA, go to the source directory
-and type :literal:`make SM=xx` into a terminal, where xx corresponds to the compute capability of the GPU.
-For example use 'make SM=60' for compute capability of 6.0, or 'make SM=65' for 6.5.
+and type::
+
+	make SM=xx
+
+into a terminal, where :literal:`xx` corresponds to the compute capability of the GPU.
+
+Use e.g. 'make SM=60' for compute capability of 6.0, or 'make SM=65' for compute capability of 6.5.
 
 
 For example use::
@@ -75,7 +81,29 @@ When compiling GENGA with the openGL real time visualization, go to the GengaGL 
 When GENGA is compiled for a newer compute capability then the GPU is able to run, then the following error message will appear by running GENGA:
 `FGAlloc  error = 13 = invalid device symbol`.
 
+..
+	Compile GENGA on Windows
+	^^^^^^^^^^^^^^^^^^^^^^^^
 
+	Gygwin setup search and install make
+
+
+	If using Cygwin on Windows, then GENGA can be compiled the same way
+	with::
+
+		make SM=xx. 
+
+
+	If using the Windows Command Prompt, type::
+
+		nmake -f MakefileW SM=xx.
+
+	Note, that the Windows C++ compiler ``cl``
+	must be installed, and the compiler path must be loaded in the shell. If
+	this is not the case, it can be loaded similar to this command::
+
+		call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\vsvars32.bat"
+	, where the exact path and file name must eventually be changed.
 
 
 

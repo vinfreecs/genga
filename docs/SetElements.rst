@@ -19,20 +19,19 @@ The data table must also provide a time entry at or after the end of the simulat
 
 Data table format
 ^^^^^^^^^^^^^^^^^
-The structure of the data file must be the following:
+The structure of the data file must be the following::
 
-
-    | number of bodies to modify, 't', element symbol 1, elements symbol 2, ...
-    | time 1, body 1 element 1, body 1 element 2, ...,
-    | time 1, body 2 element 1, body 2 element 2, ...,
-    | .
-    | .
-    | .
-    | time 2, body 1 element 1, body 1 element 2, ...,
-    | time 2, body 2 element 1, body 2 element 2, ...,
-    | .
-    | .
-    | .
+	number of bodies to modify, 't', element symbol 1, elements symbol 2, ...
+	time 1, body 1 element 1, body 1 element 2, ...,
+	time 1, body 2 element 1, body 2 element 2, ...,
+	.
+	.
+	.
+	time 2, body 1 element 1, body 1 element 2, ...,
+	time 2, body 2 element 1, body 2 element 2, ...,
+	.
+	.
+	.
 
 with:
 
@@ -63,37 +62,37 @@ with:
 
 An example data file to modify the mass and radius of a single body looks like this::
 
-    1 t m r
-    0.0000000000000000 3.0024584e-7  2.7582675517426333e-5
-    2.2000000476840000 3.00262253e-7 2.75828934594789e-5
-    5.3680003681180004 3.00285888e-7 2.758346952419557e-5
-    9.9299211920929995 3.00319926e-7 2.7584299066671142e-5
-    .
-    .
-    .
+	1 t m r
+	0.0000000000000000 3.0024584e-7  2.7582675517426333e-5
+	2.2000000476840000 3.00262253e-7 2.75828934594789e-5
+	5.3680003681180004 3.00285888e-7 2.758346952419557e-5
+	9.9299211920929995 3.00319926e-7 2.7584299066671142e-5
+	.
+	.
+	.
 
 
 An example data file to modify the semi-major axis, eccentricity and inclination of the first four bodies looks like the following, where
 the columns are: time, semi major axis, eccentricity and inclination::
 
-    4 t a e i
-    0    5.49973  3.17077e-05  1.03555e-06
-    0    5.70011  3.10758e-05  0.00546965
-    0    9.9999   3.09719e-06  0.000956204
-    0    11.25    2.33299e-06  0.00194193
-    100  5.49963  3.09278e-05  1.00262e-06
-    100  5.70002  3.01496e-05  0.00527889
-    100  9.99984  6.81447e-06  0.000935937
-    100  11.2499  7.15947e-06  0.00190979
-    200  5.49954  9.73926e-05  4.8273e-06
-    200  5.69991  9.89094e-05  0.00507701
-    200  9.99975  7.85054e-06  0.000913772
-    200  11.2498  7.8151e-06   0.00187511
-    300  5.49943  9.31021e-05  4.63857e-06
-    300  5.69978  9.42067e-05  0.00486796
-    300  9.99967  1.0987e-05   0.000890745
-    300  11.2497  1.12345e-05  0.00183792
-    .
-    .
-    .
+	4 t a e i
+	0    5.49973  3.17077e-05  1.03555e-06
+	0    5.70011  3.10758e-05  0.00546965
+	0    9.9999   3.09719e-06  0.000956204
+	0    11.25    2.33299e-06  0.00194193
+	100  5.49963  3.09278e-05  1.00262e-06
+	100  5.70002  3.01496e-05  0.00527889
+	100  9.99984  6.81447e-06  0.000935937
+	100  11.2499  7.15947e-06  0.00190979
+	200  5.49954  9.73926e-05  4.8273e-06
+	200  5.69991  9.89094e-05  0.00507701
+	200  9.99975  7.85054e-06  0.000913772
+	200  11.2498  7.8151e-06   0.00187511
+	300  5.49943  9.31021e-05  4.63857e-06
+	300  5.69978  9.42067e-05  0.00486796
+	300  9.99967  1.0987e-05   0.000890745
+	300  11.2497  1.12345e-05  0.00183792
+	.
+	.
+	.
 

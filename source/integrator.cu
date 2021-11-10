@@ -370,7 +370,7 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 	if(ittv == 0) firstInfo();
 	setStartTime();
 
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	sprintf(poincarefilename, "%sPoincare%s_%.*lld.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, 0);
 	poincarefile = fopen(poincarefilename, "w");
 #endif
@@ -534,7 +534,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 			GridaeOutput();
 		}
 		
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 		if((timeStep - 1) % P.ci == P.ci - P.nci){
 			fclose(poincarefile);
 			sprintf(poincarefilename, "%sPoincare%s_%.*lld.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, timeStep);
@@ -689,7 +689,7 @@ __host__ int Data::Remaining(){
 		CoordinateOutputBuffer(0);
 	}
 
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	fclose(D.poincarefile);
 #endif
 
@@ -1825,7 +1825,7 @@ __host__ int Data::StopAtEncounterCall(){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // *******************************************
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 __host__ int Data::PoincareSectionCall(double t){
 	if(SIn > 1){
 		printf("Compute Poincare Sections only with the second Order integrator!\n");
@@ -2343,7 +2343,7 @@ __host__ int Data::step_16(int noColl){
 		if(Ej == 0) return 0;
 	}
 
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	int per = PoincareSectionCall(time_h[0]);
 	if(per == 0) return 0;
 #endif
@@ -2597,7 +2597,7 @@ printf("****** %d %d %d | %d %d %d %d\n", i, N_h[0], (((N_h[0] + KP - 1)/ KP) + 
 		int Ej = EjectionCall();
 		if(Ej == 0) return 0;
 	}
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	int per = PoincareSectionCall(time_h[0]);
 	if(per == 0) return 0;
 #endif

@@ -2730,7 +2730,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "KickFloat, kick in float precision: %d\n", def_KickFloat);
 			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
 			fprintf(infofile, "Do kernel tuning: %d\n", P.doTuning);				// use only argument in simulation 0
-			fprintf(infofile, "Compute Poincare Section: %d\n", poincareFlag);
+			fprintf(infofile, "Compute Poincare Section: %d\n", def_poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
 			fprintf(infofile, "FormatP: %d\n", P.FormatP);						// use only argument in simulation 0

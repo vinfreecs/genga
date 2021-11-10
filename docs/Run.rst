@@ -2,8 +2,8 @@ Running GENGA
 =============
 
 
-Start GENGA
------------
+Starting GENGA
+--------------
 
 Before running GENGA, an initial conditions file must be provided, as described in :ref:`InitialConditions`.
 An example of an initial conditions file with 2048 planetesimals is provided in the GENGA repository (initialplanet_2048.dat).
@@ -23,8 +23,8 @@ To prevent GENGA from overwriting data, the lock.file option can be used (See :r
 
 .. _Restart:
 
-Restart GENGA to continue simulations
--------------------------------------
+Restarting GENGA to continue simulations
+----------------------------------------
 
 A simulation can be restarted from each coordinate output file by using the :literal:`-R` time step console argument or by setting
 a restart time in the 'param.dat' file. Before restarting a simulation things in the param.dat file can be changed if necessary,
@@ -34,14 +34,29 @@ Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files
 But the coordinate output files are OVERWRITTEN with the new data. By restarting a simulation the values of E0 and the inner Energy are read from
 the original run and are reused.
 One can also use a coordinate output file to start a new simulation run with totally different parameters by using the Output file as a new initial
-condition file. The :literal:`Input file Format` should then be of the form << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
+condition file. The :literal:`Input file Format` should then be of the form::
+
+	<< t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax - - - - >>
 
 When GENGA is restarted using the console argument "-R", it changes the entry of the Lock file named lock.dat. This file must be deleted or modified
-when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file, the IgnoreLockFile
-flag in the define.h file can be set to 1.
+when GENGA is restarted again from the same time step. This prevents from data loss by an accidental relaunch. To ignore the lock file, the
+:literal:`IgnoreLockFile` flag in the :ref:`define.h<Define>` file can be set to 1.
 
 With the restart time -1, GENGA searches automatically for the last output and restarts directly from there. To determine the last output, the last entry
 in the time file is used.
+
+
+Interrupting a simulation
+-------------------------
+
+GENGA can be interrupted with the SIGINT signal (Ctrl-C). In this case, GENGA completes the current time step and writes an additional last output.
+With the restart time step -1, GENGA will continue the integration starting from this output. The SIGINT signal can also be sent to GENGA when using
+a queuing system.
+
+With SLURM, use::
+
+ 	#SBATCH --signal=INT@60
+
 
 
 
@@ -84,6 +99,63 @@ Large particles interact with all large and small particles.
    Calculated force terms of the different test particles modes, (0, 1 and 2) for an example of two large and two small particles
 
 
+
+
+Multi simulation mode
+---------------------
+The multi simulation mode can be used to simulate a large number of small simulations with up to 32 massive particles.
+Individual sub simulations can have a different number of bodies.
+For each simulation a new directory is needed, containing the initial condition file and the :literal:`param.dat` file.
+Note that not all parameters in the :literal:`param.dat` file can be chosen individually, these are only:
+
+- the time step
+- the number of integration steps
+- the name
+- the central mass
+- the star radius
+- the star Love number
+- the star fluid Love number
+- the star tau
+- the star spin_x
+- the star spin_y
+- the star spin_z
+- the star Ic
+- the n1 parameter
+- the n2 parameter
+- the initial condition file
+- the default rho
+- the Minimum number of bodies number
+- the Minimum number of test particles number
+- the inner truncation radius
+- the outer truncation radius
+
+All the other parameters are read from the simulation number 0.
+To start a multi simulation run, an additional file is needed, which contains a list of all sub simulation directory names.
+
+For example a file named :literal:`path.dat`::
+
+	sim0000
+	sim0001
+	sim0002
+	.
+	.
+	.
+
+
+The simulation can then be started with::
+
+	 ./genga [options] -M path.dat
+
+where :literal:`[options]` are optional user parameters as described in :ref:`ConsoleArguments`.
+
+
+If a sub simulation contains less particles than specified in the :literal:`Minimum number of bodies` or the :literal:`Minimum number of test particles`
+number, then this specific simulation is stopped and the total number of simulations is reduced.
+
+In the multi simulation mode, the indexes of the particles should not be greater than 100.
+
+
+
 .. _IrregularOutput:
 
 Irregular output times
@@ -108,7 +180,7 @@ When starting a new simulation, then old OutIrr<name>.dat files and EnergyIrr<na
 
 When the multi simulation mode is used, then the time and time-step information is only read from the first sub-simulation and applied to all simulations synchronously.
 
-The number of digits in the output filenames can be changed with the :literal:`def_NFileNameDigits` parameter in the :literal:`define.h` file.
+The number of digits in the output filenames can be changed with the :literal:`def_NFileNameDigits` parameter in the :ref:`define.h<Define>` file
 
 
 
@@ -157,6 +229,8 @@ the original GENGA code.
 GengaGL can be started with::
 
 	./gengaGL [options]
+
+where :literal:`[options]` are optional user parameters as described in :ref:`ConsoleArguments`.
 
 When GengaGL is started, then a window with the visualization is created.
 At the origin, the axis of the coordinate system is plotted.

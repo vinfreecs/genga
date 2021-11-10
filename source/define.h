@@ -123,7 +123,7 @@
 
 
 //print Poincare Section of surface, in this mode the code can be very slow
-#define poincareFlag 0			//1: print, 0: no print
+#define def_poincareFlag 0			//1: print, 0: no print
 
 //ignore the lock file and start GENGA anyway
 #define def_IgnoreLockFile 1
@@ -160,7 +160,7 @@
 
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
-#define NmaxM 32
+#define NmaxM 32			//maximal size of sub simulations
 #define HCM_Bl2 (HCM_Bl - NmaxM - NmaxM / 2)
 
 #define KM_Bl 128

@@ -1,3 +1,16 @@
+.. _aeLimits:
+
+aeLimits
+========
+
+The aeLimits can be used to check how much time a specific body spends in a given range in semi-major axis and eccentricity. The limits of this range can be set with the
+:literal:`amin`, :literal:`amax`, :literal:`emin` and :literal:`emax` parameters in the initial condition file. When the corresponding particle spends time in the given
+range in a-e space, then a counter is increased. The values of the counter is included in :ref:`OutFile`.
+These values can be useful in a stability analysis of planetary systems. 
+
+
+
+
 .. _aegrid:
 
 The a-e and a-i grid

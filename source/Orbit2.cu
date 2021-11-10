@@ -101,7 +101,7 @@ __host__ void Data::AllocateOrbit(){
 	groupIterate_h = (int*)malloc(sizeof(int));
 
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
 #endif
@@ -331,7 +331,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
 	cudaMalloc((void **) &StopFlag_d, sizeof(int));
 
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
 	cudaMemcpy(PFlag_d, PFlag_h, sizeof(int), cudaMemcpyHostToDevice);
 #endif
@@ -2462,7 +2462,7 @@ __host__ int Data::freeOrbit(){
 	free(writeEnc_h);
 	free(Fragments_h);
 	cudaFreeHost(test_h);
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	free(PFlag_h);
 #endif	
 	free(BSAstop_h);
@@ -2529,7 +2529,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Energy_d);
 	cudaFree(Energy0_d);
 	cudaFree(LI0_d);
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
 #if G3 > 0

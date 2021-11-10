@@ -19,6 +19,14 @@ Setup
    ConsoleArguments.rst
    Define.rst
 
+Integrator details
+~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   Integrator.rst
+
 Output Files
 ~~~~~~~~~~~~
 
@@ -39,7 +47,7 @@ Options
    aeGrid.rst
    SetElements.rst
    SerialGrouping.rst
-
+   Poincare.rst
 
 Forces
 ~~~~~~
@@ -62,13 +70,6 @@ Small body collision model
    SmallBodies.rst
 
 
-Integrator details
-~~~~~~~~~~~~~~~~~~
-
-.. toctree::
-   :maxdepth: 2
-
-   CloseEncounter.rst
 
 Bibliography
 ~~~~~~~~~~~~

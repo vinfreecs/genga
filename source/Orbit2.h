@@ -332,7 +332,7 @@ public:
 #endif
 
 
-#if poincareFlag == 1
+#if def_poincareFlag == 1
 	int *PFlag_h;
 	int *PFlag_d;
 	char poincarefilename[160];
