@@ -5,14 +5,21 @@ Setup
 Requirements
 ------------
 
-GENGA runs on Nvidia GPUs with compute capability of 3.0 or higher. To be able to use the code, one has to install the Cuda Toolkit first,
-as described below.
-We strongly recommend using a recent CUDA version to get the full performance and correct results.
-If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :ref:`define.h<Define>` file must be set to 1.
-(See :ref:`OldShuffle`)
+GENGA runs on NVIDIA and on AMD GPUs.
+
+NVIDIA GPUs must have a compute capability of 3.0 or higher. 
+
+
 
 Install CUDA
 -------------
+
+To be able to use the code on NVIDIA GPUs, one has to install the CUDA Toolkit first
+as described here.
+
+We strongly recommend using a recent CUDA version to get the full performance and correct results.
+If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :ref:`define.h<Define>` file must be set to 1.
+(See :ref:`OldShuffle`)
 
 Linux
 ^^^^^
@@ -21,7 +28,7 @@ Linux
 | Download the CUDA toolkit from: https://developer.nvidia.com/cuda-downloads .
 | Install the CUDA toolkit.
 | Reboot
-| Run :literal:`nvidia-smi` to check CUDA and the available GPUs.
+| Run ``nvidia-smi`` to check CUDA and the available GPUs.
 
 
 GCC version
@@ -46,6 +53,18 @@ It can happen that the used CUDA version needs an older GCC version than the cur
 	where the exact path depends on the installation.
 
 
+Install ROCM and HIP for AMD GPUs
+---------------------------------
+
+When an AMD GPU is used, then ROCM and HIP needs to be installed.
+
+| Follow the instructions on: 
+| https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html
+| to install ROCM and HIP.
+| Run ``/opt/rocm/bin/hipconfig --full`` to check the installation
+| Run ``rocm-smi`` to check the GPU
+| Choose the platform with either ``export HIP_PLATFORM=nvidia`` or ``export HIP_PLATFORM=amd``
+
 
 Compile GENGA
 -------------
@@ -53,7 +72,7 @@ If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` p
 (See :ref:`OldShuffle`)
 
 GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, 
-a list of all Nvidia GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
+a list of all NVIDIA GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
 
 
 The source code of GENGA and a Makefile is included in the source directory. To compile GENGA, go to the source directory
@@ -75,11 +94,31 @@ For example use::
 	make SM=75 for GeForce RTX 2080 ti
 	make SM=86 for GeForce RTX 3090
 
+
 When compiling GENGA with the openGL real time visualization, go to the GengaGL directory.
 (See :ref:`GengaGL`)
 
 When GENGA is compiled for a newer compute capability then the GPU is able to run, then the following error message will appear by running GENGA:
 `FGAlloc  error = 13 = invalid device symbol`.
+
+
+Compile GENGA with HIP
+^^^^^^^^^^^^^^^^^^^^^^
+GENGA provides a tool to translate the source code from CUDA to HIP. The HIP version can run on AMD and on NVIDIA GPUs.
+The translation tool is located in the HIP directory.
+
+Run::
+
+	python3 GengaHIP.py
+
+to translate the code. GengaHIP will copy the translated source code to the HIP directory. 
+
+Type::
+
+	make
+
+to compile GENGA with HIP. 
+
 
 ..
 	Compile GENGA on Windows

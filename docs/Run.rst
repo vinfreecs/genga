@@ -49,13 +49,18 @@ in the time file is used.
 Interrupting a simulation
 -------------------------
 
-GENGA can be interrupted with the SIGINT signal (Ctrl-C). In this case, GENGA completes the current time step and writes an additional last output.
+GENGA can be interrupted with the SIGINT signal (**Ctrl-C**, kill -2). In this case, GENGA completes the current time step and writes an additional last output.
 With the restart time step -1, GENGA will continue the integration starting from this output. The SIGINT signal can also be sent to GENGA when using
 a queuing system.
 
 With SLURM, use::
 
  	#SBATCH --signal=INT@60
+
+Note that the ``srun`` command must be used for slurm to work properly. 
+
+
+Other kill signals e.g SIGKILL (kill -9) or SIGTERM (kill -15) will terminate GENGA immediately, and no last output is written.
 
 
 

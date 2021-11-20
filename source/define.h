@@ -148,12 +148,12 @@
 #define def_MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
 //Units and constants
-#define def_ksq 1.0			//Squared Gaussion gravitation constant in current units
-#define def_Kg 2.959122082855911e-4	//Squared Gaussion gravitation constant, used for conversion
+#define def_ksq 1.0			//Squared Gaussian gravitational constant in current units
+#define def_Kg 2.959122082855911e-4	//Squared Gaussian gravitational constant in AU^3 day^-2 M_Sun^-1 , used for conversion
 #define dayUnit 0.01720209895
 //#define dayUnit 0.01720412578565452474399499749324604636058
 #define def_AU 149597870700.0		//AU in m
-#define def_Solarmass 1.98855e30	//solar mass in Kg
+#define def_Solarmass 1.98855e30	//Solar Mass in Kg
 #define def_c 299792458.0		//speed of light in m/s
 #define def_cm 10065.3201686		//speed of light in AU / day * 0.0172020989	
 #define def_sigma 5.670373e-8		//Stefan Boltzmann constant J m^-2 s^-1 K^-4

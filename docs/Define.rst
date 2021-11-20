@@ -43,6 +43,10 @@ Memory options
   | (default = 120)
 
 
+- | :literal:`def_SLevelsMax` (integer): Define the maximum number of symplectic substep levels. 
+  | Increasing this number will increase the amount of needed memory.
+
+
 Other
 -----
 - :literal:`def_tol`: Tolerance in Bulirsch Stoer integrator (default = 1.0e-12). 
@@ -67,4 +71,33 @@ Other
   - 1: Poincare surface of section is calculated
 
 
+.. _constants:
+
+Physical constants
+------------------
+The following physical constants are used by GENGA and can be changed in this section of the the :literal:`define.h` file:
+
+
+- | :literal:`def_ksq = 1.0`
+  | Squared Gaussian gravitational constant in current units
+
+- | :literal:`def_Kg 2.959122082855911e-4`
+  | Squared Gaussian gravitational constant in :math:`AU^3 day^{-2} M_\odot^{-1}` , used for conversion
+
+- | :literal:`dayUnit 0.01720209895`
+
+- | :literal:`def_AU 149597870700.0`
+  | AU in m
+
+- | :literal:`def_Solarmass 1.98855e30`
+  | Solar Mass in Kg
+
+- | :literal:`def_c 299792458.0`
+  | speed of light in m/s
+
+- | :literal:`def_cm 10065.3201686`
+  | speed of light in AU / day * 0.0172020989     
+
+- | :literal:`def_sigma 5.670373e-8`
+  | Stefan Boltzmann constant in :math:`J m^{-2} s{^-1} K{^-4}`
 

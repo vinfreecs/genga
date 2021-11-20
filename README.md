@@ -18,6 +18,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.134: Included spin evolution for tidal and rotational deformation forces.
  * Version 3.129: Included moment of inertia.
  * Version 3.124: Added 'Do kernel tuning' parameter.
  * Version 3.117: Changed and improved Collision Precision, Units are now in physical radius fraction, instead of time.

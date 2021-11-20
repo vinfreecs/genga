@@ -239,3 +239,7 @@ Time of first transit
 ^^^^^^^^^^^^^^^^^^^^^
 The time of first transit is given in Barycentric Julian Date (BJD).
 
+Physical constants
+^^^^^^^^^^^^^^^^^^
+The values of used physical constants are set in the :ref:`define.h<constants>` file.
+
