@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.134
+#define def_Version 3.135
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -100,6 +100,7 @@
 #define def_SLSteps 2			//number of time steps per level
 #define def_SERIAL_GROUPING 0
 #define def_doTuning 1			//Flag to enable kernel tunings
+#define def_KickFloat 0			//1: Do kick operation in large N runs in single precision, 0 use double precision
 // --------------------------------
 
 
@@ -129,9 +130,6 @@
 #define def_IgnoreLockFile 1
 
 #define def_SLevelsMax 3
-
-//1: Do kick operation in large N runs in single precision, 0 use double precision
-#define def_KickFloat 0
 
 
 //gas disk constants 
@@ -381,6 +379,7 @@ struct Parameter{
 	int SLSteps;
 	int SERIAL_GROUPING;
 	int doTuning;
+	int KickFloat;
 };
 
 struct elements{

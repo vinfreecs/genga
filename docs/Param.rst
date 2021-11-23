@@ -382,6 +382,11 @@ Other
   - 0: if :ref:`tuningFile` is  not available, then use default values.
   - 1: run kernel tuning at the beginning of the integration and write parameters to :ref:`tuningFile`.
 
+- | :literal:`Do Kick in single precision`: Flag for precision in the kick force calculation
+  | See: :ref:`KickFloat` 
+
+   - 0: use double precision in force terms (default)
+   - 1: use single precision in force terms
 
 Options for TTVs
 ----------------

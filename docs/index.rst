@@ -46,6 +46,7 @@ Options
    Ejection.rst
    aeGrid.rst
    SetElements.rst
+   KickFloat.rst
    SerialGrouping.rst
    Poincare.rst
 

@@ -18,6 +18,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.135: Moved KickFloat from defin.h to param.dat.
  * Version 3.134: Included spin evolution for tidal and rotational deformation forces.
  * Version 3.129: Included moment of inertia.
  * Version 3.124: Added 'Do kernel tuning' parameter.

@@ -473,6 +473,7 @@ __host__ void Host::Halloc(){
 
 	P.SERIAL_GROUPING = def_SERIAL_GROUPING;
 	P.doTuning = def_doTuning;
+	P.KickFloat = def_KickFloat;
 	
 	char format[def_Ninformat];
 	sprintf(format, def_InputFileFormat);
@@ -1968,6 +1969,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
+		else if(strcmp(sp, "Do Kick in single precision =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.KickFloat);
+				if(er <= 0){
+					printf("Error: Use Kick float value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else{
 			printf("Undefined line in param.dat file: line %d\n", j);
 			return 0;
@@ -2185,6 +2201,8 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			printf("error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[0], check);
 		return 0;
 		}
+		cudaSetDevice(P.dev[i]);
+		cudaDeviceEnablePeerAccess(P.dev[0], 0);
 	}
 
 
@@ -2727,7 +2745,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
-			fprintf(infofile, "KickFloat, kick in float precision: %d\n", def_KickFloat);
+			fprintf(infofile, "Do Kick in single precision: %d\n", P.KickFloat);			// use only argument in simulation 0
 			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
 			fprintf(infofile, "Do kernel tuning: %d\n", P.doTuning);				// use only argument in simulation 0
 			fprintf(infofile, "Compute Poincare Section: %d\n", def_poincareFlag);

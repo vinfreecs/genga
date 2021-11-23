@@ -63,7 +63,7 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
 
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-	//printf("enc1 %d %d %d\n", i, j, Ni);
+//printf("enc1 %d %d %d\n", i, j, Ni);
 			if(Ni >= NencMax){
 				atomicMax(&EncFlag_d[0], Ni);
 			}
@@ -174,7 +174,7 @@ __global__ void EncpairsZeroC(int2 *Encpairs2_d, double3 *a_d, int *Nencpairs_d,
 	}
 }
 
-__global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int N, const int f){
+__global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int KickFloat, const int N, const int f){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -184,15 +184,16 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int N, const
 			double dy = fabs(a_d[id].y - ab_d[id].y);
 			double dz = fabs(a_d[id].z - ab_d[id].z);
 
-#if def_KickFloat == 0
-			if(dx + dy + dz > 1.0e-8){
-				printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+			if(KickFloat == 0){
+				if(dx + dy + dz > 1.0e-8){
+					printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+				}
 			}
-#else
-			if(dx + dy + dz > 1.0e-6){
-				printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+			else{
+				if(dx + dy + dz > 1.0e-6){
+					printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);
+				}
 			}
-#endif
 		}
 		ab_d[id] = a_d[id];
 	}
