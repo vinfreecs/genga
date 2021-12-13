@@ -429,6 +429,8 @@ __host__ void Host::Halloc(){
 	P.Asteroid_A = def_Asteroid_A;
 	P.Asteroid_K = def_Asteroid_K;
 	P.Asteroid_V = def_Asteroid_V;
+	P.Asteroid_rmin = def_Asteroid_rmin;
+	P.Asteroid_rdel = def_Asteroid_rdel;
 	P.G_dTau_diss = def_GasdTau_diss;
 	P.G_alpha = def_GasAlpha;
 	P.G_beta = def_GasBeta;
@@ -1554,6 +1556,34 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%lf", &P.Asteroid_V);
 				if(er <= 0){
 					printf("Error: Asteroid V value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid minimal fragment radius =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_rmin);
+				if(er <= 0){
+					printf("Error: Asteroid minimal fragment radius value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Asteroid fragment remove radius =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.Asteroid_rdel);
+				if(er <= 0){
+					printf("Error: Asteroid fragment remove radius value is not valid!\n");
 					return 0;
 				}
 			}
@@ -2911,6 +2941,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Asteroid albedo: %g\n", P.Asteroid_A);
 			fprintf(infofile, "Asteroid thermal conductivity: %g\n", P.Asteroid_K);
 			fprintf(infofile, "Asteroid collisional velocity V: %g\n", P.Asteroid_V);
+			fprintf(infofile, "Asteroid minimal fragment radius: %g\n", P.Asteroid_rmin);
+			fprintf(infofile, "Asteroid fragment remove radius: %g\n", P.Asteroid_rdel);
 			fprintf(infofile, "Runtime Version: %d\n", runtimeVersion);
 			fprintf(infofile, "Driver Version: %d\n", driverVersion);
 		}

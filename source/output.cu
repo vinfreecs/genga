@@ -1163,7 +1163,7 @@ __host__ int Data::printFragments(int nf){
 		}
 		if(nc == 0) fprintf(fragmentfile, " -1\n");
 		else{
-			if(Fragments_h[nc * 25 + 3] * def_AU < 0.1) fprintf(fragmentfile, " 2\n");
+			if(Fragments_h[nc * 25 + 3] * def_AU < P.Asteroid_rdel) fprintf(fragmentfile, " 2\n");
 			else fprintf(fragmentfile, " 1\n");
 		}
 		fclose(fragmentfile);
@@ -1195,6 +1195,7 @@ __host__ int Data::printRotation(){
 	}
 	fprintf(fragmentfile, " 0\n");
 	fclose(fragmentfile);
+
 	return 1;
 }
 

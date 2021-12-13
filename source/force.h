@@ -1317,15 +1317,16 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 #if USE_RANDOM == 1
 			double rd = curand_uniform(&random);
 			int accept = -2;
-			if(rd < p) {
+			if(rd < p && omega > 0.0) {
 				accept = atomicMax(&nFragments_d[0], 0);
-printf("A %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+printf("rotation reset %d %d %g %g %g\n", id, index_d[id], time/365.25, rd, p);
+printf("rA %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 			}
 			if(accept == -1){
 				//reset the rotation rate and spin vector
 				rd = curand_uniform(&random);
 				double omega = 1.0/((rd * 35 + 1.0) * RR); //rotations per s
-printf("B %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
 				double S = Ic * M * v4.w * v4.w * omega;
@@ -1409,7 +1410,7 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
 			}
 			if(accept == -1){
-				double x0 = 0.01;	//m
+				double x0 = Asteroid_rmin_c[0];	//m
 				double x1 = RR;		//m
 
 				volatile int ii;
@@ -1419,7 +1420,7 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 					//mass
 					double n = -1.5;
 					double u = curand_uniform(&random);
-					double r = pow((pow(x1,n+1) - pow(x0,n+1)) * u + pow(x0, n+1), 1.0/(n+1));
+					double r = pow((pow(x1,n+1.0) - pow(x0,n+1.0)) * u + pow(x0, n+1.0), 1.0/(n+1.0));
 					double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * r * r * r; //mass in Kg;
 
 					M -= m;
@@ -1448,7 +1449,7 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 					volatile double vx = v * sqrt(1.0 - u * u) * cos(theta);
 					volatile double vy = v * sqrt(1.0 - u * u) * sin(theta);
 					volatile double vz = v * u;
-printf("A %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
+printf("fA %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
 					if( s > 0.5){
 						z *= -1.0;
@@ -1468,14 +1469,14 @@ printf("A %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 					vx = vx / def_AU * 3600.0 * 24.0 / dayUnit;
 					vy = vy / def_AU * 3600.0 * 24.0 / dayUnit;
 					vz = vz / def_AU * 3600.0 * 24.0 / dayUnit;
-printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
+printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
 					m /= def_Solarmass;
 
 					x4_d[ii + N + Nsmall].x = x4.x + x;
 					x4_d[ii + N + Nsmall].y = x4.y + y;
 					x4_d[ii + N + Nsmall].z = x4.z + z;
-					x4_d[ii + N + Nsmall].w = 0.0;
+					x4_d[ii + N + Nsmall].w = m;
 
 					v4_d[ii + N + Nsmall].x = vx;
 					v4_d[ii + N + Nsmall].y = vy;
@@ -1483,7 +1484,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 					v4_d[ii + N + Nsmall].w = r;
 
 					double4 spin;
-					spin.w = spin_d[ii + N + Nsmall].w;
+					spin.w = spin_d[id].w;
 
 					double S = spin.w * m * r * r * omega;
 					u = curand_uniform(&random);
@@ -1542,7 +1543,8 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 
 					//remove too small particles
 					double r = v4_d[i + N + Nsmall].w;
-					if(r * def_AU < 0.1){
+					if(r * def_AU < Asteroid_rdel_c[0]){
+printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 						x4_d[i + N + Nsmall].x = 1.0;
 						x4_d[i + N + Nsmall].y = 0.0;
 						x4_d[i + N + Nsmall].z = 0.0;
@@ -1591,6 +1593,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 
 				index_d[id] = -1;
 			}
+			random_d[id] = random;
 		}
 	}
 #endif
@@ -1599,7 +1602,7 @@ printf("B %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x
 __host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
 	int st = 0;
 	nFragments_m[0] = -1;
-	fragment_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
+	fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
 	cudaDeviceSynchronize();
 	if(nFragments_m[0] > 0){
 		Nsmall_h[st] += nFragments_m[0];
@@ -1609,7 +1612,7 @@ __host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d){
 	int st = 0;
 	nFragments_m[0] = -1;
-	rotation_kernel <<< (Nsmall_h[0] + 511) / 512, 512 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
+	rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
 	cudaDeviceSynchronize();
 }
 
@@ -1848,7 +1851,6 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 			double X = s2 * RR * ilD;
 			double lamda = ThetaD / X;
 			double L = lamda / (1.0 + lamda);
-
 			double cX = cos(X);
 			double sX = sin(X);
 
@@ -2238,7 +2240,6 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 			v4i.x += a3t.x * dt;
 			v4i.y += a3t.y * dt;
 			v4i.z += a3t.z * dt;
-
 
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;

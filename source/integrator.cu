@@ -63,6 +63,8 @@ __host__ void Data::constantCopyDirectAcc(){
 	cudaMemcpyToSymbol(Asteroid_A_c, &P.Asteroid_A, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_K_c, &P.Asteroid_K, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_V_c, &P.Asteroid_V, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(Asteroid_rmin_c, &P.Asteroid_rmin, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(Asteroid_rdel_c, &P.Asteroid_rdel, sizeof(double), 0, cudaMemcpyHostToDevice);
 }
 
 
@@ -1267,10 +1269,10 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	for(int t = 0; t < T; ++t){
 		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
 		if(P.KickFloat == 0){
-			acc4C_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, 0, NN, P.NencMax, KP, 0);
+			acc4C_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, N0, N1, P.NencMax, KP, EE);
 		}
 		else{
-			acc4Cf_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, 0, NN, P.NencMax, KP, 0);
+			acc4Cf_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, N0, N1, P.NencMax, KP, EE);
 		}
 		kick32Ab_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, NN, P.NencMax, 0);
 	}
@@ -2719,7 +2721,7 @@ __host__ int Data::step_small(int noColl){
 				Ncoll_m[0] = 0;
 				StopAtEncounterFlag2 = 1;
 			}
-// printf("Nencpairs2 A %d %d\n", Nencpairs_h[0], Nencpairs2_h[0]);
+//printf("Nencpairs2 A %d %d\n", Nencpairs_h[0], Nencpairs2_h[0]);
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
@@ -2749,7 +2751,7 @@ __host__ int Data::step_small(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(P.UseSmallCollisions == 1){
+		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
 			fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
 			if(nFragments_m[0] > 0){
 				int er = printFragments(nFragments_m[0]);
@@ -2757,7 +2759,8 @@ __host__ int Data::step_small(int noColl){
 				er = RemoveCall();
 				if(er == 0) return 0;
 			}
-			
+		}
+		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
 			rotationCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, Fragments_d, time_h[0], nFragments_m, nFragments_d);
 			if(nFragments_m[0] > 0){
 				int er = printRotation();

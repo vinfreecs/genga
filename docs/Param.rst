@@ -224,19 +224,22 @@ Non-Newtonian forces
 
 - :literal:`Solar Constant` : Solar constant at 1 AU in W / :math:`\text{m}^2` (default 1367.0)
 
-- | :literal:`Use GR`: Flag to enable General Relativity corrections (See :ref:`GR`)
+- | :literal:`Use GR`: Flag to enable General Relativity corrections
+  | See :ref:`GR`
 
    - 0 (default): no GR correction
    - 1: use GR Hamiltonian splitting 
    - 2: use implicit midpoint with GR force
    - 3: use GR force directly (not symplectic) 
 
-- | :literal:`Use Tides`: Flag to enable tidal forces (See :ref:`Tides`)
+- | :literal:`Use Tides`: Flag to enable tidal forces 
+  | See :ref:`Tides`
 
    - 0 (default): no tidal forces
    - 1: use tidal forces
 
-- | :literal:`Use Rotational Deformation`: Flag to enable rotational deformation forces (See :ref:`RotationalDeformation`)
+- | :literal:`Use Rotational Deformation`: Flag to enable rotational deformation forces 
+  | See :ref:`RotationalDeformation`
 
    - 0 (default): no rotational deformation force
    - 1: use rotational deformation force
@@ -254,35 +257,72 @@ Non-Newtonian forces
    - 6: Tidal force + rotation deformation
    - 7: GR + tidal force + rotation deformation
 
-- | :literal:`Use Yarkovsky`: Flag for Yarkovsky effect (See :ref:`Yarkovsky`)
+- | :literal:`Use Yarkovsky`: Flag for Yarkovsky effect 
+  | See :ref:`Yarkovsky`
 
    - 0 (default): no Yarkovsky effect
    - 1: use Yarkovsky effect :math:`\mathbf{a_Y}` 
    - 2: use time averaged Yarkovsky effect :math:`\frac{da}{dt}`
 
-- :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson drag (See :ref:`PRdrag`)
+- | :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson drag 
+  | See :ref:`PRdrag`
 
    - 0 (default) : no Poynting-Robertson drag
    - 1: use Poynting-Roberston drag :math:`\mathbf{a_{PR}}`
    - 2: use time averaged Poynting-Robertson drag :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
 
-- :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson drag, in general assumed to be 1. (See :ref:`PRdrag`)
-- | :literal:`Asteroid emissivity eps`
-  | Thermal emissivity factor :math:`\epsilon` (See :ref:`Yarkovsky`)
-- | :literal:`Asteroid density rho`, in km/ :math:`\text{m}^3` (See :ref:`Yarkovsky`, :ref:`PRdrag`)
- 
-- :literal:`Asteroid specific heat capacity C`, in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
-- | :literal:`Asteroid albedo A`
-  | Bond albedo (See :ref:`Yarkovsky`)
-- :literal:`Asteroid thermal conductivity K`, in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}` (See :ref:`Yarkovsky`)
+- | :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson drag, in general assumed to be 1.
+  | See :ref:`PRdrag`
+  | default = 1.0
 
-- | :literal:`Use Small Collisions`: Flag to enable model for small bodies collisions (See :ref:`SmallBodies`)
+
+- | :literal:`Asteroid emissivity eps`
+  | Thermal emissivity factor :math:`\epsilon`, used in the Yarkovsky effect.
+  | See :ref:`Yarkovsky`
+  | default = 0.95
+
+
+- | :literal:`Asteroid density rho`, in kg/ :math:`\text{m}^3`
+  | Used in Yarkovsky effect, Poynting-Robertson drag and small bodies collision model
+  | See :ref:`Yarkovsky`, :ref:`PRdrag`, :ref:`SmallBodies`
+  | default = 3500.0  kg/ :math:`\text{m}^3`
+ 
+- | :literal:`Asteroid specific heat capacity C`, in :math:`\text{J} \, \text{kg}^{-1} \text{K}^{-1}`
+  | Used in Yarkovsky effect
+  | See :ref:`Yarkovsky`
+  | default = 680 :math:`\text{J} \, \text{kg}^{-1} \text{K}^{-1}`
+
+
+- | :literal:`Asteroid albedo A`, Bond albedo, used for Yarkovsky effect. 
+  | See :ref:`Yarkovsky`
+  | default = 0.2
+
+
+- | :literal:`Asteroid thermal conductivity K`, in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}`
+  | Used for Yarkovsky effect
+  | See :ref:`Yarkovsky`
+  | default = 2.65 :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}`
+
+- | :literal:`Use Small Collisions`: Flag to enable model for small bodies collision model 
+  | See :ref:`SmallBodies`
   
    - 0 (default): model is not enabled
    - 1: enable rotation reset model and fragmentation model for test particles.
+   - 2: enable only rotation reset model for test particles.
+   - 3: enable only fragmentation model for test particles.
 
-- :literal:`Asteroid collisional velocity V`, in m/s (See :ref:`SmallBodies`)
 
+- | :literal:`Asteroid collisional velocity V`, in m/s, used for small bodies collision model
+  | See :ref:`SmallBodies`
+  | default = 5000 m/s
+
+- | :literal:`Asteroid minimal fragment radius`, in m , used for small bodies collision model
+  | See :ref:`SmallBodies`
+  | default = 0.01
+
+- | :literal:`Asteroid fragment remove radius`, in m , used for small bodies collision model
+  | See :ref:`SmallBodies`
+  | default = 0.01 m
 
 
 Options for encounters

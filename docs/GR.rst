@@ -115,6 +115,12 @@ from the known ephemeris. The remaining difference in the orbital position after
 likely caused by other non-gravitational effects. Or also small deviations in the initial conditions get increased at
 each orbit. 
 
+Since the GR effect calculation scales only linearly with the number of particles N, the performance of large simulations
+(:math:`N \gtrapprox 4096`) is only affected marginally. Simulations with :math:`N \approx 1024` are affected by ca. :math:`1\%`,
+while small simulations are affected more. A simulation with 16 fully interacting bodies can take up to 1.5 times as long with implicit
+midpoint method, and more than twice as long with the Hamiltonian splitting method. We recommend using the implicit midpoint method,
+since it gives a better performance. In Figure :numref:`figGRPerformance` is shown a comparison of the performance between the GR modes. 
+
 .. figure:: plots/GRdiff.png  
     :name: figGRdiff
 
@@ -125,4 +131,9 @@ each orbit.
     (orange line)  and the implicit midpoint method (red dashed line). When the position of the 16 perturbers is not
     integrated, but interpolated from their measured positions, then the difference in position is reduced further
     (purple line). 
+
+.. figure:: plots/PerformanceGR.png
+    :name: figGRPerformance
+
+    Performance of the GR modes on two GPUs for a set of N fully interactive particles.
 

@@ -21,7 +21,7 @@ and is available in the schemes (we recommend scheme 1):
 - :literal:`Solar Constant`: Solar Constant at 1 AU in W / :math:`\text{m}^2`
 - :literal:`Asteroid eps`: Emissivity factor
 - :literal:`Asteroid rho`: density of the body in km/ :math:`\text{m}^3`
-- :literal:`Asteroid C`: Specific Heat Capacity in :math:`\text{J} \, \text{Kg}^{-1} \text{K}^{-1}`
+- :literal:`Asteroid C`: Specific Heat Capacity in :math:`\text{J} \, \text{kg}^{-1} \text{K}^{-1}`
 - :literal:`Asteroid A`: Bond albedo
 - :literal:`Asteroid K`: Thermal conductivity in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}`
 

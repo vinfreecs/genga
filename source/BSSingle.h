@@ -42,7 +42,8 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	double t; t = 0.0;
 
 	const double ksqMsun = def_ksq * Msun;
-//printf("BSSingle %d\n", id);
+//printf("BSSingle %d %g %g %g %g %g %g %g %g\n", id, x4.w, v4.w, x4.x, x4.y, x4.z, v4.x, v4.y, v4.z);
+
 	xt.x = 0.0;
 	xt.y = 0.0;
 	xt.z = 0.0;

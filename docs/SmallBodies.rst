@@ -15,7 +15,7 @@ which uses an average probability that a given small body would collide with ano
 In the next two sections, we describe our model for collisional break-up events and rotation changes of small bodies.
 
 
-| The model for small bodies collisions can be enabled by setting :literal:`Use Small Collisions = 1` in the :literal:`param.dat` file.
+| The model for small bodies collisions can be enabled with the :literal:`Use Small Collisions` parameter in the :literal:`param.dat` file.
   It is only available for test particles.
 
 | All events of rotation reset or fragmentation are reported in the Fragments file :ref:`FragmentsFile`.
@@ -25,14 +25,17 @@ In the next two sections, we describe our model for collisional break-up events 
 
 The following parameters are relevant for the small body collision model  and can be set in the :literal:`param.dat` file:
 
-- :literal:`Use Small Collisions = 1`, enable small bodies collisions model.
+- :literal:`Use Small Collisions`, enable small bodies collisions model.
 - :literal:`Asteroid rho`: density of the body in kg/m^3.
 - :literal:`Asteroid V`: Asteroid collisional velocity V, in m/s.
 - :literal:`nFragments`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+- :literal:`Asteroid minimal fragment radius`, in m, :math:`R_m` value. (default = 0.01 m).
+- :literal:`Asteroid fragment remove radius`, in m, :math:`R_{del}` value. (default = 0.01 m).
 
 
 Collisional break-up
 --------------------
+Enabled with :literal:`Use Small Collisions = 1` or :literal:`Use Small Collisions = 3`.
 
 Following :cite:p:`Farinella1998`, we use a collisional life-time of
 
@@ -41,7 +44,7 @@ Following :cite:p:`Farinella1998`, we use a collisional life-time of
 
 which is equivalent to a break-up probability of :math:`1/\tau_{col}` per year.
 When a small body breaks up, its mass is replaced by a series of fragments with radii between the radius
-of the original object :math:`R_o`, and :math:`R_m` = 0.01 m.
+of the original object :math:`R_0`, and :math:`R_m` is set by :literal:`Asteroid minimal fragment radius`.
 We use the following distribution to generate the radii of the new fragments :math:`R_f`:
 
 .. math::
@@ -64,7 +67,7 @@ and :math:`N = 8000`; see :cite:p:`wiegert2015` for details) is distributed to t
 A randomly distributed velocity vector with the given length sets the new orbit of the particle.
 Typical values of these created fragment velocities are of the order of :math:`\sim0.1-1` m/s.
 
-Fragments with a radius smaller than 0.1 m are removed to prevent having too many particles in the simulation.
+Fragments with a radius smaller than :math:`R_{def}` are removed to prevent having too many particles in the simulation.
 The obliquity of the new particles is generated randomly (between 0 and :math:`\pi`) and for the rotation rate, we take
 
 .. math::
@@ -76,6 +79,7 @@ which reproduces the range of rotation rates typically observed for Near Earth A
 
 Collisional reset of rotation rate and obliquity
 ------------------------------------------------
+Enabled with :literal:`Use Small Collisions = 1` or :literal:`Use Small Collisions = 2`.
 
 For each object at each time step, we calculate the probability that its rotation was reset during the last time step
 by a virtual collision with another particle, as a function of its radius :math:`R` and previous rotation rate.

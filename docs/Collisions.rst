@@ -5,9 +5,10 @@ Collisions
 
 A collision between two particles happens when the separation :math:`r_{ij}` between two bodies :math:`i` and :math:`j`
 gets smaller than (or close to) the sum of their physical radii :math:`R_i + R_j`. The current version of GENGA treats collisions as
-perfect inelastic mergers by forming one single bigger body. During this collision process, linear momentum is conserved,
-but not the energy, since a part of the kinetic energy and the potential self-energy is transferred into an internal energy
-:math:`U`. Angular momentum is conserved by transferring the angular momentum of the two bodies into the spin of the new body.
+perfect inelastic mergers by forming one single bigger body. During this collision process, linear momentum is conserved.
+Physically, a part of the potential and kinetic energy is transformed into an internal energy. GENGA keeps track of this
+internal energy :math:`U`, such that the overall energy of the system is conserved.
+Angular momentum is conserved by transferring the angular momentum of the two bodies into the spin of the new body.
 
 The :literal:`Collision Model` option can be used to implement a different collision model than perfect merger. This can be done
 int the :literal:`collide` function in the file :literal:`directAcc.h`.

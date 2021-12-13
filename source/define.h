@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.135
+#define def_Version 3.136
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -82,6 +82,8 @@
 #define def_Asteroid_A 0.2		//Bond albedo				Hebe 0.2,	Veritas 0.069
 #define def_Asteroid_K 2.65		//Thermal conductivity in W/mK		Hebe 2.65,	Veritas 1.0
 #define def_Asteroid_V 5000.0		//Collisional velocity in m/s 
+#define def_Asteroid_rmin 0.01		//minimal radius of new generated particles in m 
+#define def_Asteroid_rdel 0.01		//remove limit for new generated particles in n
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
@@ -295,6 +297,8 @@ __constant__ double Asteroid_C_c[1];
 __constant__ double Asteroid_A_c[1];
 __constant__ double Asteroid_K_c[1];
 __constant__ double Asteroid_V_c[1];
+__constant__ double Asteroid_rmin_c[1];
+__constant__ double Asteroid_rdel_c[1];
 __constant__ double SolarConstant_c[1];
 __constant__ double Qpr_c[1];
 
@@ -340,6 +344,8 @@ struct Parameter{
 	double Asteroid_A;
 	double Asteroid_K;
 	double Asteroid_V;
+	double Asteroid_rmin;
+	double Asteroid_rdel;
 	int IrregularOutputs;
 	char IrregularOutputsfilename[128];
 	int UseTransits;

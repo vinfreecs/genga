@@ -219,6 +219,14 @@ We assume :math:`I_c = 0.07`.
   S = \frac{2 \pi}{27.5 \text{days} \cdot 0.01720209895} \cdot 0.07 \cdot 1.0 M_{\odot} \cdot (0.00464 AU)^2
   = 0.00002001703 \, M_{\odot} AU^2 / day'
 
+
+Energy
+^^^^^^
+
+Angular momentum
+^^^^^^^^^^^^^^^^
+
+
 Time lag
 ^^^^^^^^
 | The time lag :math:`\tau` is given in units of day' = day / 0.0172020989. 

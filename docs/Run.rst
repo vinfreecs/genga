@@ -263,4 +263,4 @@ In :numref:`figGengaGL` is shown a screenshot of GengaGL.
    :name: figGengaGL
 
    Screenshot of the GENGA real time visualization tool using openGL. Shown is the inner part of the Solar System, including
-   Jupiter and the asteroid belt. The trojans are nicely visible on the Lagrange points of Jupiter.
+   Jupiter and the asteroid belt. The Trojans are nicely visible on the Lagrange points of Jupiter.
