@@ -24,7 +24,7 @@ __device__ void Yarkovski(double &a, const double e, double m, const double mu, 
 	double RR = R * def_AU;		//covert radius in m 
 
 //comppute mass through density
-if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
 	m /= 1.98855e30;						//mass im Solar masses
 
 	double d = a * (1.0 + e*e * 0.5);//time averaged heliocentric distance in AU
@@ -169,7 +169,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	double mu = def_ksq * (Msun + m);
 //comppute mass through density
 	if(m == 0.0){
-		m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+		m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
 		m /= 1.98855e30;						//mass im Solar masses
 		mu = def_ksq * (Msun + m);
 	}
@@ -324,7 +324,7 @@ __global__ void CallYarkovsky(double4 *x4_d, double4 *v4_d, double4 *spin_d, int
 			double dt = dt_d[st] * Kt;
 			double mu = def_ksq * (Msun + x4i.w);
 			if(x4i.w == 0.0){
-				double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR;; 	//mass in Kg;
+				double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR;; 	//mass in kg;
 				m /= 1.98855e30;						//mass im Solar masses
 				mu = def_ksq * (Msun + m);
 			}

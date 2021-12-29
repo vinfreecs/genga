@@ -18,6 +18,7 @@ pairs.
 
  ** News: **
 
+ * Version 3.137: Corrected angular momentum units in the Energyfile to Msun AU^2/day.
  * Version 3.135: Moved KickFloat from defin.h to param.dat.
  * Version 3.134: Included spin evolution for tidal and rotational deformation forces.
  * Version 3.129: Included moment of inertia.

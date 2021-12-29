@@ -150,7 +150,7 @@ __host__ int Data::firstoutput(int irregular){
 				er = fscanf (Energyfile, "%lf",&skip);
 	
 				U_h[st] /= def_Kg;
-				LI_h[st] /= def_Kg;
+				LI_h[st] /= dayUnit;
 			}
 			else{
 				//read only initial energy and angular momentum
@@ -184,7 +184,7 @@ __host__ int Data::firstoutput(int irregular){
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 	
 				U_h[st] /= def_Kg;
-				LI_h[st] /= def_Kg;
+				LI_h[st] /= dayUnit;
 
 				if(Et * tsign >= atof(Ets) * tsign) break;
 
@@ -197,7 +197,7 @@ __host__ int Data::firstoutput(int irregular){
 				printf("Error: In Simulation %s: Restart time step not valid %g %g\n", GSF[st].path, atof(Ets), Et);
 				return 0;
 			}
-//printf("Energy %g %g %g %g\n", Energy0_h[0], U_h[0] * def_Kg, LI0_h[0], LI_h[0] * def_Kg);
+//printf("Energy %g %g %g %g\n", Energy0_h[0], U_h[0] * def_Kg, LI0_h[0], LI_h[0] * dayUnit);
 
 
 			fclose(Energyfile);

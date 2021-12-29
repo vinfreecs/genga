@@ -204,7 +204,7 @@ int main(int argc, char*argv[]){
 
 	printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s Msun: %lf\n", kmin, kmax, step, X, Msun);
 
-	int N = 200000;
+	int N = 500000;
 	int NN = 0;
 
 	double3 x, v, spin;
@@ -212,6 +212,7 @@ int main(int argc, char*argv[]){
 	double m, r, a, e, inc, Omega, w, Theta, E, M;
 	double s, t;
 	int index;
+	int indexOld;
 
 	for(long long int k = kmin; k <= kmax; k += step){
 		if(useCollfile == 0){
@@ -246,6 +247,7 @@ printf("%s\n", inputfilename);
 		if(useCollfile == 0){
 			for(int i = 0; i < N; ++i){
 				xOld = x.x;
+				indexOld = index;
 				fscanf (inputfile, "%lf",&t);
 				fscanf (inputfile, "%d",&index);
 //printf("%d %g %d\n", i, t, index);
@@ -268,7 +270,7 @@ printf("%s\n", inputfilename);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
-				if(xOld == x.x){
+				if(xOld == x.x && indexOld == index){
 					NN = i;
 printf("%d\n", NN);
 					break;
@@ -281,6 +283,7 @@ printf("%d\n", NN);
 			for(int i = 0; i < N; ++i){
 				int er = 0;
 				xOld = x.x;
+				indexOld = index;
 				//planet i
 				fscanf (inputfile, "%lf",&t);
 				fscanf (inputfile, "%d",&index);

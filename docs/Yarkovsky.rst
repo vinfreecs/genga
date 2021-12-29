@@ -88,7 +88,6 @@ In :numref:`figYarkovsky` is shown a test of the Yarkovsky effect following :cit
 .. figure:: plots/Yarkovsky.png  
    :name: figYarkovsky
 
-   Drift rate of the seasonal and diurnal Yarkovsky effect. Computed after 10000 years and averaged over 1 orbit. 
-   The scattering is caused by the random values for the mean anomalies.
+   Drift rate of the seasonal and diurnal Yarkovsky effect. Computed after 10000 years and averaged over 1 orbit.
 
 

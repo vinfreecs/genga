@@ -640,7 +640,7 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 //Authors: Simon Grimm
 //August 2016
 // ****************************************
-__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, int st, int N, int EE){
+__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double4 *Spinsun_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, int st, int N, int EE){
 	int idy = threadIdx.x;
 
 	double T = 0.0;
@@ -876,26 +876,32 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 //printf("Lsum+ %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
 		volatile double Ltot = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 //printf("Ltot %.20g %.20g %.20g\n", Ltot, LI_d[0], Ltot + LI_d[0]);
+
+		double4 Spinsun4 = Spinsun_d[st];
+		double Spinsun = sqrt(Spinsun4.x * Spinsun4.x + Spinsun4.y * Spinsun4.y + Spinsun4.z * Spinsun4.z);
+//printf("Spinsun %g\n", Spinsun);
+		Ltot += Spinsun;
+
 		V *= def_Kg;
 		T *= def_Kg;
 		E *= def_Kg;
 		Tsun *= def_Kg;
 		Energy_d[0] = V;
 		Energy_d[1] = T + Tsun;
-		Energy_d[2] = LI_d[st] * def_Kg;
+		Energy_d[2] = LI_d[st] * dayUnit;
 		Energy_d[3] = U_d[st] * def_Kg;
 		Energy_d[4] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
-		Energy_d[5] = (Ltot + LI_d[st]) * def_Kg;
+		Energy_d[5] = (Ltot + LI_d[st]) * dayUnit;
 
 		if(EE == 0){
 
 			Energy0_d[st] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
-			LI0_d[st] = (Ltot + LI_d[st]) * def_Kg;
+			LI0_d[st] = (Ltot + LI_d[st]) * dayUnit;
 			Energy_d[7] = 0.0;
 			Energy_d[6] = 0.0;
 		}
 		if(EE == 1){
-			Energy_d[6] = ((Ltot + LI_d[st]) * def_Kg - LI0_d[st]) / LI0_d[st]; 
+			Energy_d[6] = ((Ltot + LI_d[st]) * dayUnit - LI0_d[st]) / LI0_d[st]; 
 			Energy_d[7] = ((T + V + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
 		}
 	}
@@ -910,7 +916,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 __host__ void Data::EnergyCall(int NBT, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
 
 	potentialEnergy_kernel  <<< N + Nsmall, min(NBT, 512), WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, Msun, Energy_d, st, N + Nsmall);
-	kineticEnergy_kernel <<< 1, min(NBT, 512), 12 * WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, U_d, LI_d, Energy0_d, LI0_d, st, N + Nsmall, E);
+	kineticEnergy_kernel <<< 1, min(NBT, 512), 12 * WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, N + Nsmall, E);
 }
 // *************************************
 //This function calls the EjectionEnergy kernels

@@ -222,9 +222,11 @@ We assume :math:`I_c = 0.07`.
 
 Energy
 ^^^^^^
+The energy in the Energy file is reported in in :math:`M_\odot AU^2 / day^2`.
 
 Angular momentum
 ^^^^^^^^^^^^^^^^
+The angular momentum in the Energy file is reported in in :math:`M_\odot AU^2 / day`.
 
 
 Time lag

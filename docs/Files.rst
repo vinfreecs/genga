@@ -171,11 +171,11 @@ with
 - time in years
 - N: Number of particles
 - V: Total potential energy , in :math:`M_\odot AU^2 / day^2`
-- T: Total Kinetic energy, :math:`M_\odot AU^2 / day^2`
-- LI: Angular momentum lost at ejections
+- T: Total Kinetic energy, in :math:`M_\odot AU^2 / day^2`
+- LI: Angular momentum lost at ejections, in :math:`M_\odot AU^2 / day`
 - U: Inner energy created from collisions, ejections or gas disc, :math:`M_\odot AU^2 / day^2`
-- ETotal: Total Energy, :math:`M_\odot AU^2 / day^2`
-- LTotal: Total Angular Momentum
+- ETotal: Total Energy, in :math:`M_\odot AU^2 / day^2`
+- LTotal: Total Angular Momentum, in :math:`M_\odot AU^2 / day`
 - LRelativ: (LTotal_t - LTotal_0)/LTotal_0, dimensionless
 - ERelativ: (ETotal_t - ETotal_0)/ETotal_0, dimensionless
 

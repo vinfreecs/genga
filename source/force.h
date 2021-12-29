@@ -1295,7 +1295,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double RR = v4.w * def_AU;	//convert radius in m
 			double M = x4.w;
 			if(x4.w == 0.0){
-				M = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
+				M = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in kg;
 				M /= def_Solarmass;								//mass im Solar masses
 			}
 
@@ -1396,9 +1396,9 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 
 			//mass of the parent body
 			double RR = v4.w * def_AU;	//convert radius in m
-			double M = x4.w * def_Solarmass; //mass in Kg
+			double M = x4.w * def_Solarmass; //mass in kg
 			if(x4.w == 0.0){
-				M = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in Kg;
+				M = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in kg;
 			}
 
 			double p = 1.0 / (2.0e7 * sqrt(RR));	//probability per year per body
@@ -1421,7 +1421,7 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 					double n = -1.5;
 					double u = curand_uniform(&random);
 					double r = pow((pow(x1,n+1.0) - pow(x0,n+1.0)) * u + pow(x0, n+1.0), 1.0/(n+1.0));
-					double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * r * r * r; //mass in Kg;
+					double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * r * r * r; //mass in kg;
 
 					M -= m;
 					if(M <= 0.0){
@@ -1654,7 +1654,7 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 			double dt = dt_d[st] * Kt;
 			double m = x4i.w;
 			if(m == 0.0){
-				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
 				m /= def_Solarmass;						//mass im Solar masses
 			}
 			double mu = def_ksq * (Msun + m);
@@ -2011,7 +2011,7 @@ __global__ void PoyntingRobertsonDrag(double4 *x4_d, double4 *v4_d, int *index_d
 			double RR = v4i.w * def_AU;					//covert radius in m	
 
 			if(m == 0.0){
-				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
 				m /= def_Solarmass;					//mass im Solar masses
 			}
 			double mu = def_ksq * (Msun + m);
@@ -2204,7 +2204,7 @@ __global__ void PoyntingRobertsonDrag2(double4 *x4_d, double4 *v4_d, int *index_
 			double m = x4i.w;
 		
 			if(m == 0.0){
-				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in Kg;
+				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
 				m /= def_Solarmass;					//mass im Solar masses
 			}
 		
