@@ -8,7 +8,7 @@ Starting GENGA
 Before running GENGA, an initial conditions file must be provided, as described in :ref:`InitialConditions`.
 An example of an initial conditions file with 2048 planetesimals is provided in the GENGA repository (initialplanet_2048.dat).
 
-All relevant user parameters can be set in the :literal:`param.dat` file, as described in :ref:`ParamFile`.
+All relevant user parameters can be set in the :ref:`param.dat<ParamFile>` file, as described in :ref:`ParamFile`.
 An example is also provided in the source directory.
 
 GENGA can be started with::
@@ -27,7 +27,7 @@ Restarting GENGA to continue simulations
 ----------------------------------------
 
 A simulation can be restarted from each coordinate output file by using the :literal:`-R` time step console argument or by setting
-a restart time in the 'param.dat' file. Before restarting a simulation things in the param.dat file can be changed if necessary,
+a restart time in the :ref:`param.dat<ParamFile>` file. Before restarting a simulation things in the :ref:`param.dat<ParamFile>` file can be changed if necessary,
 but the Output name must be the same as in the original run. To be able to restart a simulation, the corresponding coordinate output file,
 the corresponding line in the energy file and the time file, and if used, the corresponding aeGrid file, must exist.
 Note that the data in the Energy-, Collisions-, Ejections-, time- and info-files are not deleted and the new data is added at the end of these files.
@@ -73,7 +73,7 @@ The default mode of GENGA computes the gravitational force between all pairs of 
 When :math:`N` is large, then this operation is the dominant part of the entire run time. 
 
 When small particles are used in a simulation, then it can be useful to reduce the amount of mutual force calculations between small particles. 
-This can be done with the test particle mode option :literal:`Use Test Particles` in the :literal:`param.dat` file, or by using the
+This can be done with the test particle mode option :literal:`Use Test Particles` in the :ref:`param.dat<ParamFile>` file, or by using the
 console argument :literal:`-TP 1` or :literal:`-TP 2`.
 
 Test particles are bodies which have a smaller or equal mass than the value specified in the :literal:`Particle Minimum Mass` parameter. 
@@ -110,8 +110,8 @@ Multi simulation mode
 ---------------------
 The multi simulation mode can be used to simulate a large number of small simulations with up to 32 massive particles.
 Individual sub simulations can have a different number of bodies.
-For each simulation a new directory is needed, containing the initial condition file and the :literal:`param.dat` file.
-Note that not all parameters in the :literal:`param.dat` file can be chosen individually, these are only:
+For each simulation a new directory is needed, containing the initial condition file and the :ref:`param.dat<ParamFile>` file.
+Note that not all parameters in the :ref:`param.dat<ParamFile>` file can be chosen individually, these are only:
 
 - the time step
 - the number of integration steps
@@ -161,13 +161,43 @@ In the multi simulation mode, the indexes of the particles should not be greater
 
 
 
+.. _KE:
+
+Generate Keplerian-elements output files 
+----------------------------------------
+Output files can be converted into Keplerian-elements output files with the :literal:`KE` tool, located in the :literal:`tools` directory.
+
+Compile with typing:: 
+
+        make SM=xx
+
+into a terminal, where :literal:`xx` corresponds to the compute capability of the GPU.
+
+Use e.g. 'make SM=60' for compute capability of 6.0, or 'make SM=65' for compute capability of 6.5.
+
+
+Then run :literal:`KE` with::
+
+    ./KE [options]
+
+where :literal:`[options]` are the following optional user parameters:
+
+- :literal:`tmin`: starting time step
+- :literal:`tmax`: ending time step
+- :literal:`step`: output interval 
+- :literal:`in`: name of the files
+- :literal:`Msun`: Solar Mass (default = 1.0 :math:`M_\odot`)
+ 
+This tool generates for each coordinate output file an additional Kepler-Elements file, see :ref:`aeiFiles`.
+
+
 .. _IrregularOutput:
 
 Irregular output times
 ----------------------
 When output data is needed on an irregular interval, then the :literal:`Coordinates output interval` and :literal:`Energy output interval`
 parameters are not useful. Insted a calendar file with the desired output times can be provided. The name of this file must be set in the
-:literal:`Irregular output calendar` parameter in the :literal:`param.dat` file.
+:literal:`Irregular output calendar` parameter in the :ref:`param.dat<ParamFile>` file.
 
 The file must contain line by line the times of the desired outputs in units of years. At each irregular output time,
 and entry in the irregular energy file is written, and a new irregular output file is created (:ref:`IrrOutFile` and :ref:`IrrEnergyFile`).
@@ -210,7 +240,7 @@ enabled, to write the :ref:`tuningFile`. And in a second step, the profiling can
 is that the tuning routine is running some kernels many times, which affects the profiling statistics. 
 
 
-The tuning routine can be enabled with the :literal:`Do kernel tuning` parameter in the :literal:`param.dat` file.
+The tuning routine can be enabled with the :literal:`Do kernel tuning` parameter in the :ref:`param.dat<ParamFile>` file.
 
 
 

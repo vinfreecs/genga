@@ -3,7 +3,7 @@
 Rotational Deformation
 ======================
 
-The rotational deformation force can be enabled with the :literal:`Use Rotational Deformation` parameter in the :literal:`param.dat` file.
+The rotational deformation force can be enabled with the :literal:`Use Rotational Deformation` parameter in the :ref:`param.dat<ParamFile>` file.
 
 
 Parameters for the tidal forces:

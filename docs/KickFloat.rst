@@ -27,7 +27,7 @@ different GPU types.
 
 
 The use single precision in the gravitational forces instead of double precision, the :literal:`Do Kick in single precision`
-option in the :literal:`param.dat` file must be set to 1.
+option in the :ref:`param.dat<ParamFile>` file must be set to 1.
 
 This option is not yet supported in the multi simulation mode.
 

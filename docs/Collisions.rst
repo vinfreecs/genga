@@ -17,7 +17,7 @@ int the :literal:`collide` function in the file :literal:`directAcc.h`.
 When a collision happens, the coordinates of the two involved bodies are reported in the collision file (see :ref:`CollisionsFile`).
 
 
-| The following parameters are relevant for the collision handling and can be set in the :literal:`param.dat` file:
+| The following parameters are relevant for the collision handling and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Collision Precision` in units of a physical radius fraction. (default :math:`1.0^{-4}`)
 - :literal:`Collision Time Shift`, in units of a physical radius factor. (default :math:`1.0`)
@@ -37,9 +37,9 @@ The position and velocity of the new body is calculated as
 
 .. math::
  
-   \mathbf{x}_{new} = \frac{\mathbf{x}_i m_i + \mathbf{x}_j m_j}{m_i + m_j}
+   \mathbf{x}_{\rm new} = \frac{\mathbf{x}_i m_i + \mathbf{x}_j m_j}{m_i + m_j}
 
-   \mathbf{v}_{new} = \frac{\mathbf{v}_i m_i + \mathbf{v}_j m_j}{m_i + m_j}
+   \mathbf{v}_{\rm new} = \frac{\mathbf{v}_i m_i + \mathbf{v}_j m_j}{m_i + m_j}
 
 The spin :math:`\mathbf{S}` of the new body is calculated as
 
@@ -47,10 +47,15 @@ The spin :math:`\mathbf{S}` of the new body is calculated as
 
    \mathbf{L}_{ij} = \frac{m_i m_j}{m_i + m_j} \left( \mathbf{r}_{ij} \times \mathbf{v}_{ij} \right)
 
-   \mathbf{S}_{new} = \mathbf{S}_i + \mathbf{S}_j + \mathbf{L}_{ij}
+   \mathbf{S}_{\rm new} = \mathbf{S}_i + \mathbf{S}_j + \mathbf{L}_{ij}
 
 
-The change in the internal energy :math:`U` is calculated as
+In order to keep track of the energy conservation, we add the lost kinetic and potential energy from collisions,
+ejections and caused by the gas drag into a quantity :math:`U`. This quantity includes the energy loss from all particles
+together and not from single particles. :math:`U` is not directly related to a physical quantity, however it contains the
+change of the inner energy of all particles and the spin energy caused at collision. 
+
+When two particles :math:`i` and :math:`j` collide, then :math:`U` is increased by
 
 .. math::
 

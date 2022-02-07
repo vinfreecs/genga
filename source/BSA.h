@@ -625,7 +625,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							if(noColl == -1) dR = -dR;
 
 //printf("dRA %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
-							if(dR > fabs(CollisionPrecision_c[0])){
+							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 							//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}
@@ -1202,7 +1202,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 							if(noColl == -1) dR = -dR;
 
 //printf("dR512 %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
-							if(dR > fabs(CollisionPrecision_c[0])){
+							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}
@@ -1681,7 +1681,7 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 			if(noColl == -1) dR = -dR;
 
 //printf("dRm %d %d %.20g %.20g %.20g | noColl %d\n", i, j, d, R, dR, noColl);
-			if(dR > fabs(CollisionPrecision_c[0])){
+			if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 				//bodies are already overlapping
 				Coltime = fmin(Coltime_s[c], Coltime);
 			}

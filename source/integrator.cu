@@ -2366,6 +2366,7 @@ __host__ int Data::step_16(int noColl){
 }
 
 __host__ int Data::step_largeN(int noColl){
+
 	Rcrit_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_h[0].x, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, N_h[0], NconstT, P.SLevels, noColl);
 	//use last time step information for setElements function, the beginning of the time step
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric

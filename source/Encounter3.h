@@ -372,7 +372,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 		delta = fmin(delta, d1);
 		delta = fmin(delta, d0);
 
-//if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g\n", i, j, sqrt(delta), enct, t1, t2);
+//if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g %g\n", i, j, sqrt(delta), enct, t1, t2, rcrit);
 		double rcritsq = rcrit * rcrit;
 
 		if(delta < rcritsq){

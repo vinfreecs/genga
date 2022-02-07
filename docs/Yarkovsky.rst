@@ -7,15 +7,15 @@ The Yarkovky effect is implemented according to :cite:p:`Vokrouhlicky1999` and :
 and is available in the schemes (we recommend scheme 1):
 
 - | Velocity kick :math:`\mathbf{a_Y}`
-  | set :literal:`Use Yarkovsky = 1` in the :literal:`param.dat` file.
+  | set :literal:`Use Yarkovsky = 1` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_1a` and :eq:`eq_1b`
 - | Time averaged change in sami-major axis :math:`\frac{da}{dt}`
-  | set :literal:`Use Yarkovsky = 2` in the :literal:`param.dat` file.
+  | set :literal:`Use Yarkovsky = 2` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_2a` and :eq:`eq_2b`
 	
 
 
-| The following parameters are relevant for the Yarkovsky effect and can be set in the :literal:`param.dat` file:
+| The following parameters are relevant for the Yarkovsky effect and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Use Yarkovsky`
 - :literal:`Solar Constant`: Solar Constant at 1 AU in W / :math:`\text{m}^2`

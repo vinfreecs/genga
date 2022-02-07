@@ -55,7 +55,20 @@ close encounter group. This scenario is likely to happen, when the particle numb
 
 The n1 and n2 values
 --------------------
-The values :literal:`n1` and :literal:`n2` from equation :eq:`eq_rcrit` can be set in the :literal:`param.dat` file.
+The values :literal:`n1` and :literal:`n2` from equation :eq:`eq_rcrit` can be set in the :ref:`param.dat<ParamFile>` file.
+
+
+.. _Symplecicorder:
+
+The order of the symplectic integrator
+--------------------------------------
+
+The order of the symplectic integrator can be set with the :literal:`Order of integrator` parameter in the :ref:`param.dat<ParamFile>` file.
+Options are 2, 4 or 6. 
+
+The 4th and 6th order symplectic integrators use the description of :cite:p:`Yoshida1990`.
+
+The higher order integrators work the best for cases with few close encounters. 
 
 
 .. _precheck: 
@@ -87,4 +100,7 @@ The factor :literal:`cef` is a safty factor. It can be set in the :ref:`define.h
 Close Encounters
 ----------------
 
-:literal:`Maximum encounter pairs`
+The :literal:`Maximum encounter pairs` parameter in the :ref:`param.dat<ParamFile>` file, sets the amount of memory that is allocated to store close
+ncounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error massa is
+written. Setting a larger value of :literal:`Maximum encounter pairs` increases the memory usage of the code. 
+

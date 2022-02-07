@@ -3,7 +3,7 @@
 Parameters in the define.h File
 ===============================
 
-This file contains all default values of the parameters in the :literal:`param.dat` file.
+This file contains all default values of the parameters in the :ref:`param.dat<ParamFile>` file.
 It also contains constants and additional parameters for GENGA.
 When a value is changed in this file, then GENGA needs to be recompiled.
 

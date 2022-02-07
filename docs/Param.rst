@@ -3,8 +3,8 @@
 Parameters in the param.dat file
 ================================
 
-All parameters in the :literal:`param.dat` file can be changed with recompiling GENGA.
-Most parameters are optional, if they are not included in the :literal:`param.dat` file,
+All parameters in the :ref:`param.dat<ParamFile>` file can be changed with recompiling GENGA.
+Most parameters are optional, if they are not included in the :ref:`param.dat<ParamFile>` file,
 then their default values are used. The default values are set in the :ref:`define.h<Define>` file.
 
 Main parameters
@@ -148,13 +148,18 @@ Integrator options
   | When the distance of a particle to the central mass is larger than this number, then the particle is removed from the simulation.
   | See :ref:`Ejections`
 
-- Order of integrator = 2
+- | :literal:`Order of integrator`, set the order of the symplectic integrator.
+  | See :ref:`Symplecicorder`
+  
+  - 2: second order (default)
+  - 4: fourth order
+  - 6: sixth order
 
 
 Memory options
 --------------
 
-- | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512)
+- | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512).
   | See :ref:`Close_Encounters`
 
 - | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default = 0). 

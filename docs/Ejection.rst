@@ -3,7 +3,7 @@
 Ejections
 =========
 
-The following parameters are relevant for ejections and can be set in the :literal:`param.dat` file:
+The following parameters are relevant for ejections and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Inner truncation radius`
 - :literal:`Outer truncation radius`

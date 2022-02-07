@@ -6,7 +6,7 @@ Encounters
 This section describes the options or reporting encounter events. It is not related to the close encounter arguments used for the changeover function of the integrator. 
 
 
-| The following parameters are relevant for the encounter-report or stop-at-encounters handling and can be set in the :literal:`param.dat` file:
+| The following parameters are relevant for the encounter-report or stop-at-encounters handling and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Report Encounters`
 - :literal:`Report Encounters Radius`

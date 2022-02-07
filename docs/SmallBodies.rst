@@ -15,15 +15,15 @@ which uses an average probability that a given small body would collide with ano
 In the next two sections, we describe our model for collisional break-up events and rotation changes of small bodies.
 
 
-| The model for small bodies collisions can be enabled with the :literal:`Use Small Collisions` parameter in the :literal:`param.dat` file.
+| The model for small bodies collisions can be enabled with the :literal:`Use Small Collisions` parameter in the :ref:`param.dat<ParamFile>` file.
   It is only available for test particles.
 
 | All events of rotation reset or fragmentation are reported in the Fragments file :ref:`FragmentsFile`.
 
 | Sinze the fragmentaion routine creates additional debris particles, the initial memory arrays need to be increased to 
-  be able to store these additional particles. That can be done with the :literal:`nFragments`: option in the :literal:`param.dat` file
+  be able to store these additional particles. That can be done with the :literal:`nFragments`: option in the :ref:`param.dat<ParamFile>` file
 
-The following parameters are relevant for the small body collision model  and can be set in the :literal:`param.dat` file:
+The following parameters are relevant for the small body collision model  and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Use Small Collisions`, enable small bodies collisions model.
 - :literal:`Asteroid rho`: density of the body in kg/m^3.

@@ -3,7 +3,7 @@
 Tidal Forces
 ============
 
-Tidal Forces can be enabled with the :literal:`Use Tides` parameter in the :literal:`param.dat` file.
+Tidal Forces can be enabled with the :literal:`Use Tides` parameter in the :ref:`param.dat<ParamFile>` file.
 The tidal forces evolve the spin of the particles and spin of the central star. The evolution of the
 stellar spin is reported in :ref:`StarFile`.
 

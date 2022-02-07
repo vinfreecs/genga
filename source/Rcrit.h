@@ -183,7 +183,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		else{
 			rcritv_d[id] = rcritv;
 		}
-		//printf("rcrit %d %g %.20g %.20g %g %g %g %g %g %d\n", id, time, x4i.x, v4i.x, x4i.w, x4b_d[id].x, x4b_d[id].w, rcritv_d[id], rcritvb_d[id], f);
+//if(id < 10) printf("rcrit %d %g %.20g %.20g %g %g %g %g %g %d\n", id, time, x4i.x, v4i.x, x4i.w, x4b_d[id].x, x4b_d[id].w, rcritv_d[id], rcritvb_d[id], f);
 		//test_d[id] = rcritv_d[id];
 		//Check for Ejections or too small distances to the Sun
 		if((rsq > Rcut_c[0] * Rcut_c[0] || rsq < RcutSun_c[0] * RcutSun_c[0]) && x4_d[id].w >= 0.0){

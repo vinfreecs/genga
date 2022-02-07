@@ -57,7 +57,7 @@ for performance measurement.
 The Coordinate Output Files: Out<name>.dat
 ------------------------------------------
 This file contains the heliocentric positions and velocities, the spin and some information about the orbit and close encounters.
-At the :literal:`coordinate output interval`, set in the :literal:`param.dat` file, a new output is written. The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
+At the :literal:`coordinate output interval`, set in the :ref:`param.dat<ParamFile>` file, a new output is written. The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
 
 The number of digits in the output file names can be changed with the :literal:`def_NFileNameDigits` parameter in the :ref:`define.h<Define>` file.
 
@@ -153,12 +153,38 @@ See :ref:`IrregularOutput`.
 The number of digits in the output file names can be changed with the :literal:`def_NFileNameDigits` parameter in the :ref:`define.h<Define>` file.
 
 
+
+.. _aeiFiles:
+
+Keplerian-Elemets Output Files: aei<name>.dat
+---------------------------------------------
+
+The Coordinate output files can be uses to generate Keplerian-Elements output files with the  :ref:`KE<KE>` tool.
+These files contain the following::
+
+	time i a e inc Omega w Theta E M m r
+
+with
+
+- time: time, in years
+- i: index 
+- a: semi major axis, in AU
+- e: eccentricity:
+- inc: inclination, in radians
+- Omega: longitude of the ascending node, in radians
+- w: argument of periapsis, in radians
+- Theta: true anomaly, in radians
+- E: eccentric anomaly, in radians
+- M: mean anomaly, in radians
+- m: mass, in Solar masses
+- r: radius, in AU
+
 .. _EnergyFile:
 
 The Energy Output File: Energy<name>.dat
 ----------------------------------------
 This file contains information about the number of particles, angular momentum and the energy.
-At the :literal:`Energy output interval`, set in the :literal:`param.dat` file, a new line in this file is written. The format is the following::
+At the :literal:`Energy output interval`, set in the :ref:`param.dat<ParamFile>` file, a new line in this file is written. The format is the following::
 
 	time0  N  V  T  LI  U  ETotal  LTotal  LRelativ  ERelativ
 	time1  N  V  T  LI  U  ETotal  LTotal  LRelativ  ERelativ
@@ -203,7 +229,7 @@ The Collisions File: Collisions<name>.dat
 See :ref:`Collisions`.
 
 In this file are listed the details of the collisions between particle i and j.
-The precision of the collision output can be adjusted with the :literal:`Collision Precision` argument in the :literal:`param.dat` file
+The precision of the collision output can be adjusted with the :literal:`Collision Precision` argument in the :ref:`param.dat<ParamFile>` file
 (See :ref:`CollisionPrecision`).
 The file contains the following columns::
 
@@ -220,7 +246,7 @@ The Tshift Collisions File: CollisionsTshift<name>.dat
 See :ref:`CollisionTshift`.
 
 In this file are listed the details of the backtraced collisions between particle i and j.
-The collision time shift option can be set by the :literal:`Collision Time Shift` argument in the :literal:`param.dat` file.
+The collision time shift option can be set by the :literal:`Collision Time Shift` argument in the :ref:`param.dat<ParamFile>` file.
 This file is only created when :literal:`Collision Time Shift` is used.
 The file contains the following columns::
 
@@ -305,7 +331,7 @@ The Fragments File: Fragments<name>.dat
 ---------------------------------------
 See :ref:`SmallBodies`.
 
-This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :literal:`param.dat` file is enabled. The file contains information about fragmentation and rotation reset events::
+This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :ref:`param.dat<ParamFile>` file is enabled. The file contains information about fragmentation and rotation reset events::
 
 	time index m r x y z vx vy vz Sx Sy Sz event
 	.

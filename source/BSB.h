@@ -629,7 +629,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							noColl = 2;
 							BSstop_d[0] = 3;
 						}
-//if( Encpairs2_d[start + ii].x == 0 &&  Encpairs2_d[start + jj + l].x == 1) printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, tt, ff, n);
+//if( Encpairs2_d[start + ii].x == 0 &&  Encpairs2_d[start + jj + l].x == 1) printf("BSBEE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, tt, ff, n);
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
 							if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
@@ -703,7 +703,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							if(noColl == -1) dR = -dR;
 
 //printf("dR %d %d %.20g %.20g %.20g %g\n", i, j, d, R, dR, Coltime_s[c]);
-							if(dR > fabs(CollisionPrecision_c[0])){
+							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}

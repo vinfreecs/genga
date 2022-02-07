@@ -204,10 +204,12 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, doubl
 			}
 			else{
 				BSSinglestep(x4i, v4i, Msun, dt, test, id);
+//printf("%d %g\n", id, 1.0/ia);
 			}
 		}
 		else{
 			BSSinglestep(x4i, v4i, Msun, dt, test, id);
+//printf("%d %g\n", id, 1.0/ia);
 		}
 	}
 }

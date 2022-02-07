@@ -3,8 +3,8 @@
 Console Arguments
 =================
 
-Instead of using the parameter file :literal:`param.dat`, some arguments can also be passed as console arguments.
-The console arguments have the highest priority and are overwriting the arguments of the :literal:`param.dat` file. The options are:
+Instead of using the parameter file :ref:`param.dat<ParamFile>`, some arguments can also be passed as console arguments.
+The console arguments have the highest priority and are overwriting the arguments of the :ref:`param.dat<ParamFile>` file. The options are:
 
 - -dt <f>: Time step in days
 - -ei <i>: Energy output interval

@@ -88,6 +88,7 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 			s = 0.0;
 		}
+		else if(rsq == 0.0) s = 0.0;
 
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
@@ -141,6 +142,7 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 			s = 0.0f;
 		}
+		else if(rsq == 0.0f) s = 0.0f;
 
 		ac.x += __fmul_rn(r3ij.x, s);
 		ac.y += __fmul_rn(r3ij.y, s);
@@ -274,7 +276,7 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 		}
 	}
 	__syncthreads();
-//if(idx == 4147)	printf("A %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
+//if(idx == 0)	printf("A %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
 
 	int s = Bl/2;
 
@@ -331,7 +333,7 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 		__syncthreads();
 	}
 
-//	if(idy == 0 && idx > 980)	printf("%d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
+//if(idy == 0 && idx < 10)	printf("Kick %d %d %d %.20g %.20g %.20g\n", idx, ix, idy, a_s[ix * Bl + 0 * Bll].x, a_s[ix * Bl + 0 * Bll].y, a_s[ix * Bl + 0 * Bll].z); 
 
 
 	if(EE < 2){

@@ -3,7 +3,7 @@
 The initial conditions
 ----------------------
 
-| The following parameters are relevant for the initial conditions and can be set in the :literal:`param.dat` file:
+| The following parameters are relevant for the initial conditions and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Input file`
 - :literal:`Input file Format`
@@ -12,10 +12,10 @@ The initial conditions
 
 The initial conditions must be provided in a file, and the name of this file must be set with the :literal:`Input file` argument.
 The file must be a text file and every particle corresponds to a new line in the file. The central mass (Sun) must not be included in the
-initial conditions. Values for the central mass can be specified directly in the :literal:`param.dat` file, the position and the velocities of
+initial conditions. Values for the central mass can be specified directly in the :ref:`param.dat<ParamFile>` file, the position and the velocities of
 the central mass are set to the origin (heliocentric coordinates). 
 
-The initial conditions must be a text file and the format must correspond to the values set in the 'param.dat' file (Input file Format: << ... >> ).
+The initial conditions must be a text file and the format must correspond to the values set in the :ref:`param.dat<ParamFile>` file (Input file Format: << ... >> ).
 The data of each particle has to be written in a new line in text format, and the format of the data must correspond to the values of :literal:`Input file Format`.
 
 .. _InitialConditionsFormat:
@@ -109,7 +109,7 @@ Example 3::
         .
         xn yn zn mn vxn vyn vzn
 
-GENGA uses the default density from the 'param.dat' file and computes the radii.
+GENGA uses the default density from the :ref:`param.dat<ParamFile>` file and computes the radii.
 
 
 Example 4::

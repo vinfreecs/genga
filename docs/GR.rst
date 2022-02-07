@@ -3,7 +3,7 @@
 General Relativity Corrections
 ==============================
 
-General Relativity corrections can be enabled with the :literal:`Use GR` parameter in the :literal:`param.dat` file.
+General Relativity corrections can be enabled with the :literal:`Use GR` parameter in the :ref:`param.dat<ParamFile>` file.
 Three different methods of GR corrections are available: 
 
  - Hamiltonian Splitting

@@ -532,7 +532,7 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 							if(noColl == -1) dR = -dR;
 
 //printf("dRM %d %d %d %.20g %.20g %.20g | noColl: %d\n", si, i, j, d, R, dR, noColl);
-							if(dR > fabs(CollisionPrecision_c[0])){
+							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 								//bodies are already overlapping
 								Coltime = fmin(Coltime_s[c], Coltime);
 							}

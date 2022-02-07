@@ -20,5 +20,5 @@ introduces also a performance penalty, it is not recommended to use this mode of
 But it can be very useful to check if a GPU works correctly and it allows also to eliminate memory leaks in
 a code. 
 
-The enable the exact reproducible outcome mode on GENGA, the :literal:`Serial Grouping` option in the :literal:`param.dat` file must be set to 1.
+The enable the exact reproducible outcome mode on GENGA, the :literal:`Serial Grouping` option in the :ref:`param.dat<ParamFile>` file must be set to 1.
 

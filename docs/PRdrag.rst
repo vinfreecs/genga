@@ -7,14 +7,14 @@ The Poynting-Robertson drag is implemented according to :cite:p:`Burns1979`
 and is available in the schemes (we recommend scheme 1):
 
 - | Velocity kick :math:`\mathbf{a_{PR}}`
-  | set :literal:`Use Poynting-Robertson = 1` in the :literal:`param.dat` file.
+  | set :literal:`Use Poynting-Robertson = 1` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_3a` and :eq:`eq_3b`
 - | Time averaged change in sami-major axis and eccentricity :math:`\frac{da}{dt}`, :math:`\frac{de}{dt}`
-  | set :literal:`Use Poynting-Robertson = 2` in the :literal:`param.dat` file.
+  | set :literal:`Use Poynting-Robertson = 2` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_4`
 	
 
-The following parameters are relevant for the Poynting-Robertson drag and can be set in the :literal:`param.dat` file:
+The following parameters are relevant for the Poynting-Robertson drag and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Use Poynting-Robertson`
 - :literal:`Solar Constant`: Solar Constant at 1 AU in W /m^2
