@@ -6,7 +6,7 @@ Set-elements function
 **(Attention: Update since version 3.92, units and data structure changed)**
 
 This option can be used to modify the orbital parameters of a body, according to a precomputed data table. The data table must be
-provided as a file and the name of the file must be specified with the :literal:`Set Elements file name` in the :literal:`param.dat` file.
+provided as a file and the name of the file must be specified with the :literal:`Set Elements file name` in the :ref:`param.dat<ParamFile>` file.
 The data table can either include Keplerian elements or cartesian coordinates, but the two sets can not be mixed. 
 If cartesian coordinates are used, then the positions must be given in heliocentric coordinates, and the velocities can either be given in
 barycentric or heliocentric coordinates. The Keplerian or cartesian coordinate sets must not be complete, they can also contain only a subset. 
@@ -16,6 +16,7 @@ All elements are interpolated with a cubic interpolation scheme from the provide
 The data table must provide elements for at least four different times. With less than four times, the cubic interpolation can not be done.
 The data table must also provide a time entry at or after the end of the simulation.
 
+The length of the file can not be larger than the value of :literal:`def_NSetElementsMax` in :ref:`define.h<constants>` file (10000000).
 
 Data table format
 ^^^^^^^^^^^^^^^^^

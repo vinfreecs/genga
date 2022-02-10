@@ -3435,7 +3435,7 @@ __host__ int Host::readSetElements(){
 	double time0 = ict_h[0] + P.tRestart * idt_h[0] / 365.25;
 	//end time
 	double time1 = ict_h[0] + P.deltaT * idt_h[0] / 365.25;
-	for(int j = 0; j < 1000000; ++j){
+	for(int j = 0; j < def_NSetElementsMax; ++j){
 		for(int i = 0; i < nelements; ++i){
 			er = fscanf(Efile, "%lf", &t);
 			if(er <= 0) break;
@@ -3464,6 +3464,10 @@ __host__ int Host::readSetElements(){
 		}
 		if(time < ict_h[0] && j >= P.setElementsN){
 			++nlinesToSkip;
+		}
+		if(j == def_NSetElementsMax - 1){
+				printf("Error, set Elements file is too long: %d, Change limit in def_NSetElementsMax\n", def_NSetElementsMax);
+			return 0;
 		}
 	}
 	if(nlines < 4 * P.setElementsN){

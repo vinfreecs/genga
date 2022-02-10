@@ -46,6 +46,8 @@ Memory options
 - | :literal:`def_SLevelsMax` (integer): Define the maximum number of symplectic substep levels. 
   | Increasing this number will increase the amount of needed memory.
 
+- | :literal:`def_NSetElementsMax` (integer): Define the maximum number of lines in the Set-Elements file.
+  | See :ref:`SetElements`.
 
 Other
 -----

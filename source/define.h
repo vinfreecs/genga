@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.138
+#define def_Version 3.139
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -103,6 +103,7 @@
 #define def_SERIAL_GROUPING 0
 #define def_doTuning 1			//Flag to enable kernel tunings
 #define def_KickFloat 0			//1: Do kick operation in large N runs in single precision, 0 use double precision
+// End default parameters
 // --------------------------------
 
 
@@ -122,7 +123,7 @@
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames
-
+#define def_NSetElementsMax 10000000	//maximum number of lines in the set-elements file
 
 
 //print Poincare Section of surface, in this mode the code can be very slow
