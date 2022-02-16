@@ -93,20 +93,28 @@ Stellar parameters
 
 - | :literal:`Star spin_x`
   | X- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
-  | (See :ref:`UnitsSpin`) 
+  | See :ref:`UnitsSpin` 
 
 - | :literal:`Star spin_y`
   | Y- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
-  | (See :ref:`UnitsSpin`) 
+  | See :ref:`UnitsSpin` 
 
 - | :literal:`Star spin_z`
   | Z- component of the spin of the central star, in :math:`M_{\odot} AU^2 / day \cdot 0.01720209895` (default = 0.0)
-  | (See :ref:`UnitsSpin`) 
+  | See :ref:`UnitsSpin` 
 
 - | :literal:`Star Ic`
   | Moment of inertia of the central star, dimensionless (I/(MR^2) (default = 0.4)
   | This is used to convert between spin and rotational period.
-  | (See :ref:`UnitsSpin`) 
+  | See :ref:`UnitsSpin` 
+
+- | :literal:`J2`
+  | J2 value for additional gravitational multipole expansion (default = 0.0)
+  | See :ref:`J2` 
+
+- | :literal:`J2 radius`
+  | Mean radius of mass distribution for additional gravitational multipole expansion, in AU (default = 0.0)
+  | See :ref:`J2` 
 
 
 Integrator options

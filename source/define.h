@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.139
+#define def_Version 3.140
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -31,6 +31,8 @@
 #define def_StarSpiny 0.0
 #define def_StarSpinz 0.0
 #define def_StarIc 0.4			//Moment of inertia
+#define def_J2 0.0
+#define def_J2R 0.0
 #define def_SolarConstant 1367.0	//Solar Constant at 1 AU in W /m^2
 #define def_n1 3.0
 #define def_n2 0.4
@@ -334,6 +336,7 @@ struct Parameter{
 	int UseGR;
 	int UseTides;
 	int UseRotationalDeformation;
+	int UseJ2;
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int UsePR;			//Poynting Robertson drag

@@ -1037,7 +1037,7 @@ __host__ int Data::tuneForce(int &TX){
 		//revert fg operation
 		//launch with si = -1
 		int nn = (NN + tx - 1) / tx;
-		force <<< nn, tx, WarpSize * sizeof(double3) >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
+		force <<< nn, tx, WarpSize * sizeof(double3) >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
 
 		if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 			int ncb = min(nn, 1024);
@@ -2209,10 +2209,10 @@ __host__ int Data::step_16(int noColl){
 		comCall(1);
 		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2306,10 +2306,10 @@ __host__ int Data::step_16(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2337,10 +2337,10 @@ __host__ int Data::step_16(int noColl){
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2415,10 +2415,10 @@ __host__ int Data::step_largeN(int noColl){
 		comCall(1);
 		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2531,10 +2531,10 @@ __host__ int Data::step_largeN(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2601,10 +2601,10 @@ printf("****** %d %d %d | %d %d %d %d\n", i, N_h[0], (((N_h[0] + KP - 1)/ KP) + 
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 				int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 				int ncb = min(nn, 1024);
-				force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+				force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 				if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 					if(N_h[0] + Nsmall_h[0] > FrTX){
 						forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2682,10 +2682,10 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2813,10 +2813,10 @@ __host__ int Data::step_small(int noColl){
 					//GasAccCall(time_d, dt_d, Kt[si]);
 					GasAccCall2_small(time_d, dt_d, Kt[si]);
 				}
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2864,10 +2864,10 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
@@ -2954,8 +2954,8 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}
@@ -3021,8 +3021,8 @@ __host__ int Data::step_M(int noColl){
 			if(ForceFlag > 0){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
-					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3)  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3)  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 					}
@@ -3044,8 +3044,8 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}

@@ -2349,6 +2349,7 @@ __host__ void Data::stopSimulations(){
 				Msun_h[sst] = Msun_h[sst + 1];
 				Spinsun_h[sst] = Spinsun_h[sst + 1];
 				Lovesun_h[sst] = Lovesun_h[sst + 1];
+				J2_h[sst] = J2_h[sst + 1];
 				idt_h[sst] = idt_h[sst + 1];
 				ict_h[sst] = ict_h[sst + 1];
 				Rcut_h[sst] = Rcut_h[sst + 1];
@@ -2379,6 +2380,7 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(Lovesun_d, Lovesun_h, Nst*sizeof(double3), cudaMemcpyHostToDevice);
+	cudaMemcpy(J2_d, J2_h, Nst*sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);

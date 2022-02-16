@@ -13,7 +13,7 @@
 // October 2021
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double4 *vold_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseGR, int UseTides, int UseRotationalDeformation, int Nstart, int si){
+__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double2 *J2_d, double4 *vold_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseGR, int UseTides, int UseRotationalDeformation, int Nstart, int si){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
@@ -33,6 +33,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 		double Msun = Msun_d[st].x;			//This is the mass of the central star
 		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star and the moment of inertia
 		double3 Lovesun = Lovesun_d[st];		//This is the Love number, fluid Love numer and time lag
+		double2 J2s = J2_d[st];			//This is the J2 value for additional gravitational harmonics forces and the mean radius
 		dt = dt_d[st] * Kt;			//This is the time step to do
 //		double time = time_d[st] / 365.25;		//This is the time in years
 
@@ -147,7 +148,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 
 		double iIsun, iI;
 
-		if((UseTides == 1 || UseRotationalDeformation == 1) && x4.w > 0.0){
+		if((UseTides == 1 || UseRotationalDeformation == 1 || J2s.x != 0.0) && x4.w >= 0.0){
 			Rsun2 = Msun_d[st].y * Msun_d[st].y;
 			Rsun3 = Rsun2 * Msun_d[st].y;
 			Rsun5 = Rsun3 * Rsun2;
@@ -165,11 +166,19 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 //printf("omegaS %d %g %g %g\n", id, Spinsun.z, 1.0 / omegasun3.z / dayUnit, 1.0/iIsun, omegasun3.z * dayUnit);
 
 			//compute rotation vector from spin vector
-			double Ic = Spin.w;
-			iI = 1.0 / (Ic * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
-			omega3.x = Spin.x * iI;
-			omega3.y = Spin.y * iI;
-			omega3.z = Spin.z * iI;
+			if(x4.w > 0.0){
+				double Ic = Spin.w;
+				iI = 1.0 / (Ic * x4.w * R2); // inverse Moment of inertia of a solid sphere in 1/ (Solar Masses AU^2)
+				omega3.x = Spin.x * iI;
+				omega3.y = Spin.y * iI;
+				omega3.z = Spin.z * iI;
+			}
+			else{
+				iI = 0.0;
+				omega3.x = 0.0;
+				omega3.y = 0.0;
+				omega3.z = 0.0;
+			}
 //printf("omegaP %d %g %g %g\n", id, omega3.x * dayUnit, omega3.y * dayUnit, omega3.z * dayUnit);
 
 			ir2 = ir * ir;
@@ -218,7 +227,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 		// **********************************************************
 
 
-		if((UseTides == 1 || UseRotationalDeformation == 1 || UseGR == 2) && x4.w >= 0.0){
+		if((UseTides == 1 || UseRotationalDeformation == 1 || UseGR == 2 || J2s.x != 0.0) && x4.w >= 0.0){
 			double3 a3t, a3told;
 			double4 v4t = v4;
 			a3told.x = 0.0;
@@ -355,6 +364,16 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 					T3sunt.y += -mred * F2 * (-x4.x * omegasun3.z + x4.z * omegasun3.x);
 					T3sunt.z += -mred * F2 * ( x4.x * omegasun3.y - x4.y * omegasun3.x);
 //printf("T %d %d %g %g |  %g %g %g | %g %g %g\n", id, 0, F3, F2, T3.x, T3.y, T3.z, T3sun.x, T3sun.y, T3sun.z);
+				}
+
+				if(J2s.x != 0.0){
+					//Additional J2 for secular evolution of planets, See Zderic and Madigan 2020, eq 1 and 2
+					double D = 0.5 * Msun * J2s.x * J2s.y * J2s.y;
+					volatile double F4 = -3.0 * D * ir5 + 15.0 * D * ir7 * x4.z * x4.z;
+				
+					a3t.x += F4 * x4.x;
+					a3t.y += F4 * x4.y;
+					a3t.z += (F4 * x4.z - 6.0 * D * ir5) * x4.z;
 				}
 
 				v4t.x = v4.x + 0.5 * dt * a3t.x;

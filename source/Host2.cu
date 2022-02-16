@@ -374,6 +374,7 @@ __host__ void Host::Halloc(){
 	Msun_h = (double2*)malloc(Nst*sizeof(double2));
 	Spinsun_h = (double4*)malloc(Nst*sizeof(double4));
 	Lovesun_h = (double3*)malloc(Nst*sizeof(double3));
+	J2_h = (double2*)malloc(Nst*sizeof(double2));
 	idt_h = (double*)malloc(Nst*sizeof(double));
 	ict_h = (double*)malloc(Nst*sizeof(double));
 	Rcut_h = (double*)malloc(Nst*sizeof(double));
@@ -455,6 +456,7 @@ __host__ void Host::Halloc(){
 	P.NAFformat = def_NAFformat;
 	P.NAFinterval = def_NAFinterval;
 	
+	P.UseJ2 = 0.0;
 	P.IrregularOutputs = 0;
 	sprintf(P.IrregularOutputsfilename, "%s", "-");
 	P.setElements = 0;
@@ -511,6 +513,8 @@ __host__ void Host::Halloc(){
 		Lovesun_h[st].x = def_StarK2;
 		Lovesun_h[st].y = def_StarK2f;
 		Lovesun_h[st].z = def_StarTau;
+		J2_h[st].x = def_J2;
+		J2_h[st].y = def_J2R;
 		idt_h[st] = def_TimeStep;
 		ict_h[st] = 0.0;
 		Rcut_h[st] = def_Rcut;
@@ -867,6 +871,26 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			
 			if(er <= 0){
 				printf("Error: Star Ic is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "J2 =") == 0){
+			
+			er = fscanf (paramfile, "%lf", &J2_h[st].x);
+			
+			if(er <= 0){
+				printf("Error: J2 is not valid!\n");
+				return 0;
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "J2 radius =") == 0){
+			
+			er = fscanf (paramfile, "%lf", &J2_h[st].y);
+			
+			if(er <= 0){
+				printf("Error: J2 radius is not valid!\n");
 				return 0;
 			}
 			fgets(sp, 3, paramfile);
@@ -2204,8 +2228,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		return 0;
 	}
 
+	if(J2_h[0].x != 0.0){
+		P.UseJ2 = 1;
+	}
+
 	ForceFlag = 0;
-	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0){
+	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 		ForceFlag = 1;
 	}
 	//set UseGR when old UseForce is used, choose Hamiltonian splitting
@@ -2716,6 +2744,7 @@ __host__ void Host::Calloc(){
 	cudaMalloc((void **) &Msun_d,Nst*sizeof(double2));
 	cudaMalloc((void **) &Spinsun_d,Nst*sizeof(double4));
 	cudaMalloc((void **) &Lovesun_d,Nst*sizeof(double3));
+	cudaMalloc((void **) &J2_d,Nst*sizeof(double2));
 	cudaMalloc((void **) &idt_d,Nst*sizeof(double));
 	cudaMalloc((void **) &ict_d,Nst*sizeof(double));
 	cudaMalloc((void **) &Rcut_d,Nst*sizeof(double));
@@ -2730,6 +2759,7 @@ __host__ void Host::Calloc(){
 	cudaMemcpy(Msun_d, Msun_h, Nst*sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(Spinsun_d, Spinsun_h, Nst*sizeof(double4), cudaMemcpyHostToDevice);
 	cudaMemcpy(Lovesun_d, Lovesun_h, Nst*sizeof(double3), cudaMemcpyHostToDevice);
+	cudaMemcpy(J2_d, J2_h, Nst*sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(idt_d, idt_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(ict_d, ict_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(Rcut_d, Rcut_h, Nst*sizeof(double), cudaMemcpyHostToDevice);
@@ -2812,6 +2842,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Star spin_y: %g\n", Spinsun_h[st].y);
 			fprintf(infofile, "Star spin_z: %g\n", Spinsun_h[st].z);
 			fprintf(infofile, "Star Ic: %g\n", Spinsun_h[st].w);
+			fprintf(infofile, "J2: %g\n", J2_h[st].x);
+			fprintf(infofile, "J2 radius: %g\n", J2_h[st].y);
 			fprintf(infofile, "Solar Constant: %g\n", P.SolarConstant);				// use only argument in simulation 0
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
@@ -3668,6 +3700,7 @@ __host__ int Host::freeHost(){
 	free(Msun_h);
 	free(Spinsun_h);
 	free(Lovesun_h);
+	free(J2_h);
 	free(idt_h);
 	free(ict_h);
 	free(Rcut_h);
@@ -3683,6 +3716,7 @@ __host__ int Host::freeHost(){
 	cudaFree(Msun_d);
 	cudaFree(Spinsun_d);
 	cudaFree(Lovesun_d);
+	cudaFree(J2_d);
 	cudaFree(idt_d);
 	cudaFree(ict_d);
 	cudaFree(Rcut_d);

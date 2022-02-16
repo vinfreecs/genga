@@ -46,6 +46,7 @@ public:
 	double2 *Msun_h, *Msun_d;		//Mass of the star, Radius, Love Number, fluid Love Number
 	double4 *Spinsun_h, *Spinsun_d;		//Spin of the star x, y, z and Ic
 	double3 *Lovesun_h, *Lovesun_d;		//Love number of the star, fluid Love number, time lag
+	double2 *J2_h, *J2_d;			//J2 of multipole gravity, mean radius of particle distribution
 	
 	double *idt_h, *idt_d;			//initial time step 
 	double *ict_h, *ict_d;			//initial time

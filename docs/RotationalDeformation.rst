@@ -71,8 +71,8 @@ Then the force due to the rotational deformation is given as :cite:p:`Bolmont201
 
 
 
-Rotaional deformation spin evolution
-------------------------------------
+Rotational deformation spin evolution
+-------------------------------------
 
 Additionally to the acceleration on the particles, the rotational deformation force generates a torque,  which changes the spin of
 the particles and of the central star.
