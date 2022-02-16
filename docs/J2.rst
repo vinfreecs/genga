@@ -1,0 +1,37 @@
+.. _J2:
+
+J2: additional gravitation multipole expansion
+==============================================
+
+An additional gravitational multipole expansion term can be added to the simulation with the J2 force.
+
+The J2 force can be enabled by setting the :literal:`J2` parameter in the :ref:`param.dat<ParamFile>` file to any value different than 0.
+
+
+Parameters for the J2 forces:
+
+ - :literal:`J2`
+ - :literal:`J2 radius`
+
+
+
+The potential energy of a an additional gravitational multipole expansion is given in :cite:p:`ZdericMadigan2020`, Equation 1, as 
+
+.. math::
+
+    U_i = -\frac{Gm_{\star} m_i}{r} \left[ 1 - J_2 \left( \frac{R_{\text{mean}}}{r} \right)^2 P2(\hat{r} \cdot \hat{\Omega_{\text{system}}}) \right],
+
+with the mass of the central star :math:`m_{\star}`, the mass of a particle i :math:`m_i`, the mean radius of the mass distribution 
+:math:`R_{\text{mean}}`, the distance between the body and the star :math:`r`, the rotational angular velocity of the N-body system
+:math:`\Omega_{\text{system}}` and the Legendre polynomial of degree :math:`2`, :math:`P2(x)`. 
+
+The value of :math:`\Omega_{\text{system}}` is assumed to be (0,0,1), corresponding to be spin aligned to the N-body system.
+
+The J2 value corresponds to :cite:p:`ZdericMadigan2020`
+
+.. math::
+
+    J_{2} = \frac{1}{2.0 m_{\star} R_{\text{mean}}^2} \sum_i=0^n \left(m_i a_i^2 \right)
+
+
+The implementation of the force is done similarly as the :ref:`RotationalDeformation` force.
