@@ -31,7 +31,7 @@ The J2 value corresponds to :cite:p:`ZdericMadigan2020`
 
 .. math::
 
-    J_{2} = \frac{1}{2.0 m_{\star} R_{\text{mean}}^2} \sum_i=0^n \left(m_i a_i^2 \right)
+    J_{2} = \frac{1}{2.0 m_{\star} R_{\text{mean}}^2} \sum_{i=0}^n \left(m_i a_i^2 \right)
 
 
 The implementation of the force is done similarly as the :ref:`RotationalDeformation` force.
