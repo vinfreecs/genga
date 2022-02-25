@@ -114,7 +114,7 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 		float s = x4j.w * ir3;
 
-		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
+		if(rsq < def_pcf * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
 
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
 	//printf("enc1 %d %d %d\n", i, j, Ni);

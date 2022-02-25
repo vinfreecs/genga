@@ -131,7 +131,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //float version
 template < int E >
 __device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rcritvi, float rcritvj, int *NencpairsI, int2 *Encpairs2_d, int j, int i, int NencMax, float &test){
-	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+	if( i != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
 		volatile float rsq, ir, ir3, s, sb;
 		float3 r3ij;
 		float rcritv, rcritv2;
@@ -148,14 +148,14 @@ __device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float r
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){
-			if(rsq < def_pc * rcritv2){  //prechecker
+			if(rsq < def_pcf * rcritv2){  //prechecker
 				int Ni = atomicAdd(NencpairsI, 1);
 				Encpairs2_d[NencMax * i + Ni].y = j;
 //printf("Precheck %d %d %d %d %g %g %g\n", i, j, Ni, NencMax, rsq, rcritvi, rcritvj);
 			}
 		}
 		if(E <= 12 && E >=10){ //prechecker used for Test Particle Mode
-			if(rsq < def_pc * rcritv2){  //prechecker
+			if(rsq < def_pcf * rcritv2){  //prechecker
 //printf("Precheck %d %d\n", i, j);
 				Encpairs2_d[NencMax * i + *NencpairsI].y = j;
 				*NencpairsI += 1;
@@ -167,7 +167,7 @@ __device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float r
 
 		if(rsq >= 1.0f * rcritv2){
 			s = x4j.w * ir3;
-			if( rsq >= def_pc * rcritv2) sb = s;
+			if( rsq >= def_pcf * rcritv2) sb = s;
 //if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s);
 		}
 		else{

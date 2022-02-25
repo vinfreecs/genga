@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.140
+#define def_Version 3.141
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -119,6 +119,7 @@
 #define def_NColl 25			//number of parameters in Coll array
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
+#define def_pcf 3.0f			//float version of def_pc
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.

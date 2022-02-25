@@ -214,6 +214,16 @@ int main(int argc, char*argv[]){
 	int index;
 	int indexOld;
 
+	//Format T = 0, Format P =1
+	printf("Format T 0, Format P 1\n");
+	for(long long int k = kmin; k <= kmax; ++k){
+
+
+	}
+
+	
+
+
 	for(long long int k = kmin; k <= kmax; k += step){
 		if(useCollfile == 0){
 			sprintf(outputfilename, "aei%s_%.12lld.dat", X, k);

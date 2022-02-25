@@ -59,6 +59,10 @@ Other
   | (default = 3.0)
   | See :ref:`precheck`.
 
+- | :literal:`def_pcf`: Single precision version of :literal:`def_pc`, used when :literal:`Do Kick in single precision = 1`.
+  | (default = 3.0f)
+  | See :ref:`precheck` and :ref:`KickFloat`.
+
 - | :literal:`def_cef`: Factor in close encounter detector, pairs with :math:`r_{ij}^2 < \text{cef} \, r_\text{crit}^2` are considered as close encounter paris.
   | (default = 1.0)
   | See :ref:`precheck`.
