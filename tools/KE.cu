@@ -166,6 +166,8 @@ int main(int argc, char*argv[]){
 	long long int kmin = 0;
 	long long int kmax = 100;
 	long long int step = 1;
+	int pmin = 0;			//used for FormatP = 0
+	int pmax = 0;
 	char X[160];
 	char inputfilename[260];
 	char outputfilename[260];
@@ -180,6 +182,12 @@ int main(int argc, char*argv[]){
 		}
 		else if(strcmp(argv[i], "-tmax") == 0){
 			kmax = atoll(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-pmin") == 0){
+			pmin = atoi(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-pmax") == 0){
+			pmax = atoi(argv[i + 1]);
 		}
 		else if(strcmp(argv[i], "-in") == 0){
 			sprintf(X, "%s", argv[i + 1]);
@@ -202,7 +210,12 @@ int main(int argc, char*argv[]){
 		step = 1;
 	}
 
-	printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s Msun: %lf\n", kmin, kmax, step, X, Msun);
+	if(pmax > 0){
+		printf("pmin: %d, pmax: %d, Name: %s Msun: %lf\n", pmin, pmax, X, Msun);
+	}
+	else{
+		printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s Msun: %lf\n", kmin, kmax, step, X, Msun);
+	}
 
 	int N = 500000;
 	int NN = 0;
@@ -210,57 +223,33 @@ int main(int argc, char*argv[]){
 	double3 x, v, spin;
 	double xOld;
 	double m, r, a, e, inc, Omega, w, Theta, E, M;
-	double s, t;
+	double s;
+	double t = 0.0;
 	int index;
 	int indexOld;
+	double timeOld;
 
-	//Format T = 0, Format P =1
-	printf("Format T 0, Format P 1\n");
-	for(long long int k = kmin; k <= kmax; ++k){
-
-
-	}
-
-	
-
-
-	for(long long int k = kmin; k <= kmax; k += step){
-		if(useCollfile == 0){
-			sprintf(outputfilename, "aei%s_%.12lld.dat", X, k);
-			//sprintf(outputfilename, "aei%s.dat", X);
-		}
-		else{
-			sprintf(outputfilename, "Collisions_aei%s.dat", X);
-		}
-
-		index = -1;
-		t = 1.0e8;
-		if(useCollfile == 0){
-			sprintf(inputfilename, "Out%s_%.12lld.dat", X, k);	
-			//sprintf(inputfilename, "Out%s.dat", X);
-		}
-		else{
-			sprintf(inputfilename, "Collisions%s.dat", X);
-		}
-
-		inputfile = fopen(inputfilename, "r");
-		if(inputfile == NULL){
-printf("%s skipped %lld\n", inputfilename, k);
-			//continue;
-			break;
-		}
+	//FormatT = 1, FormatP = 0
+	if(pmax > 0){
+		printf("Format T 0, Format P 1\n");
+		for(int p = pmin; p <= pmax; ++p){
+			sprintf(outputfilename, "aei%s_p%.6d.dat", X, p);
+			sprintf(inputfilename, "Out%s_p%.6d.dat", X, p);	
+			inputfile = fopen(inputfilename, "r");
+			if(inputfile == NULL){
+printf("%s skipped %d\n", inputfilename, p);
+				continue;
+			}
 printf("%s\n", inputfilename);
-		FILE *outputfile;
-		outputfile = fopen(outputfilename, "w");
-		index = -1;
-		x.x = 1.0e300;
-		if(useCollfile == 0){
-			for(int i = 0; i < N; ++i){
+			FILE *outputfile;
+			outputfile = fopen(outputfilename, "w");
+
+			for(long long int tt = 0ll; tt < 1e12; ++tt){
 				xOld = x.x;
-				indexOld = index;
+				timeOld = t;
 				fscanf (inputfile, "%lf",&t);
 				fscanf (inputfile, "%d",&index);
-//printf("%d %g %d\n", i, t, index);
+	//printf("%d %g %d\n", i, t, index);
 				fscanf (inputfile, "%lf",&m);
 				fscanf (inputfile, "%lf",&r);
 				fscanf (inputfile, "%lf",&x.x);
@@ -280,67 +269,137 @@ printf("%s\n", inputfilename);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
-				if(xOld == x.x && indexOld == index){
-					NN = i;
-printf("%d\n", NN);
+				if(xOld == x.x && t == timeOld){
 					break;
 				}
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
 				fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
 			}
+
+
 		}
-		else{
-			for(int i = 0; i < N; ++i){
-				int er = 0;
-				xOld = x.x;
-				indexOld = index;
-				//planet i
-				fscanf (inputfile, "%lf",&t);
-				fscanf (inputfile, "%d",&index);
-				fscanf (inputfile, "%lf",&m);
-				fscanf (inputfile, "%lf",&r);
-				fscanf (inputfile, "%lf",&x.x);
-				fscanf (inputfile, "%lf",&x.y);
-				fscanf (inputfile, "%lf",&x.z);
-				fscanf (inputfile, "%lf",&v.x);
-				fscanf (inputfile, "%lf",&v.y);
-				fscanf (inputfile, "%lf",&v.z);
-				fscanf (inputfile, "%lf",&spin.x);
-				fscanf (inputfile, "%lf",&spin.y);
-				er = fscanf (inputfile, "%lf",&spin.z);
-				if(er < 0){
-					NN = i;
-printf("%d\n", NN);
-					break;
-				}
-				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
-				fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g ", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
-				
-				//planet j
-				fscanf (inputfile, "%d",&index);
-				fscanf (inputfile, "%lf",&m);
-				fscanf (inputfile, "%lf",&r);
-				fscanf (inputfile, "%lf",&x.x);
-				fscanf (inputfile, "%lf",&x.y);
-				fscanf (inputfile, "%lf",&x.z);
-				fscanf (inputfile, "%lf",&v.x);
-				fscanf (inputfile, "%lf",&v.y);
-				fscanf (inputfile, "%lf",&v.z);
-				fscanf (inputfile, "%lf",&spin.x);
-				fscanf (inputfile, "%lf",&spin.y);
-				er = fscanf (inputfile, "%lf",&spin.z);
-				if(er < 0){
-					NN = i;
-printf("%d\n", NN);
-					break;
-				}
-				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
-				fprintf(outputfile,"%d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index, a, e, inc, Omega, w, Theta, E, M, m, r);
+
+	}
+	else{	
+
+
+		for(long long int k = kmin; k <= kmax; k += step){
+			if(useCollfile == 0){
+				sprintf(outputfilename, "aei%s_%.12lld.dat", X, k);
+				//sprintf(outputfilename, "aei%s.dat", X);
+			}
+			else{
+				sprintf(outputfilename, "Collisions_aei%s.dat", X);
 			}
 
-		}
-		fclose(outputfile);
-		fclose(inputfile);
-	}
+			index = -1;
+			t = 1.0e8;
+			if(useCollfile == 0){
+				sprintf(inputfilename, "Out%s_%.12lld.dat", X, k);	
+				//sprintf(inputfilename, "Out%s.dat", X);
+			}
+			else{
+				sprintf(inputfilename, "Collisions%s.dat", X);
+			}
 
+			inputfile = fopen(inputfilename, "r");
+			if(inputfile == NULL){
+printf("%s skipped %lld\n", inputfilename, k);
+				//continue;
+				break;
+			}
+printf("%s\n", inputfilename);
+			FILE *outputfile;
+			outputfile = fopen(outputfilename, "w");
+			index = -1;
+			x.x = 1.0e300;
+			if(useCollfile == 0){
+				for(int i = 0; i < N; ++i){
+					xOld = x.x;
+					indexOld = index;
+					fscanf (inputfile, "%lf",&t);
+					fscanf (inputfile, "%d",&index);
+	//printf("%d %g %d\n", i, t, index);
+					fscanf (inputfile, "%lf",&m);
+					fscanf (inputfile, "%lf",&r);
+					fscanf (inputfile, "%lf",&x.x);
+					fscanf (inputfile, "%lf",&x.y);
+					fscanf (inputfile, "%lf",&x.z);
+					fscanf (inputfile, "%lf",&v.x);
+					fscanf (inputfile, "%lf",&v.y);
+					fscanf (inputfile, "%lf",&v.z);
+					fscanf (inputfile, "%lf",&spin.x);
+					fscanf (inputfile, "%lf",&spin.y);
+					fscanf (inputfile, "%lf",&spin.z);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					if(xOld == x.x && indexOld == index){
+						NN = i;
+	printf("%d\n", NN);
+						break;
+					}
+					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
+					fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
+				}
+			}
+			else{
+				for(int i = 0; i < N; ++i){
+					int er = 0;
+					xOld = x.x;
+					indexOld = index;
+					//planet i
+					fscanf (inputfile, "%lf",&t);
+					fscanf (inputfile, "%d",&index);
+					fscanf (inputfile, "%lf",&m);
+					fscanf (inputfile, "%lf",&r);
+					fscanf (inputfile, "%lf",&x.x);
+					fscanf (inputfile, "%lf",&x.y);
+					fscanf (inputfile, "%lf",&x.z);
+					fscanf (inputfile, "%lf",&v.x);
+					fscanf (inputfile, "%lf",&v.y);
+					fscanf (inputfile, "%lf",&v.z);
+					fscanf (inputfile, "%lf",&spin.x);
+					fscanf (inputfile, "%lf",&spin.y);
+					er = fscanf (inputfile, "%lf",&spin.z);
+					if(er < 0){
+						NN = i;
+	printf("%d\n", NN);
+						break;
+					}
+					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
+					fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g ", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
+					
+					//planet j
+					fscanf (inputfile, "%d",&index);
+					fscanf (inputfile, "%lf",&m);
+					fscanf (inputfile, "%lf",&r);
+					fscanf (inputfile, "%lf",&x.x);
+					fscanf (inputfile, "%lf",&x.y);
+					fscanf (inputfile, "%lf",&x.z);
+					fscanf (inputfile, "%lf",&v.x);
+					fscanf (inputfile, "%lf",&v.y);
+					fscanf (inputfile, "%lf",&v.z);
+					fscanf (inputfile, "%lf",&spin.x);
+					fscanf (inputfile, "%lf",&spin.y);
+					er = fscanf (inputfile, "%lf",&spin.z);
+					if(er < 0){
+						NN = i;
+	printf("%d\n", NN);
+						break;
+					}
+					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
+					fprintf(outputfile,"%d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", index, a, e, inc, Omega, w, Theta, E, M, m, r);
+				}
+
+			}
+			fclose(outputfile);
+			fclose(inputfile);
+		}
+	}
 }

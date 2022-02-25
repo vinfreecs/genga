@@ -182,20 +182,28 @@ Then run :literal:`KE` with::
 
 where :literal:`[options]` are the following optional user parameters:
 
-- :literal:`-tmin`: starting time step
-- :literal:`-tmax`: ending time step
-- :literal:`-step`: output interval 
+- :literal:`-tmin`: starting time step, (used for FormatT = 0, FormatP = 1).
+- :literal:`-tmax`: ending time step ,(used for FormatT = 0, FormatP = 1).
+- :literal:`-step`: output interval, (used for FormatT = 0, FormatP = 1).
+- :literal:`-pmin`: starting particle index, (used for FormatT = 1, FormatP = 0).
+- :literal:`-pmax`: ending particle index, (used for FormatT = 1, FormatP = 0).
 - :literal:`-in`: name of the files
 - :literal:`-Msun`: Solar Mass (default = 1.0 :math:`M_\odot`)
+
+The KE tool generates for each coordinate output file a corresponding Kepler-Elements file, see :ref:`aeiFiles`.
  
-Example::
+Example for FormatT = 0, FormatP = 1 (default)::
 
     ./KE -tmin 0 -tmax 1000 -step 10 -in test
 
-This example will generate Kepler-Element files from time step 0 to 1000 in output intervals of 10 for a simulation name 'test'.
+This example will generate Kepler-Element files from timestep 0 to 1000 in output intervals of 10 for a simulation name 'test'.
 
+Example for FormatT = 1, FormatP = 0::
 
-The KE tool generates for each coordinate output file an additional Kepler-Elements file, see :ref:`aeiFiles`.
+    ./KE -pmin 0 -pmax 2048 -in test
+
+This example will generate Kepler-Element files from particle index 0 to 2048 for a simulation name 'test'.
+
 
 
 .. _IrregularOutput:
