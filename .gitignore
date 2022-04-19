@@ -1,6 +1,7 @@
 readme
 
 source/genga
+source/CheckGPU
 GengaGL/gengaGL
 tools/KE
 tools/CoordinatesTransformation

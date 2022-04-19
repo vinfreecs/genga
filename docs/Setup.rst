@@ -66,14 +66,27 @@ When an AMD GPU is used, then ROCM and HIP needs to be installed.
 | Choose the platform with either ``export HIP_PLATFORM=nvidia`` or ``export HIP_PLATFORM=amd``
 
 
+Determine the NVIDIA compute capability
+---------------------------------------
+GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, 
+a list of all NVIDIA GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
+
+The compute capability can also be checked with the provided tool ``CheckGPU``:
+
+Step 1: compile the CheckGPU code with::
+
+    nvcc -o CheckGPU CheckGPU.cu
+
+Step 2: run::
+
+    ./CheckGPU
+
+This will list the compute capabilities of all found GPUs. 
+
 Compile GENGA
 -------------
 If an old CUDA version is used (< CUDA 9.0) then the :literal:`def_OldShuffle` parameter in the :ref:`define.h<Define>` file must be set to 1.
 (See :ref:`OldShuffle`)
-
-GENGA must be compiled for a specific GPU compute capability. The compute capability corresponds to the GPU generation, 
-a list of all NVIDIA GPUS with their compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus .
-
 
 The source code of GENGA and a Makefile is included in the source directory. To compile GENGA, go to the source directory
 and type::

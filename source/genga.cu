@@ -195,7 +195,8 @@ if(ittv % MCMC_NQ == 0){
 
 		//Normalize <<< (D.NT + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsMean_d, D.elementsVar_d, D.NT,ittv);
 
-		SVGD <<< (D.Nst / (D.N_h[0] * D.P.mcmcNE + 1) + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsD_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+		//Variance <<< 1, 32 >>>(D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsMean_d, D.elementsVar_d, D.N_h[0], D.P.mcmcNE, D.Nst);
+		SVGD <<< (D.Nst / (D.N_h[0] * D.P.mcmcNE + 1) + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsD_d, D.elementsP_d, D.elementsVar_d, D.N_h[0], D.P.mcmcNE, D.Nst);
 		rmsprop2 <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsD_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst);
 
 		//rmsprop <<< (D.Nst + 127) / 128, 128 >>> (D.elementsAOld_d, D.elementsBOld_d, D.elementsTOld_d, D.elementsL_d, D.elementsG_d, D.elementsGh_d, D.elementsP_d, D.N_h[0], D.P.mcmcNE, D.Nst, ittv);

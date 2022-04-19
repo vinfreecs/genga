@@ -96,7 +96,7 @@ The following physical constants are used by GENGA and can be changed in this se
   | AU in m
 
 - | :literal:`def_Solarmass 1.98855e30`
-  | Solar Mass in Kg
+  | Solar Mass in kg
 
 - | :literal:`def_c 299792458.0`
   | speed of light in m/s

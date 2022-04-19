@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.141
+#define def_Version 3.142
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -157,7 +157,7 @@
 #define dayUnit 0.01720209895
 //#define dayUnit 0.01720412578565452474399499749324604636058
 #define def_AU 149597870700.0		//AU in m
-#define def_Solarmass 1.98855e30	//Solar Mass in Kg
+#define def_Solarmass 1.98855e30	//Solar Mass in kg
 #define def_c 299792458.0		//speed of light in m/s
 #define def_cm 10065.3201686		//speed of light in AU / day * 0.0172020989	
 #define def_sigma 5.670373e-8		//Stefan Boltzmann constant J m^-2 s^-1 K^-4

@@ -789,6 +789,11 @@ __global__ void Normalize(double4 *elementsAOld_d, double4 *elementsBOld_d, doub
 		elementsVar_d[id].e = (ittv - 1.0) / (ittv) * elementsVar_d[id].e + 1.0 / ittv * de * de + 1.0e-4;  
 		elementsVar_d[id].w = (ittv - 1.0) / (ittv) * elementsVar_d[id].w + 1.0 / ittv * dw * dw + 1.0e-4; 
 
+//printf("mean var P: %d %g %g\n", id, elementsMean_d[id].P, elementsVar_d[id].P);
+//printf("mean var T: %d %g %g\n", id, elementsMean_d[id].T, elementsVar_d[id].T);
+//printf("mean var m: %d %g %g\n", id, elementsMean_d[id].m, elementsVar_d[id].m);
+//printf("mean var e: %d %g %g\n", id, elementsMean_d[id].e, elementsVar_d[id].e);
+//printf("mean var w: %d %g %g\n", id, elementsMean_d[id].w, elementsVar_d[id].w);
 
 		//xs = (x - mu) / sigma
 		elementsTOld_d[id].z = (elementsTOld_d[id].z - elementsMean_d[id].P) / (elementsVar_d[id].P); 
@@ -802,6 +807,7 @@ __global__ void Normalize(double4 *elementsAOld_d, double4 *elementsBOld_d, doub
 		elementsL_d[id].m = (elementsL_d[id].m - elementsMean_d[id].m) / (elementsVar_d[id].m); 
 		elementsL_d[id].e = (elementsL_d[id].e - elementsMean_d[id].e) / (elementsVar_d[id].e); 
 		elementsL_d[id].w = (elementsL_d[id].w - elementsMean_d[id].w) / (elementsVar_d[id].w); 
+
 	}
 }
 
@@ -825,6 +831,84 @@ __global__ void deNormalize(double4 *elementsAOld_d, double4 *elementsBOld_d, do
 		elementsL_d[id].m = (elementsL_d[id].m * elementsVar_d[id].m) + elementsMean_d[id].m; 
 		elementsL_d[id].e = (elementsL_d[id].e * elementsVar_d[id].e) + elementsMean_d[id].e; 
 		elementsL_d[id].w = (elementsL_d[id].w * elementsVar_d[id].w) + elementsMean_d[id].w; 
+	}
+
+}
+
+//For SVGD
+__global__ void Variance(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements8 *elementsMean_d, elements8 *elementsVar_d, const int N0, const int Ne, const int Nst){
+	int idy = threadIdx.x;
+	int ii = blockIdx.x * blockDim.x + idy;
+
+
+	//calculate mean and variation over all Stein points
+	if(ii < N0){
+		double P = 0.0;	
+		double T = 0.0;	
+		double m = 0.0;	
+		double e = 0.0;	
+		double w = 0.0;	
+
+		double sP = 0.0;	
+		double sT = 0.0;	
+		double sm = 0.0;	
+		double se = 0.0;	
+		double sw = 0.0;	
+		for(int jjd = Ne * N0; jjd < Nst; jjd += Ne * N0 + 1){
+			P += elementsTOld_d[jjd * N0 + ii].z;
+			T += elementsTOld_d[jjd * N0 + ii].x;
+			m += elementsAOld_d[jjd * N0 + ii].w;
+			e += elementsAOld_d[jjd * N0 + ii].y;
+			w += elementsBOld_d[jjd * N0 + ii].y;
+		}
+		double n = Nst / (Ne * N0 + 1);
+		P /= n;
+		T /= n;
+		m /= n;
+		e /= n;
+		w /= n;
+
+		for(int jjd = Ne * N0; jjd < Nst; jjd += Ne * N0 + 1){
+			double dP = elementsTOld_d[jjd * N0 + ii].z - P;
+			double dT = elementsTOld_d[jjd * N0 + ii].x - T;
+			double dm = elementsAOld_d[jjd * N0 + ii].w - m;
+			double de = elementsAOld_d[jjd * N0 + ii].y - e;
+			double dw = elementsBOld_d[jjd * N0 + ii].y - w;
+
+			sP += dP * dP;
+			sT += dT * dT;
+			sm += dm * dm;
+			se += de * de;
+			sw += dw * dw;
+		}
+
+		sP = sqrt(sP);
+		sT = sqrt(sT);
+		sm = sqrt(sm);
+		se = sqrt(se);
+		sw = sqrt(sw);
+
+printf("id P %d %.20g %g\n", ii, P, sP);
+printf("id T %d %.20g %g\n", ii, T, sT);
+printf("id m %d %.20g %g\n", ii, m, sm);
+printf("id e %d %.20g %g\n", ii, e, se);
+printf("id w %d %.20g %g\n", ii, w, sw);
+
+
+
+		elementsMean_d[ii].P = P;
+		elementsMean_d[ii].T = T;
+		elementsMean_d[ii].m = m;
+		elementsMean_d[ii].e = e;
+		elementsMean_d[ii].w = w;
+
+		elementsVar_d[ii].P = sP;
+		elementsVar_d[ii].T = sT;
+		elementsVar_d[ii].m = sm;
+		elementsVar_d[ii].e = se;
+		elementsVar_d[ii].w = sw;
+
+
 	}
 
 }
@@ -1441,14 +1525,24 @@ __global__ void rmsprop2(double4 *elementsAOld_d, double4 *elementsBOld_d, doubl
 
 
 //RMSprop with hyperparmaters optimization and svgd
-__global__ void SVGD(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsD_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
+__global__ void SVGD(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsD_d, double4 *elementsP_d, elements8 *elementsVar_d, const int N0, const int Ne, const int Nst){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
 	int iid = id * (Ne * N0 + 1) + (Ne * N0);			//corresponds to 35, 71,
 
-	double h = 1.0;
-	
+	//scale variables
+	double scaleP = 1.0e-5;
+	double scaleT = 1.0e-5;
+	double scalem = 1.0e-5;
+	double scalee = 0.1;
+	double scalew = 2.0*M_PI;
+	//When using normalization
+
+
+	//size factor
+	double f1 = 10000.0;
+
 	if(id < Nst / (Ne * N0 + 1)){
 //printf("id %d %d\n", id, iid);
 
@@ -1466,44 +1560,49 @@ __global__ void SVGD(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *
 			//calculate kernel
 			double dsq = 0.0;
 			//P
-			//for(int ii = 0; ii < N0; ++ii){
-			//	double dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / 1.0e-5;	//scale variables distance
-			//	dsq += dd * dd;
+			for(int ii = 0; ii < N0; ++ii){
+				scaleP = elementsVar_d[ii].P;
+				double dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / scaleP;
+				dsq += dd * dd;
 //printf("ddP %d %d %d %g\n", iid, jjd, ii, dd);
-			//}
+			}
 			//T
-			//for(int ii = 0; ii < N0; ++ii){
-			//	double dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / 1.0e-5;
-			//	dsq += dd * dd;
+			for(int ii = 0; ii < N0; ++ii){
+				scaleT = elementsVar_d[ii].T;
+				double dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / scaleT;
+				dsq += dd * dd;
 //printf("ddT %d %d %d %g\n", iid, jjd, ii, dd);
-			//}
+			}
 			//m
-			//for(int ii = 0; ii < N0; ++ii){
-			//	double dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / 1.0e-5;
-			//	dsq += dd * dd;
+			for(int ii = 0; ii < N0; ++ii){
+				scalem = elementsVar_d[ii].m;
+				double dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / scalem;
+				dsq += dd * dd;
 //printf("ddm %d %d %d %g\n", iid, jjd, ii, dd);
-			//}
+			}
 //printf("ddm %d %d %g\n", iid, jjd, dsq);
 			//e
 			for(int ii = 0; ii < N0; ++ii){
-				double dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / 0.1;
+				scalee = elementsVar_d[ii].e;
+				double dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / scalew;
 				dsq += dd * dd;
 //printf("dde %d %d %d %g\n", iid, jjd, ii, dd);
 			}
 //printf("dde %d %d %g\n", iid, jjd, dsq);
 			//w
 			for(int ii = 0; ii < N0; ++ii){
-				double dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / (2.0*M_PI);
+				scalew = elementsVar_d[ii].w;
+				double dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / scalew;
 				dsq += dd * dd;
 //printf("ddw %d %d %d %g\n", iid, jjd, ii, dd);
 			}
 //printf("ddw %d %d %g\n", iid, jjd, dsq);
-			double kij = exp(-1.0 / h * dsq);
+			double kij = exp(-1.0 * dsq);
 	//kij = 1.0;
 	//if(jjd != iid) kij = 0.0;
 
 
-printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
+//printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
 
 			//calculate gradient
 
@@ -1515,9 +1614,10 @@ printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
 				gx = -2.0 * (elementsP_d[jjd].z - elementsP_d[jjd - Ne * N0 + ii * Ne].z) / dx;
 //if(iid == jjd && iid == 35) printf("dP %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne, dx);
 				elementsD_d[iid * N0 + ii].P += gx * kij;
+				scaleP = elementsVar_d[ii].P;
 
-				//dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / 1.0e-5;
-				//elementsD_d[iid * N0 + ii].P += 2.0 / h * dd * kij;
+				dd = (elementsTOld_d[iid * N0 + ii].z - elementsTOld_d[jjd * N0 + ii].z) / (scaleP * scaleP);
+				elementsD_d[iid * N0 + ii].P += 2.0 * dd * kij * f1;
 			}
 			//T
 			for(int ii = 0; ii < N0; ++ii){
@@ -1526,9 +1626,10 @@ printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
 //if(iid == jjd && iid == 35) printf("dT %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 1, dx);
 
 				elementsD_d[iid * N0 + ii].T += gx * kij;
+				scaleT = elementsVar_d[ii].T;
 
-				//dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / 1.0e-5;
-				//elementsD_d[iid * N0 + ii].T += 2.0 / h * dd * kij;
+				dd = (elementsTOld_d[iid * N0 + ii].x - elementsTOld_d[jjd * N0 + ii].x) / (scaleT * scaleT);
+				elementsD_d[iid * N0 + ii].T += 2.0 * dd * kij * f1;
 			}
 			//m
 			for(int ii = 0; ii < N0; ++ii){
@@ -1537,9 +1638,10 @@ printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
 //if(iid == jjd && iid == 35) printf("dm %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 2, dx);
 
 				elementsD_d[iid * N0 + ii].m += gx * kij;
+				scalem = elementsVar_d[ii].m;
 
-				//dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / 1.0e-5;
-				//elementsD_d[iid * N0 + ii].m += 2.0 / h * dd * kij;
+				dd = (elementsAOld_d[iid * N0 + ii].w - elementsAOld_d[jjd * N0 + ii].w) / (scalem * scalem);
+				elementsD_d[iid * N0 + ii].m += 2.0 * dd * kij * f1;
 			}
 			//e
 			for(int ii = 0; ii < N0; ++ii){
@@ -1548,10 +1650,11 @@ printf("kij %d %d %g %g\n", iid, jjd, kij, dsq);
 //if(iid == jjd && iid == 35) printf("de %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 3, dx);
 
 				elementsD_d[iid * N0 + ii].e += gx * kij;
+				scalee = elementsVar_d[ii].e;
 
-				dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / 0.1;
-				elementsD_d[iid * N0 + ii].e += 2.0 / h * dd * kij * 10.0;
-printf("dde %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 / h * dd);
+				dd = (elementsAOld_d[iid * N0 + ii].y - elementsAOld_d[jjd * N0 + ii].y) / (scalee * scalee);
+				elementsD_d[iid * N0 + ii].e += 2.0 * dd * kij * f1;
+//printf("dde %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 * dd);
 			}
 			//w
 			for(int ii = 0; ii < N0; ++ii){
@@ -1560,10 +1663,11 @@ printf("dde %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 / h * dd);
 //if(iid == jjd && iid == 35) printf("dw %d %d %d %g\n", ii, jjd, jjd - Ne * N0 + ii * Ne + 4, dx);
 
 				elementsD_d[iid * N0 + ii].w += gx * kij;
+				scalew = elementsVar_d[ii].w;
 
-				dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / (2.0 * M_PI);
-				elementsD_d[iid * N0 + ii].w += 2.0 / h * dd * kij * 10.0;
-printf("ddw %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 / h * dd);
+				dd = (elementsBOld_d[iid * N0 + ii].y - elementsBOld_d[jjd * N0 + ii].y) / (scalew * scalew);
+				elementsD_d[iid * N0 + ii].w += 2.0 * dd * kij * f1;
+//printf("ddw %d %d %g %g %g\n", iid, jjd, kij, gx, 2.0 * dd);
 			}
 		}
 	

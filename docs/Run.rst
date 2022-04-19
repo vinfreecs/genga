@@ -271,7 +271,10 @@ to visualize the simulated particle directly with the GPU. No data transfer to t
 added to the simulation. 
 
 
-To compile GENGA with openGL, GLUT must be installed. In Ubuntu this can be installed with the freeglut3-dev package. 
+To compile GENGA with openGL, GLUT must be installed. In Ubuntu this can be installed with the freeglut3-dev package::
+
+	sudo apt install freeglut3-dev
+ 
 
 The GENGA - openGL interoperability code is included in the GengaGL directory and can be compiled with the provided Makefile in the same way as
 the original GENGA code.

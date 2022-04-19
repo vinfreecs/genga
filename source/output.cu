@@ -400,7 +400,7 @@ __host__ int Data::EnergyOutput(int irregular){
 	for(int hst = 0; hst < 16; ++hst){
 		error = cudaGetLastError();
 		if(error != 0){
-			printf("Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
+			printf("Energy Stream error = %d = %s %lld\n",error, cudaGetErrorString(error), timeStep);
 			return 0;
 		}
 	}

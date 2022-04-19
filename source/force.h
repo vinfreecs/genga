@@ -1619,20 +1619,24 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 }
 
 __host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
-	int st = 0;
-	nFragments_m[0] = -1;
-	fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
-	cudaDeviceSynchronize();
-	if(nFragments_m[0] > 0){
-		Nsmall_h[st] += nFragments_m[0];
-		MaxIndex += nFragments_m[0];
+	if(Nsmall_h[0] > 0.0){
+		int st = 0;
+		nFragments_m[0] = -1;
+		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
+		cudaDeviceSynchronize();
+		if(nFragments_m[0] > 0){
+			Nsmall_h[st] += nFragments_m[0];
+			MaxIndex += nFragments_m[0];
+		}
 	}
 }
 __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d){
-	int st = 0;
-	nFragments_m[0] = -1;
-	rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
-	cudaDeviceSynchronize();
+	if(Nsmall_h[0] > 0.0){
+		int st = 0;
+		nFragments_m[0] = -1;
+		rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
+		cudaDeviceSynchronize();
+	}
 }
 
 // ***************************************************************
