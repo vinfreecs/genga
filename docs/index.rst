@@ -12,6 +12,7 @@ Setup
    :maxdepth: 2
    :caption: Contents:
 
+   Tutorial.rst
    Setup.rst
    Run.rst
    InitialConditions.rst

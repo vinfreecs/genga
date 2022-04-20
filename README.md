@@ -16,6 +16,12 @@ pairs.
 
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
+ ** GENGA Tutorial **
+Try GENGA on Google colab [with this tutorial](https://bitbucket.org/sigrimm/genga/src/master/GengaTutorial.ipynb)
+
+Open the GengaTutorial notebook in Colab and learn how to run GENGA.
+
+
  ** News: **
 
  * Version 3.137: Corrected angular momentum units in the Energyfile to Msun AU^2/day.
