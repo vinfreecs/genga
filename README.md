@@ -17,9 +17,10 @@ pairs.
 [A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
  ** GENGA Tutorial **
-Try GENGA on Google colab [with this tutorial](https://bitbucket.org/sigrimm/genga/src/master/GengaTutorial.ipynb)
+Try GENGA in Google colab [with this tutorial](https://gist.github.com/sigrimm/93e2faed18e0e39e82aa226097b78e2c) .
 
-Open the GengaTutorial notebook in Colab and learn how to run GENGA.
+Open the tutorial notebook in Colab and learn how to run GENGA.
+The same notebook is also included in this repository here: GengaTutorial.ipynb .
 
 
  ** News: **
