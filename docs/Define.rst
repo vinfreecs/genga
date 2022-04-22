@@ -45,6 +45,7 @@ Memory options
 
 - | :literal:`def_SLevelsMax` (integer): Define the maximum number of symplectic substep levels. 
   | Increasing this number will increase the amount of needed memory.
+  | See :ref:`SLevels`
 
 - | :literal:`def_NSetElementsMax` (integer): Define the maximum number of lines in the Set-Elements file.
   | See :ref:`SetElements`.
@@ -106,4 +107,18 @@ The following physical constants are used by GENGA and can be changed in this se
 
 - | :literal:`def_sigma 5.670373e-8`
   | Stefan Boltzmann constant in :math:`J m^{-2} s{^-1} K{^-4}`
+
+
+Parameters for the gas disk
+---------------------------
+See :ref:`Gas`
+
+- :literal:`def_Gasnr_g`: Number of cells in r direction for gas grid
+- :literal:`def_Gasnz_g`: Number of cells in z direction for gas grid
+- :literal:`def_Gasnr_p`: Number of cells in r direction for particle grid
+- :literal:`def_Gasnz_p`: Number of cells in z direction for particle grid
+- :literal:`def_h_1`: scale height at 1AU for c = 1km/s
+- :literal:`def_M_Enhance`: factor for enhancement
+- :literal:`def_Mass_pl`: factor for enhancement
+- :literal:`def_fMass_min`: factor for enhancement
 

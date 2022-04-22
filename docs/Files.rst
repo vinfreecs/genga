@@ -199,7 +199,7 @@ with
 - V: Total potential energy , in :math:`M_\odot AU^2 / day^2`
 - T: Total Kinetic energy, in :math:`M_\odot AU^2 / day^2`
 - LI: Angular momentum lost at ejections, in :math:`M_\odot AU^2 / day`
-- U: Inner energy created from collisions, ejections or gas disc, :math:`M_\odot AU^2 / day^2`
+- U: Inner energy created from collisions, ejections or gas disk, :math:`M_\odot AU^2 / day^2`
 - ETotal: Total Energy, in :math:`M_\odot AU^2 / day^2`
 - LTotal: Total Angular Momentum, in :math:`M_\odot AU^2 / day`
 - LRelativ: (LTotal_t - LTotal_0)/LTotal_0, dimensionless
@@ -363,5 +363,18 @@ The files contain four matrices, separated by a blank line.
 - a-i counts since the beginning of the simulation, size Na x Ni
 
 
+.. _PoincareFile:
 
+The Poincare surface of section file: Poincare<name><timeInterval>.dat
+-----------------------------------------------------------------------
+See :ref:`Poincare`
+
+The file contains the coordinates of the Poincare surface of section::
+
+       time index x vx
+       .
+       .
+       .
+
+The crossing events are written consecutively to the file. After each coordinate output interval, another file is created to reduce the file sizes.
 

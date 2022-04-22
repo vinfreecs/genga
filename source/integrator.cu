@@ -373,7 +373,7 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 	setStartTime();
 
 #if def_poincareFlag == 1
-	sprintf(poincarefilename, "%sPoincare%s_%.*lld.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, 0);
+	sprintf(poincarefilename, "%sPoincare%s_%.*d.dat", GSF[0].path, GSF[0].X, def_NFileNameDigits, 0);
 	poincarefile = fopen(poincarefilename, "w");
 #endif
 
@@ -692,7 +692,7 @@ __host__ int Data::Remaining(){
 	}
 
 #if def_poincareFlag == 1
-	fclose(D.poincarefile);
+	fclose(poincarefile);
 #endif
 
 
@@ -1843,7 +1843,7 @@ __host__ int Data::PoincareSectionCall(double t){
 		fprintf(masterfile, "Compute Poincare Sections only with the second Order integrator!\n");
 		return 0;
 	}
-	PoincareSection <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
+	PoincareSection <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 	
 	cudaMemcpy(PFlag_h, PFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(PFlag_h[0] == 1){

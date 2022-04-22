@@ -48,7 +48,7 @@ of the particle :math:`i`. The two parameters :math:`n1` and :math:`n2` are typi
 The integrator needs to search for close encounter pairs at each time step and to sort them into independent close encounter groups.
 These groups are then integrated with the Bulirsch-Stoer direct N-body method. Ideally, the close encounter groups consist of only a single pair of bodies,
 but it can happen that bodies have multiple close encounter pairs, which need to be linked together in a bigger close encounter group.
-In the worst scenario, all bodies are in a close encounter with some neighbouring bodies, and all of them are linked together into a single giant
+In the worst scenario, all bodies are in a close encounter with some neighboring bodies, and all of them are linked together into a single giant
 close encounter group. This scenario is likely to happen, when the particle number density is increased for high resolution scenarios.
 
 .. _n1n2:
@@ -56,7 +56,7 @@ close encounter group. This scenario is likely to happen, when the particle numb
 The n1 and n2 values
 --------------------
 The values :literal:`n1` and :literal:`n2` from equation :eq:`eq_rcrit` can be set in the :ref:`param.dat<ParamFile>` file.
-
+Typical values are n1 = 3.0 and n2 = 0.4.
 
 .. _Symplecicorder:
 
@@ -82,7 +82,7 @@ are reported to a list when the mutual distance is smaller then the critical rad
 
 	r_{ij}^2 < \text{pc} \, r_{\text{crit}}^2.
 
-The factor :literal:`pc` is a safty factor. It can be set in the :ref:`define.h<Define>` file (default = 3.0). 
+The factor :literal:`pc` is a safety factor. It can be set in the :ref:`define.h<Define>` file (default = 3.0). 
 
 After all close encounter candidates are found. The real minimal distance between the particles is calculated, by interpolating between the
 time steps. Close encounters are reported when:
@@ -91,7 +91,7 @@ time steps. Close encounters are reported when:
 
 	r_{ij, min}^2 < \text{cef} \, r_{\text{crit}}^2.
 
-The factor :literal:`cef` is a safty factor. It can be set in the :ref:`define.h<Define>` file (default = 1.0). 
+The factor :literal:`cef` is a safety factor. It can be set in the :ref:`define.h<Define>` file (default = 1.0). 
 
 
 
@@ -104,3 +104,30 @@ The :literal:`Maximum encounter pairs` parameter in the :ref:`param.dat<ParamFil
 ncounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error massa is
 written. Setting a larger value of :literal:`Maximum encounter pairs` increases the memory usage of the code. 
 
+
+
+.. _SLevels:
+
+Higher level changeover functions
+---------------------------------
+The :literal:`Symplectic recursion levels` and the :literal:`Symplectic recursion sub steps` parameters in the :ref:`param.dat<ParamFile>` file can be
+uses to enable higher order changeover functions. :literal:`Symplectic recursion levels = 1` corresponds to the original hybrid symplectic integration
+method, where forces between close encounter pairs get smoothly moved from the symplectic integrator into the direct Bulirsch-Stoer method. The higher
+level changeover functions define more levels in between. In the second level, the time step gets reduced in into :literal:`Symplectic recursion sub steps`
+sub steps but still integrated with a symplectic integrator. The highest level is then the Bulirsch-Stoer integrator. 
+
+Since the higher level changeover function requires more memory to store the close encounter pairs, not more than :literal:`Symplectic recursion levels = 3`
+should be used. However if more levels than three are needed, then the :literal:`def_SLevelsMax` parameter in the :ref:`define.h<Define>` file must be 
+adjusted.
+Typical values for :literal:`Symplectic recursion sub steps` are 2,4,8 or 10. A good strategy to set an optimal choice of parameter is to increase the number
+of levels and sub steps until no more than :math:`\sim` 512 close encounter pairs are reported in the info file.  
+In Figure :numref:`figSLevels` are shown some examples of higher order changeover functions.
+
+.. figure:: plots/K.png
+    :name: figSLevels
+
+    Panels a and b: Original hybrid symplectic method: a changeover function switches smoothly from K symplectic to K Bulirsch-Stoer.
+    Panels c and d: A second changeover function is included. The basic symplectic step is divided in the first level into two sub steps.
+    The second level is the Bulirsch-Stoer method.
+    Panels e and f: Two additional changeover functions are included for a three level scheme with each two sub steps.
+    Panels g and h: Two additional changeover functions are included for a three level scheme with each ten sub steps.

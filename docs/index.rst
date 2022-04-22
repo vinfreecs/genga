@@ -57,6 +57,7 @@ Forces
 .. toctree::
    :maxdepth: 2
 
+   Gas.rst
    GR.rst
    Tides.rst
    RotationalDeformation.rst

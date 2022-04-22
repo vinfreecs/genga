@@ -138,8 +138,11 @@ Integrator options
   | All particles with a smaller mass than this value are treated as test particles (if :literal:`Use Test Particles > 0`).
   | When :literal:`Use Test Particles = 0`, then this parameter has no affect. 
 
-- Symplectic recursion levels = 1
-- Symplectic recursion sub steps = 2
+- | :literal:`Symplectic recursion levels`, number of symplectic levels in the hybrid symplectic integration method (default = 1).
+  | See :ref:`SLevels`.
+
+- | :literal:`Symplectic recursion sub steps`, number of sub steps per symplectic level in the hybrid symplectic integration method (default = 2).
+  | See :ref:`SLevels`.
 
 - | :literal:`Minimum number of bodies`, (default = 0)
   | When the number of bodies (not including test particles) gets smaller than this number, then the simulation will be stopped. 
@@ -219,18 +222,62 @@ See :ref:`aegrid`.
 
 Options for the gas disk
 ------------------------
+See :ref:`Gas`
 
-- Use gas disk = 0
-- Use gas disk potential = 1
-- Use gas disk enhancement = 0
-- Use gas disk drag = 2
-- Use gas disk tidal damping = 2
-- Gas dTau_diss = 10000
-- Gas alpha = 1
-- Gas beta = 1
-- Gas Sigma_10 = 2000
-- Gas Mgiant = 1.0E-4
-- Gas file name = -
+
+- | :literal:`Use gas disk`: Flag to enable the gas disk. Individual effects can be selected with the following parameters.
+
+   - 0 (default): Do no use a gas disk.
+   - 1: Use a gas disk with the following parameters.
+
+- | :literal:`Use gas disk potential`: Flag to enable the gas disk potential effect.
+
+   - 0: Do not use the gas disk potential effect
+   - 1(default): apply the gas disk potential to all particles
+   - 2: apply the gas disk potential only to particles with m < :literal:`Gas Mgiant`
+
+- | :literal:`Use gas disk enhancement`: Flag to enable the gas disk enhancement effect.
+
+   - 0(default): Do not use the gas disk enhancement.
+   - 1: apply the gas disk enhancement to all particles.
+   - 2: apply the gas disk enhancement only to particles with m < :literal:`Gas Mgiant`  
+
+- | :literal:`Use gas disk drag`: Flag to enable the gas drag.
+
+  - 0: Do not apply the gas drag.
+  - 1: apply the gas drag to all particles.
+  - 2(default): apply the gas drag only to particles with m < :literal:`Gas Mgiant`
+
+- | :literal:`Use gas disk tidal dampening`: Flag to enable gas disk tidal dampening (Type I migration).
+
+  - 0: Do not use tidal dampening.
+  - 1: apply tidal dampening to all particles.
+  - 2(default): apply tidal dampening only to particles with m < :literal:`Gas Mgiant`.
+
+- | :literal:`Gas dTau_diss`: The dissipation time for the gas disk in years.
+  | (default = 10000 yr)
+
+- | :literal:`Gas Sigma_10`: The gas surface density at 1 AU, in g/:math:`\text{cm}^3`.
+  | (default = 2000 g/:math:`\text{cm}^3`)
+
+
+- | :literal:`Gas alpha`: The power law exponent for the gas disk surface density.
+  | (default = 1).
+
+- | :literal:`Gas beta`: The power law exponent for the gas disk scale height.
+  | (default = 0.25).
+
+- | :literal:`Gas Mgiant`: Mass limit for gas effects, in Solar masses. If m > Mgiant, the gas drag, gas potential and tidal dampening
+    is not applied to that particle.
+  | (default = 1.0E-4).
+
+
+- | :literal:`Gas file name`: Optional filename for using individual gas disk structures.
+
+    - '-' (No file name specified, default). Use the gas disk with the above specified parameters. 
+    - else: The specified file is read to set the gas disk parameters (time, r, Sigma and h).
+
+
 
 Non-Newtonian forces
 --------------------
