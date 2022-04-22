@@ -1,20 +1,25 @@
 # The GENGA Code: Gravitational Encounters with GPU Acceleration.
-** Authors: Simon Grimm and Joachim Stadel **
+** Authors: Simon L. Grimm and Joachim Stadel **
 
 
-** Institute for Computational Science **
-** University of Zurich **
+** Center for Space and Habitability (CSH), **
+** University of Bern, **
+** Switzerland **
+
+
+** Institute for Computational Science, **
+** University of Zurich, **
 ** Switzerland **
 
 
 GENGA is a hybrid symplectic N-body integrator, designed to integrate planet and planetesimal dynamics in the late stage of planet formation and stability analysis of planetary systems. GENGA is based on the integration scheme of the Mercury code (Chambers 1999), which handles close encounters with very good energy conservation. It uses mixed variable integration when the motion is a perturbed Kepler orbit and combines this with a direct N-body Bulirsch-Stoer method during close encounters. The GENGA code supports three simulation modes: Integration of up to 60000 - 100000  massive bodies, integration with up to a million test particles, or parallel integration of a large number of individual planetary systems. GENGA is written in CUDA C and runs on all NVidia GPUs with compute capability of at least 2.0. All operations are performed in parallel, including the close encounter detection and the grouping of independent close encounter
 pairs.
 
-[A Documentation of GENGA can be found here](https://bitbucket.org/sigrimm/genga/src/master/Documentation.md)
+[A documentation of GENGA can be found here](https://genga.readthedocs.io/en/latest/)
 
-[A new Documentation (work in progress) of GENGA can be found here](https://genga.readthedocs.io/en/latest/)
+[A paper describing GENGA can be found here](https://ui.adsabs.harvard.edu/abs/2014ApJ...796...23G)
+[The GENGA II paper preprint can be found here](https://ui.adsabs.harvard.edu/abs/2022arXiv220110058G)
 
-[A paper describing GENGA can be found here](http://arxiv.org/abs/1404.2324)
 
  ** GENGA Tutorial **
 Try GENGA in Google colab [with this tutorial](https://gist.github.com/sigrimm/93e2faed18e0e39e82aa226097b78e2c) .

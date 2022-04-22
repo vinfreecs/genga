@@ -1,8 +1,18 @@
-GENGA documentation (work in progress)
-======================================
+GENGA documentation
+===================
 
-This new documentation is not yet complete.
+| Author: Simon L. Grimm
+| Center for Space and Habitability (CSH)
+| University of Bern, Switzerland
 
+
+GENGA is available at https://bitbucket.org/sigrimm/genga
+
+
+License
+-------
+
+GENGA is free to use, but when results from GENGA are published, then the following paper has to be referenced :cite:p:`Grimm+2014`.
 
 
 Setup
