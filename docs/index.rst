@@ -16,7 +16,7 @@ GENGA is free to use, but when results from GENGA are published, then the follow
 
 
 Setup
-~~~~~
+-----
 
 .. toctree::
    :maxdepth: 2
@@ -31,7 +31,7 @@ Setup
    Define.rst
 
 Integrator details
-~~~~~~~~~~~~~~~~~~
+------------------
 
 .. toctree::
    :maxdepth: 2
@@ -39,7 +39,7 @@ Integrator details
    Integrator.rst
 
 Output Files
-~~~~~~~~~~~~
+------------
 
 .. toctree::
    :maxdepth: 2
@@ -47,7 +47,7 @@ Output Files
    Files.rst
 
 Options
-~~~~~~~
+-------
 
 .. toctree::
    :maxdepth: 2
@@ -62,7 +62,7 @@ Options
    Poincare.rst
 
 Forces
-~~~~~~
+------
 
 .. toctree::
    :maxdepth: 2
@@ -76,7 +76,7 @@ Forces
    PRdrag.rst
 
 Small body collision model
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 .. toctree::
    :maxdepth: 2
@@ -86,7 +86,7 @@ Small body collision model
 
 
 Bibliography
-~~~~~~~~~~~~
+------------
 
 .. toctree::
    :maxdepth: 2
@@ -94,7 +94,7 @@ Bibliography
    Bibliography.rst
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
