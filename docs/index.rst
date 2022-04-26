@@ -20,7 +20,7 @@ Setup
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Setup:
 
    Tutorial.rst
    Setup.rst
@@ -35,6 +35,7 @@ Integrator details
 
 .. toctree::
    :maxdepth: 2
+   :caption: Integrator Details:
 
    Integrator.rst
 
@@ -43,6 +44,7 @@ Output Files
 
 .. toctree::
    :maxdepth: 2
+   :caption: Output Files:
 
    Files.rst
 
@@ -51,6 +53,7 @@ Options
 
 .. toctree::
    :maxdepth: 2
+   :caption: Options:
 
    Collisions.rst
    Encounters.rst
@@ -66,6 +69,7 @@ Forces
 
 .. toctree::
    :maxdepth: 2
+   :caption: Forces:
 
    Gas.rst
    GR.rst
@@ -80,6 +84,7 @@ Small body collision model
 
 .. toctree::
    :maxdepth: 2
+   :caption: Small Body Collision Model:
 
    SmallBodies.rst
 
@@ -90,6 +95,7 @@ Bibliography
 
 .. toctree::
    :maxdepth: 2
+   :caption: Bibliography:
 
    Bibliography.rst
 
