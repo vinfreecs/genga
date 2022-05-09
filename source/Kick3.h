@@ -708,7 +708,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			}
 
 		}
-//if(id == 13723) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
+//if(id == 50) printf("K %d %.40g %.40g %.40g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.x, a.y, acck_d[id].x, acck_d[id].y);
 	}
 }
 

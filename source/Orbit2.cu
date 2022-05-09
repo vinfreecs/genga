@@ -1246,8 +1246,12 @@ __host__ int Data::readic(int st){
 			}
 			MaxIndex = max(MaxIndex, index);
 			int NBSN = NBS;
-			if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0) NBSN += N - ii + iismall; //shift test particles to the end of the arrays
-			else NBSN -= iismall;
+			if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
+				NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+			}
+			else{
+				NBSN -= iismall;
+			}
 
 			x4_h[ii + NBSN] = x;
 			v4_h[ii + NBSN] = v;
@@ -1311,34 +1315,58 @@ __host__ int Data::readic(int st){
 					fscanf (infile, "%lf",&skip);
 				}
 			}
-
+			int iismall = 0;
+			int index;
+			double4 x, v;
+			double4 spin;
+			float4 aelimits;
+			unsigned long long enccountT;
+			unsigned long long aecountT;
 			for(int i = 0; i < N + Nsmall; ++i){
 				if(i > 0) fscanf (infile, "%lf",&time);
-				fscanf (infile, "%d",&index_h[i + NBS]);
-				fscanf (infile, "%lf",&x4_h[i + NBS].w);
-				fscanf (infile, "%lf",&v4_h[i + NBS].w);
-				fscanf (infile, "%lf",&x4_h[i + NBS].x);
-				fscanf (infile, "%lf",&x4_h[i + NBS].y);
-				fscanf (infile, "%lf",&x4_h[i + NBS].z);
-				fscanf (infile, "%lf",&v4_h[i + NBS].x);
-				fscanf (infile, "%lf",&v4_h[i + NBS].y);
-				fscanf (infile, "%lf",&v4_h[i + NBS].z);
-				fscanf (infile, "%lf",&spin_h[i + NBS].x);
-				fscanf (infile, "%lf",&spin_h[i + NBS].y);
-				fscanf (infile, "%lf",&spin_h[i + NBS].z);
-				fscanf (infile, "%f",&aelimits_h[i + NBS].x);
-				fscanf (infile, "%f",&aelimits_h[i + NBS].y);
-				fscanf (infile, "%f",&aelimits_h[i + NBS].z);
-				fscanf (infile, "%f",&aelimits_h[i + NBS].w);
+				fscanf (infile, "%d",&index);
+				fscanf (infile, "%lf",&x.w);
+				fscanf (infile, "%lf",&v.w);
+				fscanf (infile, "%lf",&x.x);
+				fscanf (infile, "%lf",&x.y);
+				fscanf (infile, "%lf",&x.z);
+				fscanf (infile, "%lf",&v.x);
+				fscanf (infile, "%lf",&v.y);
+				fscanf (infile, "%lf",&v.z);
+				fscanf (infile, "%lf",&spin.x);
+				fscanf (infile, "%lf",&spin.y);
+				fscanf (infile, "%lf",&spin.z);
+				fscanf (infile, "%f",&aelimits.x);
+				fscanf (infile, "%f",&aelimits.y);
+				fscanf (infile, "%f",&aelimits.z);
+				fscanf (infile, "%f",&aelimits.w);
 				fscanf (infile, "%lf",&skip);
 				fscanf (infile, "%lf",&aecount);
-				fscanf (infile, "%lld",&enccountT_h[i + NBS]);
+				fscanf (infile, "%llu",&enccountT);
 				fscanf (infile, "%lf",&ttest);
 
-				if(P.FormatS == 0) index_h[i + NBS] += def_MaxIndex * st;
-				aecountT_h[i + NBS] = (unsigned long long)(aecount * P.tRestart);
-				MaxIndex = max(MaxIndex, index_h[i + NBS]);
+				if(P.FormatS == 0) index += def_MaxIndex * st;
+				aecountT = (unsigned long long)(aecount * P.tRestart);
+				MaxIndex = max(MaxIndex, index);
+				int NBSN = NBS;
+				if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
+					NBSN += N - i + iismall; //shift test particles to the end of the arrays
+				}
+				else{
+					NBSN -= iismall;
+				}
+				index_h[ii + NBSN] = index;
+				x4_h[ii + NBSN] = x;
+				v4_h[ii + NBSN] = v;
+				spin_h[ii + NBSN].x = spin.x;
+				spin_h[ii + NBSN].y = spin.y;
+				spin_h[ii + NBSN].z = spin.z;
+				aelimits_h[ii + NBSN] = aelimits;
+				enccountT_h[ii + NBSN] = enccountT;
+				aecountT_h[ii + NBSN] = aecountT;
+
 				++ii;
+				if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
 			}
 		}
 		if(P.FormatP == 0){
@@ -1347,6 +1375,15 @@ __host__ int Data::readic(int st){
 			char Origfilename[300];
 			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 			OrigInfile = fopen(Origfilename, "r");
+
+			int iismall = 0;
+			int index;
+			double4 x, v;
+			double4 spin;
+			float4 aelimits;
+			unsigned long long enccountT;
+			unsigned long long aecountT;
+
 			for(int k = 0; k < 1000000000; ++k){
 				int i = k;
 				double skip = 0.0;
@@ -1379,36 +1416,54 @@ __host__ int Data::readic(int st){
 				}
 				if(er <= 0) continue;
 
-				int index;
 				double m;
 				fscanf (infile, "%d",&index);
 				fscanf (infile, "%lf",&m);
 
-				index_h[ii + NBS] = index;	
-				x4_h[ii + NBS].w = m;
-				fscanf (infile, "%lf",&v4_h[ii + NBS].w);
-				fscanf (infile, "%lf",&x4_h[ii + NBS].x);
-				fscanf (infile, "%lf",&x4_h[ii + NBS].y);
-				fscanf (infile, "%lf",&x4_h[ii + NBS].z);
-				fscanf (infile, "%lf",&v4_h[ii + NBS].x);
-				fscanf (infile, "%lf",&v4_h[ii + NBS].y);
-				fscanf (infile, "%lf",&v4_h[ii + NBS].z);
-				fscanf (infile, "%lf",&spin_h[ii + NBS].x);
-				fscanf (infile, "%lf",&spin_h[ii + NBS].y);
-				fscanf (infile, "%lf",&spin_h[ii + NBS].z);
-				fscanf (infile, "%f",&aelimits_h[ii + NBS].x);
-				fscanf (infile, "%f",&aelimits_h[ii + NBS].y);
-				fscanf (infile, "%f",&aelimits_h[ii + NBS].z);
-				fscanf (infile, "%f",&aelimits_h[ii + NBS].w);
+				x.w = m;
+				fscanf (infile, "%lf",&v.w);
+				fscanf (infile, "%lf",&x.x);
+				fscanf (infile, "%lf",&x.y);
+				fscanf (infile, "%lf",&x.z);
+				fscanf (infile, "%lf",&v.x);
+				fscanf (infile, "%lf",&v.y);
+				fscanf (infile, "%lf",&v.z);
+				fscanf (infile, "%lf",&spin.x);
+				fscanf (infile, "%lf",&spin.y);
+				fscanf (infile, "%lf",&spin.z);
+				fscanf (infile, "%f",&aelimits.x);
+				fscanf (infile, "%f",&aelimits.y);
+				fscanf (infile, "%f",&aelimits.z);
+				fscanf (infile, "%f",&aelimits.w);
 				fscanf (infile, "%lf",&skip);
 				fscanf (infile, "%lf",&aecount);
-				fscanf (infile, "%lld",&enccountT_h[ii + NBS]);
+				fscanf (infile, "%llu",&enccountT);
 				fscanf (infile, "%lf",&ttest);
 
-				if(P.FormatS == 0) index_h[ii + NBS] += def_MaxIndex * st;
-				aecountT_h[ii + NBS] = (unsigned long long)(aecount * P.tRestart);
+				if(P.FormatS == 0) index += def_MaxIndex * st;
+				aecountT = (unsigned long long)(aecount * P.tRestart);
 				MaxIndex = max(MaxIndex, index);
+
+				int NBSN = NBS;
+				if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
+					NBSN += N - ii + iismall; //shift test particles to the end of the arrays
+				}
+				else{
+					NBSN -= iismall;
+				}
+				index_h[ii + NBSN] = index;
+				x4_h[ii + NBSN] = x;
+				v4_h[ii + NBSN] = v;
+				spin_h[ii + NBSN].x = spin.x;
+				spin_h[ii + NBSN].y = spin.y;
+				spin_h[ii + NBSN].z = spin.z;
+				aelimits_h[ii + NBSN] = aelimits;
+				enccountT_h[ii + NBSN] = enccountT;
+				aecountT_h[ii + NBSN] = aecountT;
+
 				++ii;
+				if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
+
 				fclose(infile);
 				if(ii == N + Nsmall) break;
 			}

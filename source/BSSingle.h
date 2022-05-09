@@ -56,6 +56,9 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	if(dt < 0) sgnt = -1;
 
 	int mm = -1;
+	for(int n = 1; n <= 8; ++n){
+		ddt[n-1] = 0.25 / (n*n);  //
+	}
 	while(sgnt * t < sgnt * dt && mm < 1e8){
 		++mm;
 
@@ -81,7 +84,6 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 			for(int n = 1; n <= 8; ++n){
 				dt2 = dt1 / (2.0 * n);	//
 				dt22 = dt2 * 2.0;
-				ddt[n-1] = 0.25 / (n*n);  //
 
 				xt.w = x4.w;
 				vt.w = v4.w;

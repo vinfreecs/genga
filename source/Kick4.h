@@ -93,6 +93,7 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
+//if(i == 50) printf("acce %d %d %.20g %.20g %.20g\n", i, j, r3ij.x, s, rsq);
 	}
 }
 
