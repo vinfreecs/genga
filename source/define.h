@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.143
+#define def_Version 3.144
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -305,6 +305,9 @@ __constant__ double Asteroid_rmin_c[1];
 __constant__ double Asteroid_rdel_c[1];
 __constant__ double SolarConstant_c[1];
 __constant__ double Qpr_c[1];
+
+__constant__ double BSddt_c[8];		//time stepping factors in Bulirsch-Stoer method
+__constant__ double BSt0_c[8 * 8];
 
 
 struct Parameter{

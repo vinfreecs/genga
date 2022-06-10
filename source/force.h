@@ -1033,7 +1033,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					time1 = setElementsData_d[line1 * nelements + i];
 					time2 = setElementsData_d[line2 * nelements + i];
 					time3 = setElementsData_d[line3 * nelements + i];
-//printf("i %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line0 %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
+//if(id < 5) printf("interpolate elemetns  %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line0 %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
 					if(time >= time2 && line3 < nlines - nbodies){
 						line += nbodies;
 						line1 += nbodies;

@@ -442,6 +442,52 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	}
 }
 
+//Add Stellar evolution
+__global__ void restore_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double *time_d, double time, const int N, const int NconstT, const int SLevels, const int f){
+	
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
+	
+	double4 x4i;
+	double4 v4i;
+	
+	if(idy == 0) time_d[0] = time;
+	
+	if(id < N){
+		
+		//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);
+		if(f == 0){
+			x4i = x4_d[id];
+			v4i = v4_d[id];
+			
+			//store coordinates backup		
+			x4b_d[id] = x4i;
+			v4b_d[id] = v4i;
+			spinb_d[id] = spin_d[id];
+			for(int l = 0; l < SLevels; ++l){
+				rcritb_d[id + l * NconstT] = rcrit_d[id + l * NconstT];
+				rcritvb_d[id + l * NconstT] = rcritv_d[id + l * NconstT];
+			}
+			indexb_d[id] = index_d[id];
+		}
+		else{
+			//restore old coordinates
+			x4i = x4b_d[id];
+			v4i = v4b_d[id];
+			
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+			spin_d[id] = spinb_d[id];
+			for(int l = 0; l < SLevels; ++l){
+				rcrit_d[id + l * NconstT] = rcritb_d[id + l * NconstT];
+				rcritv_d[id + l * NconstT] = rcritvb_d[id + l * NconstT];
+			}
+			index_d[id] = indexb_d[id];
+		}
+	}
+//if(id < 10) printf("restore %d %g %.20g %.20g %g %g %g %g %g %d\n", id, time, x4i.x, v4i.x, x4i.w, x4b_d[id].x, x4b_d[id].w, rcritv_d[id], rcritvb_d[id], f);
+}
+
 __host__ void Data::firstStep(int noColl){
 	if(Nst > 1){
 		#if def_TTV == 2

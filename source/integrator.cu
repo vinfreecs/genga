@@ -68,6 +68,24 @@ __host__ void Data::constantCopyDirectAcc(){
 }
 
 
+__host__ void Data::constantCopyBS(){
+
+	double ddt[8];
+	double t0[8 * 8];
+
+	for(int n = 1; n <= 8; ++n){
+		ddt[n-1] = 0.25 / (n*n);
+	}
+
+	for(int n = 1; n <= 8; ++n){
+		for(int j = n-1; j >=1; --j){
+			t0[(n-1) * 8 + (j -1)] = 1.0 / (ddt[j-1] - ddt[n-1]);
+		}
+	}
+	 cudaMemcpyToSymbol(BSddt_c, ddt, 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
+	 cudaMemcpyToSymbol(BSt0_c, t0, 8 * 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
+}
+
 
 // *****************************************************
 // This function calls all necessary steps before the mcmc step loop
@@ -98,6 +116,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 
 	//copy constant memory
 	constantCopyDirectAcc();
+	constantCopyBS();
 
 	//Allocate aeGride
 	constantCopy2();
@@ -298,6 +317,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 				er = tuneForce(FrTX);
 				if(er == 0) return 0;
 			}
+//tuneBS();
 
 			tuneFile = fopen("tuningParameters.dat", "w");
 			fprintf(tuneFile, "FTX %d\n", FTX);
@@ -1034,8 +1054,6 @@ __host__ int Data::tuneForce(int &TX){
 	for(int i = 0; i < 5; ++i){
 		int tx = ttx[i];
 		cudaEventRecord(start, 0);
-		//revert fg operation
-		//launch with si = -1
 		int nn = (NN + tx - 1) / tx;
 		force <<< nn, tx, WarpSize * sizeof(double3) >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
 
@@ -1206,7 +1224,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 				//set Encpairs to zero
 				cudaEventRecord(start, 0);	
 				for(int t = 0; t < T; ++t){
-					EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
+					EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
 					if(P.KickFloat == 0){
 						acc4C_kernel <<< dim3( (((NN + p - 1)/ p) + tx - 1) / tx, 1, 1), dim3(tx,ty,1), tx * ty * p * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, N0, N1, P.NencMax, p, EE);
 					}
@@ -1267,7 +1285,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	//test now the total time for the kick operation	
 	cudaEventRecord(start, 0);	
 	for(int t = 0; t < T; ++t){
-		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, NN);
+		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
 		if(P.KickFloat == 0){
 			acc4C_kernel <<< dim3( (((NN + PP - 1)/ PP) + TX - 1) / TX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, NN, N0, N1, P.NencMax, KP, EE);
 		}
@@ -1319,13 +1337,134 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	}
 
   	//Set again the Encpairs arrays to zero
-	EncpairsZeroC <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, P.NencMax, N_h[0] + Nsmall_h[0]);
+	EncpairsZeroC <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, N_h[0] + Nsmall_h[0]);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
 	return 1;
 }
 
+__host__ int Data::tuneBS(){
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	int L[9] =  {1, 2, 2, 2, 2,  3, 3, 3, 3};
+	int LS[9] = {2, 2, 4, 8, 10, 2, 4, 8, 10};
+
+	int LMin = 1;
+	int LSMin = 2;
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("\nStarting close-encounter parameters tuning\n");
+	fprintf(GSF[0].logfile, "\nStarting close-encounter parameters tuning\n");
+
+	int NN = N_h[0] + Nsmall_h[0];
+	//store backup values
+	restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 0);
+
+int noColl = 0;
+	for(int i = 0; i < 9; ++i){
+
+		P.SLevels = L[i];
+		P.SLSteps = LS[i];
+
+		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
+		restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 1);
+
+		cudaEventRecord(start, 0);	
+
+		Rcrit_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_h[0].x, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
+
+		acc4C_kernel <<< dim3( (((N_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
+		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
+
+		kick32Ab_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, NN, P.NencMax, 1);
+
+		HCCall(Ct[0], 1);
+		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 0, P.UseGR);
+		cudaStreamSynchronize(copyStream);
+
+		printf("    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+		fprintf(GSF[0].logfile,"    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+
+		if(Nenc_m[0] > 0){
+			for(int i = 0; i < def_GMax; ++i){
+				Nenc_m[i] = 0;
+			}			
+			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
+		}
+		if(Nencpairs_h[0] > 0){
+			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[0], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, 0, NB[0], time_h[0], P.StopAtEncounter, Ncoll_d, P.MinMass);
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+
+			if(P.SLevels > 1){
+				if(Nencpairs2_h[0] > 0){
+					double time = time_h[0];
+					SEnc (time, 0, 1.0, 0, noColl);
+				}
+			}
+			else{
+				if(Nencpairs2_h[0] > 0){
+					groupCall();
+				}
+				cudaDeviceSynchronize();
+
+
+
+				BSCall(0, time_h[0], noColl, 1.0);
+			}
+
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+
+			printf("    CE:    %d; ", Nencpairs2_h[0]);
+			printf("groups: %d; ", Nenc_m[0]);
+			fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+			fprintf(GSF[0].logfile, "groups: %d; ", Nenc_m[0]);
+			int nn = 2;
+			for(int st = 1; st < def_GMax; ++st){
+				if(Nenc_m[st] > 0){
+					printf("%d: %d; ", nn, Nenc_m[st]);
+					fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
+				}
+				nn *= 2;
+			}
+			printf("\n");
+			fprintf(GSF[0].logfile, "\n");
+		}
+
+		cudaEventRecord(stop, 0);
+
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		printf("Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile, "Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
+		if(times < timesMin){
+			LMin = L[i];
+			LSMin = LS[i];
+		}
+		timesMin = fmin(times, timesMin);
+
+	}
+	P.SLevels = LMin;
+	P.SLSteps = LSMin;
+
+	printf("\nBest parameters: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n\n", P.SLevels, P.SLSteps, timesMin * 0.001);
+	fprintf(GSF[0].logfile, "\nBest parameters: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n\n", P.SLevels, P.SLSteps, timesMin * 0.001);
+
+	//restore old coordinate values
+	EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
+	restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 1);
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+
+}
 
 __host__ void Data::firstKick_16(int noColl){
 	//use last time information, the beginning of the time step
@@ -1872,8 +2011,8 @@ if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
 
 //Recursive symplectic close encounter Step.
 //At the last level BS is called
-__host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noColl){
-	
+__host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl){
+
 	int nt = min(N_h[0] + Nsmall_h[0], 512);
 	int nb = (N_h[0] + Nsmall_h[0] + nt - 1) / nt;
 
@@ -1900,8 +2039,8 @@ __host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noCol
 			int nct = 1024;
 			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 
-			Scan32d1_kernel <<< ncb, nct, WarpSize * sizeof(int) >>> (Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
-			Scan32d2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(int)  >>> (Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
+			Scan32d1_kernel <<< ncb, nct, WarpSize * sizeof(int) >>> (Encpairs3_d + SLevel * NBNencT, N_h[0] + Nsmall_h[0], P.NencMax);
+			Scan32d2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(int)  >>> (Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, N_h[0] + Nsmall_h[0], P.NencMax);
 			Scan32d3_kernel  <<< ncb, nct >>>  (Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
 		}
 
@@ -1937,9 +2076,10 @@ __host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noCol
 			kickS_kernel <<< nb3, nt3 >>> (x4_d, v4_d, x4_d, v4_d, rcritv_d, dt_h[0] / ll * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, N_h[0] + Nsmall_h[0], NconstT, P.NencMax, SLevel, P.SLevels, 2);
 		}
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
+// /*if(timeStep % 1000 == 0) */printf("Nencpairs %d\n", Nencpairs_h[0]);
 		fgS_kernel <<< nbf3, ntf3 >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] / ll * FGt[si], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, P.NencMax);
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d + SLevel * NconstT, rcritv_d + SLevel * NconstT, dt_h[0] / ll * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, N_h[0] + Nsmall_h[0], time, P.StopAtEncounter, Ncoll_d, P.MinMass);
+			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d + SLevel * NconstT, rcritv_d + SLevel * NconstT, dt_h[0] / ll * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, 1, N_h[0] + Nsmall_h[0], time, P.StopAtEncounter, Ncoll_d, P.MinMass);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaDeviceSynchronize();
 // /*if(timeStep % 1000 == 0) */printf("Nencpairs2 %d %d\n", Nencpairs_h[0], Nencpairs2_h[0]);
@@ -1949,47 +2089,8 @@ __host__ void Data::SEnc(double &time,  int SLevel, double ll, int si, int noCol
 					SEnc (time, SLevel, ll, si, noColl);
 				}
 				else{
-					if(Nsmall_h[0] == 0){
-						if(NB[0] <= 512){
-							switch(NB[0]){
-								case 16:{
-									group_kernel < 16, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-								case 32:{
-									group_kernel < 32, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-								case 64:{
-									group_kernel < 64, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-								case 128:{
-									group_kernel < 128, 512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-								case 256:{
-									group_kernel < 256, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-								case 512:{
-									group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-								}
-								break;
-							}
-						}
-						else{
-							group_kernel < 1, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
-						}
-					}
-					else{
-						if(P.UseTestParticles < 2){
-							group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
-						}
-						else{
-							group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0] + Nsmall_h[0], P.SERIAL_GROUPING);
-						}
-					}
+					groupCall();
+
 					cudaDeviceSynchronize();
 					BSCall(si, time, noColl, ll);
 					time += dt_h[0] / ll / dayUnit;
@@ -2443,7 +2544,6 @@ __host__ int Data::step_largeN(int noColl){
 			}			
 			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
 		}
-
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, si, NB[0], time_h[0], P.StopAtEncounter, Ncoll_d, P.MinMass);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);

@@ -233,6 +233,7 @@ public:
 	__host__ int freeOrbit();
 
 	__host__ void constantCopyDirectAcc();
+	__host__ void constantCopyBS();
 
 
 
@@ -276,6 +277,7 @@ public:
 	__host__ int tuneRcrit(int &);
 	__host__ int tuneKick(int, int &, int &, int &);
 	__host__ int tuneForce(int &);
+	__host__ int tuneBS();
 
 	__host__ void firstKick_16(int);
 	__host__ void firstKick_largeN(int);
@@ -298,6 +300,7 @@ public:
 	
 	__host__ void comCall(const int);
 	__host__ void HCCall(const double, const int);
+	__host__ void groupCall();
 
 	__host__ int CollisionCall(int);
 	__host__ int CollisionMCall(int);

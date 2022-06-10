@@ -555,12 +555,10 @@ __global__ void BSTTVStep_kernel(double4 *xold_d, double4 *vold_d, int *Transit_
 				}
 				
 				if(idy < N2){
-					double ddt0 = 0.25 / (n*n);
 					for(int j = n-1; j >= 1; --j){
-						double ddt1 = 0.25 / (j*j);
-						double t0 = 1.0 / (ddt1 - ddt0);
-						double t1 = t0 * 0.25 / ((j+1)*(j+1));
-						double t2 = t0 * ddt0;
+						double t0 = BSt0_c[(n-1) * 8 + (j-1)];
+						double t1 = t0 * BSddt_c[j];
+						double t2 = t0 * BSddt_c[n-1];
 						
 						dx_s[idy][j-1].x = t1 * dx_s[idy][j].x - t2 * dx_s[idy][j-1].x;	
 						dx_s[idy][j-1].y = t1 * dx_s[idy][j].y - t2 * dx_s[idy][j-1].y;

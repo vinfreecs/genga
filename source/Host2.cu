@@ -3460,8 +3460,8 @@ __host__ int Host::readSetElements(){
 	}
 	int nlines = 0;
 	int nlinesToSkip = 0;
-	double time = -2.0e10;
-	double timeOld = -1.0e10;
+	double time = -1.0e10;
+	double timeOld = -2.0e10;
 	double timeOld2 = time;
 	//start time
 	double time0 = ict_h[0] + P.tRestart * idt_h[0] / 365.25;
@@ -3478,7 +3478,7 @@ __host__ int Host::readSetElements(){
 					timeOld = time;
 				}
 				time = t;
-//printf("time %.10g %.10g start time %.10g| end time %.10g | %d %d\n", time, timeOld2, time0, time1, nlinesToSkip, nlines);
+//printf("time %.10g %.10g start time %.10g| end time %.10g | %d %d %d\n", time, timeOld2, time0, time1, nlinesToSkip, nlines, P.setElementsN);
 
 				//cubic interpolation
 				if(j < P.setElementsN  && time > time0){
@@ -3491,7 +3491,7 @@ __host__ int Host::readSetElements(){
 		if(er <= 0){
 			break;
 		}
-		if((time >= ict_h[0] && timeOld2 <= time1) || nlines < 4){	//need at least 4 lines for cubic interpolation
+		if((time >= ict_h[0] && timeOld2 <= time1) || nlines < 4 * P.setElementsN){	//need at least 4 lines for cubic interpolation
 			++nlines;
 		}
 		if(time < ict_h[0] && j >= P.setElementsN){

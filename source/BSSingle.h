@@ -36,7 +36,6 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	double dt1; dt1 =  dt;
 	double dt2;
 	double dt22;
-	double ddt[8];
 	double error; error = 10.0;
 	volatile int f;
 	double t; t = 0.0;
@@ -56,9 +55,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	if(dt < 0) sgnt = -1;
 
 	int mm = -1;
-	for(int n = 1; n <= 8; ++n){
-		ddt[n-1] = 0.25 / (n*n);  //
-	}
+
 	while(sgnt * t < sgnt * dt && mm < 1e8){
 		++mm;
 
@@ -153,9 +150,9 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 				dv[n-1].y = 0.5 * (vt.y + vp.y + dt2 * a.y);
 				dv[n-1].z = 0.5 * (vt.z + vp.z + dt2 * a.z);
 				for(int j = n-1; j >=1; --j){
-					t0 = 1.0 / (ddt[j-1] - ddt[n-1]);
-					t1 = t0 * ddt[j];
-					t2 = t0 * ddt[n-1];
+					t0 = BSt0_c[(n-1) * 8 + (j-1)];
+					t1 = t0 * BSddt_c[j];
+					t2 = t0 * BSddt_c[n-1];
 
 					dx[j-1].x = t1 * dx[j].x - t2 * dx[j-1].x;
 					dx[j-1].y = t1 * dx[j].y - t2 * dx[j-1].y;

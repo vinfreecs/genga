@@ -160,12 +160,13 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 //Date: March 2019
 //Author: Simon Grimm
 // *******************************************************************************************
-__global__ void EncpairsZeroC(int2 *Encpairs2_d, double3 *a_d, int *Nencpairs_d, const int NencMax, const int N){
+__global__ void EncpairsZeroC(int2 *Encpairs2_d, double3 *a_d, int *Nencpairs_d, int *Nencpairs2_d, const int NencMax, const int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
 	if(id == 0){
 		Nencpairs_d[0] = 0;
+		Nencpairs2_d[0] = 0;
 	}
 
 	if(id < N){

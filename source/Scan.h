@@ -9,7 +9,7 @@
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N, const int NencMax){
+__global__ void Scan32d1_kernel(int *Encpairs3_d, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -100,7 +100,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nencpairs3_d, const int N, const int NencMax){
+__global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
 
@@ -188,7 +188,7 @@ __global__ void Scan32d3_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 		Encpairs3_d[id * NencMax + 3] = t;
 //if(id % 100 == 0) printf("Scan E %d %d %d\n", id, ii, t, EncpairsScan_d[ii]);
 
-//printf("Scan b %d %d %d\n", idy, t1, Encpairs3_d[idy * NencMax + 0]);
+//printf("Scan b %d %d\n", idy, Encpairs3_d[idy * NencMax + 0]);
 		if(Encpairs3_d[id * NencMax + 0] > 0){
 			Encpairs3_d[(t - 1) * NencMax + 1] = id;
 		}

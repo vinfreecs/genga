@@ -354,12 +354,10 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 //printf("dx1 %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, dx0.x, dx0.y, dx0.z, dv0.x, dv0.y, dv0.z);
 					}
 
-					double ddt0 = 0.25 / (n*n);
 					for(int j = n-1; j >= 1; --j){
-						double ddt1 = 0.25 / (j*j);
-						double t0 = 1.0 / (ddt1 - ddt0);
-						double t1 = t0 * 0.25 / ((j+1)*(j+1));
-						double t2 = t0 * ddt0;
+						double t0 = BSt0_c[(n-1) * 8 + (j-1)];
+						double t1 = t0 * BSddt_c[j];
+						double t2 = t0 * BSddt_c[n-1];
 				
 						if(j == 7){
 							dx6.x = (t1 * dx7.x) - (t2 * dx6.x);
@@ -1000,12 +998,10 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 						dv_d[(n - 1) * NT + idi] = dvj;
 //printf("dxj %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z);
 
-						double ddt0 = 0.25 / (n*n);
 						for(int j = n-1; j >= 1; --j){
-							double ddt1 = 0.25 / (j*j);
-							double t0 = 1.0 / (ddt1 - ddt0);
-							double t1 = t0 * 0.25 / ((j+1)*(j+1));
-							double t2 = t0 * ddt0;
+							double t0 = BSt0_c[(n-1) * 8 + (j-1)];
+							double t1 = t0 * BSddt_c[j];
+							double t2 = t0 * BSddt_c[n-1];
 
 							dxj.x = (t1 * dxj.x) - (t2 * dx_d[(j - 1) * NT + idi].x);
 							dxj.y = (t1 * dxj.y) - (t2 * dx_d[(j - 1) * NT + idi].y);
@@ -1443,14 +1439,13 @@ __global__ void BSError_kernel(double4 *x4_d, double4 *v4_d, double4 *xp_d, doub
 			dv_d[(n - 1) * NT + idi].z = dvj.z;
 //if(idi == 1) printf("dxj %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
 
-			double ddt0 = 0.25 / (n * n);
 			double dj1;
 
 			for(int j = n - 1; j >= 1; --j){
-				double ddt1 = 0.25 / (j * j);
-				double t0 = 1.0 / (ddt1 - ddt0);
-				double t1 = t0 * 0.25 / ((j+1) * (j+1));
-				double t2 = t0 * ddt0;
+
+				double t0 = BSt0_c[(n-1) * 8 + (j-1)];
+				double t1 = t0 * BSddt_c[j];
+				double t2 = t0 * BSddt_c[n-1];
 				
 				dj1 = dx_d[(j - 1) * NT + idi].x;
 				dxj.x = (t1 * dxj.x) - (t2 * dj1);
@@ -1560,7 +1555,6 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 	double test;
 	Ncol_s[0] = 0;
 	__syncthreads();
-
 	for(int ii = 0; ii < N2; ii += blockDim.x){
 		int id = ii + threadIdx.x;
 		if(id < N2){
