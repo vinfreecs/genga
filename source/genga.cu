@@ -73,9 +73,6 @@ int main(int argc, char*argv[]){
 	int Nst = H.NSimulations(argc, argv);
 	if(Nst == 0) return 0;
 
-	//Check Device Informations
-	int DevError = H.DeviceInfo();
-	if(DevError == 0) return 0;
 
 	//Allocate memory for parameters on the host:
 	H.Halloc();
@@ -86,6 +83,9 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 	printf("Parameters OK\n");
 
+	//Check Device Informations
+	int DevError = H.DeviceInfo();
+	if(DevError == 0) return 0;
 	
 
 	// Determine the size of the simulations

@@ -2249,6 +2249,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 
 	//check peer to peer access for multi GPU runs:
+	cudaSetDevice(P.dev[0]);
 	for(int i = 1; i < P.ndev; ++i){
 		int check = 0;
 		cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[0]);	//check if device i can access device 0
