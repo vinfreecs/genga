@@ -60,13 +60,18 @@ Main parameters
   | (default = << x y z m vx vy vz >>)
   | See :ref:`InitialConditionsFormat`
 
+- | :literal:`Angle units`, unit of angles in the initial conditions file, (default = radians)
+  | either 'radians' or 'degrees'.
+  | affects inc, O, w and M.
+
+- | :literal:`Use output binary files`, text or binary file format for coordinate output files.
+  | - 0 (default): Use text files for coordinare output files.
+  | - 1: Use binary files for coordinare output files.
+  | See :ref:`OutFile`
+
 - | :literal:`Default rho`, value for the densities when no value (no rho and no r) is given in :literal:`Input file Format`:
   | in g/cm^3 (default = 2.0)
   | See :ref:`InitialConditionsFormat`
-
-- | :literal:`Angle units` unit of angles in the initial conditions file, (default = radians)
-  | either 'radians' or 'degrees'.
-  | affects inc, O, w and M.
 
 - | :literal:`Restart timestep`, can be used to continue a finished simulation or the restart at a given time step
   | - 0: Start a new simulation, old files are overwritten (default). 

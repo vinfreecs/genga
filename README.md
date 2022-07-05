@@ -18,7 +18,8 @@ pairs.
 [A documentation of GENGA can be found here](https://genga.readthedocs.io/en/latest/)
 
 [A paper describing GENGA can be found here](https://ui.adsabs.harvard.edu/abs/2014ApJ...796...23G)
-[The GENGA II paper preprint can be found here](https://ui.adsabs.harvard.edu/abs/2022arXiv220110058G)
+
+[The GENGA II paper can be found here](https://ui.adsabs.harvard.edu/abs/2022arXiv220110058G)
 
 
  ** GENGA Tutorial **
@@ -30,6 +31,7 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
 
  ** News: **
 
+ * Version 3.146: Output files can be written in binary format.
  * Version 3.137: Corrected angular momentum units in the Energyfile to Msun AU^2/day.
  * Version 3.135: Moved KickFloat from defin.h to param.dat.
  * Version 3.134: Included spin evolution for tidal and rotational deformation forces.

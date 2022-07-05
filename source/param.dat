@@ -11,6 +11,7 @@ n1 = 3.0
 n2 = 0.4
 Input file = initialplanet_2048.dat
 Input file Format: << x y z m vx vy vz >>
+Use output binary files = 0
 Angle units = radians
 Default rho = 2.0
 Use Test Particles = 0

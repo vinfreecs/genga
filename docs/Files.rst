@@ -57,10 +57,13 @@ for performance measurement.
 The Coordinate Output Files: Out<name>.dat
 ------------------------------------------
 This file contains the heliocentric positions and velocities, the spin and some information about the orbit and close encounters.
-At the :literal:`coordinate output interval`, set in the :ref:`param.dat<ParamFile>` file, a new output is written. The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
+At the :literal:`coordinate output interval`, set in the :ref:`param.dat<ParamFile>` file, a new output is written. 
+
+The output file format can be set to text-format or to binary-format with the :literal:`Use output binary files` in the :ref:`param.dat<ParamFile>` file.
 
 The number of digits in the output file names can be changed with the :literal:`def_NFileNameDigits` parameter in the :ref:`define.h<Define>` file.
 
+The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
 Here we describe the possible choices:
 
 
@@ -91,6 +94,30 @@ with
 - aecountT is the integrated value of all previous aecount values.
 - enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
 - test can be used for some individual values
+
+
+When the :literal:`Use output binary files` option is used, then the files contain the same data as described before with the following types:
+
+- t: double, 64bit
+- i: int, 32bit
+- m: double, 64bit
+- r: double, 64bit
+- x: double, 64bit
+- y: double, 64bit
+- z: double, 64bit
+- vx: double, 64bit
+- vy: double, 64bit
+- vz: double, 64bit
+- Sx: double, 64bit
+- Sy: double, 64bit
+- Sz: double, 64bit
+- amin: float, 32bit
+- amax: float, 32bit
+- emin: float, 32bit
+- emax: float, 32bit
+- aecount: float, 32bit
+- aecountT: float, 32bit
+- test: double, 64bit
 
 
 FormatS = 1, FormatT = 0 FormatP = 1, FormatO = 0: Out<name>.dat
@@ -124,6 +151,10 @@ option -R -1. To restart from a normal output file, the real time step, and not 
 FormatT = 0, and FormatP = 0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 This option is not possible, it is equivalent to FormatT = 1 and FormatP = 0
+
+FormatS = 1, FormatT = 1, and FormatP = 0
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This option is not possible, it is equivalent to FormatS = 0, FormatT = 1 and FormatP = 0
 
 
 .. _OutputsPerInterval:

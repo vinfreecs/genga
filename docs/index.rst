@@ -12,7 +12,8 @@ GENGA is available at https://bitbucket.org/sigrimm/genga
 License
 -------
 
-GENGA is free to use, but when results from GENGA are published, then the following paper has to be referenced :cite:p:`Grimm+2014`.
+GENGA is free to use, but when results from GENGA are published, then the following papers have to be referenced
+:cite:p:`Grimm+2014`, :cite:p:`Grimm+2022`.
 
 
 Setup

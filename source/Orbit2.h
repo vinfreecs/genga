@@ -37,7 +37,7 @@ public:
 	int2 *Encpairs_d;
 	int2 *Encpairs2_d;
 	int *Encpairs3_d;
-	int *EncpairsScan_d;
+	int2 *scan_d;
 	int *Nenc_m, *Nenc_d;
 	float4 *aelimits_h, *aelimits_d;
 	unsigned int *aecount_h, *aecount_d;
@@ -193,7 +193,7 @@ public:
 	int2 *Encpairs_h;
 	int2 *Encpairs2_h;
 	int *Encpairs3_h;
-	int *EncpairsScan_h;
+	int2 *scan_h;
 	double *Energy2_h;
 
 	double *K_h;
@@ -278,6 +278,7 @@ public:
 	__host__ int tuneKick(int, int &, int &, int &);
 	__host__ int tuneForce(int &);
 	__host__ int tuneBS();
+	__host__ int tuneBS2();
 
 	__host__ void firstKick_16(int);
 	__host__ void firstKick_largeN(int);
@@ -347,6 +348,7 @@ private:
 	int GridNae;
 	int GridNai;
 	__host__ int readic(int);
+	__host__ int readOutLine(double &, int &, double4 &, double4 &, double4 &, float4 &, double &, double &, unsigned long long &, double &, int, FILE *);
 	__host__ void resize(int, int &);
 
 	//output

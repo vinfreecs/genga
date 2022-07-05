@@ -201,7 +201,6 @@ int main(int argc, char*argv[]){
 		else if(strcmp(argv[i], "-Coll") == 0){
 			useCollfile = atoi(argv[i + 1]);
 		}
-
 	}
 
 	if(useCollfile == 1){
@@ -211,10 +210,10 @@ int main(int argc, char*argv[]){
 	}
 
 	if(pmax > 0){
-		printf("pmin: %d, pmax: %d, Name: %s Msun: %lf\n", pmin, pmax, X, Msun);
+		printf("pmin: %d, pmax: %d, Name: %s, Msun: %lf\n", pmin, pmax, X, Msun);
 	}
 	else{
-		printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s Msun: %lf\n", kmin, kmax, step, X, Msun);
+		printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s, Msun: %lf\n", kmin, kmax, step, X, Msun);
 	}
 
 	int N = 500000;
@@ -292,8 +291,6 @@ printf("%s\n", inputfilename);
 				sprintf(outputfilename, "Collisions_aei%s.dat", X);
 			}
 
-			index = -1;
-			t = 1.0e8;
 			if(useCollfile == 0){
 				sprintf(inputfilename, "Out%s_%.12lld.dat", X, k);	
 				//sprintf(inputfilename, "Out%s.dat", X);
@@ -304,15 +301,16 @@ printf("%s\n", inputfilename);
 
 			inputfile = fopen(inputfilename, "r");
 			if(inputfile == NULL){
-printf("%s skipped %lld\n", inputfilename, k);
+				printf("%s skipped %lld\n", inputfilename, k);
 				//continue;
 				break;
 			}
-printf("%s\n", inputfilename);
+			printf("%s\n", inputfilename);
 			FILE *outputfile;
 			outputfile = fopen(outputfilename, "w");
 			index = -1;
 			x.x = 1.0e300;
+			t = 1.0e8;
 			if(useCollfile == 0){
 				for(int i = 0; i < N; ++i){
 					xOld = x.x;

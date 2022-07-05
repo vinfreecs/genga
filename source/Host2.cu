@@ -397,7 +397,8 @@ __host__ void Host::Halloc(){
 	P.Nfragments = def_Nfragments;
 	P.SLevels = def_SLevels;
 	P.SLSteps = def_SLSteps;
-	P.AngleUnits = 0;		//0: radians, 1:degrees
+	P.AngleUnits = def_AngleUnits;
+	P.OutBinary = def_OutBinary;
 	P.UseaeGrid = def_UseaeGrid;
 	Gridae.amin = def_aeGridamin;
 	Gridae.amax = def_aeGridamax;		
@@ -477,6 +478,7 @@ __host__ void Host::Halloc(){
 
 	P.SERIAL_GROUPING = def_SERIAL_GROUPING;
 	P.doTuning = def_doTuning;
+	P.doSLTuning = def_doSLTuning;
 	P.KickFloat = def_KickFloat;
 	
 	char format[def_Ninformat];
@@ -623,7 +625,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
-		
 		else if(strcmp(sp, "Number of outputs per interval =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.nci);
@@ -982,7 +983,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 			fgets(sp, 3, paramfile);
 		}
-		
+		else if(strcmp(sp, "Use output binary files =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.OutBinary);
+				if(er <= 0 || P.OutBinary < 0 || P.OutBinary > 1){
+					printf("Error: Use output binary files not valid\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
 		else if(strcmp(sp, "Default rho =") == 0){
 			er = fscanf (paramfile, "%lf", &rho[st]);
 			if(er <= 0 ){
@@ -1968,7 +1982,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error, Symplectic recursion levels larger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
 					P.SLevels = def_SLevelsMax;
 				}
-				if(er <= 0){
+				if(er <= 0 || P.SLevels == 0){
 					printf("Error: Symplectic recursion levels = is not valid!\n");
 					return 0;
 				}
@@ -1982,7 +1996,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(sp, "Symplectic recursion sub steps =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.SLSteps);
-				if(er <= 0){
+				if(er <= 0 || P.SLSteps <= 0){
 					printf("Error: Symplectic recursion sub steps = is not valid!\n");
 					return 0;
 				}
@@ -2193,6 +2207,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		return 0;
 	}
 
+	if(P.SLevels == -1){
+		//use atomatic SLevels tuning
+		P.SLevels = def_SLevelsMax;
+		P.doSLTuning = 1;
+	}
 
 	if(P.SLevels > def_SLevelsMax){
 		printf("Error, Symplectic recursion levels bigger than def_SLevelsMax %d %d\n", P.SLevels, def_SLevelsMax);
@@ -2201,6 +2220,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(Nst > 1 && (P.SLevels > 1 || P.SLSteps > 2)){
 		printf("Error, Symplectic recursion levels are not supported in the multi simulation mode\n");
 		return 0;
+	}
+
+	if(P.FormatS == 1 && P.FormatP == 0){
+		P.FormatS = 0;
 	}
 
 	if(log10(delta_h[st]) >= def_NFileNameDigits && P.FormatO == 0){
@@ -2353,6 +2376,15 @@ __host__ int Host::Param(int argc, char*argv[]){
 		 if(P.tRestart % P.ci == 0) RestartBackup = 0;
 	}
 //printf("restart %lld %d\n", P.tRestart, RestartBackup);
+
+	char dat_bin[16];
+	if(P.OutBinary == 0){
+		sprintf(dat_bin, "%s", "dat");
+	}
+	else{
+		sprintf(dat_bin, "%s", "bin");
+	}
+
 	
 	for(int st = 0; st < Nst; ++st){
 		//restart -> inputfilename
@@ -2364,11 +2396,11 @@ __host__ int Host::Param(int argc, char*argv[]){
 						scale = (long long)(P.ci);
 						if(P.ci == -1) scale = P.tRestart;
 					}
-					sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart);
-					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.dat", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart / scale);
-					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "%sOutbackup%s_%.20lld.dat", GSF[st].path, GSF[st].X, P.tRestart);
+					sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart, dat_bin);
+					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "%sOut%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, P.tRestart / scale, dat_bin);
+					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "%sOutbackup%s_%.20lld.%s", GSF[st].path, GSF[st].X, P.tRestart, dat_bin);
 				}
-				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.dat", GSF[st].path, GSF[st].X);
+				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "%sOut%s.%s", GSF[st].path, GSF[st].X, dat_bin);
 			}
 			else{
 				if(P.FormatT == 0){
@@ -2377,11 +2409,11 @@ __host__ int Host::Param(int argc, char*argv[]){
 						scale = (long long)(P.ci);
 						if(P.ci == -1) scale = P.tRestart;
 					}
-					sprintf(GSF[st].inputfilename, "Out%s_%.*lld.dat", GSF[st].X, def_NFileNameDigits, P.tRestart);
-					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "Out%s_%.*lld.dat", GSF[st].X, def_NFileNameDigits, P.tRestart / scale);
-					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "Outbackup%s_%.20lld.dat", GSF[st].X, P.tRestart);
+					sprintf(GSF[st].inputfilename, "Out%s_%.*lld.%s", GSF[st].X, def_NFileNameDigits, P.tRestart, dat_bin);
+					if(P.FormatO == 1) sprintf(GSF[st].inputfilename, "Out%s_%.*lld.%s", GSF[st].X, def_NFileNameDigits, P.tRestart / scale, dat_bin);
+					if(P.FormatO == 1 && RestartBackup == 1) sprintf(GSF[st].inputfilename, "Outbackup%s_%.20lld.%s", GSF[st].X, P.tRestart, dat_bin);
 				}
-				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.dat", GSF[st].X);
+				if(P.FormatT == 1) sprintf(GSF[st].inputfilename, "Out%s.%s", GSF[st].X, dat_bin);
 			}
 		}
 		sprintf(GSF[st].logfilename, "%sinfo%s.dat", GSF[st].path, GSF[st].X);
@@ -2480,6 +2512,8 @@ __host__ int Host::icict(int Nformat, int st){
 //April 2014
 // *********************************************
 __host__ int Host::icSize(int st){
+
+	printf("Determine the size of the file %s\n", GSF[st].inputfilename);
 	
 	//Determinde the number of coordinates in the input file
 	int Nformat = 0;
@@ -2488,7 +2522,15 @@ __host__ int Host::icSize(int st){
 	}
 	
 	//Determine the simulation start time
-	double time = 0.0;
+	double time, test;
+	int index;
+	double4 x, v;
+	double3 spin;
+	float4 aelimits;
+	float aecount, aecountT;
+	unsigned long long enccountT;
+
+	time = 0.0;
 	if(ict_h[st] > 0.0) time = ict_h[st];
 	
 	int er = icict(Nformat, st);
@@ -2499,13 +2541,22 @@ __host__ int Host::icSize(int st){
 	er = 1;
 	int NN = 0;
 	int er1 = 1;
-	double m;
-	int index;
-	char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-	sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
-	double Et = atof(Ets);
+	double Et;
+	if(P.OutBinary == 0){
+		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
+		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
+		Et = atof(Ets);
+	}
+	else{
+		Et = (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25;
+	}
 	FILE *infile;
-	infile = fopen(GSF[st].inputfilename, "r");
+	if(P.OutBinary > 0 && P.tRestart > 0){
+		infile = fopen(GSF[st].inputfilename, "rb");
+	}
+	else{
+		infile = fopen(GSF[st].inputfilename, "r");
+	}
 	if(infile == NULL){
 		if(Nst == 1){
 			fprintf(masterfile,"Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
@@ -2524,14 +2575,57 @@ __host__ int Host::icSize(int st){
 		for(int f = 0; f < Nformat; ++f){
 			
 			if(P.tRestart == 0 || P.FormatP == 0){
-				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&m);
+				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&x.w);
 				else er = fscanf(infile, "%s", t);
 			}
 			else{
-				if(f == 0) er = fscanf (infile, "%lf",&time);
-				else if(f == 1)	er = fscanf (infile, "%d",&index);
-				else if(f == 2) er = fscanf (infile, "%lf",&m);
-				else er = fscanf (infile, "%s",t);
+				if(P.OutBinary == 0){
+					if(f == 0)		er = fscanf (infile, "%lf",&time);
+					else if(f == 1)		er = fscanf (infile, "%d",&index);
+					else if(f == 2)		er = fscanf (infile, "%lf",&x.w);
+					else if(f == 3)		er = fscanf (infile, "%lf",&v.w);
+					else if(f == 4)		er = fscanf (infile, "%lf",&x.x);
+					else if(f == 5)		er = fscanf (infile, "%lf",&x.y);
+					else if(f == 6)		er = fscanf (infile, "%lf",&x.z);
+					else if(f == 7)		er = fscanf (infile, "%lf",&v.x);
+					else if(f == 8)		er = fscanf (infile, "%lf",&v.y);
+					else if(f == 9)		er = fscanf (infile, "%lf",&v.z);
+					else if(f == 10)	er = fscanf (infile, "%lf",&spin.x);
+					else if(f == 11)	er = fscanf (infile, "%lf",&spin.y);
+					else if(f == 12)	er = fscanf (infile, "%lf",&spin.z);
+					else if(f == 13)	er = fscanf (infile, "%f",&aelimits.x);
+					else if(f == 14)	er = fscanf (infile, "%f",&aelimits.y);
+					else if(f == 15)	er = fscanf (infile, "%f",&aelimits.z);
+					else if(f == 16)	er = fscanf (infile, "%f",&aelimits.w);
+					else if(f == 17)	er = fscanf (infile, "%f",&aecount);
+					else if(f == 18)	er = fscanf (infile, "%f",&aecountT);
+					else if(f == 19)	er = fscanf (infile, "%llu",&enccountT);
+					else if(f == 20)	er = fscanf (infile, "%lf",&test);
+				}
+				else{
+					if(f == 0)		er = fread(&time, sizeof(double), 1, infile);
+					else if(f == 1)		er = fread(&index, sizeof(int), 1, infile);
+					else if(f == 2)		er = fread(&x.w, sizeof(double), 1, infile);
+					else if(f == 3)		er = fread(&v.w, sizeof(double), 1, infile);
+					else if(f == 4)		er = fread(&x.x, sizeof(double), 1, infile);
+					else if(f == 5)		er = fread(&x.y, sizeof(double), 1, infile);
+					else if(f == 6)		er = fread(&x.z, sizeof(double), 1, infile);
+					else if(f == 7)		er = fread(&v.x, sizeof(double), 1, infile);
+					else if(f == 8)		er = fread(&v.y, sizeof(double), 1, infile);
+					else if(f == 9)		er = fread(&v.z, sizeof(double), 1, infile);
+					else if(f == 10)	er = fread(&spin.x, sizeof(double), 1, infile);
+					else if(f == 11)	er = fread(&spin.y, sizeof(double), 1, infile);
+					else if(f == 12)	er = fread(&spin.z, sizeof(double), 1, infile);
+					else if(f == 13)	er = fread(&aelimits.x, sizeof(float), 1, infile);
+					else if(f == 14)	er = fread(&aelimits.y, sizeof(float), 1, infile);
+					else if(f == 15)	er = fread(&aelimits.z, sizeof(float), 1, infile);
+					else if(f == 16)	er = fread(&aelimits.w, sizeof(float), 1, infile);
+					else if(f == 17)	er = fread(&aecount, sizeof(float), 1, infile);
+					else if(f == 18)	er = fread(&aecountT, sizeof(float), 1, infile);
+					else if(f == 19)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
+					else if(f == 20)	er = fread(&test, sizeof(double), 1, infile);
+				}
+
 			}
 			if(er <= 0){ //error by reading
 				er1 = 0;
@@ -2539,26 +2633,27 @@ __host__ int Host::icSize(int st){
 			}
 			
 		}
+
 		if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))) break;
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
 			if(P.FormatP == 1){ // All particles in one time file
 				if(P.FormatS == 0 || P.tRestart == 0 || Nst == 1){
 					if(Et == time){
-						if(m > P.MinMass) ++NN;
+						if(x.w > P.MinMass) ++NN;
 						else ++Nsmall_h[st];
 					}
 				}
 				else if(index / def_MaxIndex == st){
 					if(Et == time){
-						if(m > P.MinMass) ++NN;
+						if(x.w > P.MinMass) ++NN;
 						else ++Nsmall_h[st];
 					}
 				}
 			}
 			if(P.FormatP == 0){
 				if(P.tRestart == 0){
-					if(m > P.MinMass) ++NN;
+					if(x.w > P.MinMass) ++NN;
 					else ++Nsmall_h[st];
 				}
 				else ++NN;
@@ -2567,6 +2662,7 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
+	printf("icSize A: %d %d %d\n", st, NN, Nsmall_h[st]);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
@@ -2594,18 +2690,65 @@ __host__ int Host::icSize(int st){
 			int NMAX = 0;
 			er1 = 1;
 			char infilename[300];
-			sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
-			infile = fopen(infilename, "r");
+			if(P.OutBinary == 0){
+				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+				infile = fopen(infilename, "r");
+			}
+			else{
+				sprintf(infilename, "%sOut%s_p%.6d.bin", GSF[st].path, GSF[st].X, i);
+				infile = fopen(infilename, "rb");
+			}
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
 				
 				for(int f = 0; f < Nformat; ++f){
-					if(f == 0) er = fscanf (infile, "%lf",&time);
-					else if(f == 1)	er = fscanf (infile, "%d",&index);
-					else if(f == 2) er = fscanf (infile, "%lf",&m);
-					else{
-						er = fscanf (infile, "%s",t);
+					if(P.OutBinary == 0){
+						if(f == 0)		er = fscanf (infile, "%lf",&time);
+						else if(f == 1)		er = fscanf (infile, "%d",&index);
+						else if(f == 2)		er = fscanf (infile, "%lf",&x.w);
+						else if(f == 3)		er = fscanf (infile, "%lf",&v.w);
+						else if(f == 4)		er = fscanf (infile, "%lf",&x.x);
+						else if(f == 5)		er = fscanf (infile, "%lf",&x.y);
+						else if(f == 6)		er = fscanf (infile, "%lf",&x.z);
+						else if(f == 7)		er = fscanf (infile, "%lf",&v.x);
+						else if(f == 8)		er = fscanf (infile, "%lf",&v.y);
+						else if(f == 9)		er = fscanf (infile, "%lf",&v.z);
+						else if(f == 10)	er = fscanf (infile, "%lf",&spin.x);
+						else if(f == 11)	er = fscanf (infile, "%lf",&spin.y);
+						else if(f == 12)	er = fscanf (infile, "%lf",&spin.z);
+						else if(f == 13)	er = fscanf (infile, "%f",&aelimits.x);
+						else if(f == 14)	er = fscanf (infile, "%f",&aelimits.y);
+						else if(f == 15)	er = fscanf (infile, "%f",&aelimits.z);
+						else if(f == 16)	er = fscanf (infile, "%f",&aelimits.w);
+						else if(f == 17)	er = fscanf (infile, "%f",&aecount);
+						else if(f == 18)	er = fscanf (infile, "%f",&aecountT);
+						else if(f == 19)	er = fscanf (infile, "%llu",&enccountT);
+						else if(f == 20)	er = fscanf (infile, "%lf",&test);
 					}
+					else{
+						if(f == 0)		er = fread(&time, sizeof(double), 1, infile);
+						else if(f == 1)		er = fread(&index, sizeof(int), 1, infile);
+						else if(f == 2)		er = fread(&x.w, sizeof(double), 1, infile);
+						else if(f == 3)		er = fread(&v.w, sizeof(double), 1, infile);
+						else if(f == 4)		er = fread(&x.x, sizeof(double), 1, infile);
+						else if(f == 5)		er = fread(&x.y, sizeof(double), 1, infile);
+						else if(f == 6)		er = fread(&x.z, sizeof(double), 1, infile);
+						else if(f == 7)		er = fread(&v.x, sizeof(double), 1, infile);
+						else if(f == 8)		er = fread(&v.y, sizeof(double), 1, infile);
+						else if(f == 9)		er = fread(&v.z, sizeof(double), 1, infile);
+						else if(f == 10)	er = fread(&spin.x, sizeof(double), 1, infile);
+						else if(f == 11)	er = fread(&spin.y, sizeof(double), 1, infile);
+						else if(f == 12)	er = fread(&spin.z, sizeof(double), 1, infile);
+						else if(f == 13)	er = fread(&aelimits.x, sizeof(float), 1, infile);
+						else if(f == 14)	er = fread(&aelimits.y, sizeof(float), 1, infile);
+						else if(f == 15)	er = fread(&aelimits.z, sizeof(float), 1, infile);
+						else if(f == 16)	er = fread(&aelimits.w, sizeof(float), 1, infile);
+						else if(f == 17)	er = fread(&aecount, sizeof(float), 1, infile);
+						else if(f == 18)	er = fread(&aecountT, sizeof(float), 1, infile);
+						else if(f == 19)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
+						else if(f == 20)	er = fread(&test, sizeof(double), 1, infile);
+					}
+
 					if(er <= 0){ //error by reading
 						er1 = 0;
 						break;
@@ -2617,7 +2760,7 @@ __host__ int Host::icSize(int st){
 				if(er1 == 1){
 					if(Nst == 1 || P.FormatS == 0){
 						if(Et == time){
-							if(m > P.MinMass) ++NNN;
+							if(x.w > P.MinMass) ++NNN;
 							else ++NNNsmall;
 							break;
 						}
@@ -2669,7 +2812,8 @@ __host__ int Host::icSize(int st){
 		printf("Error in Simulation %s: No particles found\n", GSF[st].path);
 		return 0;
 	}
-	
+
+	printf("icSize B %d %d %d\n", st, N_h[st], Nsmall_h[st]);	
 	return 1;
 }
 
@@ -2809,6 +2953,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Do Kick in single precision: %d\n", P.KickFloat);			// use only argument in simulation 0
 			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
 			fprintf(infofile, "Do kernel tuning: %d\n", P.doTuning);				// use only argument in simulation 0
+			fprintf(infofile, "Do symplectic level tuning: %d\n", P.doSLTuning);			// use only argument in simulation 0
 			fprintf(infofile, "Compute Poincare Section: %d\n", def_poincareFlag);
 			fprintf(infofile, "FormatS: %d\n", P.FormatS);						// use only argument in simulation 0
 			fprintf(infofile, "FormatT: %d\n", P.FormatT);						// use only argument in simulation 0
@@ -2902,6 +3047,7 @@ __host__ void Host::Info(){
 				else if(GSF[st].informat[f] == 0) break;
 			}
 			fprintf(infofile, "\n");
+			fprintf(infofile, "Use output binary files: %d\n", P.OutBinary);		// use only argument in simulation 0
 			fprintf(infofile, "Angle units: %d\n", P.AngleUnits);
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
 			fprintf(infofile, "Number of devices: %d\n", P.ndev);				// use only argument in simulation 0

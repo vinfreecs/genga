@@ -1,6 +1,6 @@
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compactions
+//This kernel performs a scan operation, used for stream compaction
 //
 //It works for the case of multiple blocks
 //must be followed by Scan32d2 and Scan32d3
@@ -9,7 +9,7 @@
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32d1_kernel(int *Encpairs3_d, const int N, const int NencMax){
+__global__ void Scan32d1_kernel(int2 *scan_d, const int N){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -28,7 +28,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, const int N, const int NencMax
 	}
 
 	if(id < N){
-		t1 = Encpairs3_d[id * NencMax + 3];
+		t1 = scan_d[id].x;
 	}
 	__syncthreads();
 //if(id < 1024) printf("Scan a %d %d %d\n", id, idy, t1);
@@ -78,10 +78,10 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, const int N, const int NencMax
 	__syncthreads();
 //if(id < 1024) printf("Scan C %d %d %d\n", id, idy, t0);
 
-	Encpairs3_d[id * NencMax + 3] = t0;
+	scan_d[id].x = t0;
 
 	if(idy == blockDim.x - 1){
-		Encpairs3_d[blockIdx.x * NencMax + 1] = t0;
+		scan_d[blockIdx.x].y = t0;
 //printf("ScanD %d %d\n", blockIdx.x, t0);
 	}
 
@@ -100,7 +100,7 @@ __global__ void Scan32d1_kernel(int *Encpairs3_d, const int N, const int NencMax
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, const int N, const int NencMax){
+__global__ void Scan32d2_kernel(int2 *scan_d, const int N){
 
 	int idy = threadIdx.x;
 
@@ -117,7 +117,7 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, const int
 		t_s[threadIdx.x] = 0;
 	}
 
-	t1 = Encpairs3_d[idy * NencMax + 1];
+	t1 = scan_d[idy].y;
 	if(t1 < 0) t1 = 0;
 
 	__syncthreads();
@@ -170,23 +170,23 @@ __global__ void Scan32d2_kernel(int *Encpairs3_d, int *EncpairsScan_d, const int
 //printf("Scan CC %d %d\n", idy, t0);
 	if(idy < (N + 1023) / 1024){
 //printf("Scan CC1 %d %d\n", idy, t0);
-		EncpairsScan_d[idy] = t0;
+		scan_d[idy].y = t0;
 	}
 }
 
-__global__ void Scan32d3_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nencpairs3_d, const int N, const int NencMax){
+__global__ void Scan32d3_kernel(int *Encpairs3_d, int2 *scan_d, int *Nencpairs3_d, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < N){
 		int ii = id / 1024;
-		int t = Encpairs3_d[id * NencMax + 3];
+		int t = scan_d[id].x;
 		if(id >= 1024){
-			t += EncpairsScan_d[ii - 1];
+			t += scan_d[ii - 1].y;
 		}
-		Encpairs3_d[id * NencMax + 3] = t;
-//if(id % 100 == 0) printf("Scan E %d %d %d\n", id, ii, t, EncpairsScan_d[ii]);
+		scan_d[id].x = t;
+//if(id % 100 == 0) printf("Scan E %d %d %d\n", id, ii, t, scan_d[ii].y);
 
 //printf("Scan b %d %d\n", idy, Encpairs3_d[idy * NencMax + 0]);
 		if(Encpairs3_d[id * NencMax + 0] > 0){
@@ -203,7 +203,7 @@ __global__ void Scan32d3_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 }
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compactions
+//This kernel performs a scan operation, used for stream compaction
 //
 //It works for the case of multiple warps, but only 1 thread block
 //
@@ -211,7 +211,7 @@ __global__ void Scan32d3_kernel(int *Encpairs3_d, int *EncpairsScan_d, int *Nenc
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N, const int NencMax){
+__global__ void Scan32a_kernel(int2 *scan_d, int *Encpairs3_d, int *Nencpairs3_d, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
 
@@ -219,7 +219,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 	int t2 = 0;
 
 	if(idy < N){
-		t1 = Encpairs3_d[idy * NencMax + 3];
+		t1 = scan_d[idy].x;
 	}
 	__syncthreads();
 //printf("Scan a %d %d %d\n", 0, idy, t1);
@@ -286,7 +286,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 
 	if(idy < N){
 //printf("Scan c %d %d %d\n", idy, t0, Encpairs3_d[idy * NencMax + 0]);
-		Encpairs3_d[idy * NencMax + 3] = t0;
+		scan_d[idy].x = t0;
 		if(Encpairs3_d[idy * NencMax + 0] > 0){
 //printf("Scan d %d %d\n", t0 - 1, idy);
 			Encpairs3_d[(t0 - 1) * NencMax + 1] = idy;
@@ -299,7 +299,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 }
 
 //**************************************
-//This kernel performs a scan operation, used for  stream compactions
+//This kernel performs a scan operation, used for stream compaction
 //
 //It works for the case of only 1 single warp
 //
@@ -307,7 +307,7 @@ __global__ void Scan32a_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 //Authors: Simon Grimm
 //March 2020
 //  *****************************************
-__global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N, const int NencMax){
+__global__ void Scan32c_kernel(int2 *scan_d, int *Encpairs3_d, int *Nencpairs3_d, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
 
@@ -315,7 +315,7 @@ __global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 	int t2 = 0;
 
 	if(idy < N){
-		t1 = Encpairs3_d[idy * NencMax + 3];
+		t1 = scan_d[idy].x;
 	}
 	__syncthreads();
 //printf("Scan a %d %d %d\n", 0, idy, t1);
@@ -334,7 +334,7 @@ __global__ void Scan32c_kernel(int *Encpairs3_d, int *Nencpairs3_d, const int N,
 
 	if(idy< N){
 //printf("Scan b %d %d %d\n", idy, t1, Encpairs3_d[idy * NencMax + 0]);
-		Encpairs3_d[idy * NencMax + 3] = t1;
+		scan_d[idy].x = t1;
 		if(Encpairs3_d[idy * NencMax + 0] > 0){
 			Encpairs3_d[(t1 - 1) * NencMax + 1] = idy;
 		}

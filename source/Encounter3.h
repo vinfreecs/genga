@@ -1047,7 +1047,7 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 // Date: March 2020
 // Author: Simon Grimm
 // **********************************************************
-__global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, int *EncpairsScan_d, const int NencMax){
+__global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, int2 *scan_d, const int NencMax){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -1057,52 +1057,15 @@ __global__ void setEnc3_kernel(int N, int *Nencpairs3_d, int *Encpairs3_d, int *
 
 	if(id < N){
 		Encpairs3_d[id * NencMax] = 0;		//Encounter pairs per body
-		Encpairs3_d[id * NencMax + 1] = -1;	//list of indices 
+		Encpairs3_d[id * NencMax + 1] = -1;	//list of indices	 
 		Encpairs3_d[id * NencMax + 2] = 0;	//number of pairs with real gravitational influence
-		Encpairs3_d[id * NencMax + 3] = 0;	//helper array for stream compaction
-	}
-	if(id < (N + 1023) / 1024){
-		EncpairsScan_d[id] = 0;
-	}
-}
+		Encpairs3_d[id * NencMax + 3] = 0;	//helper array for stream compaction, replace with scan_d
 
-__global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N, const int SLevel){
-
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
-	int Ne = Nencpairs2_d[0];
-	if(id < Ne){
-		int ii = Encpairs2_d[id].x;
-		int jj = Encpairs2_d[id].y;
-
-		//count encounter pairs per body
-		int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
-		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
-//printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);
-
-		//count total number of close encounters
-		if(NI == 0){
-			int iii = atomicAdd(Nencpairs3_d, 1);
-			Encpairs3_d[iii * NencMax + 1] = ii;
-		}
-		if(NJ == 0){
-			int jjj = atomicAdd(Nencpairs3_d, 1);
-			Encpairs3_d[jjj * NencMax + 1] = jj;
-		}
-
-
-		if(jj < N || (UseTestParticles == 2 && ii < N)){
-			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);
-			Encpairs3_d[ii * NencMax + Ni + 4] = jj;
-		}
-
-		if(ii < N || (UseTestParticles == 2 && jj < N)){
-			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 2], 1);
-			Encpairs3_d[jj * NencMax + Nj + 4] = ii;
-		}
+		scan_d[id].x = 0;
+		scan_d[id].y = 0;
 	}
 }
+
 
 // **********************************************************
 // This kernel writes lists of encounter pairs for each bodies.
@@ -1110,7 +1073,7 @@ __global__ void groupS_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpai
 // Date: March 2020
 // Author: Simon Grimm
 // **********************************************************
-__global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int UseTestParticles, const int N, const int SLevel){
+__global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, int2 *scan_d, const int NencMax, const int UseTestParticles, const int N, const int SLevel){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1126,8 +1089,8 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 //printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);
 
 		//fill helper array for stream compaction
-		Encpairs3_d[ii * NencMax + 3] = 1;
-		Encpairs3_d[jj * NencMax + 3] = 1;
+		scan_d[ii].x = 1;
+		scan_d[jj].x = 1;
 
 		if(jj < N || (UseTestParticles == 2 && ii < N)){
 			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);

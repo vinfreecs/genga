@@ -140,7 +140,7 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &Encpairs_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs2_d, sizeof(int2) * NBNencT);
 	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
-	cudaMalloc((void **) &EncpairsScan_d, sizeof(int) * (NconstT + 1023 / 1024));	//helper array for stream compaction
+	cudaMalloc((void **) &scan_d, sizeof(int2) * NconstT);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * P.Nfragments);
@@ -857,6 +857,66 @@ __host__ int Data::ic(){
 }
 
 // ************************************** //
+//This function reads 1 line of the output file, used for restarting
+//Authors: Simon Grimm
+//July 2022
+// *****************************************
+__host__ int Data::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &test, int Nformat, FILE *infile){
+
+	int er = 0;
+	for(int f = 0; f < Nformat; ++f){
+		if(P.OutBinary == 0){
+			if(f == 0)              er = fscanf (infile, "%lf",&time);
+			else if(f == 1)         er = fscanf (infile, "%d",&index);
+			else if(f == 2)         er = fscanf (infile, "%lf",&x.w);
+			else if(f == 3)         er = fscanf (infile, "%lf",&v.w);
+			else if(f == 4)         er = fscanf (infile, "%lf",&x.x);
+			else if(f == 5)         er = fscanf (infile, "%lf",&x.y);
+			else if(f == 6)         er = fscanf (infile, "%lf",&x.z);
+			else if(f == 7)         er = fscanf (infile, "%lf",&v.x);
+			else if(f == 8)         er = fscanf (infile, "%lf",&v.y);
+			else if(f == 9)         er = fscanf (infile, "%lf",&v.z);
+			else if(f == 10)        er = fscanf (infile, "%lf",&spin.x);
+			else if(f == 11)        er = fscanf (infile, "%lf",&spin.y);
+			else if(f == 12)        er = fscanf (infile, "%lf",&spin.z);
+			else if(f == 13)        er = fscanf (infile, "%f",&aelimits.x);
+			else if(f == 14)        er = fscanf (infile, "%f",&aelimits.y);
+			else if(f == 15)        er = fscanf (infile, "%f",&aelimits.z);
+			else if(f == 16)        er = fscanf (infile, "%f",&aelimits.w);
+			else if(f == 17)        er = fscanf (infile, "%lf",&skip);
+			else if(f == 18)        er = fscanf (infile, "%lf",&aecount);
+			else if(f == 19)        er = fscanf (infile, "%llu",&enccountT);
+			else if(f == 20)        er = fscanf (infile, "%lf",&test);
+		}
+		else{
+			if(f == 0)              er = fread(&time, sizeof(double), 1, infile);
+			else if(f == 1)         er = fread(&index, sizeof(int), 1, infile);
+			else if(f == 2)         er = fread(&x.w, sizeof(double), 1, infile);
+			else if(f == 3)         er = fread(&v.w, sizeof(double), 1, infile);
+			else if(f == 4)         er = fread(&x.x, sizeof(double), 1, infile);
+			else if(f == 5)         er = fread(&x.y, sizeof(double), 1, infile);
+			else if(f == 6)         er = fread(&x.z, sizeof(double), 1, infile);
+			else if(f == 7)         er = fread(&v.x, sizeof(double), 1, infile);
+			else if(f == 8)         er = fread(&v.y, sizeof(double), 1, infile);
+			else if(f == 9)         er = fread(&v.z, sizeof(double), 1, infile);
+			else if(f == 10)        er = fread(&spin.x, sizeof(double), 1, infile);
+			else if(f == 11)        er = fread(&spin.y, sizeof(double), 1, infile);
+			else if(f == 12)        er = fread(&spin.z, sizeof(double), 1, infile);
+			else if(f == 13)        er = fread(&aelimits.x, sizeof(float), 1, infile);
+			else if(f == 14)        er = fread(&aelimits.y, sizeof(float), 1, infile);
+			else if(f == 15)        er = fread(&aelimits.z, sizeof(float), 1, infile);
+			else if(f == 16)        er = fread(&aelimits.w, sizeof(float), 1, infile);
+			else if(f == 17)        er = fread(&skip, sizeof(float), 1, infile);
+			else if(f == 18)        er = fread(&aecount, sizeof(float), 1, infile);
+			else if(f == 19)        er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
+			else if(f == 20)        er = fread(&test, sizeof(double), 1, infile);
+		}
+	}
+	return er;
+}
+
+
+// ************************************** //
 //This function reads the initial conditions from the IC file.
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
@@ -873,7 +933,15 @@ __host__ int Data::readic(int st){
 	double AU = def_AU * 100.0; // in cm
 	double Solarmass = def_Solarmass * 1000.0; //in g
 	if(P.mcmcRestart == 0){
-		if(P.FormatP == 1 || P.tRestart == 0) infile = fopen(GSF[st].inputfilename, "r");
+		if(P.FormatP == 1 || P.tRestart == 0){
+			if(P.OutBinary > 0 && P.tRestart > 0){
+				infile = fopen(GSF[st].inputfilename, "rb");
+			}
+			else{
+				infile = fopen(GSF[st].inputfilename, "r");
+			}
+		}
+		printf("Read file %s\n", GSF[st].inputfilename);
 	}
 	else{
 		if(st == 0){
@@ -887,11 +955,12 @@ __host__ int Data::readic(int st){
 		infile = MCMCRestartFile;
 	}
 
+
 	int ii = 0;
 	int iismall = 0;
 	MaxIndex = 0;
 	
-	double skip;
+	double skip, test;
 	double4 x, v;
 	double rcrit;
 	double4 spin;
@@ -1290,60 +1359,52 @@ __host__ int Data::readic(int st){
 
 #endif
 		//read from restart time step
-		char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
-		sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
-		double Et = atof(Ets);
+		double Et;
+		if(P.OutBinary == 0){
+			char Ets[160]; //exact time at restart time step, must be the same format as the coordinate output
+			sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
+			Et = atof(Ets);
+		}
+		else{
+			Et = (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25;
+		}
+
 		double time = 0.0;
 		double aecount = 0.0;
+		unsigned long long enccountT;
+		unsigned long long aecountT;
+
+		int Nformat = 21;
+
 		if(P.FormatP == 1){
+
 			//skip previous time steps
-			if(P.FormatT == 0) fscanf (infile, "%lf",&time);
+			if(P.FormatT == 0){
+				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
+			}
 			if(P.FormatT == 1){
-				fscanf (infile, "%lf",&time);
+				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					for(int j = 0; j < 20; ++j){
-						fscanf (infile, "%lf",&skip);
-					}
-					fscanf (infile, "%lf",&time);
+					readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 			}
 
+
 			//skip previous simulation data
 			if(P.FormatS == 1){
-				for(int i = 0; i < NBS * 21; ++i){
-					fscanf (infile, "%lf",&skip);
+				for(int i = 0; i < NBS; ++i){
+					readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 				}
 			}
+
 			int iismall = 0;
-			int index;
-			double4 x, v;
-			double4 spin;
-			float4 aelimits;
-			unsigned long long enccountT;
-			unsigned long long aecountT;
 			for(int i = 0; i < N + Nsmall; ++i){
-				if(i > 0) fscanf (infile, "%lf",&time);
-				fscanf (infile, "%d",&index);
-				fscanf (infile, "%lf",&x.w);
-				fscanf (infile, "%lf",&v.w);
-				fscanf (infile, "%lf",&x.x);
-				fscanf (infile, "%lf",&x.y);
-				fscanf (infile, "%lf",&x.z);
-				fscanf (infile, "%lf",&v.x);
-				fscanf (infile, "%lf",&v.y);
-				fscanf (infile, "%lf",&v.z);
-				fscanf (infile, "%lf",&spin.x);
-				fscanf (infile, "%lf",&spin.y);
-				fscanf (infile, "%lf",&spin.z);
-				fscanf (infile, "%f",&aelimits.x);
-				fscanf (infile, "%f",&aelimits.y);
-				fscanf (infile, "%f",&aelimits.z);
-				fscanf (infile, "%f",&aelimits.w);
-				fscanf (infile, "%lf",&skip);
-				fscanf (infile, "%lf",&aecount);
-				fscanf (infile, "%llu",&enccountT);
-				fscanf (infile, "%lf",&ttest);
+				if(i > 0) readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
 				aecountT = (unsigned long long)(aecount * P.tRestart);
@@ -1400,45 +1461,26 @@ __host__ int Data::readic(int st){
 		
 				int er = 0;
 				char infilename[300];
-				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
-				infile = fopen(infilename, "r");
+				if(P.OutBinary == 0){
+					sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
+					infile = fopen(infilename, "r");
+				}
+				else{
+					sprintf(infilename, "%sOut%s_p%.6d.bin", GSF[st].path, GSF[st].X, i);
+					infile = fopen(infilename, "rb");
+				}
+//printf("Read file %s\n", infilename);
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				fscanf (infile, "%lf",&time);
+				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					for(int j = 0; j < 20; ++j){
-						fscanf (infile, "%lf",&skip);
-					}
-					er = fscanf (infile, "%lf",&time);
-					if(er <= 0) break;
+						er = readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+//printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 				if(er <= 0) continue;
-
-				double m;
-				fscanf (infile, "%d",&index);
-				fscanf (infile, "%lf",&m);
-
-				x.w = m;
-				fscanf (infile, "%lf",&v.w);
-				fscanf (infile, "%lf",&x.x);
-				fscanf (infile, "%lf",&x.y);
-				fscanf (infile, "%lf",&x.z);
-				fscanf (infile, "%lf",&v.x);
-				fscanf (infile, "%lf",&v.y);
-				fscanf (infile, "%lf",&v.z);
-				fscanf (infile, "%lf",&spin.x);
-				fscanf (infile, "%lf",&spin.y);
-				fscanf (infile, "%lf",&spin.z);
-				fscanf (infile, "%f",&aelimits.x);
-				fscanf (infile, "%f",&aelimits.y);
-				fscanf (infile, "%f",&aelimits.z);
-				fscanf (infile, "%f",&aelimits.w);
-				fscanf (infile, "%lf",&skip);
-				fscanf (infile, "%lf",&aecount);
-				fscanf (infile, "%llu",&enccountT);
-				fscanf (infile, "%lf",&ttest);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
 				aecountT = (unsigned long long)(aecount * P.tRestart);
@@ -2159,12 +2201,6 @@ __host__ int Data::remove(){
 		}
 
 	}
-	
-	cudaMemcpy(x4_h, x4_d, sizeof(double)*4*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(v4_h, v4_d, sizeof(double)*4*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(index_h, index_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(spin_h, spin_d, sizeof(double)*4*NconstT, cudaMemcpyDeviceToHost);
-	cudaMemcpy(love_h, love_d, sizeof(double)*3*NconstT, cudaMemcpyDeviceToHost);
 	return NminFlag;
 }
 
@@ -2547,7 +2583,7 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs_d);
 	cudaFree(Encpairs2_d);
 	cudaFree(Encpairs3_d);
-	cudaFree(EncpairsScan_d);
+	cudaFree(scan_d);
 
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);

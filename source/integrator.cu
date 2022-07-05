@@ -317,7 +317,6 @@ __host__ int Data::beforeTimeStepLoop1(){
 				er = tuneForce(FrTX);
 				if(er == 0) return 0;
 			}
-//tuneBS();
 
 			tuneFile = fopen("tuningParameters.dat", "w");
 			fprintf(tuneFile, "FTX %d\n", FTX);
@@ -331,6 +330,9 @@ __host__ int Data::beforeTimeStepLoop1(){
 			fprintf(tuneFile, "FrTX %d\n", FrTX);
 			fprintf(tuneFile, "UseAcc %d\n", UseAcc);
 			fclose(tuneFile);
+		}
+		if(P.doSLTuning == 1){
+			tuneBS();
 		}
 	}
 
@@ -758,7 +760,7 @@ __host__ int Data::Remaining(){
 // Authors: Simon Grimm
 // June 2015
 // ****************************************************
-__host__ void  Data::SymplecticP(int E){
+__host__ void Data::SymplecticP(int E){
 	SIn = 1;
 	SIM = 1;
 	double SIw[4]; //for maximal SI6
@@ -827,7 +829,7 @@ __host__ void  Data::SymplecticP(int E){
 // Authors: Simon Grimm
 // June 2015
 // ****************************************************
-__host__ void  Data::IrregularStep(double dTau){
+__host__ void Data::IrregularStep(double dTau){
 	SIn = 1;
 	SIM = 1;
 	
@@ -889,10 +891,10 @@ __global__ void initialb_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NBNencT
 
 
 
-__global__ void safe_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, double4 *v4bb_d, double4 *spin_d, double4 *spinbb_d, double *rcrit_d, double *rcritv_d, double *rcritbb_d, double *rcritvbb_d, int *index_d, int *indexbb_d, int N, int NconstT, int SLevels, int f){
+__global__ void save_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, double4 *v4bb_d, double4 *spin_d, double4 *spinbb_d, double *rcrit_d, double *rcritv_d, double *rcritbb_d, double *rcritvbb_d, int *index_d, int *indexbb_d, int N, int NconstT, int SLevels, int f){
+
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
-
 
 	if(id < N){
 		if(f == 1){
@@ -1055,12 +1057,12 @@ __host__ int Data::tuneForce(int &TX){
 		int tx = ttx[i];
 		cudaEventRecord(start, 0);
 		int nn = (NN + tx - 1) / tx;
-		force <<< nn, tx, WarpSize * sizeof(double3) >>>  (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
+		force <<< nn, tx, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
 
 		if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 			int ncb = min(nn, 1024);
 			if(N_h[0] + Nsmall_h[0] > tx){
-				forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 0);
+				forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 0);
 			}
 		}
 
@@ -1336,7 +1338,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 		}
 	}
 
-  	//Set again the Encpairs arrays to zero
+	//Set again the Encpairs arrays to zero
 	EncpairsZeroC <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, N_h[0] + Nsmall_h[0]);
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
@@ -1362,20 +1364,26 @@ __host__ int Data::tuneBS(){
 	printf("\nStarting close-encounter parameters tuning\n");
 	fprintf(GSF[0].logfile, "\nStarting close-encounter parameters tuning\n");
 
-	int NN = N_h[0] + Nsmall_h[0];
-	//store backup values
-	restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 0);
 
-int noColl = 0;
+	int2 ij;
+	ij.x = -1;
+	ij.y = -1;
+	cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+
+	int NN = N_h[0] + Nsmall_h[0];
+	//save backup values
+	save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, 1);
+
+	int noColl = 3;
+
 	for(int i = 0; i < 9; ++i){
 
 		P.SLevels = L[i];
 		P.SLSteps = LS[i];
 
 		EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
-		restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 1);
+		save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, -1);
 
-		cudaEventRecord(start, 0);	
 
 		Rcrit_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_h[0].x, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], test_d, n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
 
@@ -1385,7 +1393,7 @@ int noColl = 0;
 		kick32Ab_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, NN, P.NencMax, 1);
 
 		HCCall(Ct[0], 1);
-		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 0, P.UseGR);
+		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, test_d, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR);
 		cudaStreamSynchronize(copyStream);
 
 		printf("    Precheck-pairs:    %d\n", Nencpairs_h[0]);
@@ -1397,14 +1405,19 @@ int noColl = 0;
 			}			
 			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
 		}
+
+
 		if(Nencpairs_h[0] > 0){
-			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[0], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, 0, NB[0], time_h[0], P.StopAtEncounter, Ncoll_d, P.MinMass);
+
+			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[0], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, 1, NB[0], time_h[0], P.StopAtEncounter, Ncoll_d, P.MinMass);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+
+			cudaEventRecord(start, 0);
 
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
-					SEnc (time, 0, 1.0, 0, noColl);
+					SEnc(time, 0, 1.0, 0, noColl);
 				}
 			}
 			else{
@@ -1413,11 +1426,10 @@ int noColl = 0;
 				}
 				cudaDeviceSynchronize();
 
-
-
 				BSCall(0, time_h[0], noColl, 1.0);
 			}
 
+			cudaEventRecord(stop, 0);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 
 			printf("    CE:    %d; ", Nencpairs2_h[0]);
@@ -1434,9 +1446,125 @@ int noColl = 0;
 			}
 			printf("\n");
 			fprintf(GSF[0].logfile, "\n");
+
+
+			cudaEventSynchronize(stop);
+			cudaEventElapsedTime(&times, start, stop); //time in microseconds
+			printf("Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
+			fprintf(GSF[0].logfile, "Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
+			if(times < timesMin){
+				LMin = L[i];
+				LSMin = LS[i];
+			}
+			timesMin = fmin(times, timesMin);
+
+		}
+	}
+	P.SLevels = LMin;
+	P.SLSteps = LSMin;
+
+	printf("\nBest parameters: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n\n", P.SLevels, P.SLSteps, timesMin * 0.001);
+	fprintf(GSF[0].logfile, "\nBest parameters: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n\n", P.SLevels, P.SLSteps, timesMin * 0.001);
+
+	//restore old coordinate values
+	EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
+	save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, -1);
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+
+}
+
+//called during the integration, before BSCall
+__host__ int Data::tuneBS2(){
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	//int L[9] =  {1, 2, 2, 2, 2,  3, 3, 3, 3};
+	//int LS[9] = {2, 2, 4, 8, 10, 2, 4, 8, 10};
+	int L[9] =  {2, 1, 2, 2, 2,  3, 3, 3, 3};
+	int LS[9] = {2, 2, 4, 8, 10, 2, 4, 8, 10};
+
+	int LMin = 1;
+	int LSMin = 2;
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("\nStarting close-encounter parameters tuning\n");
+	fprintf(GSF[0].logfile, "\nStarting close-encounter parameters tuning\n");
+
+
+	int2 ij;
+	ij.x = -1;
+	ij.y = -1;
+	cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+
+	int NN = N_h[0] + Nsmall_h[0];
+	//save backup values
+	save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, 1);
+	save_kernel <<< (NN + 127) / 128, 128 >>> (xold_d, vold_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritv_d, rcritb_d, rcritvb_d, index_d, indexb_d, NN, NconstT, P.SLevels, 1);
+
+	int noColl = 3;
+
+	int Nencpairs = Nencpairs_h[0];
+
+	//for(int i = 0; i < 9; ++i){
+	for(int i = 0; i < 2; ++i){
+
+
+		//if(i > 0) noColl = 2;
+		Nencpairs_h[0] = Nencpairs;
+		P.SLevels = L[i];
+		P.SLSteps = LS[i];
+
+		save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, -1);
+		save_kernel <<< (NN + 127) / 128, 128 >>> (xold_d, vold_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritv_d, rcritb_d, rcritvb_d, index_d, indexb_d, NN, NconstT, P.SLevels, -1);
+
+
+		printf("    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+		fprintf(GSF[0].logfile,"    Precheck-pairs:    %d\n", Nencpairs_h[0]);
+
+
+		cudaEventRecord(start, 0);
+
+		if(P.SLevels > 1){
+			if(Nencpairs2_h[0] > 0){
+				double time = time_h[0];
+				SEnc(time, 0, 1.0, 0, noColl);
+			}
+		}
+		else{
+			if(Nencpairs2_h[0] > 0){
+				groupCall();
+			}
+			cudaDeviceSynchronize();
+
+			BSCall(0, time_h[0], noColl, 1.0);
 		}
 
 		cudaEventRecord(stop, 0);
+		cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+
+		printf("    CE:    %d; ", Nencpairs2_h[0]);
+		printf("groups: %d; ", Nenc_m[0]);
+		fprintf(GSF[0].logfile, "    CE:    %d; ", Nencpairs2_h[0]);
+		fprintf(GSF[0].logfile, "groups: %d; ", Nenc_m[0]);
+		int nn = 2;
+		for(int st = 1; st < def_GMax; ++st){
+			if(Nenc_m[st] > 0){
+				printf("%d: %d; ", nn, Nenc_m[st]);
+				fprintf(GSF[0].logfile, "%d: %d; ", nn, Nenc_m[st]);
+			}
+			nn *= 2;
+		}
+		printf("\n");
+		fprintf(GSF[0].logfile, "\n");
+
 
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in microseconds
@@ -1456,8 +1584,9 @@ int noColl = 0;
 	fprintf(GSF[0].logfile, "\nBest parameters: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n\n", P.SLevels, P.SLSteps, timesMin * 0.001);
 
 	//restore old coordinate values
-	EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
-	restore_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, time_d, time_h[0], NN, NconstT, P.SLevels, 1);
+	Nencpairs_h[0] = Nencpairs;
+	save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, -1);
+	save_kernel <<< (NN + 127) / 128, 128 >>> (xold_d, vold_d, x4b_d, v4b_d, spin_d, spinb_d, rcrit_d, rcritv_d, rcritb_d, rcritvb_d, index_d, indexb_d, NN, NconstT, P.SLevels, -1);
 
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
@@ -1465,6 +1594,7 @@ int noColl = 0;
 	return 1;
 
 }
+
 
 __host__ void Data::firstKick_16(int noColl){
 	//use last time information, the beginning of the time step
@@ -1683,8 +1813,8 @@ __host__ int Data::CollisionCall(int noColl){
 
 	if(noColl == 0 && stopAtCollision == 1 && (P.StopAtCollision == 1 || P.CollTshift > 1.0)){
 		
-printf("safe  1\n");
-		safe_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, 1);
+printf("save  1\n");
+		save_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, 1);
 		
 		if(P.CollTshift > 1.0){
 			//restore old step and increase radius 
@@ -1775,8 +1905,8 @@ printf("Backup step 2 %.20g %.20g %.20g\n", Coltime * 365.25, time_h[0] - idt_h[
 		cudaMemset(BSstop_d, 0, sizeof(int));
 	
 		// P.StopAtCollision = 0
-printf("safe -1\n");
-		safe_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, -1);
+printf("save -1\n");
+		save_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, -1);
 		IrregularStep(1.0);
 		return 1;
 	}
@@ -1807,8 +1937,8 @@ __host__ int Data::CollisionMCall(int noColl){
 
 	if(noColl == 0 && stopAtCollision == 1 && (P.StopAtCollision == 1 || P.CollTshift > 1.0)){
 
-printf("safe  1\n");
-		safe_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, 1);
+printf("save  1\n");
+		save_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, 1);
 
 		if(P.CollTshift > 1.0){
 			//restore old step and increase radius 
@@ -1890,8 +2020,8 @@ printf("Backup step 2 %.20g\n", Coltime * 365.25);
 
 
 		// P.StopAtCollision = 0
-printf("safe -1\n");
-		safe_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, -1);
+printf("save -1\n");
+		save_kernel <<< (NT + NsmallT + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NT + NsmallT, NconstT, P.SLevels, -1);
 		IrregularStep(1.0);
 		cudaMemset(BSstop_d, 0, sizeof(int));
 
@@ -2011,6 +2141,8 @@ if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
 
 //Recursive symplectic close encounter Step.
 //At the last level BS is called
+//noColl == 3 is used in tuning step
+//noColl == 1 or -1 is used in collision precision backtracing
 __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl){
 
 	int nt = min(N_h[0] + Nsmall_h[0], 512);
@@ -2021,27 +2153,27 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 		return; 
 	}
 
-	
-	if(noColl == 0 || SLevel > 0){	
-		setEnc3_kernel <<< nb, nt >>> (N_h[0] + Nsmall_h[0], Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, P.NencMax);
-		//groupS_kernel <<< (Nencpairs2_h[0] + 511) / 512, 512 >>> (Nencpairs2_d, Encpairs2_d, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, P.NencMax, P.UseTestParticles, N_h[0], SLevel);	
-		groupS2_kernel <<< (Nencpairs2_h[0] + 511) / 512, 512 >>> (Nencpairs2_d, Encpairs2_d, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, P.NencMax, P.UseTestParticles, N_h[0], SLevel);	
+//printf("SEnc %d %d\n", SLevel, Nencpairs2_h[0]);	
+	if(noColl == 0 || SLevel > 0 || noColl == 3){	
+		int NN = N_h[0] + Nsmall_h[0];
+		setEnc3_kernel <<< nb, nt >>> (NN, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, scan_d, P.NencMax);
+		groupS2_kernel <<< (Nencpairs2_h[0] + 511) / 512, 512 >>> (Nencpairs2_d, Encpairs2_d, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, scan_d, P.NencMax, P.UseTestParticles, N_h[0], SLevel);	
 
-		if(N_h[0] + Nsmall_h[0] <= WarpSize){
-			Scan32c_kernel <<< 1, WarpSize >>> (Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
+		if(NN <= WarpSize){
+			Scan32c_kernel <<< 1, WarpSize >>> (scan_d, Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, NN, P.NencMax);
 
 		}
-		else if(N_h[0] + Nsmall_h[0] <= 1024){
-			int nn = (N_h[0] + Nsmall_h[0] + WarpSize - 1) / WarpSize;
-			Scan32a_kernel <<< 1, nn * WarpSize, WarpSize * sizeof(int) >>> (Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
+		else if(NN <= 1024){
+			int nn = (NN + WarpSize - 1) / WarpSize;
+			Scan32a_kernel <<< 1, nn * WarpSize, WarpSize * sizeof(int) >>> (scan_d, Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, NN, P.NencMax);
 		}
 		else{
 			int nct = 1024;
-			int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
+			int ncb = min((NN + nct - 1) / nct, 1024);
 
-			Scan32d1_kernel <<< ncb, nct, WarpSize * sizeof(int) >>> (Encpairs3_d + SLevel * NBNencT, N_h[0] + Nsmall_h[0], P.NencMax);
-			Scan32d2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(int)  >>> (Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, N_h[0] + Nsmall_h[0], P.NencMax);
-			Scan32d3_kernel  <<< ncb, nct >>>  (Encpairs3_d + SLevel * NBNencT, EncpairsScan_d, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
+			Scan32d1_kernel <<< ncb, nct, WarpSize * sizeof(int) >>> (scan_d, NN);
+			Scan32d2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(int)  >>> (scan_d, NN);
+			Scan32d3_kernel  <<< ncb, nct >>>  (Encpairs3_d + SLevel * NBNencT, scan_d, Nencpairs3_d + SLevel, NN, P.NencMax);
 		}
 
 		cudaMemcpy(Nencpairs3_h + SLevel, Nencpairs3_d + SLevel, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2055,7 +2187,7 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 	int nbf3 = (Nencpairs3_h[SLevel] + ntf3 - 1) / ntf3;
 
 	if(P.SERIAL_GROUPING == 1){
-		if(noColl == 0 || SLevel > 0){	
+		if(noColl == 0 || SLevel > 0 || noColl == 3){	
 			SortSb_kernel <<< nb3, nt3 >>> (Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
 		}
 	}
@@ -2077,7 +2209,7 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 		}
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 // /*if(timeStep % 1000 == 0) */printf("Nencpairs %d\n", Nencpairs_h[0]);
-		fgS_kernel <<< nbf3, ntf3 >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] / ll * FGt[si], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, P.NencMax);
+		fgS_kernel <<< nbf3, ntf3 >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] / ll * FGt[si], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, P.NencMax);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d + SLevel * NconstT, rcritv_d + SLevel * NconstT, dt_h[0] / ll * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, enccount_d, 1, N_h[0] + Nsmall_h[0], time, P.StopAtEncounter, Ncoll_d, P.MinMass);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2086,7 +2218,7 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 			if(Nencpairs2_h[0] > 0){
 				
 				if(SLevel < P.SLevels - 1){
-					SEnc (time, SLevel, ll, si, noColl);
+					SEnc(time, SLevel, ll, si, noColl);
 				}
 				else{
 					groupCall();
@@ -2119,7 +2251,7 @@ __host__ int Data::bStep(int noColl){
 	if(P.SLevels > 1){
 		if(Nencpairs2_h[0] > 0){
 			double time = time_h[0];
-			SEnc (time, 0, 1.0, 0, noColl);
+			SEnc(time, 0, 1.0, 0, noColl);
 		}
 	}
 	else{
@@ -2198,7 +2330,7 @@ __host__ int Data::step_1kernel(int noColl){
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
-					SEnc (time, 0, 1.0, si, noColl);
+					SEnc(time, 0, 1.0, si, noColl);
 				}
 			}
 			else{
@@ -2306,7 +2438,7 @@ __host__ int Data::step_16(int noColl){
 		}
 	}
 #endif
-	if(ForceFlag > 0  || P.setElements > 1){
+	if(ForceFlag > 0 || P.setElements > 1){
 		comCall(1);
 		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
@@ -2316,14 +2448,14 @@ __host__ int Data::step_16(int noColl){
 			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
-					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -2353,7 +2485,7 @@ __host__ int Data::step_16(int noColl){
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
-					SEnc (time, 0, 1.0, si, noColl);
+					SEnc(time, 0, 1.0, si, noColl);
 				}
 			}
 			else{
@@ -2413,14 +2545,14 @@ __host__ int Data::step_16(int noColl){
 					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
-							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 						}
 					}
 				}
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -2444,14 +2576,14 @@ __host__ int Data::step_16(int noColl){
 			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
-					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -2522,14 +2654,14 @@ __host__ int Data::step_largeN(int noColl){
 			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
-					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -2551,10 +2683,12 @@ __host__ int Data::step_largeN(int noColl){
 				Ncoll_m[0] = 0;
 				StopAtEncounterFlag2 = 1;
 			}
+//tuneBS2();
+
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
-					SEnc (time, 0, 1.0, si, noColl);
+					SEnc(time, 0, 1.0, si, noColl);
 				}
 			}
 			else{
@@ -2637,14 +2771,14 @@ __host__ int Data::step_largeN(int noColl){
 					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
-							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 						}
 					}
 				}
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -2707,14 +2841,14 @@ printf("****** %d %d %d | %d %d %d %d\n", i, N_h[0], (((N_h[0] + KP - 1)/ KP) + 
 				force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 				if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 					if(N_h[0] + Nsmall_h[0] > FrTX){
-						forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+						forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 					}
 				}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -2788,14 +2922,14 @@ __host__ int Data::step_small(int noColl){
 			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
-					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -2826,13 +2960,13 @@ __host__ int Data::step_small(int noColl){
 			if(P.SLevels > 1){
 				if(Nencpairs2_h[0] > 0){
 					double time = time_h[0];
-					SEnc (time, 0, 1.0, si, noColl);
+					SEnc(time, 0, 1.0, si, noColl);
 				}
 			}
 			else{
 				if(Nencpairs2_h[0] > 0){
 					if(P.UseTestParticles < 2){
-//assume here  E = 3 or E = 4
+//assume here E = 3 or E = 4
 						group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
 					}
 					else{
@@ -2919,14 +3053,14 @@ __host__ int Data::step_small(int noColl){
 					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
-							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 						}
 					}
 				}
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -2970,14 +3104,14 @@ __host__ int Data::step_small(int noColl){
 			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
-					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3)  >>> (vold_d, Spinsun_d, nn, 1);
+					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonDrag  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -3061,9 +3195,9 @@ __host__ int Data::step_M(int noColl){
 			}
 		}
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1, Nstart);
 	}
 	EjectionFlag2 = 0;
@@ -3122,16 +3256,16 @@ __host__ int Data::step_M(int noColl){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, 1, Nstart);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3)  >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 					}
 
 				}
 				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1, Nstart);
 			}
 		}
@@ -3152,9 +3286,9 @@ __host__ int Data::step_M(int noColl){
 		}
 
 		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonDrag2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonDrag <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, test_d, -1, Nstart);
 	}
 	

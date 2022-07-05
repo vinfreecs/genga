@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.145
+#define def_Version 3.146
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -30,14 +30,16 @@
 #define def_StarSpinx 0.0
 #define def_StarSpiny 0.0
 #define def_StarSpinz 0.0
-#define def_StarIc 0.4			//Moment of inertia
+#define def_StarIc 0.4				//Moment of inertia
 #define def_J2 0.0
 #define def_J2R 0.0
-#define def_SolarConstant 1367.0	//Solar Constant at 1 AU in W /m^2
+#define def_SolarConstant 1367.0		//Solar Constant at 1 AU in W /m^2
 #define def_n1 3.0
 #define def_n2 0.4
 #define def_InputFile "inital.dat"
 #define def_InputFileFormat "<< t i m r x y z vx vy vz >>"
+#define def_OutBinary 0				//0: text files, 1: binary files
+#define def_AngleUnits 0			//0: radians, 1:degrees
 #define def_rho 2.0
 #define def_UseTestParticles 0			//0 or 1
 #define def_MinMass 0.0			//Minimal mass for massive particles in Test Particle mode, lighter particles are treated as test particles		
@@ -104,6 +106,7 @@
 #define def_SLSteps 2			//number of time steps per level
 #define def_SERIAL_GROUPING 0
 #define def_doTuning 1			//Flag to enable kernel tunings
+#define def_doSLTuning 0		//Flag to enable symplectic levels
 #define def_KickFloat 0			//1: Do kick operation in large N runs in single precision, 0 use double precision
 // End default parameters
 // --------------------------------
@@ -388,11 +391,13 @@ struct Parameter{
 	int NencMax;
 	int Nfragments;
 	double MinMass;
+	int OutBinary;
 	int AngleUnits;
 	int SLevels;
 	int SLSteps;
 	int SERIAL_GROUPING;
 	int doTuning;
+	int doSLTuning;
 	int KickFloat;
 };
 

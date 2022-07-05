@@ -385,7 +385,7 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	}
 	index[indexj] = -1;
 
-//	if((StopAtCollision_c[0] == 0 && CollTshift_c[0] == 1.0) || noColl == 3){
+//	if((StopAtCollision_c[0] == 0 && CollTshift_c[0] == 1.0)){
 		x4[i].w = mtot;
 //	}
 //	else{
