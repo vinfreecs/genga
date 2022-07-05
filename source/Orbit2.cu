@@ -928,7 +928,6 @@ __host__ int Data::readic(int st){
 	int NBS = NBS_h[st];
 
 	FILE *infile;	
-	double ttest;
 
 	double AU = def_AU * 100.0; // in cm
 	double Solarmass = def_Solarmass * 1000.0; //in g

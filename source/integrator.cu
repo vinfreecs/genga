@@ -499,8 +499,8 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	//Print Energy and log information//
 	int CallEnergy = 0;
 	if(interrupt == 1) CallEnergy = 1;
-	if(P.ei < 0 && timeStep == P.deltaT) CallEnergy = 1;
-	if(P.ci < 0 && timeStep == P.deltaT) CallEnergy = 1;
+	if(P.ei != 0 && timeStep == P.deltaT) CallEnergy = 1;
+	if(P.ci != 0 && timeStep == P.deltaT) CallEnergy = 1;
 	if(P.ci > 0 && timeStep % P.ci == 0) CallEnergy = 1;
 
 	if((P.ei > 0 && timeStep % P.ei == 0) || CallEnergy == 1){
@@ -529,7 +529,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 	
 	//Print Output//
-	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt == 1 || (P.ci < 0 && timeStep == P.deltaT)){
+	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt == 1 || (P.ci != 0 && timeStep == P.deltaT)){
 		if(P.Buffer == 1){
 			CoordinateOutput(0);
 		}

@@ -664,7 +664,6 @@ __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dT
 //irregular = 3 means to print the last time step
 //irregular = 4 means Step Error output
 __host__ void Data::CoordinateOutput(int irregular){
-
 	cudaMemcpy(x4_h, x4_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(v4_h, v4_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(index_h, index_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
