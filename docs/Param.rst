@@ -329,16 +329,22 @@ Non-Newtonian forces
    - 1: use Yarkovsky effect :math:`\mathbf{a_Y}` 
    - 2: use time averaged Yarkovsky effect :math:`\frac{da}{dt}`
 
-- | :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson drag 
+- | :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson effect 
   | See :ref:`PRdrag`
 
-   - 0 (default) : no Poynting-Robertson drag
-   - 1: use Poynting-Roberston drag :math:`\mathbf{a_{PR}}`
-   - 2: use time averaged Poynting-Robertson drag :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
+   - 0 (default) : no Poynting-Robertson effect
+   - 1: use Poynting-Robertson effect :math:`\mathbf{a_{PR}}`
+   - 2: use time averaged Poynting-Robertson effect :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
 
-- | :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson drag, in general assumed to be 1.
+- | :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson effect, in general assumed to be 1.
   | See :ref:`PRdrag`
   | default = 1.0
+
+
+- | :literal:`Solar Wind factor`, used in the Poynting-Robertson effect scheme 1.
+  | Ratio of solar wind drag to Poynting-Robertson drag.
+  | See :ref:`SolarWind`
+  | default = 0.0
 
 
 - | :literal:`Asteroid emissivity eps`
@@ -348,7 +354,7 @@ Non-Newtonian forces
 
 
 - | :literal:`Asteroid density rho`, in kg/ :math:`\text{m}^3`
-  | Used in Yarkovsky effect, Poynting-Robertson drag and small bodies collision model
+  | Used in Yarkovsky effect, Poynting-Robertson effect and small bodies collision model
   | See :ref:`Yarkovsky`, :ref:`PRdrag`, :ref:`SmallBodies`
   | default = 3500.0  kg/ :math:`\text{m}^3`
  

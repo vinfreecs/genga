@@ -2040,11 +2040,11 @@ __global__ void PoyntingRobertsonEffect_averaged(double4 *x4_d, double4 *v4_d, i
 			double mu = def_ksq * (Msun + m);
 
 			//double eta = 2.53e8 / (Asteroid_rho_c[0] * RR);			//m^2 / s
-			double eta = SolarConstant_c[0] * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
-			eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
+			//double eta = SolarConstant_c[0] * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
+			//eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 
 			//Here I cancel out the two def_AU terms
-			//double eta = SolarConstant_c[0] * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c * dayUnit) * 24.0 * 3600.0;		 //AU^2 /day * 0.017
+			double eta = SolarConstant_c[0] * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c * dayUnit) * 24.0 * 3600.0;		 //AU^2 /day * 0.017
 
 			double a, e, inc, Omega, w, Theta, E;
 		
@@ -2200,10 +2200,12 @@ __global__ void PoyntingRobertsonEffect_averaged(double4 *x4_d, double4 *v4_d, i
 	}	
 }
 // ***************************************************************
-// This kernel computes the Poynting-Robertson Effect.
-// it computes the PR drag  acceleration and performs a velocity kick
+// This kernel computes the Poynting-Robertson Effect + Solar Wind.
+// it computes the PR effect acceleration and performs a velocity kick
 
 // BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
+
+// Solar Wind is implemented according to Liou, Zook and Jackson, 1995
 
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
@@ -2235,11 +2237,11 @@ __global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *inde
 			}
 		
 			//double eta = 2.53e8 / (Asteroid_rho_c[0] * RR);			//m^2 / s
-			double eta = SolarConstant_c[0] * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
-			eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
+			//double eta = SolarConstant_c[0] * def_AU * def_AU * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c);			//m^2 / s
+			//eta = eta /(def_AU * def_AU * dayUnit) * 24.0 * 3600.0;		//AU^2 /day * 0.017
 			
 			//Here I cancel out the two def_AU terms
-			//double eta = SolarConstant_c[0] * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c * dayUnit) * 24.0 * 3600.0;		 //AU^2 /day * 0.017
+			double eta = SolarConstant_c[0] * RR * RR * M_PI / (m * def_Solarmass * def_c * def_c * dayUnit) * 24.0 * 3600.0;		 //AU^2 /day * 0.017
 
 			//BURNS, LAMY, AND SOTER, 1979 equation 2
 
@@ -2250,19 +2252,23 @@ __global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *inde
 
 			//v dependent part with implicit midpoint method
 			for(int k = 0; k < 3; ++k){	
-			
-				double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir; 
+
 				//PR drag + radiation pressure = PR effect
+				double sw = 1.0 + SolarWind_c[0];	//Solar wind drag
+				//Liou, Zook and Jackson, 1995 Equation 1
+
+				double rd = (x4i.x * v4it.x + x4i.y * v4it.y + x4i.z * v4it.z) * ir;
 					
-				double t2 = (def_cm - rd);
+				double t2 = (def_cm - sw * rd);
 //if(id < 10) printf("%d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, RR, eta, rsq, t1, rd, t2);
 
 
-				a3t.x = t1 * (t2 * x4i.x * ir - v4it.x);
-				a3t.y = t1 * (t2 * x4i.y * ir - v4it.y);
-				a3t.z = t1 * (t2 * x4i.z * ir - v4it.z);
+				a3t.x = t1 * (t2 * x4i.x * ir - sw * v4it.x);
+				a3t.y = t1 * (t2 * x4i.y * ir - sw * v4it.y);
+				a3t.z = t1 * (t2 * x4i.z * ir - sw * v4it.z);
 				
 				
+				//Test different parts of the previous equations
 				//Equation 24 in Klacka 2012
 				//double t2 = -rd;
 				//double f = 1.0;
@@ -2273,14 +2279,12 @@ __global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *inde
 				//double t2 = -rd;
 				//double f = 0.0;
 				//Equation 23 in Klacka 2012
-				/*
-				double t2 = def_cm;
-				double f = 0.0;
-				
-				a3t.x = t1 * (t2 * x4i.x * ir - f * v4it.x);
-				a3t.y = t1 * (t2 * x4i.y * ir - f * v4it.y);
-				a3t.z = t1 * (t2 * x4i.z * ir - f * v4it.z);
-				*/	
+				//double t2 = def_cm;
+				//double f = 0.0;
+				//a3t.x = t1 * (t2 * x4i.x * ir - f * v4it.x);
+				//a3t.y = t1 * (t2 * x4i.y * ir - f * v4it.y);
+				//a3t.z = t1 * (t2 * x4i.z * ir - f * v4it.z);
+
 
 				v4it.x = v4i.x + 0.5 * dt * a3t.x;
 				v4it.y = v4i.y + 0.5 * dt * a3t.y;

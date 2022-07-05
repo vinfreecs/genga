@@ -424,6 +424,7 @@ __host__ void Host::Halloc(){
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.UsePR = def_UsePR;
 	P.Qpr = def_Qpr;
+	P.SolarWind = def_SolarWind;
 	P.SolarConstant = def_SolarConstant;
 	P.Asteroid_eps = def_Asteroid_eps;
 	P.Asteroid_rho = def_Asteroid_rho;
@@ -1510,6 +1511,20 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%lf", &P.Qpr);
 				if(er <= 0){
 					printf("Error: Radiation Pressure Coefficient value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+		}
+		else if(strcmp(sp, "Solar Wind factor =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.SolarWind);
+				if(er <= 0){
+					printf("Error: Solar Wind factor value is not valid!\n");
 					return 0;
 				}
 			}
@@ -3101,6 +3116,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0
+			fprintf(infofile, "Solar Wind factor: %g\n", P.SolarWind);			// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0

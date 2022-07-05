@@ -66,6 +66,7 @@ Use Rotational Deformation = 0
 Use Yarkovsky = 0
 Use Poynting-Robertson = 0
 Radiation Pressure Coefficient Qpr = 1.0
+Solar Wind factor = 0
 Asteroid emissivity eps = 0.95
 Asteroid density rho = 3500.0
 Asteroid specific heat capacity C = 680.0

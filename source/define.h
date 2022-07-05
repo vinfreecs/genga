@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.147
+#define def_Version 3.148
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -80,6 +80,7 @@
 #define def_UseYarkovsky 0
 #define def_UsePR 0
 #define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
+#define def_SolarWind 0.0		//ratio of solar wind drag to Poynting-Robertson drag
 #define def_Asteroid_eps 0.95		//Emissivity
 #define def_Asteroid_rho 3500.0		//density of body in kg/m^3		Hebe 3500,	Veritas 2250
 #define def_Asteroid_C 680.0		//Specific Heat Capacity in J/kgK 	Hebe 680,	Veritas 500
@@ -308,6 +309,7 @@ __constant__ double Asteroid_rmin_c[1];
 __constant__ double Asteroid_rdel_c[1];
 __constant__ double SolarConstant_c[1];
 __constant__ double Qpr_c[1];
+__constant__ double SolarWind_c[1];
 
 __constant__ double BSddt_c[8];		//time stepping factors in Bulirsch-Stoer method
 __constant__ double BSt0_c[8 * 8];
@@ -348,6 +350,7 @@ struct Parameter{
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient
+	double SolarWind;		//ratio of solar wind drag to Poynting-Robertson drag
 	double SolarConstant;
 	double Asteroid_eps;
 	double Asteroid_rho;

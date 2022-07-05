@@ -57,6 +57,7 @@ __host__ void Data::constantCopyDirectAcc(){
 
 	cudaMemcpyToSymbol(SolarConstant_c, &P.SolarConstant, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Qpr_c, &P.Qpr, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(SolarWind_c, &P.SolarWind, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_eps_c, &P.Asteroid_eps, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_rho_c, &P.Asteroid_rho, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_C_c, &P.Asteroid_C, sizeof(double), 0, cudaMemcpyHostToDevice);
