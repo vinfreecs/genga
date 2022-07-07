@@ -21,12 +21,12 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	volatile double t = 0.0;
 	volatile double dtgr = 1.0;
 
-	__shared__ volatile double4 x4_s[NN];
-	__shared__ volatile double4 xp_s[NN];
-	__shared__ volatile double4 xt_s[NN];
-	__shared__ volatile double4 v4_s[NN];
-	__shared__ volatile double4 vt_s[NN];
-	__shared__ volatile double rcritv_s[NN * def_SLevelsMax];
+	__shared__ double4 x4_s[NN];
+	__shared__ double4 xp_s[NN];
+	__shared__ double4 xt_s[NN];
+	__shared__ double4 v4_s[NN];
+	__shared__ double4 vt_s[NN];
+	__shared__ double rcritv_s[NN * def_SLevelsMax];
 	__shared__ volatile int stop_s[1];
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];

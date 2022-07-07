@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.149
+#define def_Version 3.150
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -258,6 +258,8 @@
 #else
   #define curandState int
 #endif
+
+#define def_CPU 0
 
 
 #ifndef STRUCT_H

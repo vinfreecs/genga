@@ -337,7 +337,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #endif
 
 #if USE_RANDOM == 1
-	srand48(time(NULL));
+	//srand48(time(NULL));
 	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
 #else
 	random_d = NULL;
