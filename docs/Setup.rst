@@ -133,29 +133,29 @@ Type::
 to compile GENGA with HIP. 
 
 
-..
-	Compile GENGA on Windows
-	^^^^^^^^^^^^^^^^^^^^^^^^
 
-	Gygwin setup search and install make
+Compile GENGA on Windows
+^^^^^^^^^^^^^^^^^^^^^^^^
+If using Cygwin on Windows, then GENGA can be compiled the same way as in Linux
+with::
 
-
-	If using Cygwin on Windows, then GENGA can be compiled the same way
-	with::
-
-		make SM=xx. 
+	make SM=xx. 
 
 
-	If using the Windows Command Prompt, type::
+If using the Windows Command Prompt, type::
 
-		nmake -f MakefileW SM=xx.
+	nmake -f Makefile.win SM=xx.
 
-	Note, that the Windows C++ compiler ``cl``
-	must be installed, and the compiler path must be loaded in the shell. If
-	this is not the case, it can be loaded similar to this command::
+Note, that the Windows C++ compiler ``cl``
+must be installed, and the compiler path must be loaded in the command prompt. If
+this is not the case, it can be loaded similar to this command::
 
-		call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\vsvars32.bat"
-	, where the exact path and file name must eventually be changed.
+	call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\vsdevcmd.bat"
+or::
+
+	call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
+
+, where the exact path and file name must eventually be changed.
 
 
 
