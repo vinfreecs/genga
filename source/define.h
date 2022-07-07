@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.148
+#define def_Version 3.149
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -38,6 +38,7 @@
 #define def_n2 0.4
 #define def_InputFile "inital.dat"
 #define def_InputFileFormat "<< t i m r x y z vx vy vz >>"
+#define def_OutputFileFormat "<< t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax aec aecT encc test >>"
 #define def_OutBinary 0				//0: text files, 1: binary files
 #define def_AngleUnits 0			//0: radians, 1:degrees
 #define def_rho 2.0
@@ -492,6 +493,7 @@ struct GSFiles{
 	char starIrrfilename[128];
 	char X[128];
 	int informat[def_Ninformat];
+	int outformat[def_Ninformat];
 	char path[128];
 };
 

@@ -16,6 +16,8 @@ public:
 	FILE *pathfile;				//used in multisim mode, contains list of directories
 	char pathfilename[64];
 
+	char fileFormat[def_Ninformat][5];
+
 	int Nst;				//Number of simulations
 	int NconstT;
 	int MTFlag;
@@ -119,6 +121,7 @@ public:
 	__host__ int NSimulations(int, char*argv[]);
 	__host__ int DeviceInfo();
 	__host__ void Halloc();
+	__host__ int assignInformat(char *, int &);
 	__host__ int Param(int , char*argv[]);
 	__host__ int size();
 	__host__ void Calloc();

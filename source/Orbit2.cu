@@ -966,6 +966,7 @@ __host__ int Data::readic(int st){
 	double3 love;
 	int index;
 	float4 aelimits;
+	unsigned long long enccountT;
 	double mJ = 0.0;	//Jacoby mass
 	if(P.tRestart == 0 || def_TTV > 0){
 		int er = 0;
@@ -975,6 +976,8 @@ __host__ int Data::readic(int st){
 			rcrit = rcrit_h[i + NBS];
 			spin = spin_h[i + NBS];
 			love = love_h[i + NBS];
+			test = test_h[i + NBS];
+			enccountT = enccountT_h[i + NBS];
 			//index = index_h[i + NBS];
 			index = i + st * def_MaxIndex;
 			aelimits = aelimits_h[i + NBS];
@@ -1155,9 +1158,21 @@ __host__ int Data::readic(int st){
 					convertTToM = 1;
 					kepCheck += 32;
 				}
+				else if (GSF[st].informat[f] == 42){
+					//Rcrit
+					fscanf (infile, "%lf",&rcrit);
+				}
 				else if (GSF[st].informat[f] == 44){
 					//Ic
 					fscanf (infile, "%lf",&spin.w);
+				}
+				else if (GSF[st].informat[f] == 45){
+					//test
+					fscanf (infile, "%lf",&test);
+				}
+				else if (GSF[st].informat[f] == 46){
+					//encc
+					fscanf (infile, "%llu",&enccountT);
 				}
 #if def_TTV > 0
 				else if (GSF[st].informat[f] == 29){
@@ -1213,8 +1228,14 @@ __host__ int Data::readic(int st){
 				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
 				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 42) fscanf (infile, "%lf",&rcrit);
+				else if (GSF[st].informat[f] == 43) fscanf (infile, "%lf",&skip);
 #endif
+				else if (GSF[st].informat[f] == 0){
+				}
+				else{
+					printf("Error, initial condition file format is not valid, %d\n", GSF[st].informat[f]);
+					return 0;
+				}
 			}
 
 			if(dayUnit == 1) x.w *= def_Kg;
@@ -1329,6 +1350,8 @@ __host__ int Data::readic(int st){
 			if(Nst == 1) index_h[ii + NBSN] = index;
 			else index_h[ii + NBSN] = index % def_MaxIndex + def_MaxIndex * st;
 			aelimits_h[ii + NBSN] = aelimits;
+			enccountT_h[ii + NBSN] = enccountT;
+			test_h[ii + NBSN] = test;
 #if def_TTV > 0
 			elementsA_h[ii + NBSN] = elementsA;
 			elementsB_h[ii + NBSN] = elementsB;
@@ -1369,9 +1392,11 @@ __host__ int Data::readic(int st){
 		}
 
 		double time = 0.0;
-		double aecount = 0.0;
-		unsigned long long enccountT;
+		double aecountf = 0.0;
+		double aecountTf = 0.0;
+		unsigned int aecount;
 		unsigned long long aecountT;
+		unsigned long long enccountT;
 
 		int Nformat = 21;
 
@@ -1379,14 +1404,14 @@ __host__ int Data::readic(int st){
 
 			//skip previous time steps
 			if(P.FormatT == 0){
-				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 			}
 			if(P.FormatT == 1){
-				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+					readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 			}
@@ -1395,18 +1420,20 @@ __host__ int Data::readic(int st){
 			//skip previous simulation data
 			if(P.FormatS == 1){
 				for(int i = 0; i < NBS; ++i){
-					readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+					readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 				}
 			}
 
 			int iismall = 0;
 			for(int i = 0; i < N + Nsmall; ++i){
-				if(i > 0) readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+				if(i > 0) readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
-				aecountT = (unsigned long long)(aecount * P.tRestart);
+				aecount = (unsigned int)(aecountf * P.ci);
+				unsigned long long tt = P.tRestart - P.tRestart % P.ci;
+				aecountT = (unsigned long long)(aecountTf * tt);
 				MaxIndex = max(MaxIndex, index);
 				int NBSN = NBS;
 				if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
@@ -1423,8 +1450,9 @@ __host__ int Data::readic(int st){
 				spin_h[ii + NBSN].z = spin.z;
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
+				aecount_h[ii + NBSN] = aecount;
 				aecountT_h[ii + NBSN] = aecountT;
-
+				test_h[ii + NBSN] = test;
 				++ii;
 				if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
 			}
@@ -1438,11 +1466,6 @@ __host__ int Data::readic(int st){
 
 			int iismall = 0;
 			int index;
-			double4 x, v;
-			double4 spin;
-			float4 aelimits;
-			unsigned long long enccountT;
-			unsigned long long aecountT;
 
 			for(int k = 0; k < 1000000000; ++k){
 				int i = k;
@@ -1472,17 +1495,19 @@ __host__ int Data::readic(int st){
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-						er = readOutLine(time, index, x, v, spin, aelimits, skip, aecount, enccountT, test, Nformat, infile);
+						er = readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 				if(er <= 0) continue;
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
-				aecountT = (unsigned long long)(aecount * P.tRestart);
+				aecount = (unsigned int)(aecountf * P.ci);
+				unsigned long long tt = P.tRestart - P.tRestart % P.ci;
+				aecountT = (unsigned long long)(aecountTf * tt);
 				MaxIndex = max(MaxIndex, index);
 
 				int NBSN = NBS;
@@ -1500,7 +1525,9 @@ __host__ int Data::readic(int st){
 				spin_h[ii + NBSN].z = spin.z;
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
+				aecount_h[ii + NBSN] = aecount;
 				aecountT_h[ii + NBSN] = aecountT;
+				test_h[ii + NBSN] = test;
 
 				++ii;
 				if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;

@@ -396,33 +396,143 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		if(x4_h[j].w >= 0.0){
 			if(P.OutBinary == 0){
-				fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
+				//fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
+				for(int f = 0; f < def_Ninformat; ++f){
+					if(GSF[st].outformat[f] == 19){
+						fprintf(outputfile,"%.16g ", time);
+					}
+					if(GSF[st].outformat[f] == 13){
+						fprintf(outputfile,"%d ", index);
+					}
+					if(GSF[st].outformat[f] == 4){
+						fprintf(outputfile,"%.40g ", x4_h[j].w);
+					}
+					if(GSF[st].outformat[f] == 8){
+						fprintf(outputfile,"%.40g ", v4_h[j].w);
+					}
+					if(GSF[st].outformat[f] == 1){
+						fprintf(outputfile,"%.40g ", x4_h[j].x);
+					}
+					if(GSF[st].outformat[f] == 2){
+						fprintf(outputfile,"%.40g ", x4_h[j].y);
+					}
+					if(GSF[st].outformat[f] == 3){
+						fprintf(outputfile,"%.40g ", x4_h[j].z);
+					}
+					if(GSF[st].outformat[f] == 5){
+						fprintf(outputfile,"%.40g ", v4_h[j].x);
+					}
+					if(GSF[st].outformat[f] == 6){
+						fprintf(outputfile,"%.40g ", v4_h[j].y);
+					}
+					if(GSF[st].outformat[f] == 7){
+						fprintf(outputfile,"%.40g ", v4_h[j].z);
+					}
+					if(GSF[st].outformat[f] == 10){
+						fprintf(outputfile,"%.40g ", spin_h[j].x);
+					}
+					if(GSF[st].outformat[f] == 11){
+						fprintf(outputfile,"%.40g ", spin_h[j].y);
+					}
+					if(GSF[st].outformat[f] == 12){
+						fprintf(outputfile,"%.40g ", spin_h[j].z);
+					}
+					if(GSF[st].outformat[f] == 15){
+						fprintf(outputfile,"%.8g ", aelimits_h[j].x);
+					}
+					if(GSF[st].outformat[f] == 16){
+						fprintf(outputfile,"%.8g ", aelimits_h[j].y);
+					}
+					if(GSF[st].outformat[f] == 17){
+						fprintf(outputfile,"%.8g ", aelimits_h[j].z);
+					}
+					if(GSF[st].outformat[f] == 18){
+						fprintf(outputfile,"%.8g ", aelimits_h[j].w);
+					}
+					if(GSF[st].outformat[f] == 47){
+						fprintf(outputfile,"%.8g ", (double)(aecount_h[j])/ci);
+					}
+					if(GSF[st].outformat[f] == 48){
+						fprintf(outputfile,"%.8g ", (double)(aecountT_h[j])/timeStep);
+					}
+					if(GSF[st].outformat[f] == 46){
+						fprintf(outputfile,"%llu ", enccountT_h[j]);
+					}
+					if(GSF[st].outformat[f] == 45){
+						fprintf(outputfile,"%.40g ", test_h[j]);
+					}
+				}
+				fprintf(outputfile,"\n");
 			}
 			else{
 				float aecount = (double)(aecount_h[j])/ci;
 				float aecountT = (double)(aecountT_h[j])/timeStep;
 
-				fwrite(&time, sizeof(double), 1, outputfile);
-				fwrite(&index, sizeof(int), 1, outputfile);
-				fwrite(&x4_h[j].w, sizeof(double), 1, outputfile);
-				fwrite(&v4_h[j].w, sizeof(double), 1, outputfile);
-				fwrite(&x4_h[j].x, sizeof(double), 1, outputfile);
-				fwrite(&x4_h[j].y, sizeof(double), 1, outputfile);
-				fwrite(&x4_h[j].z, sizeof(double), 1, outputfile);
-				fwrite(&v4_h[j].x, sizeof(double), 1, outputfile);
-				fwrite(&v4_h[j].y, sizeof(double), 1, outputfile);
-				fwrite(&v4_h[j].z, sizeof(double), 1, outputfile);
-				fwrite(&spin_h[j].x, sizeof(double), 1, outputfile);
-				fwrite(&spin_h[j].y, sizeof(double), 1, outputfile);
-				fwrite(&spin_h[j].z, sizeof(double), 1, outputfile);
-				fwrite(&aelimits_h[j].x, sizeof(float), 1, outputfile);
-				fwrite(&aelimits_h[j].y, sizeof(float), 1, outputfile);
-				fwrite(&aelimits_h[j].z, sizeof(float), 1, outputfile);
-				fwrite(&aelimits_h[j].w, sizeof(float), 1, outputfile);
-				fwrite(&aecount, sizeof(float), 1, outputfile);
-				fwrite(&aecountT, sizeof(float), 1, outputfile);
-				fwrite(&enccountT_h[j], sizeof(unsigned long long), 1, outputfile);
-				fwrite(&test_h[j], sizeof(double), 1, outputfile);
+				for(int f = 0; f < def_Ninformat; ++f){
+					if(GSF[st].outformat[f] == 19){
+						fwrite(&time, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 13){
+						fwrite(&index, sizeof(int), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 4){
+						fwrite(&x4_h[j].w, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 8){
+						fwrite(&v4_h[j].w, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 1){
+						fwrite(&x4_h[j].x, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 2){
+						fwrite(&x4_h[j].y, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 3){
+						fwrite(&x4_h[j].z, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 5){
+						fwrite(&v4_h[j].x, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 6){
+						fwrite(&v4_h[j].y, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 7){
+						fwrite(&v4_h[j].z, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 10){
+						fwrite(&spin_h[j].x, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 11){
+						fwrite(&spin_h[j].y, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 12){
+						fwrite(&spin_h[j].z, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 15){
+						fwrite(&aelimits_h[j].x, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 16){
+						fwrite(&aelimits_h[j].y, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 17){
+						fwrite(&aelimits_h[j].z, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 18){
+						fwrite(&aelimits_h[j].w, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 47){
+						fwrite(&aecount, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 48){
+						fwrite(&aecountT, sizeof(float), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 46){
+						fwrite(&enccountT_h[j], sizeof(unsigned long long), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 45){
+						fwrite(&test_h[j], sizeof(double), 1, outputfile);
+					}
+				}
 			}
 		}
 		if(P.FormatP == 0) fclose(outputfile);
