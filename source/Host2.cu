@@ -184,7 +184,9 @@ __host__ int Host::DeviceInfo(){
 
 
 
-__host__ int Host::assignInformat(char *ff, int &format){
+//E =  1: input
+//E = -1: output
+__host__ int Host::assignInformat(char *ff, int &format, int E){
 	int cartesian = 0;
 	int keplerian = 0;
 	int check = 0;
@@ -429,7 +431,7 @@ __host__ void Host::Halloc(){
 
 			pos += n;
 
-			er = assignInformat(ff, GSF[st].informat[f]);
+			er = assignInformat(ff, GSF[st].informat[f], 1);
 			if(er == 2) break;
 
 		}
@@ -448,7 +450,7 @@ __host__ void Host::Halloc(){
 
 			pos += n;
 
-			er = assignInformat(ff, GSF[st].outformat[f]);
+			er = assignInformat(ff, GSF[st].outformat[f], -1);
 			if(er == 2) break;
 
 		}
@@ -930,7 +932,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%s", sp);
 	
 
-				int er2 = assignInformat(sp, GSF[st].informat[f]);
+				int er2 = assignInformat(sp, GSF[st].informat[f], 1);
 				if(er2 == 2) break;
 				if(er2 == 1) return 0;
 
@@ -952,7 +954,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%s", sp);
 	
 
-				int er2 = assignInformat(sp, GSF[st].outformat[f]);
+				int er2 = assignInformat(sp, GSF[st].outformat[f], -1);
 				if(er2 == 2) break;
 				if(er2 == 1) return 0;
 
@@ -2367,6 +2369,110 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		P.UseRotationalDeformation = 1;
 	}
 
+	//check output format
+	{
+		int check_time = 0;
+		int check_m = 0;
+		int check_r = 0;
+		int check_i = 0;
+		int check_xv = 0;
+		int check_S = 0;
+		
+		int check_k2 = 0;
+		int check_k2f = 0;
+		int check_tau = 0;
+		int check_Ic = 0;
+
+		for(int f = 0; f < def_Ninformat; ++f){
+			if(GSF[st].outformat[f] == 19)	check_time = 1;
+			else if(GSF[st].outformat[f] == 13)	check_i = 1;
+			else if(GSF[st].outformat[f] == 4)	check_m = 1;
+			else if(GSF[st].outformat[f] == 8)	check_r = 1;
+			else if(GSF[st].outformat[f] == 1)	check_xv += 1;
+			else if(GSF[st].outformat[f] == 2)	check_xv += 2;
+			else if(GSF[st].outformat[f] == 3)	check_xv += 4;
+			else if(GSF[st].outformat[f] == 5)	check_xv += 8;
+			else if(GSF[st].outformat[f] == 6)	check_xv += 16;
+			else if(GSF[st].outformat[f] == 7)	check_xv += 32;
+			else if(GSF[st].outformat[f] == 10)	check_S += 1;
+			else if(GSF[st].outformat[f] == 11)	check_S += 2;
+			else if(GSF[st].outformat[f] == 12)	check_S += 4;
+			else if(GSF[st].outformat[f] == 20)	check_k2 = 1;
+			else if(GSF[st].outformat[f] == 21)	check_k2f = 1;
+			else if(GSF[st].outformat[f] == 22)	check_tau = 1;
+			else if(GSF[st].outformat[f] == 44)	check_Ic = 1;
+
+			else if(GSF[st].outformat[f] == 15) ;	//amin	
+			else if(GSF[st].outformat[f] == 16) ;	//amax
+			else if(GSF[st].outformat[f] == 17) ;	//emin	
+			else if(GSF[st].outformat[f] == 18) ;	//emax	
+			else if(GSF[st].outformat[f] == 47) ;	//aecount
+			else if(GSF[st].outformat[f] == 48) ;	//aecountT
+			else if(GSF[st].outformat[f] == 46) ;	//enccount
+			else if(GSF[st].outformat[f] == 44) ;	//Ic
+			else if(GSF[st].outformat[f] == 45) ;	//test
+			else if(GSF[st].outformat[f] > 0){
+				printf("Error, Output file format not valid: %s\n", fileFormat[GSF[st].outformat[f]]);
+				return 0;
+			}
+		}
+
+		//check if parametes are given in the initial conditions
+		//otherwise there are constan for all particles and does not need to be stored
+		int check_k2_in = 0;
+		int check_k2f_in = 0;
+		int check_tau_in = 0;
+		int check_Ic_in = 0;
+		for(int f = 0; f < def_Ninformat; ++f){
+			if(GSF[st].informat[f] == 20)	check_k2_in = 1;
+			if(GSF[st].informat[f] == 21)	check_k2f_in = 1;
+			if(GSF[st].informat[f] == 22)	check_tau_in = 1;
+			if(GSF[st].informat[f] == 44)	check_Ic_in = 1;
+		}
+
+		if(check_time == 0){
+			printf("Error, Output file format not valid, 't' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_m == 0){
+			printf("Error, Output file format not valid, 'm' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_r == 0){
+			printf("Error, Output file format not valid, 'r' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_i == 0){
+			printf("Error, Output file format not valid, 'i' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_xv != 63){
+			printf("Error, Output file format is not complete. Must include x, y, z, vx, vy, vz, needed for restart\n");
+			return 0;
+		}
+		if(check_S != 7){
+			printf("Error, Output file format is not complete. Must include Sx, Sy, Sz, needed for restart\n");
+			return 0;
+		}
+		if(check_k2 == 0 && check_k2_in == 1){
+			printf("Error, Output file format not valid, 'k2' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_tau == 0 && check_tau_in == 1){
+			printf("Error, Output file format not valid, 'tau' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_k2f == 0 && check_k2f_in == 1){
+			printf("Error, Output file format not valid, 'k2f' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_Ic == 0 && check_Ic_in == 1){
+			printf("Error, Output file format not valid, 'Ic' is not included, needed for restart\n");
+			return 0;
+		}
+
+	}
+
 
 	//check peer to peer access for multi GPU runs:
 	cudaSetDevice(P.dev[0]);
@@ -2571,30 +2677,101 @@ __host__ int Host::Param(int argc, char*argv[]){
 	return 1;
 }
 
+// ************************************** //
+//This function reads 1 line of the output file, used for restarting
+//Authors: Simon Grimm
+//July 2022
+// *****************************************
+__host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, double3 &love, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &test, FILE *infile, int st){
+
+	int er = 0;
+	for(int f = 0; f < def_Ninformat; ++f){
+		int ff = GSF[st].outformat[f];
+		if(P.OutBinary == 0){
+			if(ff == 19)		er = fscanf (infile, "%lf",&time);
+			else if(ff == 13)	er = fscanf (infile, "%d",&index);
+			else if(ff == 4)	er = fscanf (infile, "%lf",&x.w);
+			else if(ff == 8)	er = fscanf (infile, "%lf",&v.w);
+			else if(ff == 1)	er = fscanf (infile, "%lf",&x.x);
+			else if(ff == 2)	er = fscanf (infile, "%lf",&x.y);
+			else if(ff == 3)	er = fscanf (infile, "%lf",&x.z);
+			else if(ff == 5)	er = fscanf (infile, "%lf",&v.x);
+			else if(ff == 6)	er = fscanf (infile, "%lf",&v.y);
+			else if(ff == 7)	er = fscanf (infile, "%lf",&v.z);
+			else if(ff == 10)	er = fscanf (infile, "%lf",&spin.x);
+			else if(ff == 11)	er = fscanf (infile, "%lf",&spin.y);
+			else if(ff == 12)	er = fscanf (infile, "%lf",&spin.z);
+			else if(ff == 15)	er = fscanf (infile, "%f",&aelimits.x);
+			else if(ff == 16)	er = fscanf (infile, "%f",&aelimits.y);
+			else if(ff == 17)	er = fscanf (infile, "%f",&aelimits.z);
+			else if(ff == 18)	er = fscanf (infile, "%f",&aelimits.w);
+			else if(ff == 20)	er = fscanf (infile, "%lf",&love.x);
+			else if(ff == 21)	er = fscanf (infile, "%lf",&love.y);
+			else if(ff == 22)	er = fscanf (infile, "%lf",&love.z);
+			else if(ff == 47)	er = fscanf (infile, "%lf",&skip);
+			else if(ff == 48)	er = fscanf (infile, "%lf",&aecount);
+			else if(ff == 46)	er = fscanf (infile, "%llu",&enccountT);
+			else if(ff == 44)	er = fscanf (infile, "%lf",&spin.w);
+			else if(ff == 45)	er = fscanf (infile, "%lf",&test);
+		}
+		else{
+			if(f == 19)		er = fread(&time, sizeof(double), 1, infile);
+			else if(ff == 13)	er = fread(&index, sizeof(int), 1, infile);
+			else if(ff == 4)	er = fread(&x.w, sizeof(double), 1, infile);
+			else if(ff == 8)	er = fread(&v.w, sizeof(double), 1, infile);
+			else if(ff == 1)	er = fread(&x.x, sizeof(double), 1, infile);
+			else if(ff == 2)	er = fread(&x.y, sizeof(double), 1, infile);
+			else if(ff == 3)	er = fread(&x.z, sizeof(double), 1, infile);
+			else if(ff == 5)	er = fread(&v.x, sizeof(double), 1, infile);
+			else if(ff == 6)	er = fread(&v.y, sizeof(double), 1, infile);
+			else if(ff == 7)	er = fread(&v.z, sizeof(double), 1, infile);
+			else if(ff == 10)	er = fread(&spin.x, sizeof(double), 1, infile);
+			else if(ff == 11)	er = fread(&spin.y, sizeof(double), 1, infile);
+			else if(ff == 12)	er = fread(&spin.z, sizeof(double), 1, infile);
+			else if(ff == 15)	er = fread(&aelimits.x, sizeof(float), 1, infile);
+			else if(ff == 16)	er = fread(&aelimits.y, sizeof(float), 1, infile);
+			else if(ff == 17)	er = fread(&aelimits.z, sizeof(float), 1, infile);
+			else if(ff == 18)	er = fread(&aelimits.w, sizeof(float), 1, infile);
+			else if(ff == 20)	er = fread(&love.x, sizeof(double), 1, infile);
+			else if(ff == 21)	er = fread(&love.y, sizeof(double), 1, infile);
+			else if(ff == 22)	er = fread(&love.z, sizeof(double), 1, infile);
+			else if(ff == 47)	er = fread(&skip, sizeof(float), 1, infile);
+			else if(ff == 48)	er = fread(&aecount, sizeof(float), 1, infile);
+			else if(ff == 46)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
+			else if(ff == 44)	er = fread(&spin.w, sizeof(double), 1, infile);
+			else if(ff == 45) 	er = fread(&test, sizeof(double), 1, infile);
+		}
+	}
+	return er;
+}
 
 // **************************************
 // This function determines the starting time of the simulation using the input file 
 // specified in the param file.
 
-//Authors: Simon Grimm, Joachim Stadel
-//Mai 2015
-// ************************************3
-__host__ int Host::icict(int Nformat, int st){
+//Authors: Simon Grimm
+//July 2022
+// ************************************
+__host__ int Host::icict(int st){
 	double time = 0.0;
 	int er = 1;
 	FILE *OrigInfile;
 	char Origfilename[300];
 	sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 	OrigInfile = fopen(Origfilename, "r");
+	char t[500];
 	if(OrigInfile == NULL){
 		printf("Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
 		fprintf(masterfile, "Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
 		return 0;
 	}
-	for(int f = 0; f < Nformat; ++f){
+	for(int f = 0; f < def_Ninformat; ++f){
 		if(GSF[0].informat[f] == 19){
 			er = fscanf (OrigInfile, "%lf",&time);
 			break;
+		}
+		else if(GSF[0].informat[f] > 0){
+			er = fscanf(OrigInfile, "%s", t);
 		}
 	}
 	if(er > 0 && ict_h[st] == 0.0 && P.tRestart > 0) ict_h[st] = time;
@@ -2605,40 +2782,29 @@ __host__ int Host::icict(int Nformat, int st){
 //This function counts the number of bodies in the initial condition file
 //It returns the number of bodies
 //
-//Authors: Simon Grimm, Joachim Stadel
-//April 2014
+//Authors: Simon Grimm
+//July 2022
 // *********************************************
 __host__ int Host::icSize(int st){
 
 	printf("Determine the size of the file %s\n", GSF[st].inputfilename);
 	
-	//Determinde the number of coordinates in the input file
-	int Nformat = 0;
-	for(int f = 0; f < def_Ninformat; ++f){
-		if(GSF[st].informat[f] > 0) ++Nformat;
-	}
-	
 	//Determine the simulation start time
 	double time, test;
 	int index;
 	double4 x, v;
-	double3 spin;
+	double4 spin;
+	double3 love;
 	float4 aelimits;
-	float aecount, aecountT;
+	double aecountf, aecountTf;
 	unsigned long long enccountT;
 
 	time = 0.0;
 	if(ict_h[st] > 0.0) time = ict_h[st];
 	
-	int er = icict(Nformat, st);
+	int er = icict(st);
 	if(er == 0) return 0;
 	
-	if(P.tRestart > 0 && P.FormatP == 1){
-		Nformat = 0;
-		for(int f = 0; f < def_Ninformat; ++f){
-			if(GSF[st].outformat[f] > 0) ++Nformat; //This is the number of rows in the coordinate output files 
-		}
-	}
 	char t[500];
 	er = 1;
 	int NN = 0;
@@ -2652,6 +2818,7 @@ __host__ int Host::icSize(int st){
 	else{
 		Et = (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25;
 	}
+
 	FILE *infile;
 	if(P.OutBinary > 0 && P.tRestart > 0){
 		infile = fopen(GSF[st].inputfilename, "rb");
@@ -2674,66 +2841,21 @@ __host__ int Host::icSize(int st){
 		}
 	}
 	for(int i = 0; i < 1000000000; ++i){
-		for(int f = 0; f < Nformat; ++f){
-			
-			if(P.tRestart == 0 || P.FormatP == 0){
-				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&x.w);
-				else er = fscanf(infile, "%s", t);
-			}
-			else{
-				if(P.OutBinary == 0){
-					if(f == 0)		er = fscanf (infile, "%lf",&time);
-					else if(f == 1)		er = fscanf (infile, "%d",&index);
-					else if(f == 2)		er = fscanf (infile, "%lf",&x.w);
-					else if(f == 3)		er = fscanf (infile, "%lf",&v.w);
-					else if(f == 4)		er = fscanf (infile, "%lf",&x.x);
-					else if(f == 5)		er = fscanf (infile, "%lf",&x.y);
-					else if(f == 6)		er = fscanf (infile, "%lf",&x.z);
-					else if(f == 7)		er = fscanf (infile, "%lf",&v.x);
-					else if(f == 8)		er = fscanf (infile, "%lf",&v.y);
-					else if(f == 9)		er = fscanf (infile, "%lf",&v.z);
-					else if(f == 10)	er = fscanf (infile, "%lf",&spin.x);
-					else if(f == 11)	er = fscanf (infile, "%lf",&spin.y);
-					else if(f == 12)	er = fscanf (infile, "%lf",&spin.z);
-					else if(f == 13)	er = fscanf (infile, "%f",&aelimits.x);
-					else if(f == 14)	er = fscanf (infile, "%f",&aelimits.y);
-					else if(f == 15)	er = fscanf (infile, "%f",&aelimits.z);
-					else if(f == 16)	er = fscanf (infile, "%f",&aelimits.w);
-					else if(f == 17)	er = fscanf (infile, "%f",&aecount);
-					else if(f == 18)	er = fscanf (infile, "%f",&aecountT);
-					else if(f == 19)	er = fscanf (infile, "%llu",&enccountT);
-					else if(f == 20)	er = fscanf (infile, "%lf",&test);
-				}
-				else{
-					if(f == 0)		er = fread(&time, sizeof(double), 1, infile);
-					else if(f == 1)		er = fread(&index, sizeof(int), 1, infile);
-					else if(f == 2)		er = fread(&x.w, sizeof(double), 1, infile);
-					else if(f == 3)		er = fread(&v.w, sizeof(double), 1, infile);
-					else if(f == 4)		er = fread(&x.x, sizeof(double), 1, infile);
-					else if(f == 5)		er = fread(&x.y, sizeof(double), 1, infile);
-					else if(f == 6)		er = fread(&x.z, sizeof(double), 1, infile);
-					else if(f == 7)		er = fread(&v.x, sizeof(double), 1, infile);
-					else if(f == 8)		er = fread(&v.y, sizeof(double), 1, infile);
-					else if(f == 9)		er = fread(&v.z, sizeof(double), 1, infile);
-					else if(f == 10)	er = fread(&spin.x, sizeof(double), 1, infile);
-					else if(f == 11)	er = fread(&spin.y, sizeof(double), 1, infile);
-					else if(f == 12)	er = fread(&spin.z, sizeof(double), 1, infile);
-					else if(f == 13)	er = fread(&aelimits.x, sizeof(float), 1, infile);
-					else if(f == 14)	er = fread(&aelimits.y, sizeof(float), 1, infile);
-					else if(f == 15)	er = fread(&aelimits.z, sizeof(float), 1, infile);
-					else if(f == 16)	er = fread(&aelimits.w, sizeof(float), 1, infile);
-					else if(f == 17)	er = fread(&aecount, sizeof(float), 1, infile);
-					else if(f == 18)	er = fread(&aecountT, sizeof(float), 1, infile);
-					else if(f == 19)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
-					else if(f == 20)	er = fread(&test, sizeof(double), 1, infile);
-				}
 
-			}
-			if(er <= 0){ //error by reading
-				er1 = 0;
-				break;
-			}
 			
+		if(P.tRestart == 0 || P.FormatP == 0){
+			for(int f = 0; f < def_Ninformat; ++f){
+				if(GSF[st].informat[f] == 4) er = fscanf (infile, "%lf",&x.w);
+				else if(GSF[0].informat[f] > 0) fscanf(infile, "%s", t);
+			}
+		}
+		else{
+
+			er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+		}
+		if(er <= 0){ //error by reading
+			er1 = 0;
+			break;
 		}
 
 		if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))) break;
@@ -2764,12 +2886,11 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
-	printf("icSize A: %d %d %d\n", st, NN, Nsmall_h[st]);
+	printf("icSize A: st: %d, time %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
 		int NNNsmall = 0;
-		Nformat = 21;
 		FILE *OrigInfile;
 		char Origfilename[300];
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
@@ -2779,7 +2900,7 @@ __host__ int Host::icSize(int st){
 			int eri = 1;
 			int i = k;
 			//if index is not given in the initial conditions file, i = k, otherwise scan for the index
-			for(int f = 0; f < 22; ++f){
+			for(int f = 0; f < def_Ninformat; ++f){
 				if(GSF[st].informat[f] == 13){
 					eri = fscanf (OrigInfile, "%d",&i);
 				}
@@ -2802,59 +2923,11 @@ __host__ int Host::icSize(int st){
 			}
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
-				
-				for(int f = 0; f < Nformat; ++f){
-					if(P.OutBinary == 0){
-						if(f == 0)		er = fscanf (infile, "%lf",&time);
-						else if(f == 1)		er = fscanf (infile, "%d",&index);
-						else if(f == 2)		er = fscanf (infile, "%lf",&x.w);
-						else if(f == 3)		er = fscanf (infile, "%lf",&v.w);
-						else if(f == 4)		er = fscanf (infile, "%lf",&x.x);
-						else if(f == 5)		er = fscanf (infile, "%lf",&x.y);
-						else if(f == 6)		er = fscanf (infile, "%lf",&x.z);
-						else if(f == 7)		er = fscanf (infile, "%lf",&v.x);
-						else if(f == 8)		er = fscanf (infile, "%lf",&v.y);
-						else if(f == 9)		er = fscanf (infile, "%lf",&v.z);
-						else if(f == 10)	er = fscanf (infile, "%lf",&spin.x);
-						else if(f == 11)	er = fscanf (infile, "%lf",&spin.y);
-						else if(f == 12)	er = fscanf (infile, "%lf",&spin.z);
-						else if(f == 13)	er = fscanf (infile, "%f",&aelimits.x);
-						else if(f == 14)	er = fscanf (infile, "%f",&aelimits.y);
-						else if(f == 15)	er = fscanf (infile, "%f",&aelimits.z);
-						else if(f == 16)	er = fscanf (infile, "%f",&aelimits.w);
-						else if(f == 17)	er = fscanf (infile, "%f",&aecount);
-						else if(f == 18)	er = fscanf (infile, "%f",&aecountT);
-						else if(f == 19)	er = fscanf (infile, "%llu",&enccountT);
-						else if(f == 20)	er = fscanf (infile, "%lf",&test);
-					}
-					else{
-						if(f == 0)		er = fread(&time, sizeof(double), 1, infile);
-						else if(f == 1)		er = fread(&index, sizeof(int), 1, infile);
-						else if(f == 2)		er = fread(&x.w, sizeof(double), 1, infile);
-						else if(f == 3)		er = fread(&v.w, sizeof(double), 1, infile);
-						else if(f == 4)		er = fread(&x.x, sizeof(double), 1, infile);
-						else if(f == 5)		er = fread(&x.y, sizeof(double), 1, infile);
-						else if(f == 6)		er = fread(&x.z, sizeof(double), 1, infile);
-						else if(f == 7)		er = fread(&v.x, sizeof(double), 1, infile);
-						else if(f == 8)		er = fread(&v.y, sizeof(double), 1, infile);
-						else if(f == 9)		er = fread(&v.z, sizeof(double), 1, infile);
-						else if(f == 10)	er = fread(&spin.x, sizeof(double), 1, infile);
-						else if(f == 11)	er = fread(&spin.y, sizeof(double), 1, infile);
-						else if(f == 12)	er = fread(&spin.z, sizeof(double), 1, infile);
-						else if(f == 13)	er = fread(&aelimits.x, sizeof(float), 1, infile);
-						else if(f == 14)	er = fread(&aelimits.y, sizeof(float), 1, infile);
-						else if(f == 15)	er = fread(&aelimits.z, sizeof(float), 1, infile);
-						else if(f == 16)	er = fread(&aelimits.w, sizeof(float), 1, infile);
-						else if(f == 17)	er = fread(&aecount, sizeof(float), 1, infile);
-						else if(f == 18)	er = fread(&aecountT, sizeof(float), 1, infile);
-						else if(f == 19)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
-						else if(f == 20)	er = fread(&test, sizeof(double), 1, infile);
-					}
+				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 
-					if(er <= 0){ //error by reading
-						er1 = 0;
-						break;
-					}
+				if(er <= 0){ //error by reading
+					er1 = 0;
+					break;
 				}
 //if(st < 10 && i == 1) printf("%d %d %d %.20g %.20g | %g %g\n", st, i, it, time, Et, idt_h[st], ict_h[st]);
 				//if(time > Et) break;  //uncomment because of resolution increment in restarting

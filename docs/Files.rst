@@ -63,38 +63,51 @@ The output file format can be set to text-format or to binary-format with the :l
 
 The number of digits in the output file names can be changed with the :literal:`def_NFileNameDigits` parameter in the :ref:`define.h<Define>` file.
 
-The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
-Here we describe the possible choices:
 
+.. _OutputFileFormat:
 
-FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 0: Out<name>_<time step>.dat
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Output File Format
+^^^^^^^^^^^^^^^^^^
+| The values of the output files depend on the :literal:`Output file Format`, set in the :ref:`param.dat<ParamFile>` file.
+| Possible options are:
 
-In this format, at each coordinate output interval, a new file is created which contains all particles.
-In the multi simulation mode, each sub simulation folder contain individual files::
-
-	t i1 m1 r1 x1 y1 z1 vx1 vy1 vz1 Sx1 Sy2 Sz1 amin1 amax1 emin1 emax1 aecount1 aecountT1 enccountT1 test1
-	t i2 m2 r2 x2 y2 z2 vx2 vy2 vz2 Sx2 Sy2 Sz2 amin2 amax2 emin2 emax2 aecount2 aecountT2 enccountT2 test2
-	.
-	.
-	.
-	t in mn rn xn yn zn vxn vyn vzn Sxn Syn Szn aminn amaxn eminn emaxn aecountn aecountTn enccountTn testn
-
-with
-
-- t is the time in years.
-- i is the particle index. If two particles collide, then the new index is the one from the more massive particle. If both particles have the same mass, then the smaller index is taken.
-- m is the mass of the body in Solar masses.
-- r is the physical radius of the body in AU.
-- x, y, z are the heliocentric positions in AU.
-- vx, vy, vz are the heliocentric velocities in AU/day * 0.0172020989.
-- Sx, Sy, Sz are the spin components in Solar masses AU^2 / day * 0.0172020989.
-- amin, amax, emin and emax are the specified boundaries for the aeCount box (see :ref:`aeLimits`). At a collision, the same rules as for the index are applied to these values.
-- aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits (see :ref:`aeLimits`).
-- aecountT is the integrated value of all previous aecount values.
-- enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
-- test can be used for some individual values
-
+- t: time, in years.
+- i: index of the body.
+- m: mass in Solar masses.
+- r: physical radius in AU. 
+- x: x-position in AU (heliocentric).
+- y: y-position in AU (heliocentric).
+- z: z-position in AU (heliocentric).
+- vx: x-velocity in AU/day * 0.0172020989 (heliocentric) (See :ref:`Units`).
+- vy: y-velocity in AU/day * 0.0172020989 (heliocentric) (See :ref:`Units`).
+- vz: z-velocity in AU/day * 0.0172020989 (heliocentric) (See :ref:`Units`).
+- Sx: x-spin in Solar masses AU^2 / day * 0.0172020989. (See :ref:`Units`).
+- Sy: y-spin in Solar masses AU^2 / day * 0.0172020989. (See :ref:`Units`).
+- Sz: z-spin in Solar masses AU^2 / day * 0.0172020989. (See :ref:`Units`).
+- | amin: minimal value of semi major axis range for aecount (See :ref:`aeLimits`).
+  | Optional.
+- | amax: maximal value of semi major axis range for aecount (See :ref:`aeLimits`).
+  | Optional.
+- | emin: minimal value of eccentricity range for aecount (See :ref:`aeLimits`).
+  | Optional.
+- | emax: maximal value of eccentricity range for aecount (See :ref:`aeLimits`).
+  | Optional.
+- | k2: potential Love number of degree 2, dimensionless.
+  | (needed when given as initial contions)
+- | k2f: fluid Love number of degree 2, dimensionless.
+  | (needed when given as initial contions)
+- | tau: time lag in day / 0.0172020989 (See :ref:`Units`).
+  | (needed when given as initial contions)
+- | Ic: moment of inertia, dimensionless (See :ref:`Units`).
+  | (needed when given as initial contions)
+- | aec: aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits (see :ref:`aeLimits`).
+  | Optional.
+- | aecT, aecountT is the integrated value of all previous aecount values.
+  | Optional.
+- | encc: enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
+  | Optional.
+- | test: value stored in the test arrays.
+  | Optional.
 
 When the :literal:`Use output binary files` option is used, then the files contain the same data as described before with the following types:
 
@@ -115,9 +128,31 @@ When the :literal:`Use output binary files` option is used, then the files conta
 - amax: float, 32bit
 - emin: float, 32bit
 - emax: float, 32bit
-- aecount: float, 32bit
-- aecountT: float, 32bit
+- k2: double, 64bit
+- k2f: double, 64bit
+- tau: double, 64bit
+- Ic: double, 64bit
+- aec: float, 32bit
+- aecT: float, 32bit
+- encc: unsigned long long, 64bit
 - test: double, 64bit
+
+The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.
+Here we describe the possible choices:
+
+
+FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 0: Out<name>_<time step>.dat
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In this format, at each coordinate output interval, a new file is created which contains all particles.
+In the multi simulation mode, each sub simulation folder contain individual files::
+
+	t i1 m1 r1 x1 y1 z1 vx1 vy1 vz1 Sx1 Sy2 Sz1 ... 
+	t i2 m2 r2 x2 y2 z2 vx2 vy2 vz2 Sx2 Sy2 Sz2 ...
+	.
+	.
+	.
+	t in mn rn xn yn zn vxn vyn vzn Sxn Syn Szn ...
 
 
 FormatS = 1, FormatT = 0 FormatP = 1, FormatO = 0: Out<name>.dat

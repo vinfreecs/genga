@@ -348,11 +348,10 @@ private:
 	int GridNae;
 	int GridNai;
 	__host__ int readic(int);
-	__host__ int readOutLine(double &, int &, double4 &, double4 &, double4 &, float4 &, double &, double &, unsigned long long &, double &, int, FILE *);
 	__host__ void resize(int, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

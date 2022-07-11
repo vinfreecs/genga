@@ -50,6 +50,8 @@ The spin :math:`\mathbf{S}` of the new body is calculated as
    \mathbf{S}_{\rm new} = \mathbf{S}_i + \mathbf{S}_j + \mathbf{L}_{ij}
 
 
+
+
 In order to keep track of the energy conservation, we add the lost kinetic and potential energy from collisions,
 ejections and caused by the gas drag into a quantity :math:`U`. This quantity includes the energy loss from all particles
 together and not from single particles. :math:`U` is not directly related to a physical quantity, however it contains the
@@ -66,12 +68,36 @@ two particles.
 
 .. math:: 
 
-   R_{new} = \left( R_i^3 + R_j^3 \right)^{1/3}
+   R_{\rm new} = \left( R_i^3 + R_j^3 \right)^{1/3}
 
 The index of the nex body is calculated according to the rules:
 
  - The index of the more massive body.
  - If both bodies have an equal mass, then take the smaller index of the bodies :math:`i` and :math:`j`
+
+The moment of inertia :math:`Ic` of the new body is calculated as
+
+.. math::
+
+   Ic_{\rm new} = \frac{m_i Ic_i + m_j Ic_j}{m_i + m_j}
+
+The potential love number :math:`k2` of the new body is calculated as
+
+.. math::
+
+   k2_{\rm new} = \frac{m_i k2_i + m_j k2_j}{m_i + m_j}
+
+The fluid love number :math:`k2f` of the new body is calculated as
+
+.. math::
+
+   k2f_{\rm new} = \frac{m_i k2f_i + m_j k2f_j}{m_i + m_j}
+
+The time lag :math:`\Tau` of the new body is calculated as
+
+.. math::
+
+   \Tau_{\rm new} = \frac{m_i \Tau_i + m_j \Tau_j}{m_i + m_j}
 
 
 At the end of the collision process, the body :math:`i` is transferred to be the new body, and body :math:`j`

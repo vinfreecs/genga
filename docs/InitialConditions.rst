@@ -58,10 +58,15 @@ Possible arguments are:
 - amax: maximal value of semi major axis range for aecount; optional (default = 100). (See :ref:`aeLimits`).
 - emin: minimal value of eccentricity range for aecount; optional, (default = 0.0). (See :ref:`aeLimits`).
 - emax: maximal value of eccentricity range for aecount; optional, (default = 1.0). (See :ref:`aeLimits`).
-- k2: potential Love number of degree 2, dimensionless (default = 0.0).
-- k2f: fluid Love number of degree 2, dimensionless (default = 0.0).
-- tau: time lag in day / 0.0172020989 (See :ref:`Units`) (default = 0.0).
-- Ic: moment of inertia, dimensionless (See :ref:`Units`) (default = 0.4).
+- | k2: potential Love number of degree 2, dimensionless (default = 0.0).
+  | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
+- | k2f: fluid Love number of degree 2, dimensionless (default = 0.0).
+  | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
+- | tau: time lag in day / 0.0172020989 (See :ref:`Units`) (default = 0.0).
+  | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
+- | Ic: moment of inertia, dimensionless (See :ref:`Units`) (default = 0.4).
+  | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
+- test: optional value to store in the test arrays.
 - :literal:`-`: skip column, optional.
 
 

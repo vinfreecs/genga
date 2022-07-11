@@ -60,6 +60,10 @@ Main parameters
   | (default = << x y z m vx vy vz >>)
   | See :ref:`InitialConditionsFormat`
 
+- | :literal:`Output file Format`: Format of the coordinate output files. 
+  | (default = << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax aec aecT encc test >>)
+  | See :ref:`OutputFileFormat`
+
 - | :literal:`Angle units`, unit of angles in the initial conditions file, (default = radians)
   | either 'radians' or 'degrees'.
   | affects inc, O, w and M.

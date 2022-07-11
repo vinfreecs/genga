@@ -14,7 +14,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, double *time_d, double4 *spin_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseGR, double MinMass, int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double *Msun_d, double *U_d, int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, double *time_d, double4 *spin_d, double3 *love_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseGR, double MinMass, int UseTestParticles, const int SLevels, int noColl){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -494,7 +494,7 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l); 
 									int ne = atomicAdd(NWriteEnc_d, 1);
 									if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
-									writeEnc_d[ne * 25 + 0] = (time + dt * enct / dayUnit) / 365.25;
+									writeEnc_d[ne * def_NColl + 0] = (time + dt * enct / dayUnit) / 365.25;
 									storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
 								}
 							}
@@ -553,7 +553,7 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 											BSstop_d[0] = 3;
 										}
 									}
-									collide(random, xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+									collide(random, xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, love_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
 								}
 							}
 						}

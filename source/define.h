@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.150
+#define def_Version 3.151
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -121,7 +121,8 @@
 #define def_NAFformat 1
 #define def_NAFinterval 1
 #define def_Ninformat 50		//number of entries in informat array
-#define def_NColl 25			//number of parameters in Coll array
+#define def_NColl 25			//number of parameters in Coll and writeEnc arrays
+#define def_BufferSize 25		//number of parameters in the Buffer arrays
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define def_pcf 3.0f			//float version of def_pc

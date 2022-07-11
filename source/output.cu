@@ -188,7 +188,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 				}
 
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
 				if(P.FormatP == 1) fclose(GSF[st].outputfile);
 			}
 		}
@@ -330,7 +330,7 @@ __host__ int Data::firstoutput(int irregular){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
 	//BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
@@ -449,6 +449,15 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					if(GSF[st].outformat[f] == 18){
 						fprintf(outputfile,"%.8g ", aelimits_h[j].w);
 					}
+					if(GSF[st].outformat[f] == 20){
+						fprintf(outputfile,"%.40g ", love_h[j].x);
+					}
+					if(GSF[st].outformat[f] == 21){
+						fprintf(outputfile,"%.40g ", love_h[j].y);
+					}
+					if(GSF[st].outformat[f] == 22){
+						fprintf(outputfile,"%.40g ", love_h[j].z);
+					}
 					if(GSF[st].outformat[f] == 47){
 						fprintf(outputfile,"%.8g ", (double)(aecount_h[j])/ci);
 					}
@@ -457,6 +466,9 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					}
 					if(GSF[st].outformat[f] == 46){
 						fprintf(outputfile,"%llu ", enccountT_h[j]);
+					}
+					if(GSF[st].outformat[f] == 44){
+						fprintf(outputfile,"%.40g ", spin_h[j].w);
 					}
 					if(GSF[st].outformat[f] == 45){
 						fprintf(outputfile,"%.40g ", test_h[j]);
@@ -520,6 +532,15 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					if(GSF[st].outformat[f] == 18){
 						fwrite(&aelimits_h[j].w, sizeof(float), 1, outputfile);
 					}
+					if(GSF[st].outformat[f] == 20){
+						fwrite(&love_h[j].x, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 21){
+						fwrite(&love_h[j].y, sizeof(double), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 22){
+						fwrite(&love_h[j].z, sizeof(double), 1, outputfile);
+					}
 					if(GSF[st].outformat[f] == 47){
 						fwrite(&aecount, sizeof(float), 1, outputfile);
 					}
@@ -528,6 +549,9 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					}
 					if(GSF[st].outformat[f] == 46){
 						fwrite(&enccountT_h[j], sizeof(unsigned long long), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 44){
+						fwrite(&spin_h[j].w, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 45){
 						fwrite(&test_h[j], sizeof(double), 1, outputfile);
@@ -720,49 +744,53 @@ __host__ int Data::EnergyOutput(int irregular){
 }
 
 
-__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
+__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < NT + NsmallT){
 		//time
 		if(Nst == 1){
-			coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id] = time_d[0] + dTau * idt_d[0];
+			coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id] = time_d[0] + dTau * idt_d[0];
 		}
 		else{
 			int st = index_d[id] / def_MaxIndex;
-			coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id] = time_d[st] + dTau * idt_d[st];
+			coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id] = time_d[st] + dTau * idt_d[st];
 		}
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 1] = index_d[id];
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 2] = x4_d[id].w;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 3] = v4_d[id].w;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 4] = x4_d[id].x;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 5] = x4_d[id].y;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 6] = x4_d[id].z;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 7] = v4_d[id].x;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 8] = v4_d[id].y;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 9] = v4_d[id].z;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 10] = spin_d[id].x;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 11] = spin_d[id].y;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 12] = spin_d[id].z;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 13] = aelimits_d[id].x;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 14] = aelimits_d[id].y;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 15] = aelimits_d[id].z;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 16] = aelimits_d[id].w;
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 17] = aecount_d[id];
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 18] = aecountT_d[id];
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 19] = enccountT_d[id];
-		coordinateBuffer_d[21 * NconstT * bufferCount + 21 * id + 20] = test_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 1] = index_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 2] = x4_d[id].w;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 3] = v4_d[id].w;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 4] = x4_d[id].x;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 5] = x4_d[id].y;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 6] = x4_d[id].z;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 7] = v4_d[id].x;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 8] = v4_d[id].y;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 9] = v4_d[id].z;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 10] = spin_d[id].x;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 11] = spin_d[id].y;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 12] = spin_d[id].z;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 13] = aelimits_d[id].x;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 14] = aelimits_d[id].y;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 15] = aelimits_d[id].z;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 16] = aelimits_d[id].w;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 17] = aecount_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 18] = aecountT_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 19] = enccountT_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 20] = test_d[id];
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 21] = spin_d[id].w;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 22] = love_d[id].x;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 23] = love_d[id].y;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 24] = love_d[id].z;
 	}
 }
 
 __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dTau){
 	if(NT + NsmallT > 0){
 		if(irregular == 0){
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
 		}
 		else{
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
 
 		}
 	}
@@ -779,6 +807,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 	cudaMemcpy(index_h, index_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(test_h, test_d, sizeof(double)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(spin_h, spin_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(love_h, love_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
@@ -928,7 +957,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		//}
@@ -945,10 +974,10 @@ __host__ void Data::CoordinateOutput(int irregular){
 __host__ void Data::CoordinateOutputBuffer(int irregular){
 
 	if(irregular == 0){
-		cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 	}
 	else{
-		cudaMemcpy(coordinateBuffer_h, coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(coordinateBuffer_h, coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 	}
 	cudaDeviceSynchronize();
 
@@ -964,26 +993,30 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 	if(irregular == 1) Nbf = bufferCountIrr;
 	for(int bf = 0; bf < Nbf; ++bf){
 		for(int i = 0; i < NT + NsmallT; ++i){
-			index_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 1];
-			x4_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 2];
-			v4_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 3];
-			x4_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 4];
-			x4_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 5];
-			x4_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 6];
-			v4_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 7];
-			v4_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 8];
-			v4_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 9];
-			spin_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 10];
-			spin_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 11];
-			spin_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 12];
-			aelimits_h[i].x = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 13];
-			aelimits_h[i].y = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 14];
-			aelimits_h[i].z = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 15];
-			aelimits_h[i].w = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 16];
-			aecount_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 17];
-			aecountT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 18];
-			enccountT_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 19];
-			test_h[i] = coordinateBuffer_h[21 * NconstT * bf + 21 * i + 20];
+			index_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 1];
+			x4_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 2];
+			v4_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 3];
+			x4_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 4];
+			x4_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 5];
+			x4_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 6];
+			v4_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 7];
+			v4_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 8];
+			v4_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 9];
+			spin_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 10];
+			spin_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 11];
+			spin_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 12];
+			aelimits_h[i].x =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 13];
+			aelimits_h[i].y =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 14];
+			aelimits_h[i].z =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 15];
+			aelimits_h[i].w =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 16];
+			aecount_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 17];
+			aecountT_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 18];
+			enccountT_h[i] =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 19];
+			test_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 20];
+			spin_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 21];
+			love_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 22];
+			love_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 23];
+			love_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 24];
 
 		}
 		for(int st = 0; st < Nst; ++st){
@@ -1075,13 +1108,13 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
 				int N = NBuffer[Nst * bf + st].x;		
 				int Nsmall = NBuffer[Nst * bf + st].y;
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 			else{
 				int N = NBufferIrr[Nst * bf + st].x;		
 				int Nsmall = NBufferIrr[Nst * bf + st].y;		
-				time = coordinateBuffer_h[21 * NconstT * bf + 21 * NBS];
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				time = coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
@@ -1173,6 +1206,7 @@ __host__ int Data::MaxGroups(){
 			cudaMemcpy(index_h, index_d, sizeof(int)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(test_h, test_d, sizeof(double)*NB[0], cudaMemcpyDeviceToHost);
 			cudaMemcpy(spin_h, spin_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(love_h, love_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
@@ -1186,7 +1220,7 @@ __host__ int Data::MaxGroups(){
 			else{
 				GSF[0].outputfile = fopen(GSF[0].outputfilename, "wb");	
 			}
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);
@@ -1396,21 +1430,21 @@ __host__ int Data::printEncounters(){
 		return 0;
 	}
  
-	cudaMemcpy(writeEnc_h, writeEnc_d, sizeof(double) * 25 * NWriteEnc_m[0], cudaMemcpyDeviceToHost);
+	cudaMemcpy(writeEnc_h, writeEnc_d, sizeof(double) * def_NColl * NWriteEnc_m[0], cudaMemcpyDeviceToHost);
 
 	FILE *encounterfile;
 	for(int nc = 0; nc < NWriteEnc_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(writeEnc_h[nc * 25 + 1]) / def_MaxIndex;
+		else st = (int)(writeEnc_h[nc * def_NColl + 1]) / def_MaxIndex;
 		encounterfile = fopen(GSF[st].encounterfilename, "a");
 
-		for(int in = 0; in < 25; ++in){
+		for(int in = 0; in < def_NColl; ++in){
 			if(in == 1 || in == 13){
-				if(Nst == 1) fprintf(encounterfile, "%d ", (int)(writeEnc_h[nc * 25 + in]));
-				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * 25 + in])) % def_MaxIndex);
+				if(Nst == 1) fprintf(encounterfile, "%d ", (int)(writeEnc_h[nc * def_NColl + in]));
+				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * def_NColl + in])) % def_MaxIndex);
 			}
-			else fprintf(encounterfile, "%.20g ", writeEnc_h[nc * 25 + in]);
+			else fprintf(encounterfile, "%.20g ", writeEnc_h[nc * def_NColl + in]);
 		}
 		fprintf(encounterfile, "\n");
 		fclose(encounterfile);

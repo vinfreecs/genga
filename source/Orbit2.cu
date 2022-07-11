@@ -22,7 +22,7 @@ __host__ void Data::AllocateOrbit(){
 	Energy0_h = (double*)malloc(Nst * sizeof(double));
 	LI0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(def_NColl * def_MaxColl * Nst * sizeof(double));
-	writeEnc_h = (double*)malloc(25 * def_MaxWriteEnc * Nst * sizeof(double));
+	writeEnc_h = (double*)malloc(def_NColl * def_MaxWriteEnc * Nst * sizeof(double));
 	Fragments_h = (double*)malloc(25 * P.Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
 	aecount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
@@ -30,7 +30,7 @@ __host__ void Data::AllocateOrbit(){
 	aecountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
 	enccountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
 
-	coordinateBuffer_h = (double*)malloc(P.Buffer * 21 * NconstT * sizeof(double));
+	coordinateBuffer_h = (double*)malloc(P.Buffer * def_BufferSize * NconstT * sizeof(double));
 	timestepBuffer = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	timestepBufferIrr = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
@@ -142,7 +142,7 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &Encpairs3_d, sizeof(int) * NBNencT * P.SLevels);
 	cudaMalloc((void **) &scan_d, sizeof(int2) * NconstT);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
-	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * 25 * def_MaxWriteEnc);
+	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * def_NColl * def_MaxWriteEnc);
 	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * P.Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
 	cudaMalloc((void **) &aecount_d, NconstT * sizeof(unsigned int));
@@ -150,8 +150,8 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &aecountT_d, NconstT * sizeof(unsigned long long));
 	cudaMalloc((void **) &enccountT_d, NconstT * sizeof(unsigned long long));
 
-	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * 21 * NconstT * sizeof(double));
-	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * 21 * NconstT * sizeof(double));
+	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT * sizeof(double));
+	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double));
 #if def_TTV == 1
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 #else
@@ -686,7 +686,7 @@ __host__ int Data::init(){
 			index_h[NBS_h[st] + i] = i + st * def_MaxIndex;
 		}
 	}
-	for(int i = 0; i < P.Buffer * 21 * NconstT; ++i){
+	for(int i = 0; i < P.Buffer * def_BufferSize * NconstT; ++i){
 		coordinateBuffer_h[i] = 0.0;
 	}
 	for(int i = 0; i < P.Buffer; ++i){
@@ -699,8 +699,8 @@ __host__ int Data::init(){
 			NBufferIrr[i * Nst + st].y = Nsmall_h[st];
 		}
 	}
-	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d, P.Buffer * 21 * NconstT);
-	BufferInit_kernel <<< (P.Buffer * 21 * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d, P.Buffer * 21 * NconstT);
+	BufferInit_kernel <<< (P.Buffer * def_BufferSize * NconstT + 511) / 512, 512 >>> (coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT);
+	BufferInit_kernel <<< (P.Buffer * def_BufferSize * NconstT + 511) / 512, 512 >>> (coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT);
 	for(int i = 0; i < NEnergyT; ++i){
 		Energy_h[i] = 0.0;
 	}
@@ -709,7 +709,7 @@ __host__ int Data::init(){
 		Coll_h[i] = 0.0;
 	}
 
-	for(int i = 0; i < Nst * 25 * def_MaxWriteEnc; ++i){
+	for(int i = 0; i < Nst * def_NColl * def_MaxWriteEnc; ++i){
 		writeEnc_h[i] = 0.0;
 	}
 
@@ -797,7 +797,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs3_d, Nencpairs3_h, P.SLevels * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * def_NColl * def_MaxColl, cudaMemcpyHostToDevice);
-	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * 25 * def_MaxWriteEnc, cudaMemcpyHostToDevice);
+	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * def_NColl * def_MaxWriteEnc, cudaMemcpyHostToDevice);
 	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * P.Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(aecount_d, aecount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);
@@ -855,66 +855,6 @@ __host__ int Data::ic(){
 
 	return 1;
 }
-
-// ************************************** //
-//This function reads 1 line of the output file, used for restarting
-//Authors: Simon Grimm
-//July 2022
-// *****************************************
-__host__ int Data::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &test, int Nformat, FILE *infile){
-
-	int er = 0;
-	for(int f = 0; f < Nformat; ++f){
-		if(P.OutBinary == 0){
-			if(f == 0)              er = fscanf (infile, "%lf",&time);
-			else if(f == 1)         er = fscanf (infile, "%d",&index);
-			else if(f == 2)         er = fscanf (infile, "%lf",&x.w);
-			else if(f == 3)         er = fscanf (infile, "%lf",&v.w);
-			else if(f == 4)         er = fscanf (infile, "%lf",&x.x);
-			else if(f == 5)         er = fscanf (infile, "%lf",&x.y);
-			else if(f == 6)         er = fscanf (infile, "%lf",&x.z);
-			else if(f == 7)         er = fscanf (infile, "%lf",&v.x);
-			else if(f == 8)         er = fscanf (infile, "%lf",&v.y);
-			else if(f == 9)         er = fscanf (infile, "%lf",&v.z);
-			else if(f == 10)        er = fscanf (infile, "%lf",&spin.x);
-			else if(f == 11)        er = fscanf (infile, "%lf",&spin.y);
-			else if(f == 12)        er = fscanf (infile, "%lf",&spin.z);
-			else if(f == 13)        er = fscanf (infile, "%f",&aelimits.x);
-			else if(f == 14)        er = fscanf (infile, "%f",&aelimits.y);
-			else if(f == 15)        er = fscanf (infile, "%f",&aelimits.z);
-			else if(f == 16)        er = fscanf (infile, "%f",&aelimits.w);
-			else if(f == 17)        er = fscanf (infile, "%lf",&skip);
-			else if(f == 18)        er = fscanf (infile, "%lf",&aecount);
-			else if(f == 19)        er = fscanf (infile, "%llu",&enccountT);
-			else if(f == 20)        er = fscanf (infile, "%lf",&test);
-		}
-		else{
-			if(f == 0)              er = fread(&time, sizeof(double), 1, infile);
-			else if(f == 1)         er = fread(&index, sizeof(int), 1, infile);
-			else if(f == 2)         er = fread(&x.w, sizeof(double), 1, infile);
-			else if(f == 3)         er = fread(&v.w, sizeof(double), 1, infile);
-			else if(f == 4)         er = fread(&x.x, sizeof(double), 1, infile);
-			else if(f == 5)         er = fread(&x.y, sizeof(double), 1, infile);
-			else if(f == 6)         er = fread(&x.z, sizeof(double), 1, infile);
-			else if(f == 7)         er = fread(&v.x, sizeof(double), 1, infile);
-			else if(f == 8)         er = fread(&v.y, sizeof(double), 1, infile);
-			else if(f == 9)         er = fread(&v.z, sizeof(double), 1, infile);
-			else if(f == 10)        er = fread(&spin.x, sizeof(double), 1, infile);
-			else if(f == 11)        er = fread(&spin.y, sizeof(double), 1, infile);
-			else if(f == 12)        er = fread(&spin.z, sizeof(double), 1, infile);
-			else if(f == 13)        er = fread(&aelimits.x, sizeof(float), 1, infile);
-			else if(f == 14)        er = fread(&aelimits.y, sizeof(float), 1, infile);
-			else if(f == 15)        er = fread(&aelimits.z, sizeof(float), 1, infile);
-			else if(f == 16)        er = fread(&aelimits.w, sizeof(float), 1, infile);
-			else if(f == 17)        er = fread(&skip, sizeof(float), 1, infile);
-			else if(f == 18)        er = fread(&aecount, sizeof(float), 1, infile);
-			else if(f == 19)        er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
-			else if(f == 20)        er = fread(&test, sizeof(double), 1, infile);
-		}
-	}
-	return er;
-}
-
 
 // ************************************** //
 //This function reads the initial conditions from the IC file.
@@ -1067,7 +1007,7 @@ __host__ int Data::readic(int st){
 					fscanf (infile, "%d",&index);
 				}
 				else if (GSF[st].informat[f] == 14) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);
+				else if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);	//amin
 				else if (GSF[st].informat[f] == 16) fscanf (infile, "%f",&aelimits.y);
 				else if (GSF[st].informat[f] == 17) fscanf (infile, "%f",&aelimits.z);
 				else if (GSF[st].informat[f] == 18) fscanf (infile, "%f",&aelimits.w);
@@ -1398,20 +1338,26 @@ __host__ int Data::readic(int st){
 		unsigned long long aecountT;
 		unsigned long long enccountT;
 
-		int Nformat = 21;
+		spin.x = 0.0;
+		spin.y = 0.0;
+		spin.z = 0.0;
+		spin.w = 0.4;
+		love.x = 0.0;
+		love.y = 0.0;
+		love.z = 0.0;
 
 		if(P.FormatP == 1){
 
 			//skip previous time steps
 			if(P.FormatT == 0){
-				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 			}
 			if(P.FormatT == 1){
-				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 			}
@@ -1420,14 +1366,14 @@ __host__ int Data::readic(int st){
 			//skip previous simulation data
 			if(P.FormatS == 1){
 				for(int i = 0; i < NBS; ++i){
-					readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 				}
 			}
 
 			int iismall = 0;
 			for(int i = 0; i < N + Nsmall; ++i){
-				if(i > 0) readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+				if(i > 0) readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
@@ -1445,9 +1391,8 @@ __host__ int Data::readic(int st){
 				index_h[ii + NBSN] = index;
 				x4_h[ii + NBSN] = x;
 				v4_h[ii + NBSN] = v;
-				spin_h[ii + NBSN].x = spin.x;
-				spin_h[ii + NBSN].y = spin.y;
-				spin_h[ii + NBSN].z = spin.z;
+				spin_h[ii + NBSN] = spin;
+				love_h[ii + NBSN] = love;
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
 				aecount_h[ii + NBSN] = aecount;
@@ -1495,11 +1440,11 @@ __host__ int Data::readic(int st){
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-						er = readOutLine(time, index, x, v, spin, aelimits, aecountf, aecountTf, enccountT, test, Nformat, infile);
+						er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 				if(er <= 0) continue;
@@ -1520,9 +1465,8 @@ __host__ int Data::readic(int st){
 				index_h[ii + NBSN] = index;
 				x4_h[ii + NBSN] = x;
 				v4_h[ii + NBSN] = v;
-				spin_h[ii + NBSN].x = spin.x;
-				spin_h[ii + NBSN].y = spin.y;
-				spin_h[ii + NBSN].z = spin.z;
+				spin_h[ii + NBSN] = spin;
+				love_h[ii + NBSN] = love;
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
 				aecount_h[ii + NBSN] = aecount;

@@ -255,7 +255,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double4 *spin, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
+__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double4 *spin, double3 *love, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
 
 #if USE_RANDOM == 1
 //	double rd = curand_uniform(&random);
@@ -347,8 +347,6 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	spin[indexi].y += spin[indexj].y + L.y;
 	spin[indexi].z += spin[indexj].z + L.z;
 
-//add here Ic for new body
-
 	v4[j].x = 0.0;
 	v4[j].y = 0.0;
 	v4[j].z = 0.0;
@@ -360,11 +358,28 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	spin[indexj].x = 0.0;
 	spin[indexj].y = 0.0;
 	spin[indexj].z = 0.0;
+	
+
+	double Ic = (x4[i].w * spin[indexi].w + x4[j].w * spin[indexj].w) / mtot;
+	spin[indexi].w = Ic;
 	spin[indexj].w = 0.0;
 	
+	double k2 = (x4[i].w * love[indexi].x + x4[j].w * love[indexj].x) / mtot;
+	love[indexi].x = k2;
+	love[indexj].x = 0.0;
+
+	double k2f = (x4[i].w * love[indexi].y + x4[j].w * love[indexj].y) / mtot;
+	love[indexi].y = k2f;
+	love[indexj].y = 0.0;
+
+	double tau = (x4[i].w * love[indexi].z + x4[j].w * love[indexj].z) / mtot;
+	love[indexi].z = tau;
+	love[indexj].z = 0.0;
+
 
 	if(x4[i].w < x4[j].w){
 		index[indexi] = index[indexj];
+		
 		if(noColl == 0){
 			aelimits[indexi] = aelimits[indexj];
 			aecount[indexi] = aecount[indexj];
@@ -399,6 +414,7 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 //		}
 //	}
 	x4[j].w = -1.0e-12;
+	//radius
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;
 }
@@ -414,30 +430,30 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 __device__ void storeEncounters(volatile double4 *x4, volatile double4 *v4, int i, int j, int indexi, int indexj, int *index, int nc, double *Coll, double time, double4 *spin){
 
 //printf("Enc %d %d %d %d %d %d\n", i, j, indexi, indexj, index[indexj], index[indexi]);
-	Coll[nc * 25 + 0] = time/365.25;
-	Coll[nc * 25 + 1] = (double)(index[indexj]);
-	Coll[nc * 25 + 2] = x4[j].w;
-	Coll[nc * 25 + 3] = v4[j].w;
-	Coll[nc * 25 + 4] = x4[j].x;
-	Coll[nc * 25 + 5] = x4[j].y;
-	Coll[nc * 25 + 6] = x4[j].z;
-	Coll[nc * 25 + 7] = v4[j].x;
-	Coll[nc * 25 + 8] = v4[j].y;
-	Coll[nc * 25 + 9] = v4[j].z;
-	Coll[nc * 25 + 10] = spin[indexj].x;
-	Coll[nc * 25 + 11] = spin[indexj].y;
-	Coll[nc * 25 + 12] = spin[indexj].z;
-	Coll[nc * 25 + 13] = (double)(index[indexi]);
-	Coll[nc * 25 + 14] = x4[i].w;
-	Coll[nc * 25 + 15] = v4[i].w;
-	Coll[nc * 25 + 16] = x4[i].x;
-	Coll[nc * 25 + 17] = x4[i].y;
-	Coll[nc * 25 + 18] = x4[i].z;
-	Coll[nc * 25 + 19] = v4[i].x;
-	Coll[nc * 25 + 20] = v4[i].y;
-	Coll[nc * 25 + 21] = v4[i].z;
-	Coll[nc * 25 + 22] = spin[indexi].x;
-	Coll[nc * 25 + 23] = spin[indexi].y;
-	Coll[nc * 25 + 24] = spin[indexi].z;
+	Coll[nc * def_NColl + 0] = time/365.25;
+	Coll[nc * def_NColl + 1] = (double)(index[indexj]);
+	Coll[nc * def_NColl + 2] = x4[j].w;
+	Coll[nc * def_NColl + 3] = v4[j].w;
+	Coll[nc * def_NColl + 4] = x4[j].x;
+	Coll[nc * def_NColl + 5] = x4[j].y;
+	Coll[nc * def_NColl + 6] = x4[j].z;
+	Coll[nc * def_NColl + 7] = v4[j].x;
+	Coll[nc * def_NColl + 8] = v4[j].y;
+	Coll[nc * def_NColl + 9] = v4[j].z;
+	Coll[nc * def_NColl + 10] = spin[indexj].x;
+	Coll[nc * def_NColl + 11] = spin[indexj].y;
+	Coll[nc * def_NColl + 12] = spin[indexj].z;
+	Coll[nc * def_NColl + 13] = (double)(index[indexi]);
+	Coll[nc * def_NColl + 14] = x4[i].w;
+	Coll[nc * def_NColl + 15] = v4[i].w;
+	Coll[nc * def_NColl + 16] = x4[i].x;
+	Coll[nc * def_NColl + 17] = x4[i].y;
+	Coll[nc * def_NColl + 18] = x4[i].z;
+	Coll[nc * def_NColl + 19] = v4[i].x;
+	Coll[nc * def_NColl + 20] = v4[i].y;
+	Coll[nc * def_NColl + 21] = v4[i].z;
+	Coll[nc * def_NColl + 22] = spin[indexi].x;
+	Coll[nc * def_NColl + 23] = spin[indexi].y;
+	Coll[nc * def_NColl + 24] = spin[indexi].z;
 }
 #endif

@@ -151,6 +151,7 @@ must be installed, and the compiler path must be loaded in the command prompt. I
 this is not the case, it can be loaded similar to this command::
 
 	call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\vsdevcmd.bat"
+
 or::
 
 	call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"

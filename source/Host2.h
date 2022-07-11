@@ -121,7 +121,7 @@ public:
 	__host__ int NSimulations(int, char*argv[]);
 	__host__ int DeviceInfo();
 	__host__ void Halloc();
-	__host__ int assignInformat(char *, int &);
+	__host__ int assignInformat(char *, int &, int);
 	__host__ int Param(int , char*argv[]);
 	__host__ int size();
 	__host__ void Calloc();
@@ -136,9 +136,11 @@ public:
 	//force
 	__host__ void constantCopy3(int *, int, int, int);
 
+	__host__ int readOutLine(double &, int &, double4 &, double4 &, double4 &, double3 &, float4 &, double &, double &, unsigned long long &, double &, FILE *, int);
+
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
 	__host__ int icSize(int);
-	__host__ int icict(int, int);
+	__host__ int icict(int);
 };
 #endif

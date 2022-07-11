@@ -31,6 +31,7 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
 
  ** News: **
 
+ * Version 3.151: Added Output file format option
  * Version 3.148: Added solar wind factor
  * Version 3.146: Output files can be written in binary format.
  * Version 3.137: Corrected angular momentum units in the Energyfile to Msun AU^2/day.
