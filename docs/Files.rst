@@ -106,6 +106,8 @@ Output File Format
   | Optional.
 - | encc: enccountT is the number of time steps since the simulation start in which the particle was in a close encounter with another (massive) particle.
   | Optional.
+- | Rc: Critical radius for close encounters, rcrit, in AU
+  | Optional.
 - | test: value stored in the test arrays.
   | Optional.
 
@@ -135,6 +137,7 @@ When the :literal:`Use output binary files` option is used, then the files conta
 - aec: float, 32bit
 - aecT: float, 32bit
 - encc: unsigned long long, 64bit
+- Rc: double, 64bit
 - test: double, 64bit
 
 The structure of the coordinate output files depends on the parameters :literal:`FormatS`, :literal:`FormatT`, :literal:`FormatP` and :literal:`FormatO`.

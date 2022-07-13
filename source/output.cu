@@ -188,7 +188,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 				}
 
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
 				if(P.FormatP == 1) fclose(GSF[st].outputfile);
 			}
 		}
@@ -330,7 +330,7 @@ __host__ int Data::firstoutput(int irregular){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, double *rcrit_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
 	//BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
@@ -467,6 +467,9 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					if(GSF[st].outformat[f] == 46){
 						fprintf(outputfile,"%llu ", enccountT_h[j]);
 					}
+					if(GSF[st].outformat[f] == 42){
+						fprintf(outputfile,"%.40g ", rcrit_h[j]);
+					}
 					if(GSF[st].outformat[f] == 44){
 						fprintf(outputfile,"%.40g ", spin_h[j].w);
 					}
@@ -549,6 +552,9 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					}
 					if(GSF[st].outformat[f] == 46){
 						fwrite(&enccountT_h[j], sizeof(unsigned long long), 1, outputfile);
+					}
+					if(GSF[st].outformat[f] == 42){
+						fwrite(&rcrit_h[j], sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 44){
 						fwrite(&spin_h[j].w, sizeof(double), 1, outputfile);
@@ -744,7 +750,7 @@ __host__ int Data::EnergyOutput(int irregular){
 }
 
 
-__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
+__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double *rcrit_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -781,16 +787,17 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 22] = love_d[id].x;
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 23] = love_d[id].y;
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 24] = love_d[id].z;
+		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 25] = rcrit_d[id];
 	}
 }
 
 __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dTau){
 	if(NT + NsmallT > 0){
 		if(irregular == 0){
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
 		}
 		else{
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
 
 		}
 	}
@@ -813,6 +820,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 	cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aecountT_h, aecountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(enccountT_h, enccountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(rcrit_h, rcrit_d, sizeof(double) * NconstT * P.SLevels, cudaMemcpyDeviceToHost);
 
 	if(Nst > 1) cudaMemcpy(time_h, time_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
 
@@ -957,7 +965,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		//}
@@ -1017,6 +1025,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			love_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 22];
 			love_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 23];
 			love_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 24];
+			rcrit_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 25];
 
 		}
 		for(int st = 0; st < Nst; ++st){
@@ -1108,13 +1117,13 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
 				int N = NBuffer[Nst * bf + st].x;		
 				int Nsmall = NBuffer[Nst * bf + st].y;
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 			else{
 				int N = NBufferIrr[Nst * bf + st].x;		
 				int Nsmall = NBufferIrr[Nst * bf + st].y;		
 				time = coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
@@ -1212,6 +1221,7 @@ __host__ int Data::MaxGroups(){
 			cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(aecountT_h, aecountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(enccountT_h, enccountT_d, sizeof(unsigned long long)*NconstT, cudaMemcpyDeviceToHost);
+			cudaMemcpy(rcrit_h, rcrit_d, sizeof(double) * NconstT * P.SLevels, cudaMemcpyDeviceToHost);
 
 
 			if(P.OutBinary == 0){
@@ -1220,7 +1230,7 @@ __host__ int Data::MaxGroups(){
 			else{
 				GSF[0].outputfile = fopen(GSF[0].outputfilename, "wb");	
 			}
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, rcrit_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);

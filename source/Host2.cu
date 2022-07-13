@@ -2409,6 +2409,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else if(GSF[st].outformat[f] == 47) ;	//aecount
 			else if(GSF[st].outformat[f] == 48) ;	//aecountT
 			else if(GSF[st].outformat[f] == 46) ;	//enccount
+			else if(GSF[st].outformat[f] == 42) ;	//Rc
 			else if(GSF[st].outformat[f] == 44) ;	//Ic
 			else if(GSF[st].outformat[f] == 45) ;	//test
 			else if(GSF[st].outformat[f] > 0){
@@ -2682,7 +2683,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 //Authors: Simon Grimm
 //July 2022
 // *****************************************
-__host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, double3 &love, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &test, FILE *infile, int st){
+__host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, double3 &love, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &rcrit, double &test, FILE *infile, int st){
 
 	int er = 0;
 	for(int f = 0; f < def_Ninformat; ++f){
@@ -2711,6 +2712,7 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 			else if(ff == 47)	er = fscanf (infile, "%lf",&skip);
 			else if(ff == 48)	er = fscanf (infile, "%lf",&aecount);
 			else if(ff == 46)	er = fscanf (infile, "%llu",&enccountT);
+			else if(ff == 42)	er = fscanf (infile, "%lf",&rcrit);
 			else if(ff == 44)	er = fscanf (infile, "%lf",&spin.w);
 			else if(ff == 45)	er = fscanf (infile, "%lf",&test);
 		}
@@ -2738,6 +2740,7 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 			else if(ff == 47)	er = fread(&skip, sizeof(float), 1, infile);
 			else if(ff == 48)	er = fread(&aecount, sizeof(float), 1, infile);
 			else if(ff == 46)	er = fread(&enccountT, sizeof(unsigned long long), 1, infile);
+			else if(ff == 42) 	er = fread(&rcrit, sizeof(double), 1, infile);
 			else if(ff == 44)	er = fread(&spin.w, sizeof(double), 1, infile);
 			else if(ff == 45) 	er = fread(&test, sizeof(double), 1, infile);
 		}
@@ -2790,7 +2793,7 @@ __host__ int Host::icSize(int st){
 	printf("Determine the size of the file %s\n", GSF[st].inputfilename);
 	
 	//Determine the simulation start time
-	double time, test;
+	double time, test, rcrit;
 	int index;
 	double4 x, v;
 	double4 spin;
@@ -2851,7 +2854,7 @@ __host__ int Host::icSize(int st){
 		}
 		else{
 
-			er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+			er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 		}
 		if(er <= 0){ //error by reading
 			er1 = 0;
@@ -2923,7 +2926,7 @@ __host__ int Host::icSize(int st){
 			}
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
-				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 
 				if(er <= 0){ //error by reading
 					er1 = 0;

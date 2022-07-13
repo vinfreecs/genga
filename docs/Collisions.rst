@@ -97,7 +97,7 @@ The time lag :math:`\Tau` of the new body is calculated as
 
 .. math::
 
-   \Tau_{\rm new} = \frac{m_i \Tau_i + m_j \Tau_j}{m_i + m_j}
+   \tau_{\rm new} = \frac{m_i \tau_i + m_j \tau_j}{m_i + m_j}
 
 
 At the end of the collision process, the body :math:`i` is transferred to be the new body, and body :math:`j`

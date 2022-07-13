@@ -1015,7 +1015,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 				}
 
 
-//printf("K0 %.10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
+//printf("K0 %d %.10g %.10g %g %g %g %g %g %g\n", id, x4i.w, a, e, inc, Omega, w, E, Theta);
 			}
 			//modify Elements
 
@@ -1033,7 +1033,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 					time1 = setElementsData_d[line1 * nelements + i];
 					time2 = setElementsData_d[line2 * nelements + i];
 					time3 = setElementsData_d[line3 * nelements + i];
-//if(id < 5) printf("interpolate elemetns  %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line0 %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
+//if(id < 5) printf("interpolate elements  %d id %d time0 %.10g time1 %.10g time2 %.10g time3 %.10g | time %.10g | line0 %d line1 %d line2 %d line3 %d\n", i, id, time0, time1, time2, time3, time, line, line1, line2, line3);
 					if(time >= time2 && line3 < nlines - nbodies){
 						line += nbodies;
 						line1 += nbodies;
@@ -1046,7 +1046,7 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 			}
 
 			setElementsLine_d[0] = line;
-			
+//printf("setLine %d %d\n", id, line);			
 
 
 			for(int i = 0; i < nelements; ++i){
@@ -1099,6 +1099,9 @@ __global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *
 
 				double f = aa * xx22 * xx + bb * xx22 + cc * xx + dd;
 
+//if(setElements_c[i] == 3){
+//	printf("id %d %d a0 %g a1 %g a2 %g a3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
+//}
 /*
 if(setElements_c[i] == 8){
 	printf("id %d %d m0 %g m1 %g m2 %g m3 %g %g\n", id, i, xx0, xx1, xx2, xx3, f);
@@ -1164,94 +1167,21 @@ if(setElements_c[i] == 13){
 			}
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 10){
-					E = M + e * 0.5;
-					double Eold = E;
-					for(int j = 0; j < 32; ++j){
-						E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
-						if(fabs(E - Eold) < 1.0e-15) break;
-						Eold = E;
-					}
+					EccentricAnomaly(M, e, E);
 				}
 			}
 			mu = def_ksq * (Msun + x4i.w);
 
 			if(doConversion == 1){
-//printf("K1 %.10g %.10g %g %g %g %g %g %g\n", x4i.w, a, e, inc, Omega, w, E, Theta);
+//printf("K1 %d %.10g %.10g %g %g %g %g %g %g\n", id, x4i.w, a, e, inc, Omega, w, E, Theta);
 				//Convert to Cartesian Coordinates
-
-				double cw = cos(w);
-				double sw = sin(w);
-				double cOmega = cos(Omega);
-				double sOmega = sin(Omega);
-				double ci = cos(inc);
-				double si = sin(inc);
-
-				double Px = cw * cOmega - sw * ci * sOmega;
-				double Py = cw * sOmega + sw * ci * cOmega;
-				double Pz = sw * si;
-
-				double Qx = -sw * cOmega - cw * ci * sOmega;
-				double Qy = -sw * sOmega + cw * ci * cOmega;
-				double Qz = cw * si;
-
-				double cE = cos(E);
-				double sE = sin(E);
-
-				double t0, t1, t2;
-
-				if(e < 1.0 - 1.0e-10){
-					//elliptic
-					t1 = a * (cE - e);
-					t2 = a * sqrt(1.0 - e * e) * sE;
-				}
-				else if(e > 1.0 + 1.0e-10){
-					//hyperbolic
-					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
-					//or
-					//double r = a * ( 1.0 - e * cosh(E));
-					//t1 = r * cos(Theta); 
-					//t2 = r * sin(Theta); 
-					t1 = a * (cosh(E) - e);
-					t2 = -a * sqrt(e * e - 1.0) * sinh(E);
-				}
-				else{
-					//parabolic
-					// a is assumed to be q, p = 2q, p = h^2/mu
-					double r = 2 * a /(1.0 + cos(Theta));
-					t1 = r * cos(Theta);
-					t2 = r * sin(Theta);
-				}
-
-
-				x4i.x =  t1 * Px + t2 * Qx;
-				x4i.y =  t1 * Py + t2 * Qy;
-				x4i.z =  t1 * Pz + t2 * Qz;
-
-				if(e < 1.0 - 1.0e-10){
-					//elliptic
-					t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-					t1 = -sE;
-					t2 = sqrt(1.0 - e * e) * cE;
-				}
-				else if(e > 1.0 + 1.0e-10){
-					//hyperbolic
-					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
-					double r = a * ( 1.0 - e * cosh(E));
-					t0 = sqrt(-mu * a) / r;
-					t1 = -sinh(E);
-					t2 = sqrt(e * e - 1.0) * cosh(E);
-				}
-				else{
-				//parabolic
-					t0 = mu / sqrt(2.0 * a * mu);
-					t1 = -sin(Theta);
-					t2 = 1.0 +  cos(Theta);
-				}
-
-
-				v4i.x = t0 * (t1 * Px + t2 * Qx);
-				v4i.y = t0 * (t1 * Py + t2 * Qy);
-				v4i.z = t0 * (t1 * Pz + t2 * Qz);
+				x4i.x = a;
+				x4i.y = e;
+				x4i.z = inc;
+				v4i.x = Omega;
+				v4i.y = w;
+				v4i.z = E;
+				KepToCart_E(x4i, v4i, Msun);
 			}
 
 			for(int i = 0; i < nelements; ++i){
@@ -2159,38 +2089,13 @@ __global__ void PoyntingRobertsonEffect_averaged(double4 *x4_d, double4 *v4_d, i
 
 				//Convert to Cartesian Coordinates
 
-				double cw = cos(w);
-				double sw = sin(w);
-				double cOmega = cos(Omega);
-				double sOmega = sin(Omega);
-				double ci = cos(inc);
-				double si = sin(inc);
-
-				double3 P3;
-				P3.x = cw * cOmega - sw * ci * sOmega;
-				P3.y = cw * sOmega + sw * ci * cOmega;
-				P3.z = sw * si;
-
-				double3 Q3;
-				Q3.x = -sw * cOmega - cw * ci * sOmega;
-				Q3.y = -sw * sOmega + cw * ci * cOmega;
-				Q3.z = cw * si;
-
-				double cE = cos(E);
-				double sE = sin(E);
-				double t1 = a * (cE - e);
-				double t2 = a * sqrt(1.0 - e * e) * sE;
-
-				x4i.x =  t1 * P3.x + t2 * Q3.x;
-				x4i.y =  t1 * P3.y + t2 * Q3.y;
-				x4i.z =  t1 * P3.z + t2 * Q3.z;
-
-				double t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-				t1 = -sE;
-				t2 = sqrt(1.0 - e * e) * cE;
-				v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
-				v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
-				v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
+				x4i.x = a;
+				x4i.y = e;
+				x4i.z = inc;
+				v4i.x = Omega;
+				v4i.y = w;
+				v4i.z = E;
+				KepToCart_E(x4i, v4i, Msun);
 
 				x4_d[id] = x4i;
 				v4_d[id] = v4i;

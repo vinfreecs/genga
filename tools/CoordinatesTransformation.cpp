@@ -90,7 +90,7 @@ void CartesianToKepler(double x, double y, double z, double vx, double vy, doubl
 	}
 
 	//circular, inclinded orbit
-		if(e < 1.0e-10 && inc > 1.0e-11){
+	if(e < 1.0e-10 && inc > 1.0e-11){
 		w = 0.0;
 	}
 

@@ -9,6 +9,7 @@
 #endif
 
 
+
 // *************************************
 // Authors: Simon Grimm, Joachim Stadel
 // March 2014
@@ -327,6 +328,9 @@ public:
 	__host__ void GasAccCall2_small(double *, double *, double);
 	__host__ void GasAccCall_M(double *, double *, double);
 
+	//createparticle
+	__host__ void create1Call();
+
 #if def_CPU == 1
 	__host__ void firstKick_cpu(int);
 	__host__ int step_cpu(int);
@@ -351,7 +355,7 @@ private:
 	__host__ void resize(int, int &);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

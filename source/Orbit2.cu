@@ -1345,19 +1345,20 @@ __host__ int Data::readic(int st){
 		love.x = 0.0;
 		love.y = 0.0;
 		love.z = 0.0;
+		rcrit = 0.0;
 
 		if(P.FormatP == 1){
 
 			//skip previous time steps
 			if(P.FormatT == 0){
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 			}
 			if(P.FormatT == 1){
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 			}
@@ -1366,14 +1367,14 @@ __host__ int Data::readic(int st){
 			//skip previous simulation data
 			if(P.FormatS == 1){
 				for(int i = 0; i < NBS; ++i){
-					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 				}
 			}
 
 			int iismall = 0;
 			for(int i = 0; i < N + Nsmall; ++i){
-				if(i > 0) readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+				if(i > 0) readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
@@ -1391,6 +1392,7 @@ __host__ int Data::readic(int st){
 				index_h[ii + NBSN] = index;
 				x4_h[ii + NBSN] = x;
 				v4_h[ii + NBSN] = v;
+				rcrit_h[ii + NBSN] = rcrit;
 				spin_h[ii + NBSN] = spin;
 				love_h[ii + NBSN] = love;
 				aelimits_h[ii + NBSN] = aelimits;
@@ -1440,11 +1442,11 @@ __host__ int Data::readic(int st){
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-						er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, test, infile, st);
+						er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				}
 				if(er <= 0) continue;
@@ -1465,6 +1467,7 @@ __host__ int Data::readic(int st){
 				index_h[ii + NBSN] = index;
 				x4_h[ii + NBSN] = x;
 				v4_h[ii + NBSN] = v;
+				rcrit_h[ii + NBSN] = rcrit;
 				spin_h[ii + NBSN] = spin;
 				love_h[ii + NBSN] = love;
 				aelimits_h[ii + NBSN] = aelimits;

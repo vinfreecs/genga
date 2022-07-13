@@ -500,75 +500,14 @@ __global__ void CallYarkovsky_averaged(double4 *x4_d, double4 *v4_d, double4 *sp
 				//Convert to Cartesian Coordinates
 
 //printf("K2 %d %.20g %.20g %g %g %g %g %g\n", id, a, e, inc, Omega, w, E, Theta);
+				x4i.x = a;
+				x4i.y = e;
+				x4i.z = inc;
+				v4i.x = Omega;
+				v4i.y = w;
+				v4i.z = E;
+				KepToCart_E(x4i, v4i, Msun);
 
-				double cw = cos(w);
-				double sw = sin(w);
-				double cOmega = cos(Omega);
-				double sOmega = sin(Omega);
-				double ci = cos(inc);
-				double si = sin(inc);
-
-				double3 P3;
-				P3.x = cw * cOmega - sw * ci * sOmega;
-				P3.y = cw * sOmega + sw * ci * cOmega;
-				P3.z = sw * si;
-
-				double3 Q3;
-				Q3.x = -sw * cOmega - cw * ci * sOmega;
-				Q3.y = -sw * sOmega + cw * ci * cOmega;
-				Q3.z = cw * si;
-
-				double cE = cos(E);
-				double sE = sin(E);
-
-				double t0, t1, t2;
-
-				if(e < 1.0 - 1.0e-10){
-					//eplliptic
-					t1 = a * (cE - e);
-					t2 = a * sqrt(1.0 - e * e) * sE;
-				}
-				else if(e > 1.0 + 1.0e-10){
-					//hyperbolic
-					t1 = a * (cosh(E) - e);
-					t2 = -a * sqrt(e * e - 1.0) * sinh(E);
-				}
-				else{
-					//parabolic
-					// a is assumed to be q, p = 2q, p = h^2/mu
-					double r = 2 * a /(1.0 + cos(Theta));
-					t1 = r * cos(Theta);
-					t2 = r * sin(Theta);
-				}
-		
-				x4i.x =  t1 * P3.x + t2 * Q3.x;
-				x4i.y =  t1 * P3.y + t2 * Q3.y;
-				x4i.z =  t1 * P3.z + t2 * Q3.z;
-
-				if(e < 1.0 - 1.0e-10){
-					//elliptic
-					t0 = 1.0 / (1.0 - e * cE) * sqrt(mu / a);
-					t1 = -sE;
-					t2 = sqrt(1.0 - e * e) * cE;
-				}
-				else if(e > 1.0 + 1.0e-10){
-					//hyperbolic
-					//double r = a * (1.0 - e*e)/(1.0 + e *cos(Theta));
-					double r = a * ( 1.0 - e * cosh(E));
-					t0 = sqrt(-mu * a) / r;
-					t1 = -sinh(E);
-					t2 = sqrt(e * e - 1.0) * cosh(E);
-				}
-				else{
-					//parabolic
-					t0 = mu / sqrt(2.0 * a * mu);
-					t1 = -sin(Theta);
-					t2 = 1.0 +  cos(Theta);
-				}
-
-				v4i.x = t0 * (t1 * P3.x + t2 * Q3.x);
-				v4i.y = t0 * (t1 * P3.y + t2 * Q3.y);
-				v4i.z = t0 * (t1 * P3.z + t2 * Q3.z);
 				x4_d[id] = x4i;
 				v4_d[id] = v4i;
 			}

@@ -9,6 +9,7 @@
 #include "BSBM.h"
 #include "BSB64M.h"
 #include "ComEnergy.h"
+#include "convert.h"
 #include "force.h"
 #include "forceYarkovskyOld.h"
 #include "Kick4.h"
@@ -23,7 +24,7 @@
   #include "BSRV.h"
 #endif
 #include "Scan.h"
-
+#include "createparticles.h"
 #if G3 > 0
 	#include "BSBG3.h"
 #endif

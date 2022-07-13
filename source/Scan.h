@@ -78,7 +78,9 @@ __global__ void Scan32d1_kernel(int2 *scan_d, const int N){
 	__syncthreads();
 //if(id < 1024) printf("Scan C %d %d %d\n", id, idy, t0);
 
-	scan_d[id].x = t0;
+	if(id < N){
+		scan_d[id].x = t0;
+	}
 
 	if(idy == blockDim.x - 1){
 		scan_d[blockIdx.x].y = t0;

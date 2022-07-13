@@ -66,7 +66,8 @@ Possible arguments are:
   | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
 - | Ic: moment of inertia, dimensionless (See :ref:`Units`) (default = 0.4).
   | If this is given, then it must also be set in the :literal:`Output file Format`: argument. 
-- test: optional value to store in the test arrays.
+- Rc:  Critical radius for close encounters, rcrit, in AU (default = 0.0)
+- test: Optional value to store in the test arrays.
 - :literal:`-`: skip column, optional.
 
 
