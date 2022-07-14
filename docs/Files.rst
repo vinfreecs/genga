@@ -400,7 +400,7 @@ The Fragments File: Fragments<name>.dat
 ---------------------------------------
 See :ref:`SmallBodies`.
 
-This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` in the :ref:`param.dat<ParamFile>` file is enabled. The file contains information about fragmentation and rotation reset events::
+This file is only created when the model for small bodies collisions :literal:`UseSmallCollisions` or the particle creation mode :literal:`Create Particles` in the :ref:`param.dat<ParamFile>` file are enabled. The file contains information about fragmentation and rotation reset events::
 
 	time index m r x y z vx vy vz Sx Sy Sz event
 	.
@@ -408,12 +408,20 @@ This file is only created when the model for small bodies collisions :literal:`U
 	.
 
 the 'event' indicates the following:
- -  0: rotation rate reset
- - -1: Collision, the particle is destroyed, and it is replaced with new fragments (listed in the next lines with event=1 or event=2 of this file)
- - 1: A new fragment particle. The original body is the last body in this file with event = -1.
- - 2: A new fragment particle. The original body is the last body in this file with event = -1. This body is too small and it is directly removed from the simulation.
+ - 0: | rotation rate reset
+      | Used in :literal:`UseSmallCollisions` = 1 or 2  mode.
+ - -1: | Collision, the particle is destroyed, and it is replaced with new fragments (listed in the next lines with event=1 or event=2 of this file)
+       | Used in :literal:`UseSmallCollisions` = 1 or 3 mode.
+ - 1: | A new fragment particle. The original body is the last body in this file with event = -1.
+      | Used in :literal:`UseSmallCollisions` = 1 or 3 mode.
+ - 2: | A new fragment particle. The original body is the last body in this file with event = -1.
+      | This body is too small and it is directly removed from the simulation.
+      | Used in :literal:`UseSmallCollisions` = 1 or 3 mode.
+ - 10: | A new particle is created.
+       | Used in :literal:`Create Particles` = 1 mode.
 
-Each newly created fragment gets a new, increasing,  index number.
+
+Each newly created fragment gets a new, increasing, index number.
 This file permits to recronstruct the collision and fragmentation history of every particle.
 
 

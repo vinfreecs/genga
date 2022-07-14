@@ -1323,7 +1323,7 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
 #if USE_RANDOM == 1
 	int N = N_d[st];
 
@@ -1434,6 +1434,9 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 
 					double4 spin;
 					spin.w = spin_d[id].w;
+					double3 love;
+					love = love_d[id];
+
 
 					double S = spin.w * m * r * r * omega;
 					u = curand_uniform(&random);
@@ -1450,6 +1453,7 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 						spin.z *= -1.0;
 					}
 					spin_d[ii + N + Nsmall] = spin;
+					love_d[ii + N + Nsmall] = love;
 					index_d[ii + N + Nsmall] = MaxIndex + ii + 1;
 
 
@@ -1504,6 +1508,14 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 						v4_d[i + N + Nsmall].z = 0.0;
 						v4_d[i + N + Nsmall].w = 0.0;
 
+						spin_d[i + N + Nsmall].x = 0.0;
+						spin_d[i + N + Nsmall].y = 0.0;
+						spin_d[i + N + Nsmall].z = 0.0;
+						spin_d[i + N + Nsmall].w = 0.4;
+	
+						love_d[i + N + Nsmall].x = 0.0;
+						love_d[i + N + Nsmall].y = 0.0;
+						love_d[i + N + Nsmall].z = 0.0;
 					}
 				}
 			
@@ -1539,6 +1551,11 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 				spin_d[id].x = 0.0;
 				spin_d[id].y = 0.0;
 				spin_d[id].z = 0.0;
+				spin_d[id].w = 0.4;
+
+				love_d[id].x = 0.0;
+				love_d[id].y = 0.0;
+				love_d[id].z = 0.0;
 
 				index_d[id] = -1;
 			}
@@ -1548,11 +1565,11 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 #endif
 }
 
-__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
+__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
 	if(Nsmall_h[0] > 0.0){
 		int st = 0;
 		nFragments_m[0] = -1;
-		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
+		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
 		cudaDeviceSynchronize();
 		if(nFragments_m[0] > 0){
 			Nsmall_h[st] += nFragments_m[0];

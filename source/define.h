@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.152
+#define def_Version 3.153
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -91,6 +91,7 @@
 #define def_Asteroid_rmin 0.01		//minimal radius of new generated particles in m 
 #define def_Asteroid_rdel 0.01		//remove limit for new generated particles in n
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
+#define def_CreateParticles 0		//flag for particle creation mode
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
@@ -352,6 +353,7 @@ struct Parameter{
 	int UseJ2;
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
+	int CreateParticles;
 	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient
 	double SolarWind;		//ratio of solar wind drag to Poynting-Robertson drag

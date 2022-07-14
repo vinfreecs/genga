@@ -386,6 +386,11 @@ Non-Newtonian forces
    - 2: enable only rotation reset model for test particles.
    - 3: enable only fragmentation model for test particles.
 
+- | :literal:`Create Particles`: Flag to enable particle creation model.
+  | See :ref:`CreateParticles`
+  
+   - 0 (default): model is not enabled
+   - 1: enable test particles creation model 1. Particles are created on new random orbits.
 
 - | :literal:`Asteroid collisional velocity V`, in m/s, used for small bodies collision model
   | See :ref:`SmallBodies`

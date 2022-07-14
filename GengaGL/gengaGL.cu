@@ -217,12 +217,15 @@ void display(){
 	cudaGraphicsMapResources(1, &colorsVBO_CUDA, 0);
 	cudaGraphicsResourceGetMappedPointer((void**)&colors, &num_bytes, colorsVBO_CUDA);
 
-
 	if(stop == 0){
-		for(int i = 0; i < 1; ++i){
-			D.timeStep = ts;
+		D.timeStep = ts;
+		if(D.timeStep <= D.P.deltaT){
 			int er = D.timeStepLoop(interrupted, 0);
 			time = D.time_h[0] / 365.25;
+			++ts;
+		}
+		else if(ts == D.P.deltaT + 1){
+			printf("Reached the end, simulation stopped\n");
 			++ts;
 		}
 	}
@@ -449,9 +452,6 @@ int main(int argc, char*argv[]){
 	int Nst = H.NSimulations(argc, argv);
 	if(Nst == 0) return 0;
 
-	//Check Device Informations
-	int DevError = H.DeviceInfo();
-	if(DevError == 0) return 0;
 
 	//Allocate memory for parameters on the host:
 	H.Halloc();
@@ -462,12 +462,18 @@ int main(int argc, char*argv[]){
 	if(er == 0) return 0;
 	printf("Parameters OK\n");
 
+	//Check Device Informations
+	int DevError = H.DeviceInfo();
+	if(DevError == 0) return 0;
+
+
 	// Determine the size of the simulations
 	printf("Read Size\n");
 	er = H.size();
 	if(er == 0) return 0;
 	
 	printf("Size OK\n");
+
 	cudaDeviceSynchronize();
 //	cudaDeviceReset();
 	error = cudaSetDevice(H.P.dev[0]);
@@ -502,7 +508,7 @@ int main(int argc, char*argv[]){
 	// Create buffer object and register it with CUDA
 	glGenBuffers(1, &positionsVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, positionsVBO);
-	unsigned int size = (D.N_h[0] + D.Nsmall_h[0] + def_Nfragments) *  sizeof(double4);
+	unsigned int size = D.NconstT * sizeof(double4);
 
 	glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
 	error = cudaGraphicsGLRegisterBuffer(&positionsVBO_CUDA, positionsVBO, cudaGraphicsMapFlagsWriteDiscard);

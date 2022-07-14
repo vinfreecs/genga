@@ -259,6 +259,7 @@ public:
 	__host__ int printEncounters();
 	__host__ int printFragments(int);
 	__host__ int printRotation();
+	__host__ int printCreateparticle();
 	__host__ int printTransits();
 	__host__ int printRV();
 	__host__ int printRV2();
@@ -329,7 +330,7 @@ public:
 	__host__ void GasAccCall_M(double *, double *, double);
 
 	//createparticle
-	__host__ void create1Call();
+	__host__ int create1Call();
 
 #if def_CPU == 1
 	__host__ void firstKick_cpu(int);

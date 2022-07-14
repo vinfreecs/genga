@@ -2989,7 +2989,7 @@ __host__ int Data::step_small(int noColl){
 			if(col == 0) return 0;
 		}
 		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
-			fragmentCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
+			fragmentCall(random_d, x4_d, v4_d, spin_d, love_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
 			if(nFragments_m[0] > 0){
 				int er = printFragments(nFragments_m[0]);
 				if(er == 0) return 0;
@@ -3013,8 +3013,15 @@ __host__ int Data::step_small(int noColl){
 			if(enc == 0) return 0;
 		}
 
-		HCCall(Ct[si], -1);
+		if(P.CreateParticles == 1){
+			int er = create1Call();
+			if(er == 0) return 0;
+			if(nFragments_m[0] > 0){
+				printCreateparticle();
+			}
+		}
 
+		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
 				acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);

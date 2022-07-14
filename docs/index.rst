@@ -89,7 +89,14 @@ Small body collision model
 
    SmallBodies.rst
 
+Create particle model
+---------------------
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Create particles model:
+
+   CreateParticles.rst
 
 Bibliography
 ------------
