@@ -1,7 +1,7 @@
 #include "Host2.h"
 
 // **************************************
-//This function converts heliocentric coordinares to democratic coordinates.
+//This function converts heliocentric coordinates to democratic coordinates.
 __global__ void HelioToDemo_kernel(double4 *x4_d, double4 *v4_d, int *NBS_d, double Msun, int Nst, int N){
 
 	int idy = threadIdx.x;
@@ -34,10 +34,11 @@ __global__ void HelioToDemo_kernel(double4 *x4_d, double4 *v4_d, int *NBS_d, dou
 			v4_d[i + NBS].x -= vcom.x;
 			v4_d[i + NBS].y -= vcom.y;
 			v4_d[i + NBS].z -= vcom.z;
+//printf("%d %.20g %.20g\n", i + NBS, x4_d[i + NBS].x, v4_d[i + NBS].x);
 		}
 	}
 }
-//This function converts heliocentric coordinares to barycentric coordinates.
+//This function converts heliocentric coordinates to barycentric coordinates.
 //the zeroth body must bes the central star
 __global__ void HelioToBary_kernel(double4 *x4_d, double4 *v4_d, int *NBS_d, double Msun, int Nst, int N){
 
@@ -2659,7 +2660,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 				M = fmod(M, 2.0 * M_PI);
 				if(M < 0.0) M+= 2.0 * M_PI;
 
-//printf("ModifyR %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g | %g\n", ii, m, r, P, e, inc, Omega, w, T, a, z);
+//printf("ModifyR %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g | %g\n", ii, m, r, P, e, inc, Omega, w, T, a, M, z);
 			}
 
 

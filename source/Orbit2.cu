@@ -1308,7 +1308,7 @@ __host__ int Data::readic(int st){
 		}// end of particle loop
 		//check now if the file is finished
 		er = fscanf (infile, "%lf",&skip);
-		if(er != -1){
+		if(er != -1 && st == Nst -1){
 			printf("Error, initial condition file format is not correct\n");
 			return 0;
 		}
@@ -1636,7 +1636,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 }
 
 // **************************************
-//This function converts heliocentric coordinares to democratic coordinates.
+//This function converts heliocentric coordinates to democratic coordinates.
 __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
 	double mtot = 0.0;
@@ -1665,7 +1665,7 @@ __host__ void Data::HelioToDemo(double4 *x4_h, double4 *v4_h, double Msun, int N
 		v4_h[i].z -= vcom.z;
 	}
 }
-// This function converts heliocentric coordinares to barycentric coordinates.
+// This function converts heliocentric coordinates to barycentric coordinates.
 // The zeroth body must be the cetnral star here
 __host__ void Data::HelioToBary(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
@@ -1710,7 +1710,7 @@ __host__ void Data::HelioToBary(double4 *x4_h, double4 *v4_h, double Msun, int N
 	}
 }
 // **************************************
-//This function converts democratic coordinares to heliocentric coordinates.
+//This function converts democratic coordinates to heliocentric coordinates.
 __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
 	double3 vcom;
@@ -1737,7 +1737,7 @@ __host__ void Data::DemoToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 
 }
 // **************************************
-//This function converts barycentric coordinares to heliocentric coordinates.
+//This function converts barycentric coordinates to heliocentric coordinates.
 // The zeroth body must be the cetnral star here
 __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N){
 

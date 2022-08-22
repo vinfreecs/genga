@@ -80,7 +80,6 @@ printf("Create particle, %d\n", MaxIndex + nf);
 			}
 		}
 	}
-
 }
 
 
