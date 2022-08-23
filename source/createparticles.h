@@ -1,9 +1,10 @@
 #include "Orbit2.h"
 
 __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int NN, double dt, double Msun, double time, int MaxIndex, double *Fragments_d, int *nFragments_d, int NconstT){
+#if USE_RANDOM == 1
 
-        int idy = threadIdx.x;
-        int id = blockIdx.x * blockDim.x + idy;
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy;
 
 	if(id < NN){
 
@@ -80,6 +81,7 @@ printf("Create particle, %d\n", MaxIndex + nf);
 			}
 		}
 	}
+#endif
 }
 
 

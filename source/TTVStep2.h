@@ -652,6 +652,8 @@ __global__ void SetSA_kernel(double* elementsSA_d, int Nst){
 //Author: Simon Grimm
 // *******************************************************
 __global__ void setCovarianceRandom1(curandState *random_d, elements10 *elementsL_d, int Nst, int N0){
+#if USE_RANDOM == 1
+
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	curandState random;	
@@ -664,30 +666,31 @@ __global__ void setCovarianceRandom1(curandState *random_d, elements10 *elements
 			//P
 			double rd = curand_normal(&random);
 			elementsL_d[idx * N0 + idy].P = rd;
-#if MCMC_NCOV > 1
+ #if MCMC_NCOV > 1
 			//T
 			rd = curand_normal(&random);
 			elementsL_d[idx * N0 + idy].T = rd;
-#endif
-#if MCMC_NCOV > 2
+ #endif
+ #if MCMC_NCOV > 2
 			//m
 			rd = curand_normal(&random);
 			elementsL_d[idx * N0 + idy].m = rd;
-#endif
-#if MCMC_NCOV > 3
+ #endif
+ #if MCMC_NCOV > 3
 			//e
 			rd = curand_normal(&random);
 			elementsL_d[idx * N0 + idy].e = rd;
-#endif
-#if MCMC_NCOV > 4
+ #endif
+ #if MCMC_NCOV > 4
 			//w
 			rd = curand_normal(&random);
 			elementsL_d[idx * N0 + idy].w = rd;
-#endif
+ #endif
 			random_d[idx * N0 + idy] = random;
 
 		}
 	}
+#endif
 }
 
 __global__ void setCovarianceRandom(double *elementsCOV_d, elements10 *elementsL_d, int Nst, int N0){
@@ -1285,126 +1288,6 @@ if(id == 0) printf("alpha %g\n", alpha);
 }
 
 //RMSprop with hyperparmaters optimization
-__global__ void rmsprop(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
-	int iid = id / (Ne * N0 + 1);	//simulation index, consisting with all the (35) gradient points, plus one point without gradient (total 36)
-	int jjd = id % (Ne * N0 + 1);	// map to 0 - 35
-
-
-	if(id < Nst && jjd < Ne * N0){
-		double dx, dx1, gx, Gx;
-
-		double eta = 0.01;
-		double eps = 1.0e-6;
-		
-		double beta = 0.9;
-
-		int nne = iid * (Ne * N0 + 1);			//corresponds to 0, 36, 72,...
-		int nne0 = nne + (Ne * N0);			//corresponds to 35, 71, 107,...
-
-		int jj = jjd % Ne;
-		int ii = jjd / Ne;
-
-//printf("nne0 %d %d %d %d %d %d\n", id, iid, jjd, nne0, jj, ii);
-
-		if(jj == 0){
-			dx = elementsL_d[id * N0 + ii].P;
-			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
-			Gx = beta * elementsG_d[id * N0 + ii].P + (1.0 - beta) * gx * gx;
-			elementsG_d[id * N0 + ii].P = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].P;
-			if(gx == 0.0 || dx == 0) dx1 = 0.0;
-			//elementsL_d[id * N0 + ii].P = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Ne * N0 + 1; ++j){
-				if(j % Ne == 0 && j / Ne == ii){
-					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + 1.1 * dx1;
-				}
-				else{
-					elementsTOld_d[(j + nne) * N0 + ii].z = elementsTOld_d[nne0 * N0 + ii].z + dx1;
-				}
-			}
-//printf("dx P %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].z, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].P);
-		}
-		if(jj == 1){
-			dx = elementsL_d[id * N0 + ii].T;
-			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
-			Gx = beta * elementsG_d[id * N0 + ii].T + (1.0 - beta) * gx * gx;
-			elementsG_d[id * N0 + ii].T = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].T;
-			if(gx == 0.0 || dx == 0) dx1 = 0.0;
-			//elementsL_d[id * N0 + ii].T = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Ne * N0 + 1; ++j){
-				if(j % Ne == 1 && j / Ne == ii){
-					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + 1.1 * dx1;
-				}
-				else{
-					elementsTOld_d[(j + nne) * N0 + ii].x = elementsTOld_d[nne0 * N0 + ii].x + dx1;
-				}
-			}
-//printf("dx T %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsTOld_d[id * N0 + ii].x, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].T);
-		}
-		if(jj == 2){
-			dx = elementsL_d[id * N0 + ii].m;
-			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
-			Gx = beta * elementsG_d[id * N0 + ii].m + (1.0 - beta) * gx * gx;
-			elementsG_d[id * N0 + ii].m = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].m;
-			if(gx == 0.0 || dx == 0) dx1 = 0.0;
-			//elementsL_d[id * N0 + ii].m = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Ne * N0 + 1; ++j){
-				if(j % Ne == 2 && j / Ne == ii){
-					elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + 1.1 * dx1;
-				}
-				else{
-					 elementsAOld_d[(j + nne) * N0 + ii].w = elementsAOld_d[nne0 * N0 + ii].w + dx1;
-				}
-			}
-//printf("dx m %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].x, 2.0 * elementsP_d[nne0].x, elementsAOld_d[id * N0 + ii].w, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].m);
-		}
-		if(jj == 3){
-			dx = elementsL_d[id * N0 + ii].e;
-			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
-			Gx = beta * elementsG_d[id * N0 + ii].e + (1.0 - beta) * gx * gx;
-			elementsG_d[id * N0 + ii].e = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].e;
-			if(gx == 0.0 || dx == 0) dx1 = 0.0;
-			//elementsL_d[id * N0 + ii].e = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Ne * N0 + 1; ++j){
-				if(j % Ne == 3 && j / Ne == ii){
-					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
-				}
-				else{
-					elementsAOld_d[(j + nne) * N0 + ii].y = elementsAOld_d[nne0 * N0 + ii].y + dx1;
-				}
-			}
-//printf("dx e %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsAOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].e);
-		}
-		if(jj == 4){
-			dx = elementsL_d[id * N0 + ii].w;
-			gx = -2.0 * (elementsP_d[nne0].z - elementsP_d[id].z) / dx;
-			Gx = beta * elementsG_d[id * N0 + ii].w + (1.0 - beta) * gx * gx;
-			elementsG_d[id * N0 + ii].w = Gx;
-			dx1 = -eta / sqrt(Gx + eps*dx) * gx * elementsGh_d[id * N0 + ii].w;
-			if(gx == 0.0 || dx == 0) dx1 = 0.0;
-			//elementsL_d[id * N0 + ii].w = fmax(fmin(fabs(dx1), dx), 1.0e-16);
-			for(int j = 0; j < Ne * N0 + 1; ++j){
-				if(j % Ne == 4 && j / Ne == ii){
-					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + 1.1 * dx1;
-				}
-				else{
-					elementsBOld_d[(j + nne) * N0 + ii].y = elementsBOld_d[nne0 * N0 + ii].y + dx1;
-				}
-			}
-//printf("dx w %d %d %d %.20g %.20g %g | %g %g %g %g %g\n", id, jjd, ii, 2.0 * elementsP_d[id].z, 2.0 * elementsP_d[nne0].z, elementsBOld_d[id * N0 + ii].y, dx, gx, sqrt(Gx + eps*dx), dx1, eta * elementsGh_d[id * N0 + ii].w);
-		}
-	
-
-	}
-}
-
-//RMSprop with hyperparmaters optimization
 __global__ void rmsprop2(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, elements8 *elementsG_d, elements8 *elementsGh_d, elements8 *elementsD_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst){
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -1827,6 +1710,7 @@ printf("min %d %d %g %g \n", i, imin, min, elementsP_d[i].z);
 
 //This kernel modifies the non-gradient simulations with random numbers. Used to initialize multiple gradient runs.
 __global__ void rmsPropRand(curandState *random_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements10 *elementsL_d, const int N0, const int Ne, const int Nst){
+#if USE_RANDOM == 1
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -1873,6 +1757,7 @@ __global__ void rmsPropRand(curandState *random_d, double4 *elementsAOld_d, doub
 //printf("dh P %d %d %d %.20g %.20g | %g %g\n", id, jjd, ii, 2.0 * elementsP_d[nne0].z, 2.0 * elementsP_d[id].z, elementsGh_d[id * N0 + ii].P, elementsTOld_d[id * N0 + ii].z);
 		random_d[id] = random;
 	}
+#endif
 }
 
 __global__ void tuneHyperParameters(double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, elements8 *elementsGh_d, double4 *elementsP_d, const int N0, const int Ne, const int Nst, const int ittv){
@@ -2276,6 +2161,7 @@ if(i == 0) printf("contract2\n");
 //EE = 5: ADAGRAD
 //EE = 10 Refine
 __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsT_d, double4 *elementsSpin_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double4 *elementsTOld_d, double4 *elementsSpinOld_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double2 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE){
+#if USE_RANDOM == 1
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -2303,11 +2189,11 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 		}
 
 //use this for decoupled chains, pure MCMC with a covariance matrix
-#if MCMC_NCOV > 0
+ #if MCMC_NCOV > 0
 		z = 0;
 		eps = 0.0;
 		sc = elementsP_d[id].w;  //scaling factor
-#endif
+ #endif
 		if(EE == 0 || EE == -1){
 			z = 0.0;
 			eps = 0.0;
@@ -2761,6 +2647,7 @@ if(id == 0) printf("TT %d T %.20g P %.20g M %g %g %g %g %.20g %.20g %.20g %.20g 
 		}// end of loop around planets
 		random_d[id] = random;
 	}
+#endif
 }
 
 //quadratic estimation for period
@@ -2905,6 +2792,7 @@ __global__ void modifyElementsPQ(curandState *random_d, double4 *x4_d, double4 *
 //quadratic estimation for period
 __global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld2_d, double4 *elementsBOld2_d, elements10 *elementsL_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, double2 *Msun_d, double time, int *N_d, int Nst, int ittv, int mcmcNE, int mcmcRestart, int EE, double ff, int AA){
 
+#if USE_RANDOM == 1
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 
@@ -3196,6 +3084,7 @@ if(p1 != p2) printf("****** %d %g %g %g %g %g %g %g\n", ii, p1, p2, p3, b0, b1, 
 			v4_d[id * N0 + ii] = v4i;
 		}
 	}
+#endif
 }
 __global__ void setJ_kernel(double4 *elementsP_d, int Nst){
 
@@ -3210,6 +3099,7 @@ __global__ void setJ_kernel(double4 *elementsP_d, int Nst){
 }
 __global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *elementsI_d, int2 *elementsC_d, int Nst, int N0, double2 *Msun_d, double *elementsM_d, int ittv, int mcmcNE, int EE){
 
+#if USE_RANDOM == 1
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
 	curandState random;	
@@ -3293,6 +3183,7 @@ if(id == 0) printf("z %d %g %d %g %d\n", id, gamma,  elementsC_d[0].x, w, dd);
 			}
 		}
 	}
+#endif
 }
 
 __global__ void Mix_kernel(double4 *elementsA_d, double4 *elementsB_d, double4 *elementsAOld_d, double4 *elementsBOld_d, int2 *elementsC_d, double4 *elementsP_d, int Nst, int N, int N0){
@@ -3349,6 +3240,7 @@ __global__ void Mix_kernel(double4 *elementsA_d, double4 *elementsB_d, double4 *
 
 __global__ void TSwap_kernel(curandState *random_d, double4 *elementsP_d, double4 *elementsAOld_d, double4 *elementsBOld_d, double *elementsSA_d, int N0, int Nst){
 
+#if USE_RANDOM == 1
 	curandState random;
 	random = random_d[0];	
 
@@ -3396,6 +3288,7 @@ printf("not accept swap %3d %3d %g %g %g %g %g %g\n", i, j, pi, pj, Ti, Tj, q, r
 		}
 	}
 	random_d[0] = random;
+#endif
 }
 
 
