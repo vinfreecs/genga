@@ -319,7 +319,6 @@ public:
 
 	//gas
 	__host__ void GasAlloc();
-	__host__ void GasDisk(double *, double *, double *, double, double, double, double);
 	__host__ int setGasDisk();
 	__host__ int freeGas();
 	__host__ void gasEnergyCall(double *, double *, double *, cudaStream_t, int, int);

@@ -311,6 +311,10 @@ __host__ void Host::Halloc(){
 	P.Asteroid_rmin = def_Asteroid_rmin;
 	P.Asteroid_rdel = def_Asteroid_rdel;
 	P.G_dTau_diss = def_GasdTau_diss;
+	P.G_rg0 = def_GasRg0;
+	P.G_rg1 = def_GasRg1;
+	P.G_rp1 = def_GasRp1;
+	P.G_drg = def_GasDrg;
 	P.G_alpha = def_GasAlpha;
 	P.G_beta = def_GasBeta;
 	P.G_Sigma_10 = def_G_Sigma_10 * 1.49598*1.49598/1.98892*1.0e-7;
@@ -1376,6 +1380,70 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					printf("Error: dTau_diss value is not valid!\n");
 					return 0;
 				}
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
+		if(strcmp(sp, "Gas disk inner edge =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_rg0);
+				if(er <= 0){
+					printf("Error: Gas disk inner edge value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
+		if(strcmp(sp, "Gas disk outer edge =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_rg1);
+				if(er <= 0){
+					printf("Error: Gas disk outer edge value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
+		if(strcmp(sp, "Gas disk grid outer edge =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_rp1);
+				if(er <= 0){
+					printf("Error: Gas disk grid outer edge value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				double t;
+				er = fscanf (paramfile, "%lf", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
+		if(strcmp(sp, "Gas disk grid dr =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%lf", &P.G_drg);
+				if(er <= 0){
+					printf("Error: Gas disk grid dr value is not valid!\n");
+					return 0;
+				}
+				
 			}
 			else{
 				double t;
@@ -3255,6 +3323,10 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use gas disk drag: %d\n", P.UsegasDrag);			// use only argument in simulation 0
 			fprintf(infofile, "Use gas disk tidal damping: %d\n", P.UsegasTidalDamping);	// use only argument in simulation 0
 			fprintf(infofile, "Gas dTau_diss: %g\n", P.G_dTau_diss);			// use only argument in simulation 0
+			fprintf(infofile, "Gas disk inner edge: %g\n", P.G_rg0);			// use only argument in simulation 0
+			fprintf(infofile, "Gas disk outer edge: %g\n", P.G_rg1);			// use only argument in simulation 0
+			fprintf(infofile, "Gas disk grid outer edge: %g\n", P.G_rp1);			// use only argument in simulation 0
+			fprintf(infofile, "Gas disk grid dr: %g\n", P.G_drg);				// use only argument in simulation 0
 			fprintf(infofile, "Gas alpha: %g\n", P.G_alpha);				// use only argument in simulation 0
 			fprintf(infofile, "Gas beta: %g\n", P.G_beta);					// use only argument in simulation 0
 			fprintf(infofile, "Gas Sigma_10: %g\n", P.G_Sigma_10 / (1.49598*1.49598/1.98892*1.0e-7));// use only argument in simulation 0

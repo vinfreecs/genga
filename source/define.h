@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.154
+#define def_Version 3.155
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -70,6 +70,10 @@
 #define def_UsegasDrag 2		//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_UsegasTidalDamping 2	//Gas Grid. See Morishima, Stadel and Moore 2010 for more details
 #define def_GasdTau_diss 10000
+#define def_GasRg0 0.1			//Gas disk inner edge
+#define def_GasRg1 35.0			//Gas disk outer edge
+#define def_GasRp1 15.0			//Gas disk grid outer edge
+#define def_GasDrg 0.1			//Gas disk grid spacing
 #define def_GasAlpha 1
 #define def_GasBeta 0.25
 #define def_G_Sigma_10 2000		 //surface density at 1AU
@@ -147,14 +151,13 @@
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details
-#define def_Gasnr_g 189
 #define def_Gasnz_g 50
-#define def_Gasnr_p 150
 #define def_Gasnz_p 51
 #define def_h_1 0.03358 //scale height at 1AU for c = 1km/s*
 #define def_M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
 #define def_Mass_pl  0.502E-14 /* corresponding to 10^19g */
 #define def_fMass_min 7.55E-9
+#define def_Gas_cd 2    //numerical gas drag coefficient
 
 #define def_MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 
@@ -331,6 +334,10 @@ struct Parameter{
 	long long deltaT;		//Number of time steps to do
 	int SIO;
 	double G_dTau_diss;		//Dissipation time for Gas Disc
+	double G_rg0;			//gas disk inner edge
+	double G_rg1;			//gas disk outer edge
+	double G_rp1;			//gas disk grid outer edge
+	double G_drg;			//gas disk grid spacing
 	double G_alpha;			//alpha parameter for Gas Disc
 	double G_beta;			//beta parameter for Gas Disc
 	double G_Sigma_10;		//Gas Sigma_10

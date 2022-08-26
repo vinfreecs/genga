@@ -113,12 +113,11 @@ Parameters for the gas disk
 ---------------------------
 See :ref:`Gas`
 
-- :literal:`def_Gasnr_g`: Number of cells in r direction for gas grid
 - :literal:`def_Gasnz_g`: Number of cells in z direction for gas grid
-- :literal:`def_Gasnr_p`: Number of cells in r direction for particle grid
 - :literal:`def_Gasnz_p`: Number of cells in z direction for particle grid
 - :literal:`def_h_1`: scale height at 1AU for c = 1km/s
 - :literal:`def_M_Enhance`: factor for enhancement
 - :literal:`def_Mass_pl`: factor for enhancement
 - :literal:`def_fMass_min`: factor for enhancement
+- :literal:`def_Gas_cd`: numerical gas drag coefficient
 

@@ -2,32 +2,42 @@
 #define facrho 1.0/sqrt(2.0 * M_PI)
 
 
-double Gas_dTau_diss;
-double Gas_alpha;
-double Gas_beta;
-double *Gas_rg_h, *Gas_rg_d;
-double *Gas_zg_h, *Gas_zg_d;
-double *Gas_rho_h, *Gas_rho_d;
-double3 *GasDisk_h, *GasDisk_d;
-double3 *GasAcc_h, *GasAcc_d;
+double *Gas_rg_d;
+double *Gas_zg_d;
+double *Gas_rho_d;
+double3 *GasDisk_d;
+double3 *GasAcc_d;
+
+double Gas_parameters_h[8];
+__constant__ double Gas_parameters_c[8];
+
+int G_Nr_g, G_Nr_p;
 
 __host__ void Data::GasAlloc(){
 
-	Gas_dTau_diss = P.G_dTau_diss;
-	Gas_alpha = P.G_alpha;
-	Gas_beta = P.G_beta;
+	G_Nr_g = (P.G_rg1 - P.G_rg0 + 0.5 * P.G_drg) / P.G_drg - 1;
+	G_Nr_p = (P.G_rp1 - P.G_rg0 + 0.5 * P.G_drg) / P.G_drg + 1;
 
-	Gas_rg_h = (double*)malloc(def_Gasnr_g * sizeof(double));
-	Gas_zg_h = (double*)malloc(def_Gasnr_g * def_Gasnz_g * sizeof(double));
-	Gas_rho_h = (double*)malloc(def_Gasnr_g * def_Gasnz_g * sizeof(double));
-	GasDisk_h = (double3*)malloc(def_Gasnr_p * sizeof(double3));
-	GasAcc_h = (double3*)malloc(def_Gasnr_p * def_Gasnz_p * sizeof(double3));
+	printf("Gas N %d %d\n", G_Nr_g, G_Nr_p);
 
-	cudaMalloc((void **) &Gas_rg_d, def_Gasnr_g * sizeof(double));
-	cudaMalloc((void **) &Gas_zg_d, def_Gasnr_g * def_Gasnz_g * sizeof(double));
-	cudaMalloc((void **) &Gas_rho_d, def_Gasnr_g * def_Gasnz_g * sizeof(double));
-	cudaMalloc((void **) &GasDisk_d, def_Gasnr_p * sizeof(double3));
-	cudaMalloc((void **) &GasAcc_d, def_Gasnr_p * def_Gasnz_p * sizeof(double3));
+	cudaMalloc((void **) &Gas_rg_d, G_Nr_g * sizeof(double));
+	cudaMalloc((void **) &Gas_zg_d, G_Nr_g * def_Gasnz_g * sizeof(double));
+	cudaMalloc((void **) &Gas_rho_d, G_Nr_g * def_Gasnz_g * sizeof(double));
+	cudaMalloc((void **) &GasDisk_d, G_Nr_p * sizeof(double3));
+	cudaMalloc((void **) &GasAcc_d, G_Nr_p * def_Gasnz_p * sizeof(double3));
+
+
+
+	Gas_parameters_h[0] = P.G_dTau_diss;
+	Gas_parameters_h[1] = P.G_alpha;
+	Gas_parameters_h[2] = P.G_beta;
+	Gas_parameters_h[3] = P.G_Sigma_10;
+	Gas_parameters_h[4] = P.G_Mgiant;
+	Gas_parameters_h[5] = P.G_rg0;
+	Gas_parameters_h[6] = P.G_rg1;
+	Gas_parameters_h[7] = P.G_drg;
+
+	cudaMemcpyToSymbol(Gas_parameters_c, Gas_parameters_h, 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
 }
 
 
@@ -35,34 +45,35 @@ __host__ void Data::GasAlloc(){
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_h, double dTau_diss, double G_alpha, double G_beta, double G_Sigma_10){
+__global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, int G_Nr_g){
 
-	double dr1 = 0.1;
-	double dr2 = 0.5;
+	int ig = blockIdx.x * blockDim.x + threadIdx.x; // r
+	int jg = blockIdx.y * blockDim.y + threadIdx.y; // r
 
-	double drg, h, Sigma, zh, rg, zg;
+	double h, Sigma, zh, rg, zg;
 
-	double Sigma10 = G_Sigma_10;
+	double G_alpha = Gas_parameters_c[1];
+	double G_beta =  Gas_parameters_c[2];
+	double G_Sigma10 = Gas_parameters_c[3];
+	double rg0 = Gas_parameters_c[5];	//inner edge of the gas disk
+	double drg = Gas_parameters_c[7];	//spacing of the gas disk
+
 //	double rin, ro;
 //	if(uniform != 1){
 //		rin = 0.1 + dTime/(2.0 * M_PI * dTau_diss); // time scale for the inner edge to move 1AU
 //	}
 
-	for(int ig = 0; ig < def_Gasnr_g; ++ig){
-		if(ig < 149){
-			drg = dr1;
-			rg = 0.15 + drg * ig;
-		}
-		else{
-			drg = dr2;
-			rg = 15.25 + (ig - 149.0) * drg;
-		}
+	if(ig < G_Nr_g){
+		rg = rg0 + drg * (ig + 0.5);	//staggered grid
 
-		Gas_rg_h[ig] = rg;
+		if(jg == 0){
+			Gas_rg_d[ig] = rg;
+		}
 
 		h = def_h_1 * rg * pow(rg, G_beta); //beta = 0.25 comes from Temperature profile
-		Sigma = Sigma10 * pow(rg, -G_alpha);
-	
+		Sigma = G_Sigma10 * pow(rg, -G_alpha);
+
+//if(jg == 0) printf("GasDisk %d %g %g %g\n", ig, rg, h, Sigma);	
 //			if(uniform != 1){
 //				ro = rg + 0.5 * drg; // radius of the outer cel boundary
 //				if(rin > ro){
@@ -73,12 +84,12 @@ __host__ void Data::GasDisk(double *Gas_rg_h, double *Gas_zg_h, double *Gas_rho_
 //					Sigma *= (ro - rin)/drg;
 //				}
 //			}
-		for(int jg = 0; jg < def_Gasnz_g; ++jg){
+		if(jg < def_Gasnz_g){
 			zg = 0.01 * (0.5 + jg) * rg;
 			zh = zg / h;
-			Gas_zg_h[ig * def_Gasnz_g + jg] = zg;
-			Gas_rho_h[ig * def_Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
-//printf("%g %g %g\n", rg, zg, Gas_rho_h[ig * def_Gasnz_g + jg];
+			Gas_zg_d[ig * def_Gasnz_g + jg] = zg;
+			Gas_rho_d[ig * def_Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
+//printf("%g %g %g\n", rg, zg, Gas_rho_d[ig * def_Gasnz_g + jg];
 		}
 	}
 }
@@ -186,52 +197,40 @@ __device__ double rd(double x, double y, double z){
 	return 3.0 * sum + fac * (1.0 + ED * (ED * 9.0/88.0 - Z * EE * 4.5/26.0 - 3.0/14.0) + Z * (EE / 6.0 + Z *(EC * -9.0/22.0 + Z * EA * 3.0/26.0))) /(mu * sqrt(mu));
 }
 
-// *************************************************
-// This function corresponds to the ERRORFUNCT function in the file pkd.h in pkdgrav_planets.
-//
-// ****************************************************
-__device__ double ERFUNC(double zz){
-	double z, t, erfcc;
-	z = fabs(zz);
-	t = 1.0/(1.0 + 0.5 * z);
-	erfcc = t*exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+t*(-0.18628806+t*(0.27886807+t*(-1.13520398+t*(1.48851587+t*(-0.82215223+t*0.17087277)))))))));
-	double erfc = 1.0-erfcc;
-	if(zz < 0)erfc *= -1;
-
-	return erfc;
-}
 
 // *************************************************
 // This function corresponds to the msrGasTable function in the file master.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, double G_alpha, double G_beta, double G_Sigma_10){
+__global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, double3 *GasDisk_d, double3 *GasAcc_d, int G_Nr_g, int G_Nr_p){
 
 	int ip = blockIdx.x * blockDim.x + threadIdx.x; // r
 	int jp = blockIdx.y * blockDim.y + threadIdx.y; // z
 
-
-	double dr1 = 0.1;
-	double dr2 = 0.5;
-
 	volatile double ar, az;
-	double rp, zp, drg;
+	double rp, zp;
 	double h;
 	double ellf, elle;
 
-	if(ip < def_Gasnr_p){	
-		rp = 0.1 + dr1 * ip;
+	double G_alpha = Gas_parameters_c[1];
+	double G_beta =  Gas_parameters_c[2];
+	double G_Sigma10 = Gas_parameters_c[3];
+	double rg0 = Gas_parameters_c[5];	//inner edge of the gas disk
+	double drg = Gas_parameters_c[7];	//spacing of the gas disk
+
+	if(ip < G_Nr_p){	
+		rp = rg0 + drg * ip;
 
 		h = def_h_1 * rp * pow(rp, G_beta);
-		double Sigma = G_Sigma_10 * pow(rp, -G_alpha);
+		double Sigma = G_Sigma10 * pow(rp, -G_alpha);
 //		if(uniform != 1){
-//			ro = rp + 0.5 * dr1; // radius of the outer cel boundary
-//			if(rin > rp + 0.5 * dr1){
+//			ro = rp + 0.5 * drg; // radius of the outer cel boundary
+//			if(rin > rp + 0.5 * drg){
 //				Sigma = 0.0;
 //			}
-//			else if(fabs(rin - rp) < 0.5 * dr1){
-//				//if((ro - rin) > dr1) send error
-//				Sigma *= (ro - rin)/dr1;
+//			else if(fabs(rin - rp) < 0.5 * drg){
+//				//if((ro - rin) > drg) send error
+//				Sigma *= (ro - rin)/drg;
 //			}
 //		}
 
@@ -239,19 +238,17 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 			GasDisk_d[ip].x = Sigma;
 			GasDisk_d[ip].y = h;
 			GasDisk_d[ip].z = rp;
-//printf("%d %g %g %g\n", ip, Sigma, h, rp);
+//printf("GasDisk_d %d %g %g %g\n", ip, rp, h, Sigma);
 		}
 	}
 	__syncthreads();
 
-	if(ip < def_Gasnr_p && jp < def_Gasnz_p){
+	if(ip < G_Nr_p && jp < def_Gasnz_p){
 
 		zp = (0.03 * jp) * rp;
 		ar = 0.0;
 		az = 0.0;
-		for(int ig = 0; ig < def_Gasnr_g; ++ig){
-			if(ig < 150) drg = dr1;
-			else drg = dr2;
+		for(int ig = 0; ig < G_Nr_g; ++ig){
 			double rgas = Gas_rg_d[ig];
 			double dzg = 0.03 * rgas;
 			
@@ -267,7 +264,6 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 				double k2 = (4.0 * rp * rgas) / rpzm;
 				ellf = rf(0.0, 1.0 - k2, 1.0);
 				elle = rf(0.0, 1.0 - k2, 1.0) - k2 * rd(0.0, 1.0 - k2, 1.0) / 3.0;
-
 				volatile double temp = -2.0 * (rho_gas / sqrt(rpzm)) * rgas * drg * dzg;
 				elle /= rmzm;
 
@@ -294,23 +290,22 @@ __global__ void gasTabel_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 		GasAcc_d[ip * def_Gasnz_p + jp].x = ar;
 		GasAcc_d[ip * def_Gasnz_p + jp].y = az;
 		GasAcc_d[ip * def_Gasnz_p + jp].z = zp;
+//printf("GasAcc %d %d %g %g %g\n", ip, jp, ar, az, zp);
 	}
 }
 
 __host__ int Data::setGasDisk(){
 	cudaError_t error;
-	GasDisk(Gas_rg_h, Gas_zg_h, Gas_rho_h, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10);
+	dim3 NTGasDisk(128, 1, 1);
+	dim3 NBGasDisk((G_Nr_g + 127) / 128, def_Gasnz_g, 1);
+	GasDisk_kernel <<< NBGasDisk, NTGasDisk >>> (Gas_rg_d, Gas_zg_d, Gas_rho_d, G_Nr_g);
 
-	cudaMemcpy(Gas_rg_d, Gas_rg_h, def_Gasnr_g * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(Gas_zg_d, Gas_zg_h, def_Gasnr_g * def_Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(Gas_rho_d, Gas_rho_h, def_Gasnr_g * def_Gasnz_g * sizeof(double), cudaMemcpyHostToDevice);
+	dim3 NTGasTabel(128, 1, 1);
+	dim3 NBGasTabel((G_Nr_p + 127) / 128, def_Gasnz_p, 1);
 
-	dim3 NTGasTabel(32, 1, 1);
-	dim3 NBGasTabel((def_Gasnr_p + 31) / 32, def_Gasnz_p, 1);
-
-	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, P.G_alpha, P.G_beta, P.G_Sigma_10);
-
+	gasTabel_kernel <<< NBGasTabel, NTGasTabel >>>(Gas_rg_d, Gas_zg_d, Gas_rho_d, GasDisk_d, GasAcc_d, G_Nr_g, G_Nr_p);
 	cudaDeviceSynchronize();
+
 	error = cudaGetLastError();
 	fprintf(masterfile, "Gas Table error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
@@ -324,10 +319,18 @@ __host__ int Data::setGasDisk(){
 // This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
 //
 // ****************************************************
-__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double2 *Msun_d, double *dt_d, int N, double *Energy_d, double dTau_diss, double G_alpha, double G_beta, double G_Sigma_10, int Nst, double Ct, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
+__global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasDisk_d, double3 *GasAcc_d, double *time_d, double2 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart, int G_Nr_p){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
+
+	double G_dTau_diss = Gas_parameters_c[0];
+	double G_alpha =     Gas_parameters_c[1];
+	double G_beta =      Gas_parameters_c[2];
+	double G_Sigma10 =   Gas_parameters_c[3];
+	double rg0 =         Gas_parameters_c[5];	//inner edge of the gas disk
+	double rg1 =         Gas_parameters_c[6];	//outher edge of the gas disk
+	double drg =         Gas_parameters_c[7];       //spacing of the gas disk
 
 	if(id < N + Nstart){
 		
@@ -343,7 +346,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 		double v_rel_r, v_rel_th;
 		double big = 1.0e7;
 
-		double depfac = exp(-dTime/(dTau_diss));
+		double depfac = exp(-dTime/(G_dTau_diss));
 
 
 		double4 x4 = x4_d[id];
@@ -363,40 +366,32 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 		volatile double a_y = 0.0;
 		volatile double a_z = 0.0;
 
+
 	
-		if(r1 > 0.1 && r1 < 35.0 && x4.z/r1 < 1.5){ //otherwise there is no gas
+		if(r1 > rg0 && r1 < rg1 && x4.z/r1 < 1.5){ //otherwise there is no gas
 
 			double h = def_h_1 * r1 * pow(r1, G_beta);
-			double Sigma = G_Sigma_10 * pow(r1, -G_alpha);
-			// **********
-			//  This part hase been removed in version 3.116 it was used originally to
-			//  reset G_Sigma_10 for p = 2. Since G_Sigma_10 can be set in the 
-			//  param.dat file, it is not neede here anymore
-			//double Sigma = G_Sigma_10 / r1;
-			//if(G_alpha == 2.0) Sigma *= 3.5/(2.0794*r1);
-			// **********
-		
+			double Sigma = G_Sigma10 * pow(r1, -G_alpha);
 
 			Sigma *= depfac;
 //if(id < 100) printf("%d %g %g %g\n", id, r1, Sigma, h);
 
-			int ip = floor(10*r1);
+			int ip = floor((r1 - rg0) / drg) + 1;
 
 			double zh = x4.z / h;
 
 			double m = x4.w;
 			if(m == 0.0) m = def_MgasSmall;
-
 			//gas potential
+
 			if(UsegasPotential == 1 || (UsegasPotential == 2 && m < Mgiant)){
 
-				if(r1 >= 15.0){
+				if(ip >= G_Nr_p){	//outside GasDisk Table
 					a_r += -2.0 * M_PI * Sigma;	
-					double erfc = ERFUNC(zh);
-					a_z += a_r * erfc;
-					if(G_alpha == 2.0) a_r *= log(10.0 * r1);
+					a_z += a_r * erf(zh);
+					if(G_alpha == 2.0) a_r *= log(r1 / drg);
 				}
-				else{
+				else if(ip > 0){
 					double rr0 = GasDisk_d[ip - 1].z;
 					double rr1 = GasDisk_d[ip].z;
 
@@ -426,7 +421,6 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 					a_r_t0 /= drtotal;
 					a_z_t0 /= drtotal;
 
-
 					a_r += a_r_t0 * depfac;
 					if(x4.z >= 0.0){
 						a_z += a_z_t0 * depfac;
@@ -435,7 +429,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 
 				}
 
-//printf("%d %g %g %g\n", id, r1, Sigma, a_r);
+//printf("%d %g %g %g %g %g | %g\n", id, r1, Sigma, h, a_r, a_z, erf(zh));
 			}
 
 
@@ -483,7 +477,7 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 					
 					double v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 					v_rel = sqrt(v_rel);
-					if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
+					if(m > 0.0) v_rel *= M_PI / (2.0 * m) * def_Gas_cd * Soft * Soft * rho;
 					else v_rel = 0.0;
 
 					a_x += -v_rel * v_rel3.x;
@@ -554,16 +548,19 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 }
 
 // *************************************************
-// This kernel corresponds to the pkdGasAccel function in the file pkd.c in pkdgrav_planets.
+// This kernel uses a file to read the gas disk structure
 //
 // ****************************************************
-__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double2 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, double G_alpha, double G_beta, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
+__global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time_d, double2 *Msun_d, double *dt_d, int N, double *Energy_d, int Nst, double Ct, int nr, double2 GasDatatime, double4 *GasData_d, int UsegasPotential, int UsegasEnhance, int UsegasDrag, int UsegasTidalDamping, double Mgiant, int Nstart){
 
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy + Nstart;
 
 	double rin = 0.25;
 	double rout = 1000.0;
+
+	double G_alpha =     Gas_parameters_c[1];
+	//double G_beta =      Gas_parameters_c[2];
 
 	if(id < N + Nstart){
 
@@ -668,7 +665,7 @@ __global__ void GasAcc2(double4 *x4_d, double4 *v4_d, int *index_d, double *time
 					
 					double v_rel = v_rel3.x * v_rel3.x + v_rel3.y * v_rel3.y + v_rel3.z * v_rel3.z;
 					v_rel = sqrt(v_rel);
-					if(m > 0.0) v_rel *= M_PI / m * Soft * Soft * rho;
+					if(m > 0.0) v_rel *= M_PI / (2.0 * m) * def_Gas_cd * Soft * Soft * rho;
 					else v_rel = 0.0;
 
 					a_x += -v_rel * v_rel3.x;
@@ -1079,26 +1076,20 @@ __host__ void Data::gasEnergyMCall(double* Energy_d, double *test_d, double *U_d
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){
 	int nt = min(32, NB[0]);
-	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	GasAcc <<< (N_h[0] + nt - 1) / nt , nt >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, N_h[0], Energy_d, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0, G_Nr_p);
 }
 __host__ void Data::GasAccCall_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	if(Nsmall_h[0] > 0) GasAcc <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0, G_Nr_p);
 }
 __host__ void Data::GasAccCall_M(double *time_d, double *dt_d, double Ct){
-	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, P.G_dTau_diss, P.G_alpha, P.G_beta, P.G_Sigma_10, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, Nstart);
+	GasAcc <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, GasDisk_d, GasAcc_d, time_d, Msun_d, dt_d, NT, Energy_d, Nst, Ct, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, Nstart, G_Nr_p);
 }
 __host__ void Data::GasAccCall2_small(double *time_d, double *dt_d, double Ct){
-	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.G_alpha, P.G_beta, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
+	if(Nsmall_h[0] > 0) GasAcc2 <<<(Nsmall_h[0] + 127)/128, 128 >>> (x4_d + N_h[0], v4_d + N_h[0], index_d + N_h[0], time_d, Msun_d, dt_d, Nsmall_h[0], Energy_d, Nst, Ct, GasDatanr, GasDatatime, GasData_d, P.UsegasPotential, P.UsegasEnhance, P.UsegasDrag, P.UsegasTidalDamping, P.G_Mgiant, 0);
 }
 
 __host__ int Data::freeGas(){
 	cudaError_t error;
-	
-	free(Gas_rg_h);
-	free(Gas_zg_h);
-	free(Gas_rho_h);
-	free(GasDisk_h);
-	free(GasAcc_h);
 
 	cudaFree(Gas_rg_d);
 	cudaFree(Gas_zg_d);

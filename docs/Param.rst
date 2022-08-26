@@ -236,18 +236,18 @@ See :ref:`Gas`
 
 - | :literal:`Use gas disk`: Flag to enable the gas disk. Individual effects can be selected with the following parameters.
 
-   - 0 (default): Do no use a gas disk.
+   - 0 (default): Do not use a gas disk.
    - 1: Use a gas disk with the following parameters.
 
 - | :literal:`Use gas disk potential`: Flag to enable the gas disk potential effect.
 
    - 0: Do not use the gas disk potential effect
-   - 1(default): apply the gas disk potential to all particles
+   - 1 (default): apply the gas disk potential to all particles
    - 2: apply the gas disk potential only to particles with m < :literal:`Gas Mgiant`
 
 - | :literal:`Use gas disk enhancement`: Flag to enable the gas disk enhancement effect.
 
-   - 0(default): Do not use the gas disk enhancement.
+   - 0 (default): Do not use the gas disk enhancement.
    - 1: apply the gas disk enhancement to all particles.
    - 2: apply the gas disk enhancement only to particles with m < :literal:`Gas Mgiant`  
 
@@ -255,20 +255,31 @@ See :ref:`Gas`
 
   - 0: Do not apply the gas drag.
   - 1: apply the gas drag to all particles.
-  - 2(default): apply the gas drag only to particles with m < :literal:`Gas Mgiant`
+  - 2 (default): apply the gas drag only to particles with m < :literal:`Gas Mgiant`
 
 - | :literal:`Use gas disk tidal dampening`: Flag to enable gas disk tidal dampening (Type I migration).
 
   - 0: Do not use tidal dampening.
   - 1: apply tidal dampening to all particles.
-  - 2(default): apply tidal dampening only to particles with m < :literal:`Gas Mgiant`.
+  - 2 (default): apply tidal dampening only to particles with m < :literal:`Gas Mgiant`.
+
+- | :literal:`Gas disk inner edge`: The inner edge of the gas disk in AU. 
+  | (default = 0.1 AU)
+
+- | :literal:`Gas disk outer edge`: The outer edge of the gas disk in AU. 
+  | (default = 35.0 AU)
+
+- | :literal:`Gas disk grid outer edge`: The outer edge of the gas disk grid in AU. 
+  | (default = 15.0 AU)
+
+- | :literal:`Gas disk grid dr`: The r-spacing of the gas disk grid in AU.
+  | (default = 0.1 AU)
 
 - | :literal:`Gas dTau_diss`: The dissipation time for the gas disk in years.
   | (default = 10000 yr)
 
 - | :literal:`Gas Sigma_10`: The gas surface density at 1 AU, in g/:math:`\text{cm}^3`.
   | (default = 2000 g/:math:`\text{cm}^3`)
-
 
 - | :literal:`Gas alpha`: The power law exponent for the gas disk surface density.
   | (default = 1).
