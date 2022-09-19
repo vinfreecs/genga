@@ -298,6 +298,7 @@ __host__ void Host::Halloc(){
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.CreateParticles = def_CreateParticles;
+	sprintf(P.CreateParticlesfilename, "%s", "-");
 	P.UsePR = def_UsePR;
 	P.Qpr = def_Qpr;
 	P.SolarWind = def_SolarWind;
@@ -498,7 +499,7 @@ __host__ void Host::Halloc(){
 		if(MTFlag == 0){
 			pathfile = fopen(pathfilename, "r");
 			for(int st = 0; st < Nst; ++st){
-				char t[160];
+				char t[120];
 				fscanf(pathfile, "%s", t);
 				sprintf(GSF[st].path, "%s/", t);
 			}
@@ -1607,11 +1608,11 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 			continue;
 		}
-		if(strcmp(sp, "Create Particles =") == 0){
+		if(strcmp(sp, "Create Particles file name =") == 0){
 			if(st == 0){
-				er = fscanf (paramfile, "%d", &P.CreateParticles);
+				er = fscanf (paramfile, "%s", P.CreateParticlesfilename);
 				if(er <= 0){
-					printf("Error: Create Particles value is not valid!\n");
+					printf("Error: Create Particles file name value is not valid!\n");
 					return 0;
 				}
 			}
@@ -2361,6 +2362,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(strcmp(P.Gasfilename, "-") != 0){
 		P.Usegas = 2;
 	}
+	if(strcmp(P.CreateParticlesfilename, "-") != 0){
+		P.CreateParticles = 1;
+	}
 	if(P.Usegas == 1 && P.G_dTau_diss <= 0.0){
 		printf("Error: dTau_diss value is not valid!\n");
 		return 0;
@@ -2613,9 +2617,9 @@ __host__ int Host::Param(int argc, char*argv[]){
 		fclose(paramfile);
 		
 		if(Nst > 1){
-			char tname[300];
+			char tname[512];
 			sprintf(tname, "%s%s", GSF[st].path, GSF[st].inputfilename);
-			sprintf(GSF[st].inputfilename, "%s", tname);
+			sprintf(GSF[st].inputfilename, "%.383s", tname);
 			P.UseTestParticles = 0;
 		}
 		dt_h[st] = idt_h[st] * dayUnit;
@@ -2847,7 +2851,7 @@ __host__ int Host::icict(int st){
 	double time = 0.0;
 	int er = 1;
 	FILE *OrigInfile;
-	char Origfilename[300];
+	char Origfilename[512];
 	sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 	OrigInfile = fopen(Origfilename, "r");
 	char t[500];
@@ -2983,7 +2987,7 @@ __host__ int Host::icSize(int st){
 		int NNN = 0;
 		int NNNsmall = 0;
 		FILE *OrigInfile;
-		char Origfilename[300];
+		char Origfilename[512];
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 		OrigInfile = fopen(Origfilename, "r");
 		for(int k = 0; k < 1000000000; ++k){
@@ -3003,7 +3007,7 @@ __host__ int Host::icSize(int st){
 			
 			int NMAX = 0;
 			er1 = 1;
-			char infilename[300];
+			char infilename[384];
 			if(P.OutBinary == 0){
 				sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 				infile = fopen(infilename, "r");
@@ -3340,7 +3344,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0
 			fprintf(infofile, "Solar Wind factor: %g\n", P.SolarWind);			// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
-			fprintf(infofile, "Create Particles: %d\n", P.CreateParticles);			// use only argument in simulation 0
+			fprintf(infofile, "Create Particles file name: %s\n", P.CreateParticlesfilename);// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0
 			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0

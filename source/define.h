@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.155
+#define def_Version 3.156
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -361,6 +361,7 @@ struct Parameter{
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int CreateParticles;
+	char CreateParticlesfilename[128];
 	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient
 	double SolarWind;		//ratio of solar wind drag to Poynting-Robertson drag
@@ -488,25 +489,27 @@ struct elementsH{	//History
 
 //File names of Simulations
 struct GSFiles{
-	FILE *outputfile, *logfile;
-	char outputfilename[128];
-	char inputfilename[128];
-	char Originputfilename[128];
-	char Energyfilename[128];
-	char EnergyIrrfilename[128];
-	char logfilename[128];
-	char timefilename[128];
-	char collisionfilename[128];
-	char collisionTshiftfilename[128];
-	char ejectfilename[128];
-	char encounterfilename[128];
-	char fragmentfilename[128];
-	char starfilename[128];
-	char starIrrfilename[128];
 	char X[128];
+	char path[128];
+	
+	//The following file names must have a lenght of size(X) + size(path) + name size
+	FILE *outputfile, *logfile;
+	char outputfilename[384];
+	char inputfilename[384];
+	char Originputfilename[384];
+	char Energyfilename[384];
+	char EnergyIrrfilename[384];
+	char logfilename[384];
+	char timefilename[384];
+	char collisionfilename[384];
+	char collisionTshiftfilename[384];
+	char ejectfilename[384];
+	char encounterfilename[384];
+	char fragmentfilename[384];
+	char starfilename[384];
+	char starIrrfilename[384];
 	int informat[def_Ninformat];
 	int outformat[def_Ninformat];
-	char path[128];
 };
 
 //Parameters for the ae grid, for all Simulations the same
@@ -526,7 +529,7 @@ struct GridaeParameter{
 	long long Start;
 	char X[64];
 	FILE *file;
-	char filename[64];
+	char filename[128];
 };
 
 #endif

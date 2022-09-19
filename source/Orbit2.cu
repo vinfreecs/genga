@@ -1219,7 +1219,7 @@ __host__ int Data::readic(int st){
 				//compute Mean Anomaly of the first transit
 				double Mt = nu - 2.0 * e * sin(nu) + (3.0 * 0.25 * ee2 + 0.125 * ee4) * sin(2.0 * nu) - 1.0 / 3.0 * e * ee2 * sin(3.0 * nu) + 5.0/32.0 * ee4 * sin(4.0 * nu);
 				double M = -(T - time) / p * 2.0 * M_PI + Mt;
-//printf("T to M %g %g %g %g %g %g\n", time, nu, Mt, T, p, M);
+//printf("T to M %.20g %.20g %.20g %.20g %.20g %.20g\n", time, nu, Mt, T, p, M);
 				M = fmod(M, 2.0 * M_PI);
 				if(M < 0.0) M += 2.0 * M_PI;
 
@@ -1407,7 +1407,7 @@ __host__ int Data::readic(int st){
 		if(P.FormatP == 0){
 			ii = 0;
 			FILE *OrigInfile;	
-			char Origfilename[300];
+			char Origfilename[512];
 			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 			OrigInfile = fopen(Origfilename, "r");
 
@@ -1429,7 +1429,7 @@ __host__ int Data::readic(int st){
 				if(eri < 0) break;
 		
 				int er = 0;
-				char infilename[300];
+				char infilename[384];
 				if(P.OutBinary == 0){
 					sprintf(infilename, "%sOut%s_p%.6d.dat", GSF[st].path, GSF[st].X, i);
 					infile = fopen(infilename, "r");
