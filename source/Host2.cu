@@ -298,6 +298,7 @@ __host__ void Host::Halloc(){
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.CreateParticles = def_CreateParticles;
+	P.CreateParticlesN = def_CreateParticlesN;
 	sprintf(P.CreateParticlesfilename, "%s", "-");
 	P.UsePR = def_UsePR;
 	P.Qpr = def_Qpr;
@@ -2981,7 +2982,7 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
-	printf("icSize A: st: %d, time %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
+	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
@@ -2990,6 +2991,13 @@ __host__ int Host::icSize(int st){
 		char Origfilename[512];
 		sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 		OrigInfile = fopen(Origfilename, "r");
+
+		FILE *fragmentsfile;
+		if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+			fragmentsfile = fopen(GSF[st].fragmentfilename, "r");
+		}
+
+
 		for(int k = 0; k < 1000000000; ++k){
 			double skip = 0.0;
 			int eri = 1;
@@ -3003,7 +3011,30 @@ __host__ int Host::icSize(int st){
 					eri = fscanf (OrigInfile, "%lf",&skip);
 				}
 			}
-			if(eri < 0) break;
+			if(eri < 0){
+				if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+//printf("Search for fragments %s\n", GSF[st].fragmentfilename);
+					double ttime, mm;
+					double skip;
+					eri = fscanf(fragmentsfile, "%lf", &ttime);
+					eri = fscanf(fragmentsfile, "%d", &i);
+					eri = fscanf(fragmentsfile, "%lf", &mm);
+
+					for(int jj = 0; jj < 11; ++jj){
+						eri = fscanf(fragmentsfile, "%lf", &skip);
+					}
+					if(eri <= 0){
+						break;
+					}
+					if(ttime > Et) continue;
+					//NN contains large and small particles
+					++NN;
+
+				}
+				else{
+					break;
+				}
+			}
 			
 			int NMAX = 0;
 			er1 = 1;
@@ -3016,11 +3047,13 @@ __host__ int Host::icSize(int st){
 				sprintf(infilename, "%sOut%s_p%.6d.bin", GSF[st].path, GSF[st].X, i);
 				infile = fopen(infilename, "rb");
 			}
+//printf("Read file %d %s %d %d %d\n", k, infilename, NNN, NNNsmall, NN);
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
 				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+//printf("%d %d %d %.20g %.20g | %g %g\n", er, i, it, time, Et, idt_h[st], ict_h[st]);
 
-				if(er <= 0){ //error by reading
+				if(er <= 0){ //error in reading
 					er1 = 0;
 					break;
 				}
@@ -3048,6 +3081,9 @@ __host__ int Host::icSize(int st){
 			if(NMAX == 1) break;
 		}
 		fclose(OrigInfile);
+		if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+			fclose(fragmentsfile);
+		}
 		NN = NNN;
 		Nsmall_h[st] = NNNsmall;
 	}
@@ -3083,7 +3119,7 @@ __host__ int Host::icSize(int st){
 		return 0;
 	}
 
-	printf("icSize B %d %d %d\n", st, N_h[st], Nsmall_h[st]);	
+	printf("icSize B: st: %d, N: %d, Nsmall: %d\n", st, N_h[st], Nsmall_h[st]);	
 	return 1;
 }
 

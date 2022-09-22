@@ -80,8 +80,16 @@ int main(int argc, char*argv[]){
 	// Read parameters from param file //
 	printf("Read parameters\n");
 	int er = H.Param(argc, argv);
-	if(er == 0) return 0;
+	if(er == 0){
+		return 0;
+	}
 	printf("Parameters OK\n");
+	if(H.P.CreateParticles > 0){
+		er = H.createReadFile1();
+		if(er == 0){
+			return 0;
+		}
+	}
 
 	//Check Device Informations
 	int DevError = H.DeviceInfo();

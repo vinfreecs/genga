@@ -1544,29 +1544,38 @@ __host__ int Data::printRotation(){
 }
 
 //This function prints details of particle creation events
-__host__ int Data::printCreateparticle(){
+__host__ int Data::printCreateparticle(int nf){
 
 	int st = 0; 
-	GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-	fprintf(GSF[st].logfile, "Create particle\n");
-	fclose(GSF[st].logfile);
 
-	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * nf, cudaMemcpyDeviceToHost);
 
 	FILE *fragmentfile;
-	if(Nst == 1) st = 0;
-	else st = (int)(Fragments_h[1]) / def_MaxIndex;
-	fragmentfile = fopen(GSF[st].fragmentfilename, "a");
+	for(int nc = 0; nc < nf; ++nc){
+		if(Nst == 1) st = 0;
+		else st = (int)(Fragments_h[nc * 25 + 1]) / def_MaxIndex;
+		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-	for(int in = 0; in < 13; ++in){
-		if(in == 1 || in == 13){
-			if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[in]));
-			else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[in])) % def_MaxIndex);
+		int id;
+		for(int in = 0; in < 13; ++in){
+			if(in == 1 || in == 13){
+				if(Nst == 1){
+					id = (int)(Fragments_h[nc * 25 + in]);
+					fprintf(fragmentfile, "%d ", id);
+				}
+				else{
+					id = ((int)(Fragments_h[nc * 25 + in])) % def_MaxIndex;
+					fprintf(fragmentfile, "%d ", id);
+				}
+			}
+			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * 25 + in]);
 		}
-		else fprintf(fragmentfile, "%.20g ", Fragments_h[in]);
+		fprintf(GSF[st].logfile, "Create particle %d\n", id);
+		fprintf(fragmentfile, " 10\n");
+		fclose(fragmentfile);
+		fclose(GSF[st].logfile);
 	}
-	fprintf(fragmentfile, " 10\n");
-	fclose(fragmentfile);
 
 	return 1;
 }

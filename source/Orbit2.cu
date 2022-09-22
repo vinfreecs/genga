@@ -16,6 +16,12 @@ __host__ void Data::AllocateOrbit(){
 	index_h = (int*)malloc(NconstT * sizeof(int));
 	spin_h = (double4*)malloc(NconstT * sizeof(double4));
 	love_h = (double3*)malloc(NconstT * sizeof(double3));
+	if(P.CreateParticles > 0){
+		createFlag_h = (int*)malloc(NconstT * sizeof(int));
+	}
+	else{
+		createFlag_h = NULL;
+	}
 	U_h = (double*)malloc(Nst * sizeof(double));
 	LI_h = (double*)malloc(Nst * sizeof(double));
 	Energy_h = (double*)malloc(NEnergyT * sizeof(double));
@@ -127,6 +133,12 @@ __host__ void Data::AllocateOrbit(){
 	cudaMalloc((void **) &spinb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &spinbb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &love_d, NconstT * sizeof(double3));
+	if(P.CreateParticles > 0){
+		cudaMalloc((void **) &createFlag_d, NconstT * sizeof(int));
+	}
+	else{
+		createFlag_d = NULL;
+	}
 	cudaMalloc((void **) &U_d, Nst * sizeof(double));
 	cudaMalloc((void **) &LI_d, Nst *sizeof(double));
 	cudaMalloc((void **) &a_d, NconstT * sizeof(double3));
@@ -618,6 +630,9 @@ __host__ int Data::init(){
 		love_h[i].x = 0.0;
 		love_h[i].y = 0.0;
 		love_h[i].z = 0.0;
+		if(P.CreateParticles > 0){
+			createFlag_h[i] = -1;
+		}
 		aelimits_h[i].x = 0.0f;
 		aelimits_h[i].y = 1.0f;
 		aelimits_h[i].z = 0.0f;
@@ -880,7 +895,7 @@ __host__ int Data::readic(int st){
 				infile = fopen(GSF[st].inputfilename, "r");
 			}
 		}
-		printf("Read file %s\n", GSF[st].inputfilename);
+		printf("Read file %s %d %d\n", GSF[st].inputfilename, N, Nsmall);
 	}
 	else{
 		if(st == 0){
@@ -1358,8 +1373,11 @@ __host__ int Data::readic(int st){
 				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					int er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
+					if(er <= 0){
+						break;
+					}
 				}
 			}
 
@@ -1411,6 +1429,11 @@ __host__ int Data::readic(int st){
 			sprintf(Origfilename, "%s%s", GSF[st].path, GSF[st].Originputfilename);
 			OrigInfile = fopen(Origfilename, "r");
 
+			FILE *fragmentsfile;
+			if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+				fragmentsfile = fopen(GSF[st].fragmentfilename, "r");
+			}
+
 			int iismall = 0;
 			int index;
 
@@ -1426,7 +1449,28 @@ __host__ int Data::readic(int st){
 						eri = fscanf (OrigInfile, "%lf",&skip);
 					}
 				}
-				if(eri < 0) break;
+				if(eri < 0){
+					if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+//printf("Search for fragments %s\n", GSF[st].fragmentfilename);
+						double ttime, mm;
+						double skip;
+						eri = fscanf(fragmentsfile, "%lf", &ttime);
+						eri = fscanf(fragmentsfile, "%d", &i);
+						eri = fscanf(fragmentsfile, "%lf", &mm);
+
+						for(int jj = 0; jj < 11; ++jj){
+							eri = fscanf(fragmentsfile, "%lf", &skip);
+						}
+						if(eri <= 0){
+							break;
+						}
+
+						if(ttime > Et) continue;
+					}
+					else{
+						break;
+					}
+				}
 		
 				int er = 0;
 				char infilename[384];
@@ -1438,18 +1482,25 @@ __host__ int Data::readic(int st){
 					sprintf(infilename, "%sOut%s_p%.6d.bin", GSF[st].path, GSF[st].X, i);
 					infile = fopen(infilename, "rb");
 				}
-//printf("Read file %s\n", infilename);
+//printf("Read file %s %d %d %d\n", infilename, ii, N, Nsmall);
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
-					if(time == Et) break;
-						er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					if(time == Et){
+						break;
+					}
+					er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
+					if(er <= 0){
+						break;
+					}
 				}
-				if(er <= 0) continue;
+				if(er <= 0){
+					continue;
+				}
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
 				aecount = (unsigned int)(aecountf * P.ci);
@@ -1480,9 +1531,14 @@ __host__ int Data::readic(int st){
 				if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
 
 				fclose(infile);
+//printf("%d %d %d\n", ii, iismall, N + Nsmall);
 				if(ii == N + Nsmall) break;
 			}
 			fclose(OrigInfile);
+			if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+				fclose(fragmentsfile);
+			}
+
 		}
 	}
 	if(P.mcmcRestart == 0){
@@ -1785,7 +1841,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -1793,7 +1849,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 	int f = 1;
 	int fc = 0;
 
-	while(f == 1 || fc < 100){
+	while(f == 1 && fc < 100){
 		NOld = N;
 		NsmallOld = Nsmall;
 		f = 0;
@@ -1835,6 +1891,11 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].x = 0.0;
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
+
+				if(CreateParticles > 0){
+					createFlag_d[Na] = createFlag_d[Nb];
+					createFlag_d[Nb] = -1;
+				}
 
 				for(int l = 0; l < SLevels; ++l){
 					rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
@@ -1928,6 +1989,11 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					love_d[Nb].x = 0.0;
 					love_d[Nb].y = 0.0;
 					love_d[Nb].z = 0.0;
+
+					if(CreateParticles > 0){
+						createFlag_d[Na] = createFlag_d[Nb];
+						createFlag_d[Nb] = 0;
+					}
 			
 					for(int l = 0; l < SLevels; ++l){
 						rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
@@ -1974,7 +2040,6 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 				int Na = j + NBS;
 				int Nb = N-1 + NBS + Nsmall;
-				
 				x4_d[Na] = x4_d[Nb];
 				v4_d[Na] = v4_d[Nb];
 
@@ -2006,6 +2071,11 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].x = 0.0;
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
+
+				if(CreateParticles > 0){
+					createFlag_d[Na] = createFlag_d[Nb];
+					createFlag_d[Nb] = -1;
+				}
 
 				for(int l = 0; l < SLevels; ++l){
 					rcrit_d[Na + l * NconstT] = rcrit_d[Nb + l * NconstT];
@@ -2153,13 +2223,12 @@ __host__ void Data::Ejection(){
 //This function removes ghost particles and reorders the arrays
 //It returns 1 if a simulation has less than the minimal number of bodies, otherwise zero
 __host__ int Data::remove(){
-
 	int NminFlag = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.CreateParticles, NULL, NULL, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2205,8 +2274,8 @@ __host__ void Data::resize(int N, int &NB){
 
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread on the GPU, to avoid unnecesary data copies
-__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *spin_d, double3 *love_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int SLevels, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
+__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *spin_d, double3 *love_d, int *createFlag_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int SLevels, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
 //printf("removeM %d %d %d %d %d\n", st, N_d[st], j, j + NBS, j + NT);
@@ -2218,6 +2287,9 @@ double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT,
 		vold_d[j + NT] = vold_d[j + NBS];
 		spin_d[j + NT] = spin_d[j + NBS];
 		love_d[j + NT] = love_d[j + NBS];
+		if(CreateParticles > 0){
+			createFlag_d[j + NT] = createFlag_d[j + NBS];
+		}
 		a_d[j + NT] = a_d[j + NBS];
 		test_d[j + NT] = test_d[j + NBS];
 		index_d[j + NT] = index_d[j + NBS];
@@ -2308,13 +2380,13 @@ __host__ void Data::stopSimulations(){
 		}
 		//rearange arrays//
 #if USE_NAF == 1
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d,  
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d,  
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.CreateParticles, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
 #else
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, a_d, test_d, index_d, rcrit_d, rcritv_d, 
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d, 
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, NULL, NULL, 0, Encpairs2_d, N_h[st]);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.CreateParticles, NULL, NULL, 0, Encpairs2_d, N_h[st]);
 #endif
 
 		NBS_h[st] = NT;
@@ -2476,6 +2548,9 @@ __host__ int Data::freeOrbit(){
 	free(index_h);
 	free(spin_h);
 	free(love_h);
+	if(P.CreateParticles > 0){
+		free(createFlag_h);
+	}
 	free(rcrit_h);
 	cudaFreeHost(Nenc_m);
 	free(aelimits_h);
@@ -2542,6 +2617,9 @@ __host__ int Data::freeOrbit(){
 	cudaFree(spinb_d);
 	cudaFree(spinbb_d);
 	cudaFree(love_d);
+	if(P.CreateParticles > 0){
+		cudaFree(createFlag_d);
+	}
 	cudaFree(a_d);
 	cudaFree(rcrit_d);
 	cudaFree(rcritv_d);

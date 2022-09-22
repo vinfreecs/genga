@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.156
+#define def_Version 3.157
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -96,6 +96,7 @@
 #define def_Asteroid_rdel 0.01		//remove limit for new generated particles in n
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
 #define def_CreateParticles 0		//flag for particle creation mode
+#define def_CreateParticlesN 0		//Maximum number of particles to be created
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
 #define def_FormatT 0			//0: one file per time step, 1: all time steps in the same file
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
@@ -322,6 +323,7 @@ __constant__ double SolarWind_c[1];
 __constant__ double BSddt_c[8];		//time stepping factors in Bulirsch-Stoer method
 __constant__ double BSt0_c[8 * 8];
 
+__constant__ double CreateParticlesParameters_c[12];
 
 struct Parameter{
 	int dev[32];			//device number array 
@@ -361,6 +363,7 @@ struct Parameter{
 	int UseYarkovsky;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int CreateParticles;
+	int CreateParticlesN;
 	char CreateParticlesfilename[128];
 	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient

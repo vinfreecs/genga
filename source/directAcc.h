@@ -255,7 +255,7 @@ __device__ inline void CorrectKick2(double4 x4i, double4 x4j, double3 &ac, doubl
 //March 2014
 //
 //****************************************
-__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double4 *spin, double3 *love, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
+__device__ void collide(curandState &random, volatile double4 *x4, volatile double4 *v4, const int i, const int j, const int indexi, const int indexj, const double Msun, double *U_d, double &test, int *index, const int nc, double *Coll, double time, double4 *spin, double3 *love, int *createFlag, volatile double *rcritv, double *rcrit_d, const int NN, const int NconstT, float4 *aelimits, unsigned int *aecount, unsigned int *enccount, unsigned long long *aecountT, unsigned long long *enccountT, const int SLevels, const int noColl){
 
 #if USE_RANDOM == 1
 //	double rd = curand_uniform(&random);
@@ -376,6 +376,10 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	love[indexi].z = tau;
 	love[indexj].z = 0.0;
 
+	if(CreateParticlesParameters_c[0] > 0){
+		createFlag[indexi] = max(createFlag[indexi], createFlag[indexj]);
+		createFlag[indexj] = 0;
+	}
 
 	if(x4[i].w < x4[j].w){
 		index[indexi] = index[indexj];
