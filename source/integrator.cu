@@ -28,6 +28,10 @@
 #if G3 > 0
 	#include "BSBG3.h"
 #endif
+#if def_BVH > 0
+	#include "bvh.h"
+#endif
+
 
 int SIn;		//Number of direction steps
 int SIM;		//half of steps
@@ -2946,6 +2950,16 @@ __host__ int Data::step_small(int noColl){
 		
 		fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
+#if def_BVH > 0
+		if(si == 0){
+			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
+			BVHCall();
+			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
+			encounter_small__kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
+
+			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
+		}
+#endif
 
 		if(Nenc_m[0] > 0){
 			for(int i = 0; i < def_GMax; ++i){

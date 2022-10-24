@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.157
+#define def_Version 3.158
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -534,5 +534,28 @@ struct GridaeParameter{
 	FILE *file;
 	char filename[128];
 };
+
+#define def_BVH 0
+struct Node{
+        Node *childL;
+        Node *childR;
+        Node *parent;
+
+        int rangeL;
+        int rangeR;
+        int counter;
+
+        bool isLeaf;
+        unsigned int nodeID;
+
+        //Axis Aligned Bounding Box, AABB
+        float xmin;
+        float xmax;
+        float ymin;
+        float ymax;
+        float zmin;
+        float zmax;
+};
+
 
 #endif

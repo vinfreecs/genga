@@ -128,7 +128,7 @@ for fi in files:
 
 files = ['BSA', 'BSB64M', 'BSB', 'BSBM', 'BSRV', 'BSSingle', 'BSTTV', 'ComEnergy', 'directAcc', 'Encounter3', 
         'FG2', 'force', 'forceYarkovskyOld', 'HC', 'Host2', 'Kick3', 'Kick4', 'Orbit2', 'Rcrit', 'Scan',
-        'TTVAll', 'TTVStep2', 'createparticles', 'convert']
+        'TTVAll', 'TTVStep2', 'createparticles', 'convert', 'bvh']
 
 #not used: naf.h
 

@@ -578,7 +578,7 @@ __global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *
 }
 
 // *******************************************
-//This kernel is used to sort the close encoutner list, to be able to reproduce simulations exactly
+//This kernel is used to sort the close encounter list, to be able to reproduce simulations exactly
 //It shoud be used only for debugging or special cases.
 
 //Authors: Simon Grimm

@@ -157,6 +157,15 @@ public:
 	int2 *NBuffer;
 	int2 *NBufferIrr;
 
+
+	//BVH
+	unsigned int *morton_d;
+	unsigned int *sortRank_d;
+	unsigned int *sortCount_d;
+	int2 *sortIndex_d;
+	Node *leafNodes_d;
+	Node *internalNodes_d;
+
 #if USE_NAF == 1
 	NAF naf;
 #endif
@@ -333,6 +342,11 @@ public:
 	__host__ int createReadFile1();
 	__host__ int createReadFile2();
 	__host__ int createCall();
+
+#if def_BVH > 0
+
+	__host__ void BVHCall();
+#endif
 
 #if def_CPU == 1
 	__host__ void firstKick_cpu(int);

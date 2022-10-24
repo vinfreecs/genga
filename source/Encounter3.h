@@ -504,7 +504,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 }
 
 // **************************************
-//This reads all encounter pairs from the prechecker, and calls the encounter function
+//This kernels reads all encounter pairs from the prechecker, and calls the encounter function
 //to detect close encounter pairs.
 //All close encounter pairs are stored in the array Encpairs2_d. 
 //The number of close encounter pairs is stored in Nencpairs2_d.
@@ -575,6 +575,52 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		}
 		if(id == 0){
 			Nencpairs_d[0] = 0;
+		}
+	}
+}
+
+// **************************************
+// This kernels reads all encounter pairs between test particles. It calls the encounter function
+// to detect close encounter pairs. Close encounters are reported in the writeencounters file.
+//
+// Authors: Simon Grimm
+// October 2022
+// ****************************************
+__global__ void encounter_small__kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, double4 *spin_d, const double dt, int Nencpairs2, int2 *Encpairs2_d, int *NWriteEnc_d, double *writeEnc_d, double time){
+
+	int idy = threadIdx.x;
+	int idx = blockIdx.x;
+	int id = idx * blockDim.x + idy;
+
+	int ii = 0;
+	int jj = 0;
+	if(id < Nencpairs2){
+		ii = Encpairs2_d[id].x;
+		jj = Encpairs2_d[id].y;
+		if(ii < jj){
+			int swap = jj;
+			jj = ii;
+			ii = swap;
+		}
+//printf("%d %d %d\n", ii, jj, id);
+	}
+	__syncthreads();
+	if(id < Nencpairs2){
+		double delta = 1000.0;
+		double enct = 100.0;
+		double colt = 100.0;
+		double rcrit = WriteEncountersRadius_c[0] * fmax(v4_d[ii].w, v4_d[jj].w); //writeradius
+
+		delta = encounter1(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit, dt, ii, jj, enct, colt, 0.0, 0);
+
+		if(delta < rcrit * rcrit){
+			if(enct > 0.0 && enct < 1.0){
+//printf("Write Enc %g %g %g %g %g %d %d\n", dt / dayUnit, rcrit, sqrt(delta), enct, colt, ii, jj);
+				int ne = atomicAdd(NWriteEnc_d, 1);
+				if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
+				if(colt > 1.0) colt = 1.0;
+				storeEncounters(x4_d, v4_d, ii, jj, ii, jj, index_d, ne, writeEnc_d, time + (colt * dt - dt) / dayUnit, spin_d);
+			}
 		}
 	}
 }

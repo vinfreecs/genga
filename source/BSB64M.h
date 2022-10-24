@@ -493,7 +493,7 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 								if(enct > 0.0 && enct < 1.0){
 									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l); 
 									int ne = atomicAdd(NWriteEnc_d, 1);
-									if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+									if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
 									writeEnc_d[ne * def_NColl + 0] = (time + dt * enct / dayUnit) / 365.25;
 									storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
 								}

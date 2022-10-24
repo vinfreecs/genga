@@ -43,6 +43,8 @@ __host__ void Data::AllocateOrbit(){
 	NBufferIrr = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
 	
 
+
+
 #if def_TTV > 0
 	{
 		int n = def_NtransitTimeMax * NconstT;
@@ -164,6 +166,24 @@ __host__ void Data::AllocateOrbit(){
 
 	cudaMalloc((void **) &coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT * sizeof(double));
 	cudaMalloc((void **) &coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double));
+
+#if def_BVH > 0
+	cudaMalloc((void **) &morton_d, NconstT * sizeof(unsigned int));
+	cudaMalloc((void **) &sortRank_d, NconstT * sizeof(unsigned int));
+	cudaMalloc((void **) &sortCount_d, ((NconstT + 255) / 256 + 1) * 16 * sizeof(unsigned int));
+	cudaMalloc((void **) &sortIndex_d, NconstT * sizeof(int2));
+	cudaMalloc((void **) &leafNodes_d, NconstT * sizeof(Node));
+	cudaMalloc((void **) &internalNodes_d, NconstT * sizeof(Node));
+#else
+	morton_d = nullptr;
+	sortRank_d = nullptr;
+	sortCount_d = nullptr;
+	sortIndex_d = nullptr;
+	leafNodes_d = nullptr;
+	internalNodes_d = nullptr;
+#endif
+
+
 #if def_TTV == 1
 	cudaMalloc((void **) &Transit_d, def_NtransitMax * sizeof(int));
 #else
