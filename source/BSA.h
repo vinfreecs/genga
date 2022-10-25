@@ -582,10 +582,8 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 
 						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
-							if(WriteEncounters_c[0] == 1){
-								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[idy].w, vt_s[j].w);
-							}
+							//in scales of planetary Radius
+							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[idy].w, vt_s[j].w);
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
@@ -1155,10 +1153,8 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 
 							if(WriteEncounters_c[0] > 0 && noColl == 0){
 								double writeRadius = 0.0;
-								if(WriteEncounters_c[0] == 1){
-									//in scales of planetary Radius
-									writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
-								}
+								//in scales of planetary Radius
+								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
 								if(delta < writeRadius * writeRadius){
 
 									if(enct > 0.0 && enct < 1.0){
@@ -1629,10 +1625,8 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 
 						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
-							if(WriteEncounters_c[0] == 1){
-								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
-							}
+							//in scales of planetary Radius
+							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){

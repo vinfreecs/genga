@@ -85,6 +85,8 @@ public:
 	int KTY2;
 	//Force
 	int FrTX;
+	//BVH
+	int UseBVH;
 
 	//data for irregular outputs
 	int bufferCount;

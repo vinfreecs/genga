@@ -422,9 +422,15 @@ Options for encounters
 - | :literal:`Report Encounters`, flag to enable encounter information (default = 0).
   | See :ref:`Report_Encounters`.
 
-  - 0: nothing happens.
-  - 1: Encounter events between two bodies, with a separation less than :literal:`Report Encounters Radius` times
-       the sum of their radii, are reported in the encounters-file. 
+   -  0: nothing happens.
+   -  | 1:  Encounter events between two bodies, with a separation less than :literal:`Report Encounters Radius` times
+          the sum of their radii, are reported in the encounters-file. Encounters between test particles and other test particles
+          are not reported.
+
+   -  | 2: Report also encounters events between test particles and other test particles.
+         This mode is only allowed when the test particle mode is used.
+         Since the distance between test particles and other test particles is not calculated in the gravity calculation step,
+         this mode need another function call in order to find the encounters. See :ref:`precheck_small`.
 
 - | :literal:`Report Encounters Radius`, used for :literal:`Report Encounters`, (default = 1.0).
   | In units of physical radii.
@@ -433,7 +439,7 @@ Options for encounters
   | See :ref:`StopAtEncounter`. 
 
   - 0: nothing happens.
-  - 1: Simulations are stoppen when the separation between two bodies is less than :literal:`Stop at Encounter Radius` times
+  - | 1: Simulations are stoppen when the separation between two bodies is less than :literal:`Stop at Encounter Radius` times
        the Hill radius.
 
 - | :literal:`Stop at Encounter Radius`, used for :literal:`Stop at Encounter`, (default = 1.0).

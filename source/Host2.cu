@@ -2373,6 +2373,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.UseTestParticles == 0){
 		P.MinMass = 0.0;
 		Nmin[st].y = 0;
+		if(P.WriteEncounters == 2){
+			P.WriteEncounters = 1;
+		}
 	}
 	
 	

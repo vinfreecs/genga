@@ -289,6 +289,7 @@ public:
 	__host__ int tuneRcrit(int &);
 	__host__ int tuneKick(int, int &, int &, int &);
 	__host__ int tuneForce(int &);
+	__host__ int tuneBVH(int &);
 	__host__ int tuneBS();
 	__host__ int tuneBS2();
 
@@ -343,10 +344,9 @@ public:
 	__host__ int createReadFile2();
 	__host__ int createCall();
 
-#if def_BVH > 0
-
-	__host__ void BVHCall();
-#endif
+	//BVH
+	__host__ void BVHCall1();
+	__host__ void BVHCall2();
 
 #if def_CPU == 1
 	__host__ void firstKick_cpu(int);

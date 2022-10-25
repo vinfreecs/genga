@@ -71,7 +71,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 		
 		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
 		
-		if(WriteEncounters_c[0] == 1){
+		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
 			rcrit = fmax(rcrit, writeRadius);
@@ -162,7 +162,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		
 		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
 		
-		if(WriteEncounters_c[0] == 1){
+		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
 			rcrit = fmax(rcrit, writeRadius);
@@ -248,7 +248,7 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 		
 		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
 		
-		if(WriteEncounters_c[0] == 1){
+		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
 			rcrit = fmax(rcrit, writeRadius);
@@ -408,7 +408,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		v = sqrt(vsq);
 		
 		rcrit = n1 * r * cbrt(x4i.w  / ( Msun * 3.0));
-		if(WriteEncounters_c[0] == 1){
+		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
 			rcrit = fmax(rcrit, writeRadius);

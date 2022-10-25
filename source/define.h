@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.158
+#define def_Version 3.159
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -535,7 +535,6 @@ struct GridaeParameter{
 	char filename[128];
 };
 
-#define def_BVH 0
 struct Node{
         Node *childL;
         Node *childR;

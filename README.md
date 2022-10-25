@@ -31,6 +31,7 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
 
  ** News: **
 
+ * Version 3.159: Encounters between test particles can be reported with 'Report Encounters = 2'
  * Version 3.155: Added gas disk boundaries in param.dat file
  * Version 3.151: Added Output file format option
  * Version 3.148: Added solar wind factor

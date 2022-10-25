@@ -658,10 +658,8 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
-							if(WriteEncounters_c[0] == 1){
-								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
-							}
+							//in scales of planetary Radius
+							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
 //printf("Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 							if(delta < writeRadius * writeRadius){
 

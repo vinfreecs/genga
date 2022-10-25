@@ -94,14 +94,24 @@ time steps. Close encounters are reported when:
 The factor :literal:`cef` is a safety factor. It can be set in the :ref:`define.h<Define>` file (default = 1.0). 
 
 
+.. _precheck_small: 
+
+Finding close encounter candidates between test particles
+---------------------------------------------------------
+When encounter events between test particles and other test particles should be reported, then another function call is needed to find them,
+because the distance between test particles is not calculated in the gravitational force evaluation. 
+When the number of test particles is :math:`\lessapprox 10'000` then an :math:`N^2` algorithm can be used, where each test particle checks its
+distance to every other test particle and reports close encounter candidates. But when the number of test particles gets larger, then this approach
+gets very inefficient. In that case a Bounding Volume Hierarchy (BVH) tree method is used to check all potential close encounter candidates. 
+
 
 .. _Close_Encounters:
 
-Close Encounters
-----------------
+Close Encounters Pairs
+----------------------
 
 The :literal:`Maximum encounter pairs` parameter in the :ref:`param.dat<ParamFile>` file, sets the amount of memory that is allocated to store close
-ncounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error massa is
+encounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error massa is
 written. Setting a larger value of :literal:`Maximum encounter pairs` increases the memory usage of the code. 
 
 

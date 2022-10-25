@@ -25,11 +25,9 @@
 #endif
 #include "Scan.h"
 #include "createparticles.h"
+#include "bvh.h"
 #if G3 > 0
 	#include "BSBG3.h"
-#endif
-#if def_BVH > 0
-	#include "bvh.h"
 #endif
 
 
@@ -241,6 +239,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 		KTX2 = 1;
 		KTY2 = 256;
 		UseAcc = 1;
+		UseBVH = 1;
 
 		FILE *tuneFile;
 
@@ -257,20 +256,49 @@ __host__ int Data::beforeTimeStepLoop1(){
 			else{
 				printf("Read tuningParameters.dat file\n");
 			
-				char skip[16];	
-				fscanf(tuneFile, "%s %d", skip, &FTX);
-				fscanf(tuneFile, "%s %d", skip, &RTX);
-				fscanf(tuneFile, "%s %d", skip, &KP);
-				fscanf(tuneFile, "%s %d", skip, &KTX);
-				fscanf(tuneFile, "%s %d", skip, &KTY);
-				fscanf(tuneFile, "%s %d", skip, &KP2);
-				fscanf(tuneFile, "%s %d", skip, &KTX2);
-				fscanf(tuneFile, "%s %d", skip, &KTY2);
-				fscanf(tuneFile, "%s %d", skip, &FrTX);
-				fscanf(tuneFile, "%s %d", skip, &UseAcc);
+				char sp[16];	
+				int er = 0;
+
+				for(int i = 0; i < 20; ++i){
+					er = fscanf(tuneFile, "%s", sp);
+					if(er <= 0) break;
+
+					if(strcmp(sp, "FTX") == 0){
+						fscanf(tuneFile, "%d", &FTX);
+					}
+					if(strcmp(sp, "RTX") == 0){
+						fscanf(tuneFile, "%d", &RTX);
+					}
+					if(strcmp(sp, "KP") == 0){
+						fscanf(tuneFile, "%d", &KP);
+					}
+					if(strcmp(sp, "KTX") == 0){
+						fscanf(tuneFile, "%d", &KTX);
+					}
+					if(strcmp(sp, "KTY") == 0){
+						fscanf(tuneFile, "%d", &KTY);
+					}
+					if(strcmp(sp, "KP2") == 0){
+						fscanf(tuneFile, "%d", &KP2);
+					}
+					if(strcmp(sp, "KTX2") == 0){
+						fscanf(tuneFile, "%d", &KTX2);
+					}
+					if(strcmp(sp, "KTY2") == 0){
+						fscanf(tuneFile, "%d", &KTY2);
+					}
+					if(strcmp(sp, "FrTX") == 0){
+						fscanf(tuneFile, "%d", &FrTX);
+					}
+					if(strcmp(sp, "UseAcc") == 0){
+						fscanf(tuneFile, "%d", &UseAcc);
+					}
+					if(strcmp(sp, "UseBVH") == 0){
+						fscanf(tuneFile, "%d", &UseBVH);
+					}
+				}
 
 				fclose(tuneFile);
-
 
 				printf("FTX %d\n", FTX);
 				printf("RTX %d\n", RTX);
@@ -282,6 +310,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 				printf("KTY2 %d\n", KTY2);
 				printf("FrTX %d\n", FrTX);
 				printf("UseAcc %d\n", UseAcc);
+				printf("UseBVH %d\n", UseBVH);
 
 				GSF[0].logfile = fopen(GSF[0].logfilename, "a");
 				fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
@@ -295,6 +324,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 				fprintf(GSF[0].logfile, "KTY2 %d\n", KTY2);
 				fprintf(GSF[0].logfile, "FrTX %d\n", FrTX);
 				fprintf(GSF[0].logfile, "UseAcc %d\n", UseAcc);
+				fprintf(GSF[0].logfile, "UseBVH %d\n", UseBVH);
 				fclose(GSF[0].logfile);
 		
 			}
@@ -324,6 +354,11 @@ __host__ int Data::beforeTimeStepLoop1(){
 				if(er == 0) return 0;
 			}
 
+			if(P.WriteEncounters == 2){
+				er = tuneBVH(UseBVH);
+				if(er == 0) return 0;
+			}
+
 			tuneFile = fopen("tuningParameters.dat", "w");
 			fprintf(tuneFile, "FTX %d\n", FTX);
 			fprintf(tuneFile, "RTX %d\n", RTX);
@@ -335,6 +370,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 			fprintf(tuneFile, "KTY2 %d\n", KTY2);
 			fprintf(tuneFile, "FrTX %d\n", FrTX);
 			fprintf(tuneFile, "UseAcc %d\n", UseAcc);
+			fprintf(tuneFile, "UseBVH %d\n", UseBVH);
 			fclose(tuneFile);
 		}
 		if(P.doSLTuning == 1){
@@ -975,8 +1011,8 @@ __host__ int Data::tuneFG(int &TX){
 			printf("FG Tune error = %d = %s\n",error, cudaGetErrorString(error));
 			return 0;
 		}
-		printf("tx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile,"\ttx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
+		printf("tx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\ttx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			TX = tx;
 		}
@@ -987,8 +1023,8 @@ __host__ int Data::tuneFG(int &TX){
 		fprintf(masterfile, "FG kernel tunig failed\n");
 		return 0;
 	}
-	printf("Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
-	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	printf("Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
@@ -1027,8 +1063,8 @@ __host__ int Data::tuneRcrit(int &TX){
 			printf("Rcrit Tune error = %d = %s\n",error, cudaGetErrorString(error));
 			return 0;
 		}
-		printf("tx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile,"\ttx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
+		printf("tx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\ttx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			TX = tx;
 		}
@@ -1039,8 +1075,8 @@ __host__ int Data::tuneRcrit(int &TX){
 		fprintf(masterfile, "Rcrit kernel tunig failed\n");
 		return 0;
 	}
-	printf("Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
-	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	printf("Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
@@ -1092,8 +1128,8 @@ __host__ int Data::tuneForce(int &TX){
 			printf("Force Tune error = %d = %s\n",error, cudaGetErrorString(error));
 			return 0;
 		}
-		printf("tx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile,"\ttx:%d    \ttime:%.15f s\n", tx, times * 0.001);	//time in seconds
+		printf("tx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\ttx:%d    \ttime: %.15f s\n", tx, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			TX = tx;
 		}
@@ -1104,8 +1140,8 @@ __host__ int Data::tuneForce(int &TX){
 		fprintf(masterfile, "Force kernel tunig failed\n");
 		return 0;
 	}
-	printf("Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
-	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time:%.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	printf("Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
@@ -1182,8 +1218,8 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in microseconds
-		printf("acc4b time:%.15f s\n", times * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile, "acc4b time:%.15f s\n", times * 0.001);	//time in seconds
+		printf("acc4b time: %.15f s\n", times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile, "acc4b time: %.15f s\n", times * 0.001);	//time in seconds
 
 
 		if(NB[0] <= WarpSize){
@@ -1199,8 +1235,8 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			cudaEventRecord(stop, 0);
 			cudaEventSynchronize(stop);
 			cudaEventElapsedTime(&times, start, stop); //time in microseconds
-			printf("kick16c time:%.15f s\n", times * 0.001);	//time in seconds
-			fprintf(GSF[0].logfile, "kick16c time:%.15f s\n", times * 0.001);	//time in seconds
+			printf("kick16c time: %.15f s\n", times * 0.001);	//time in seconds
+			fprintf(GSF[0].logfile, "kick16c time: %.15f s\n", times * 0.001);	//time in seconds
 			kickTime = times;
 		}		
 		else if(NB[0] <= 1024){
@@ -1216,8 +1252,8 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			cudaEventRecord(stop, 0);
 			cudaEventSynchronize(stop);
 			cudaEventElapsedTime(&times, start, stop); //time in microseconds
-			printf("kick32c time:%.15f s\n", times * 0.001);	//time in seconds
-			fprintf(GSF[0].logfile, "kick32c time:%.15f s\n", times * 0.001);	//time in seconds
+			printf("kick32c time: %.15f s\n", times * 0.001);	//time in seconds
+			fprintf(GSF[0].logfile, "kick32c time: %.15f s\n", times * 0.001);	//time in seconds
 			kickTime = times;
 		}		
 	}
@@ -1262,12 +1298,12 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 					return 0;
 				}
 				if(EE < 2){
-					printf("p:%d    \ttx:%d    \tty:%d    \ttime:%.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
-					fprintf(GSF[0].logfile,"p:%d    \ttx:%d    \tty:%d    \ttime:%.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
+					printf("p:%d    \ttx:%d    \tty:%d    \ttime: %.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
+					fprintf(GSF[0].logfile,"p:%d    \ttx:%d    \tty:%d    \ttime: %.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
 				}
 				else{
-					printf("p2:%d   \ttx2:%d   \tty2:%d   \ttime:%.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
-					fprintf(GSF[0].logfile,"p2:%d   \ttx2:%d   \tty2:%d   \ttime:%.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
+					printf("p2:%d   \ttx2:%d   \tty2:%d   \ttime: %.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
+					fprintf(GSF[0].logfile,"p2:%d   \ttx2:%d   \tty2:%d   \ttime: %.15f s\n", p, tx, ty, times * 0.001);	//time in seconds
 				}
 				if(times < timesMin){
 					PP = p;
@@ -1288,12 +1324,12 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 		return 0;
 	}
 	if(EE < 2){
-		printf("Best parameters: p:%d\t tx:%d\t ty:%d\t time:%.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile, "Best parameters: p:%d\t tx:%d\t ty:%d\t time:%.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
+		printf("Best parameters: p:%d\t tx:%d\t ty:%d\t time: %.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile, "Best parameters: p:%d\t tx:%d\t ty:%d\t time: %.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
 	}
 	else{
-		printf("Best parameters: p2:%d\t tx2:%d\t ty2:%d\t time:%.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile, "Best parameters: p2:%d\t tx2:%d\t ty2:%d\t time:%.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
+		printf("Best parameters: p2:%d\t tx2:%d\t ty2:%d\t time: %.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile, "Best parameters: p2:%d\t tx2:%d\t ty2:%d\t time: %.15f s\n", PP, TX, TY, timesMin * 0.001);	//time in seconds
 	}
 
 	//test now the total time for the kick operation	
@@ -1312,8 +1348,8 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&times, start, stop); //time in microseconds
-	printf("Total acc4C + kick32Ab time:%.15f s\n", times * 0.001);	//time in seconds
-	fprintf(GSF[0].logfile, "Total acc4C + kick32Ab time:%.15f s\n", times * 0.001);	//time in seconds
+	printf("Total acc4C + kick32Ab time: %.15f s\n", times * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Total acc4C + kick32Ab time: %.15f s\n", times * 0.001);	//time in seconds
 	accTime = times;
 
 	if(kickTime > 0.0f && accTime > 0.0f){
@@ -1355,6 +1391,55 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
+	return 1;
+}
+
+__host__ int Data::tuneBVH(int &useBVH){
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("\nStarting BVH parameters tuning\n");
+	fprintf(GSF[0].logfile, "\nStarting BVH parameters tuning\n");
+
+	cudaEventRecord(start, 0);
+
+	BVHCall1();
+
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+	printf("\tBVH1:\t time: %.15f s\n", times * 0.001); //time in seconds
+	fprintf(GSF[0].logfile,"\tBVH1:\t time: %.15f s\n", times * 0.001);       //time in seconds
+	if(times < timesMin){
+		UseBVH = 1;
+	}
+	timesMin = fmin(times, timesMin);
+
+	cudaEventRecord(start, 0);
+
+	BVHCall2();
+
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+	printf("\tBVH2:\t time: %.15f s\n", times * 0.001); //time in seconds
+	fprintf(GSF[0].logfile,"\tBVH2:\t time: %.15f s\n", times * 0.001);       //time in seconds
+	if(times < timesMin){
+		UseBVH = 2;
+	}
+	timesMin = fmin(times, timesMin);
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+
 	return 1;
 }
 
@@ -2950,16 +3035,20 @@ __host__ int Data::step_small(int noColl){
 		
 		fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, test_d, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
-#if def_BVH > 0
-		if(si == 0){
+
+		if(P.WriteEncounters == 2 && si == 0){
 			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
-			BVHCall();
+			if(UseBVH == 1){
+				BVHCall1();
+			}
+			if(UseBVH == 2){
+				BVHCall2();
+			}
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			encounter_small__kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
 
 			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
 		}
-#endif
 
 		if(Nenc_m[0] > 0){
 			for(int i = 0; i < def_GMax; ++i){

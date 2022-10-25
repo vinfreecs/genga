@@ -9,40 +9,43 @@ typedef Node* NodePtr;
 // Date: October 2022
 // Author: Simon Grimm
 // **************************************************
-__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int N){
+__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N, int iy){
 
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        int idy = blockIdx.y * blockDim.y + threadIdx.y;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int idy = (blockIdx.y + iy) * blockDim.y + threadIdx.y;
 
-        if(idx < N && idy < N){
+	if(idx < N && idy < N && idx >= N1 && idy >= N1){
 
-                double4 x4i = x4_d[idx];
-                double4 x4j = x4_d[idy];
-                double rcritvi = def_pc * rcritv_d[idx];
-                double rcritvj = def_pc * rcritv_d[idy];
+		double4 x4i = x4_d[idx];
+		double4 x4j = x4_d[idy];
+		double rcritvi = def_pc * rcritv_d[idx];
+		double rcritvj = def_pc * rcritv_d[idy];
 
-                bool overlap = true;
-                if(x4i.x - rcritvi > x4j.x + rcritvj || x4i.x + rcritvi < x4j.x - rcritvj){
-                        overlap = false;
-                }
-                if(x4i.y - rcritvi > x4j.y + rcritvj || x4i.y + rcritvi < x4j.y - rcritvj){
-                        overlap = false;
-                }
-                if(x4i.z - rcritvi > x4j.z + rcritvj || x4i.z + rcritvi < x4j.z - rcritvj){
-                        overlap = false;
-                }
-                if(idx >= idy){
-                        overlap = false;
-                }
+		bool overlap = true;
+		if(x4i.x - rcritvi > x4j.x + rcritvj || x4i.x + rcritvi < x4j.x - rcritvj){
+			overlap = false;
+		}
+		if(x4i.y - rcritvi > x4j.y + rcritvj || x4i.y + rcritvi < x4j.y - rcritvj){
+			overlap = false;
+		}
+		if(x4i.z - rcritvi > x4j.z + rcritvj || x4i.z + rcritvi < x4j.z - rcritvj){
+			overlap = false;
+		}
+		if(idx >= idy){
+			overlap = false;
+		}
 
-                if(overlap){
+		if(overlap && idy > idx){
+			int ne = atomicAdd(&Nencpairs2_d[0], 1);
+			Encpairs2_d[ne].x = idx;
+			Encpairs2_d[ne].y = idy;
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x - rcriti, x4i.y - rcriti, x4i.z, x4j.x - rcritj, x4j.y - rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x + rcriti, x4i.y - rcriti, x4i.z, x4j.x + rcritj, x4j.y - rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x - rcriti, x4i.y + rcriti, x4i.z, x4j.x - rcritj, x4j.y + rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x + rcriti, x4i.y + rcriti, x4i.z, x4j.x + rcritj, x4j.y + rcritj, x4j.z);
-                }
-        }
+		}
+	}
 }
 
 // *****************************************************
@@ -143,7 +146,7 @@ __global__ void sort_kernel(double4 *x4_d, unsigned int *morton_d, int2 *sortInd
 //if(id == 0)   CheckBinary(a);
 
 	//mask all bits except the last 4
-	unsigned int b = (a >> bit) & 15;       //15 = 1111, 4 bits
+	unsigned int b = (a >> bit) & 15;	//15 = 1111, 4 bits
 //if(id == 0)   CheckBinary(b);
 
 	c_s[b * BL + itx] = 1u;
@@ -194,7 +197,7 @@ __global__ void sortmerge_kernel(unsigned int *sortCount_d, int NN){
 	int itx = threadIdx.x;
 
 	__shared__ unsigned int c_s[BL * 16];
-	__shared__ unsigned int sum_s[16];      //needed when NN > 256
+	__shared__ unsigned int sum_s[16];	//needed when NN > 256
 
 
 	if(itx < 16){
@@ -287,7 +290,7 @@ __global__ void sortscatter_kernel(unsigned int *morton_d, int2 *sortIndex_d, un
 
 		int iid = sortIndex_d[id].y;
 		unsigned int a = morton_d[iid];
-		unsigned int b = (a >> bit) & 15;       //15 = 1111, 4 bits
+		unsigned int b = (a >> bit) & 15;	//15 = 1111, 4 bits
 
 		unsigned int rank = sortRank_d[id];
 		unsigned int count = 0;
@@ -368,7 +371,7 @@ __global__ void setLeafNode(Node *leafNodes_d, int2 *sortIndex_d, double4 *x4_d,
 		leafNodes_d[id].rangeL = id;
 		leafNodes_d[id].rangeR = id;
 
-		leafNodes_d[id].counter = 1;    //all threads compute ranges
+		leafNodes_d[id].counter = 1;	//all threads compute ranges
 
 		double4 x4 = x4_d[ii];
 		double rcritv = rcritv_d[ii];
@@ -404,7 +407,7 @@ __global__ void setInternalNode(Node *internalNodes_d, int N){
 		internalNodes_d[id].rangeL = -1;
 		internalNodes_d[id].rangeR = -1;
 
-		internalNodes_d[id].counter = 0;        //only 1 thread per node computes parent node
+		internalNodes_d[id].counter = 0;	//only 1 thread per node computes parent node
 
 		double r = 10.0 * RcutSun_c[0];
 
@@ -420,7 +423,7 @@ __global__ void setInternalNode(Node *internalNodes_d, int N){
 // ***********************************************************
 // This function computes the highest differing bit as described in 
 // Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
-// When the two morton codes are identical, then use the index insted
+// When the two morton codes are identical, then use the index instead
 // see Karras 2012 "Maximizing Parallelism in the Construction of BVHs,
 // Octrees, and k-d Tree"
 // ***********************************************************
@@ -534,13 +537,13 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 // ***********************************************************
 __device__ bool checkOverlap(Node *nodeA, Node *nodeB){
 
-	if(nodeA->xmin > nodeB->xmax || nodeA->xmax <  nodeB->xmin){
+	if(nodeA->xmin > nodeB->xmax || nodeA->xmax < nodeB->xmin){
 		return false;
 	}
-	if(nodeA->ymin > nodeB->ymax || nodeA->ymax <  nodeB->ymin){
+	if(nodeA->ymin > nodeB->ymax || nodeA->ymax < nodeB->ymin){
 		return false;
 	}
-	if(nodeA->zmin > nodeB->zmax || nodeA->zmax <  nodeB->zmin){
+	if(nodeA->zmin > nodeB->zmax || nodeA->zmax < nodeB->zmin){
 		return false;
 	}
 	return true;
@@ -562,14 +565,14 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 		NodePtr *stackPtr = stack;
 		*stackPtr++ = nullptr;
 
-		Node *node = internalNodes_d[N - 1].childL;     //root
+		Node *node = internalNodes_d[N - 1].childL;	//root
 		Node *leaf = &leafNodes_d[id];
 
 		Node *childL;
 		Node *childR;
 
 		for(int i = 0; i < N; ++i){
-			//if(id == 520) printf("%d %d\n", i, node->nodeID);     
+			//if(id == 520) printf("%d %d\n", i, node->nodeID);
 			childL = node->childL;
 			childR = node->childR;
 
@@ -643,9 +646,17 @@ __global__ void checkNodes(Node *internalNodes_d, int N){
 }
 
 
-
-__host__ void Data::BVHCall(){
+__host__ void Data::BVHCall1(){
 	int N = N_h[0] + Nsmall_h[0];
+
+	for(int i = 0; i < N; i += 32768){
+		int Ny = min(N - i, 32768);
+		collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
+	}
+}
+__host__ void Data::BVHCall2(){
+	int N = N_h[0] + Nsmall_h[0];
+
 	for(unsigned int b = 0; b < 32; b += 4){
 		//printf("******** %u *********\n", b);
 		sort_kernel <256> <<< (N + 255) / 256, 256 >>> (x4_d, morton_d, sortIndex_d, sortCount_d, sortRank_d, b, N);
@@ -655,7 +666,7 @@ __host__ void Data::BVHCall(){
 		sortmerge_kernel <256> <<< 1, 256 >>> (sortCount_d, NN);
 		sortscatter_kernel <<< (N + 255) / 256, 256 >>> (morton_d, sortIndex_d, sortCount_d, sortRank_d, b, N, NN);
 
-//              sortCheck(morton_h, sortIndex_h, min(N,100));
+//		sortCheck(morton_h, sortIndex_h, min(N,100));
 	}
 	sortscatter2_kernel <<< (N + 255) / 256, 256 >>> (morton_d, sortRank_d, sortIndex_d, N);
 //	sortCheck2 <<< 1, 1 >>> (morton_d, N);
