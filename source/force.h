@@ -1753,14 +1753,15 @@ __global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, in
 				sq = 0.0;
 			}
 
-			double E, M;
+			double E = 0.0;
+			double M = 0.0;
 			if(e < 1.0 - 1.0e-10){
 				//Eccentric Anomaly
 				E = acos((e + t) / (1.0 + e * t));
 				if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
 
 				//Mean Anomaly
-				double M = E - e * sin(E);
+				M = E - e * sin(E);
 			}
 			else if(e > 1.0 + 1.0e-10){
 				//Hyperbolic Anomaly

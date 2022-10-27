@@ -48,7 +48,7 @@ __host__ void Data::GasAlloc(){
 __global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_rho_d, int G_Nr_g){
 
 	int ig = blockIdx.x * blockDim.x + threadIdx.x; // r
-	int jg = blockIdx.y * blockDim.y + threadIdx.y; // r
+	int jg = blockIdx.y * blockDim.y + threadIdx.y; // z
 
 	double h, Sigma, zh, rg, zg;
 
@@ -89,7 +89,7 @@ __global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_r
 			zh = zg / h;
 			Gas_zg_d[ig * def_Gasnz_g + jg] = zg;
 			Gas_rho_d[ig * def_Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
-//printf("%g %g %g\n", rg, zg, Gas_rho_d[ig * def_Gasnz_g + jg];
+//printf("%g %g %g\n", rg, zg, Gas_rho_d[ig * def_Gasnz_g + jg]);
 		}
 	}
 }

@@ -3045,7 +3045,9 @@ __host__ int Data::step_small(int noColl){
 				BVHCall2();
 			}
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
-			encounter_small__kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
+			if(Nencpairs2_h[0] > 0){
+				encounter_small__kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
+			}
 
 			setNencpairs <<< 1, 1 >>> (Nencpairs2_d);
 		}

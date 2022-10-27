@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.159
+#define def_Version 3.160
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -154,11 +154,11 @@
 // See Morishima, Stadel and Moore 2010 for more details
 #define def_Gasnz_g 50
 #define def_Gasnz_p 51
-#define def_h_1 0.03358 //scale height at 1AU for c = 1km/s*
-#define def_M_Enhance 5.98/1.98*1.E-8 /* 1% of the Earth's mass */
-#define def_Mass_pl  0.502E-14 /* corresponding to 10^19g */
+#define def_h_1 0.03358			//scale height at 1AU for c = 1km/s
+#define def_M_Enhance 5.98/1.98*1.E-8	// 1% of the Earth's mass
+#define def_Mass_pl  0.502E-14		// corresponding to 10^19g
 #define def_fMass_min 7.55E-9
-#define def_Gas_cd 2    //numerical gas drag coefficient
+#define def_Gas_cd 2			//numerical gas drag coefficient
 
 #define def_MgasSmall 1.0e-14  //minimal mass that is taken for test particles
 

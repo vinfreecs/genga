@@ -651,7 +651,9 @@ __host__ void Data::BVHCall1(){
 
 	for(int i = 0; i < N; i += 32768){
 		int Ny = min(N - i, 32768);
-		collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
+		if(Ny > 0){
+			collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
+		}
 	}
 }
 __host__ void Data::BVHCall2(){
