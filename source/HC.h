@@ -1,10 +1,10 @@
 #include "define.h"
 
 
-//This function is needed fot the pseudovelocity conversion
+//This function is needed for the pseudovelocity conversion
 //It is the right hand side of equation 32 from Saha & Tremaine 1994
 //vv is pseudovelocity
-__device__ void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, double vvz, double &fx, double &fy, double &fz){
+__device__ void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, double vvz, volatile double &fx, volatile double &fy, volatile double &fz){
 
 	double c2 = def_cm * def_cm;
 
@@ -78,24 +78,26 @@ __global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int
 		double vvy1 = vvy0 * 0.01;
 		double vvz1 = vvz0 * 0.01;
 
-		double fx0;
-		double fy0;
-		double fz0;
+		volatile double fx0;
+		volatile double fy0;
+		volatile double fz0;
 
 		FPseudoV(mu, xi, yi, zi, vvx0, vvy0, vvz0, fx0, fy0, fz0);
 		fx0 -= vxi;
 		fy0 -= vyi;
 		fz0 -= vzi;
 
-		double fx1;
-		double fy1;
-		double fz1;
+		volatile double fx1;
+		volatile double fy1;
+		volatile double fz1;
+		//without volatile, f*1 is not updated and the loop does not terminate
 
 		FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 		fx1 -= vxi;
 		fy1 -= vyi;
 		fz1 -= vzi;
 
+		//Newton Method
 		for(int k = 0; k < 30; ++k){
 
 			double tx = vvx1 - (vvx1 - vvx0) / (fx1 - fx0) * fx1;
@@ -128,16 +130,19 @@ __global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int
 			vvy1 = ty;
 			vvz1 = tz;
 
-			if(Stop == 3) break;
-
+			if(Stop == 3){
+				break;
+			}
 			FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 			fx1 -= vxi;
 			fy1 -= vyi;
 			fz1 -= vzi;
 
-//printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", i, k, vx[i], vy[i], vz[i], vvx1, vvy1, vvz1, fx1, fy1, fz1);
+//printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", id, k, vxi, vyi, vzi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 
 		}
+		__syncthreads();
+
 		v4_d[id].x = vvx1;
 		v4_d[id].y = vvy1;
 		v4_d[id].z = vvz1;
@@ -204,18 +209,18 @@ __global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, d
 		double vvy1 = vvy0 * 0.01;
 		double vvz1 = vvz0 * 0.01;
 
-		double fx0;
-		double fy0;
-		double fz0;
+		volatile double fx0;
+		volatile double fy0;
+		volatile double fz0;
 
 		FPseudoV(mu, xi, yi, zi, vvx0, vvy0, vvz0, fx0, fy0, fz0);
 		fx0 -= vxi;
 		fy0 -= vyi;
 		fz0 -= vzi;
 
-		double fx1;
-		double fy1;
-		double fz1;
+		volatile double fx1;
+		volatile double fy1;
+		volatile double fz1;
 
 		FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 		fx1 -= vxi;
@@ -264,6 +269,7 @@ __global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, d
 //printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", i, k, vx[i], vy[i], vz[i], vvx1, vvy1, vvz1, fx1, fy1, fz1);
 
 		}
+		__syncthreads();
 		v4_d[id].x = vvx1;
 		v4_d[id].y = vvy1;
 		v4_d[id].z = vvz1;

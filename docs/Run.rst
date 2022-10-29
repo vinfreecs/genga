@@ -53,12 +53,27 @@ GENGA can be interrupted with the SIGINT signal (**Ctrl-C**, kill -2). In this c
 With the restart time step -1, GENGA will continue the integration starting from this output. The SIGINT signal can also be sent to GENGA when using
 a queuing system.
 
-With SLURM, use::
+With SLURM, use ``#SBATCH --signal=INT@60`` in the sbatch file.
 
- 	#SBATCH --signal=INT@60
+For example ::
+
+	#!/bin/bash
+	#SBATCH -J gengatest
+	#SBATCH -n 1 --gres gpu:1 -p tasna
+	#SBATCH --time 1-0
+	#SBATCH --signal=INT@60
+
+	srun genga -R -1
+
+This will send the SIGINT signal 60 seconds before the end of the wall time to slurm. That allows GENGA to safe to current time step and write it into the
+file, before the slurm job is terminated.
 
 Note that the ``srun`` command must be used for slurm to work properly. 
 
+
+When a slurm job must be stopped manually, the same behaviour can be achieved with::
+
+	scancel --signal SIGINT <jobID>
 
 Other kill signals e.g SIGKILL (kill -9) or SIGTERM (kill -15) will terminate GENGA immediately, and no last output is written.
 
