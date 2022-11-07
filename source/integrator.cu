@@ -112,7 +112,8 @@ __host__ int Data::beforeTimeStepLoop1(){
 
 
 	//Allocate orbit data on Host and Device
-	AllocateOrbit();
+	er = AllocateOrbit();
+	if(er == 0) return 0;
 
 	//allocate mapped memory//
 	er = CMallocateOrbit();

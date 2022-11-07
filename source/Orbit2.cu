@@ -7,7 +7,8 @@ __host__ Data::Data(long long Restart): Host(Restart){
 }
 
 //Allocate orbit data
-__host__ void Data::AllocateOrbit(){
+__host__ int Data::AllocateOrbit(){
+	cudaError_t error;
 
 	//allocate memory on host//
 	rcrit_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
@@ -108,15 +109,32 @@ __host__ void Data::AllocateOrbit(){
 
 	groupIterate_h = (int*)malloc(sizeof(int));
 
-	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
 #if def_poincareFlag == 1
 	PFlag_h = (int*)malloc(sizeof(int));
 	PFlag_h[0] = 0;
 #endif
+
+	BSAstop_h = (int*)malloc(sizeof(int));
+
+	error = cudaGetLastError();
+	fprintf(masterfile,"CPU malloc error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("CPU malloc error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
+
 	//allocate pinned memory on host//
+	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs3_h, P.SLevels * sizeof(int), cudaHostAllocDefault);
+
+	error = cudaGetLastError();
+	fprintf(masterfile,"CPU HostAlloc error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("CPU HostAlloc error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
 
 	//allocate memory on device//
 	cudaMalloc((void **) &x4_d, NconstT * sizeof(double4));
@@ -344,7 +362,6 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
 	cudaMalloc((void **) &BSstop_d, sizeof(int));
 	cudaMalloc((void **) &Coltime_d, sizeof(double));
-	BSAstop_h = (int*)malloc(sizeof(int));
 #if G3 > 0
 	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NconstT * NconstT * sizeof(double));
@@ -377,6 +394,15 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #endif
 
 	CollisionFlag = 0;
+
+	error = cudaGetLastError();
+	fprintf(masterfile,"cudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
+	if(error != 0){
+		printf("cudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
+		return 0;
+	}
+
+	return 1;
 };
 
 
@@ -384,12 +410,6 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 __host__ int Data::CMallocateOrbit(){
 
 	cudaError_t error;
-	error = cudaGetLastError();
-	fprintf(masterfile,"CudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
-	if(error != 0){
-		printf("CudaMalloc error = %d = %s\n",error, cudaGetErrorString(error));
-		return 0;
-	}
 
 	cudaHostAlloc((void **)&Nenc_m, def_GMax * sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&Nenc_d, (void *)Nenc_m, 0);

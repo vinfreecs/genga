@@ -224,7 +224,7 @@ public:
 	__host__ int beforeTimeStepLoop(int);
 	__host__ int timeStepLoop(int, int);
 	__host__ int Remaining();
-	__host__ void AllocateOrbit();
+	__host__ int AllocateOrbit();
 	__host__ int CMallocateOrbit();
 	__host__ int GridaeAlloc();
 	__host__ int FGAlloc();
