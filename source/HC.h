@@ -51,7 +51,7 @@ __global__ void convertPseudovToV(double4 *x4_d, double4 *v4_d, double Msun, int
 
 //This function converts velocities to pseudovelocities
 //See Saha & Tremaine 1994
-__global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int N){
+__global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, int *ErrorFlag_d, double Msun, int N){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
@@ -98,7 +98,8 @@ __global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int
 		fz1 -= vzi;
 
 		//Newton Method
-		for(int k = 0; k < 30; ++k){
+		int k;
+		for(k = 0; k < 30; ++k){
 
 			double tx = vvx1 - (vvx1 - vvx0) / (fx1 - fx0) * fx1;
 			double ty = vvy1 - (vvy1 - vvy0) / (fy1 - fy0) * fy1;
@@ -137,11 +138,14 @@ __global__ void convertVToPseidov(double4 *x4_d, double4 *v4_d, double Msun, int
 			fx1 -= vxi;
 			fy1 -= vyi;
 			fz1 -= vzi;
-
-//printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", id, k, vxi, vyi, vzi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
+//if(k > 4) printf("%d %d %.20g %.20g %.20g | %.20g %.20g %.20g | %g %g %g\n", id, k, vxi, vyi, vzi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 
 		}
 		__syncthreads();
+		if(k >= 29){
+			ErrorFlag_d[0] = 1;
+			printf("Warning: Newton Method in 'convertVToPseidov' did not convert. %d\n", id);
+		}
 
 		v4_d[id].x = vvx1;
 		v4_d[id].y = vvy1;
@@ -180,7 +184,7 @@ __global__ void convertPseudovToVM(double4 *x4_d, double4 *v4_d, int *index_d, d
 
 //This function converts velocities to pseudovelocities
 //See Saha & Tremaine 1994
-__global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, int NT){
+__global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, int *ErrorFlag_d, double2 *Msun_d, int NT){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
@@ -227,7 +231,8 @@ __global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, d
 		fy1 -= vyi;
 		fz1 -= vzi;
 
-		for(int k = 0; k < 30; ++k){
+		int k;
+		for(k = 0; k < 30; ++k){
 
 			double tx = vvx1 - (vvx1 - vvx0) / (fx1 - fx0) * fx1;
 			double ty = vvy1 - (vvy1 - vvy0) / (fy1 - fy0) * fy1;
@@ -270,6 +275,11 @@ __global__ void convertVToPseidovM(double4 *x4_d, double4 *v4_d, int *index_d, d
 
 		}
 		__syncthreads();
+		if(k >= 29){
+			ErrorFlag_d[0] = 1;
+			printf("Warning: Newton Method in 'convertVToPseidov' did not convert. %d\n", id);
+		}
+
 		v4_d[id].x = vvx1;
 		v4_d[id].y = vvy1;
 		v4_d[id].z = vvz1;
@@ -704,7 +714,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 __host__ void Data::HCCall(const double Ct, const int f){
 
 	if(P.UseGR == 1 && f == 1){
-		convertVToPseidov <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
+		convertVToPseidov <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, ErrorFlag_m, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
 	}
 	//HC
 	if(N_h[0] + Nsmall_h[0] <= WarpSize){

@@ -380,6 +380,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #endif
 	cudaMalloc((void **) &vcom_d, Nst * sizeof(double3));
 	cudaMalloc((void **) &StopFlag_d, sizeof(int));
+	cudaMalloc((void **) &ErrorFlag_d, sizeof(int));
 
 #if def_poincareFlag == 1
 	cudaMalloc((void **) &PFlag_d, sizeof(int));
@@ -436,6 +437,10 @@ __host__ int Data::CMallocateOrbit(){
 	cudaHostAlloc((void **)&StopFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&StopFlag_d, (void *)StopFlag_m, 0);
 	StopFlag_m[0] = 0;
+
+	cudaHostAlloc((void **)&ErrorFlag_m, sizeof(int), cudaHostAllocMapped);
+	cudaHostGetDevicePointer((void **)&ErrorFlag_d, (void *)ErrorFlag_m, 0);
+	ErrorFlag_m[0] = 0;
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"mapping error = %d = %s\n",error, cudaGetErrorString(error));
@@ -2640,6 +2645,7 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(nFragments_m);
 	cudaFreeHost(EncFlag_m);
 	cudaFreeHost(StopFlag_m);
+	cudaFreeHost(ErrorFlag_m);
 	free(Coll_h);
 	free(writeEnc_h);
 	free(Fragments_h);

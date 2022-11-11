@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.162
+#define def_Version 3.163
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -114,7 +114,7 @@
 #define def_SLSteps 2			//number of time steps per level
 #define def_SERIAL_GROUPING 0
 #define def_doTuning 1			//Flag to enable kernel tunings
-#define def_doSLTuning 0		//Flag to enable symplectic levels
+#define def_doSLTuning -1		//Flag to enable symplectic levels
 #define def_KickFloat 0			//1: Do kick operation in large N runs in single precision, 0 use double precision
 // End default parameters
 // --------------------------------
@@ -149,6 +149,7 @@
 
 #define def_SLevelsMax 3
 
+#define def_SLn1 0			//1: apply substeps refinement also to n1 terms
 
 //gas disk constants 
 // See Morishima, Stadel and Moore 2010 for more details

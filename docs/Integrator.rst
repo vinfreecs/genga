@@ -131,6 +131,10 @@ should be used. However if more levels than three are needed, then the :literal:
 adjusted.
 Typical values for :literal:`Symplectic recursion sub steps` are 2,4,8 or 10. A good strategy to set an optimal choice of parameter is to increase the number
 of levels and sub steps until no more than :math:`\sim` 512 close encounter pairs are reported in the info file.  
+
+By using the option :literal:`Symplectic recursion levels = -1`, a self tuning routine is called before the start of the integration, to find the fastest
+option by itself. 
+
 In Figure :numref:`figSLevels` are shown some examples of higher order changeover functions.
 
 .. figure:: plots/K.png

@@ -8,7 +8,7 @@
 //Authors: Simon Grimm
 //November 2016
 //****************************************/
-__global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
+__global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
 	
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -69,7 +69,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 		r = sqrt(rsq);
 		v = sqrt(vsq);
 		
-		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
+		rcrit = n1 * r * cbrt(x4i.w * iMsun3);
 		
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
@@ -101,7 +101,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 	}
 }
 
-__global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
+__global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
 	
 	int idy = threadIdx.x;
 	int id = blockIdx.x * blockDim.x + idy;
@@ -160,7 +160,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		r = sqrt(rsq);
 		v = sqrt(vsq);
 		
-		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
+		rcrit = n1 * r * cbrt(x4i.w * iMsun3);
 		
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
@@ -194,7 +194,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 //device function version of the Rcrit_kernel
 /*
-__device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
+__device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double *__restrict__ test_d, double n1, double n2, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
 	
 	double4 x4i;
 	double4 v4i;
@@ -246,7 +246,7 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 		r = sqrt(rsq);
 		v = sqrt(vsq);
 		
-		rcrit = n1 * r * cbrt(x4i.w / (Msun * 3.0));
+		rcrit = n1 * r * cbrt(x4i.w * iMsun3);
 		
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
@@ -286,7 +286,7 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 // Author: Simon Grimm
 // January 2019
 // ********************************************************
-__global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double Msun, double *__restrict__ rcrit_d, double *__restrict__ rcritv_d, double dt, double n1, double n2, const int N, int *Nencpairs_d, int *Nencpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int NconstT, const int SLevel){
+__global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritv_d, double dt, double n1, double n2, const int N, int *Nencpairs_d, int *Nencpairs2_d, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax, const int NconstT, const int SLevel){
 	
 	int idy = threadIdx.x;
 	int idd = blockIdx.x * blockDim.x + idy;
@@ -313,7 +313,10 @@ __global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 			r = sqrt(rsq);
 			v = sqrt(vsq);
 			
-			rcrit = n1 * r * cbrt(x4i.w / ( Msun * 3.0));
+			rcrit = n1 * r * cbrt(x4i.w * iMsun3);
+#if def_SLn1 == 1
+			rcrit = fmax(rcrit, 3.0 * v4i.w);
+#endif
 			rcritv = fmax(rcrit, n2 * dt * v);
 			
 			if(n2 * dt * v > rcrit){

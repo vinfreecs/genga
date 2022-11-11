@@ -171,7 +171,7 @@ __host__ int Host::DeviceInfo(){
 	
 	for(int i = 0; i < devCount; ++i){
 		cudaGetDeviceProperties(&devProp, i);
-		fprintf(masterfile,"Name:%s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels:%d, regsPerBlock:%d, sharedMemPerBlock:%zu, warp size:%d\n",  
+		fprintf(masterfile,"Name: %s, Major:%d, Minor:%d, Max threads per Block:%d, Max x dim:%d, #Multiprocessors:%d, Can Map Memory:%d, Clock Rate:%d, Memory Clock Rate:%d, Can Overlap:%d, Concurrent Kernels:%d, regsPerBlock:%d, sharedMemPerBlock:%zu, warp size:%d\n",  
 			devProp.name, devProp.major, devProp.minor, devProp.maxThreadsPerBlock, devProp.maxThreadsDim[0], devProp.multiProcessorCount, devProp.canMapHostMemory,devProp.clockRate, devProp.memoryClockRate, devProp.deviceOverlap, devProp.concurrentKernels, devProp.regsPerBlock, devProp.sharedMemPerBlock, devProp.warpSize);
 		if(!devProp.canMapHostMemory) {
 			fprintf(masterfile, "Device %d cannot map host memory!\n", i);
@@ -3230,6 +3230,8 @@ __host__ void Host::Calloc(){
 //**************************************************
 __host__ void Host::Info(){
 	FILE *infofile;
+	cudaDeviceProp devProp;
+	cudaGetDeviceProperties(&devProp, P.dev[0]);
 	
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
@@ -3259,6 +3261,11 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
+			fprintf(infofile, "Device Name: %s, Major:%d, Minor:%d\n", devProp.name, devProp.major, devProp.minor);
+			fprintf(infofile, "Number of devices: %d\n", P.ndev);					// use only argument in simulation 0
+			for(int j = 0; j < P.ndev; ++j){
+				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);			// use only argument in simulation 0
+			}
 			fprintf(infofile, "Do Kick in single precision: %d\n", P.KickFloat);			// use only argument in simulation 0
 			fprintf(infofile, "Serial Grouping: %d\n", P.SERIAL_GROUPING);				// use only argument in simulation 0
 			fprintf(infofile, "Do kernel tuning: %d\n", P.doTuning);				// use only argument in simulation 0
@@ -3326,10 +3333,6 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use output binary files: %d\n", P.OutBinary);		// use only argument in simulation 0
 			fprintf(infofile, "Angle units: %d\n", P.AngleUnits);
 			fprintf(infofile, "Default rho: %g\n", rho[st]);
-			fprintf(infofile, "Number of devices: %d\n", P.ndev);				// use only argument in simulation 0
-			for(int j = 0; j < P.ndev; ++j){
-				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);		// use only argument in simulation 0
-			}
 			fprintf(infofile, "Inner truncation radius: %g\n", RcutSun_h[st]);
 			fprintf(infofile, "Outer truncation radius: %g\n", Rcut_h[st]);
 			fprintf(infofile, "MaxColl: %d\n", def_MaxColl);

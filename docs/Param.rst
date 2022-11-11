@@ -147,10 +147,18 @@ Integrator options
   | All particles with a smaller mass than this value are treated as test particles (if :literal:`Use Test Particles > 0`).
   | When :literal:`Use Test Particles = 0`, then this parameter has no affect. 
 
-- | :literal:`Symplectic recursion levels`, number of symplectic levels in the hybrid symplectic integration method (default = 1).
+- | :literal:`Symplectic recursion levels`, number of symplectic levels in the hybrid symplectic integration method (default = self tuned).
+
+    - -1: Use self tuning routine at integration start, to find the fastest option between leves, 1, 2 or 3.
+    - > 0: Use this number of symplectic recursion levels.
+
   | See :ref:`SLevels`.
 
-- | :literal:`Symplectic recursion sub steps`, number of sub steps per symplectic level in the hybrid symplectic integration method (default = 2).
+- | :literal:`Symplectic recursion sub steps`, number of sub steps per symplectic level in the hybrid symplectic integration method (default = self tuned).
+
+    - -1: Use self tuning routine at integration start, to find the fastest option between sub steps, 2, 4, 8 or 10.
+    - > 1: Use this number of sub steps per symplectic level.
+
   | See :ref:`SLevels`.
 
 - | :literal:`Minimum number of bodies`, (default = 0)
