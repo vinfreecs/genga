@@ -125,7 +125,7 @@ __host__ int Data::AllocateOrbit(){
 
 	//allocate pinned memory on host//
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
-	cudaHostAlloc((void **)&Nencpairs_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
+	cudaHostAlloc((void **)&Nencpairs_h, P.ndev * (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs3_h, P.SLevels * sizeof(int), cudaHostAllocDefault);
 
@@ -153,6 +153,9 @@ __host__ int Data::AllocateOrbit(){
 	cudaMalloc((void **) &spinb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &spinbb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &love_d, NconstT * sizeof(double3));
+
+	
+
 	if(P.CreateParticles > 0){
 		cudaMalloc((void **) &createFlag_d, NconstT * sizeof(int));
 	}
@@ -201,6 +204,59 @@ __host__ int Data::AllocateOrbit(){
 		leafNodes_d = nullptr;
 		internalNodes_d = nullptr;
 	}
+
+	// ------------------------
+	// MultiGPU allocation
+	if(P.ndev > 1){
+		cudaSetDevice(P.dev[1]);
+		cudaMalloc((void **) &rcritv_d1, NconstT * P.SLevels * sizeof(double));
+		cudaMalloc((void **) &x4_d1, NconstT * sizeof(double4));
+		cudaMalloc((void **) &Nencpairs_d1, (Nst + 1) * sizeof(int));
+		cudaMalloc((void **) &Encpairs_d1, sizeof(int2) * NBNencT);
+		cudaMalloc((void **) &Encpairs2_d1, sizeof(int2) * NBNencT);
+	}
+	if(P.ndev > 2){
+		cudaSetDevice(P.dev[2]);
+		cudaMalloc((void **) &rcritv_d2, NconstT * P.SLevels * sizeof(double));
+		cudaMalloc((void **) &x4_d2, NconstT * sizeof(double4));
+		cudaMalloc((void **) &Nencpairs_d2, (Nst + 1) * sizeof(int));
+		cudaMalloc((void **) &Encpairs_d2, sizeof(int2) * NBNencT);
+		cudaMalloc((void **) &Encpairs2_d2, sizeof(int2) * NBNencT);
+	}
+	if(P.ndev > 3){
+		cudaSetDevice(P.dev[3]);
+		cudaMalloc((void **) &rcritv_d3, NconstT * P.SLevels * sizeof(double));
+		cudaMalloc((void **) &x4_d3, NconstT * sizeof(double4));
+		cudaMalloc((void **) &Nencpairs_d3, (Nst + 1) * sizeof(int));
+		cudaMalloc((void **) &Encpairs_d3, sizeof(int2) * NBNencT);
+		cudaMalloc((void **) &Encpairs2_d3, sizeof(int2) * NBNencT);
+	}
+	if(P.ndev < 2){
+		rcritv_d1 = nullptr;
+		x4_d1 = nullptr;
+		Nencpairs_d1 = nullptr;
+		Encpairs_d1 = nullptr;
+		Encpairs2_d1 = nullptr;
+	}
+	if(P.ndev < 3){
+		rcritv_d2 = nullptr;
+		x4_d2 = nullptr;
+		Nencpairs_d2 = nullptr;
+		Encpairs_d2 = nullptr;
+		Encpairs2_d2 = nullptr;
+	}
+	if(P.ndev < 4){
+		rcritv_d3 = nullptr;
+		x4_d3 = nullptr;
+		Nencpairs_d3 = nullptr;
+		Encpairs_d3 = nullptr;
+		Encpairs2_d3 = nullptr;
+	}
+
+	if(P.ndev > 1){
+		cudaSetDevice(P.dev[0]);
+	}
+	// ------------------------
 
 
 #if def_TTV == 1
@@ -778,8 +834,10 @@ __host__ int Data::init(){
 		Fragments_h[i] = 0.0;
 	}
 
-	for(int st = 0; st < Nst + 1; ++st){
+	for(int st = 0; st < P.ndev * (Nst + 1); ++st){
 		Nencpairs_h[st] = 0;
+	}
+	for(int st = 0; st < Nst + 1; ++st){
 		Nencpairs2_h[st] = 0;
 	}
 	for(int i = 0; i < P.SLevels; ++i){

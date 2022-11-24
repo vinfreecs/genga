@@ -21,6 +21,9 @@ public:
 	long long timeStep;
 
 	double4 *x4_h, *x4_d;
+	double4 *x4_d1;				//used for multiGPUs
+	double4 *x4_d2;				//used for multiGPUs
+	double4 *x4_d3;				//used for multiGPUs
 	double4 *v4_h, *v4_d;
 	double4 *xold_d;
 	double4 *vold_d;
@@ -31,13 +34,25 @@ public:
 	double3 *a_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
+	double *rcritv_d1;			//used for multiGPUs
+	double *rcritv_d2;			//used for multiGPUs
+	double *rcritv_d3;			//used for multiGPUs
 	int *groupIndex_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
 	int *Nencpairs3_h, *Nencpairs3_d;
+	int *Nencpairs_d1;			//used for multiGPUs
+	int *Nencpairs_d2;			//used for multiGPUs
+	int *Nencpairs_d3;			//used for multiGPUs
 	int *groupIterate_h, *groupIterate_d;
 	int2 *Encpairs_d;
+	int2 *Encpairs_d1;			//used for multiGPUs
+	int2 *Encpairs_d2;			//used for multiGPUs
+	int2 *Encpairs_d3;			//used for multiGPUs
 	int2 *Encpairs2_d;
+	int2 *Encpairs2_d1;			//used for multiGPUs
+	int2 *Encpairs2_d2;			//used for multiGPUs
+	int2 *Encpairs2_d3;			//used for multiGPUs
 	int *Encpairs3_d;
 	int2 *scan_d;
 	int *Nenc_m, *Nenc_d;
@@ -328,6 +343,9 @@ public:
 	__host__ void BSBMCall(int, int, double);
 
 	__host__ void BSACall(int, int, int, int, double, double, int);
+
+	__host__ int KickfirstndevCall(int);
+	__host__ int KickndevCall(int, int);
 
 	//gas
 	__host__ void GasAlloc();

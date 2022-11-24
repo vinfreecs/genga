@@ -2574,21 +2574,28 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	//check peer to peer access for multi GPU runs:
 	cudaSetDevice(P.dev[0]);
 	for(int i = 1; i < P.ndev; ++i){
-		int check = 0;
-		cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[0]);	//check if device i can access device 0
-		fprintf(masterfile, "device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
-		printf("device %d can acess device %d: %d\n", P.dev[i], P.dev[0], check);
-		if(check == 0){
-			fprintf(masterfile, "error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[0], check);
-			printf("error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[0], check);
-		return 0;
+		for(int j = 0; j < P.ndev; ++j){
+			if(i != j){
+				int check = 0;
+				cudaDeviceCanAccessPeer(&check, P.dev[i], P.dev[j]);	//check if device i can access device j
+				fprintf(masterfile, "device %d can acess device %d: %d\n", P.dev[i], P.dev[j], check);
+				printf("device %d can acess device %d: %d\n", P.dev[i], P.dev[j], check);
+				if(check == 0){
+					fprintf(masterfile, "error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[j], check);
+					printf("error: device %d can not acess device %d: %d\n", P.dev[i], P.dev[j], check);
+					return 0;
+				}
+			}
 		}
-		cudaSetDevice(P.dev[i]);
-		cudaDeviceEnablePeerAccess(P.dev[0], 0);
 	}
-
-
-	
+	for(int i = 1; i < P.ndev; ++i){
+		cudaSetDevice(P.dev[i]);
+		for(int j = 0; j < P.ndev; ++j){
+			if(i != j){
+				cudaDeviceEnablePeerAccess(P.dev[j], 0);
+			}
+		}
+	}
 	return 1;
 }
 

@@ -584,10 +584,10 @@ __global__ void kick32BMTTVSimple_kernel(double4 *x4_d, double4 *v4_d, double3 *
 //Authors: Simon Grimm
 //August 2016
 // *********************************************
-__global__ void Sortb_kernel(int2 *Encpairs2_d, int N, int NencMax){
+__global__ void Sortb_kernel(int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;	
+	int id = blockIdx.x * blockDim.x + idy + Nstart;	
 
 	if(id < N){
 		int NI = Encpairs2_d[id * NencMax].x;
@@ -654,11 +654,14 @@ __global__ void SortSb_kernel(int *Encpairs3_d, int *Nencpairs3_d, int N, int Ne
 
 //Authors: Simon Grimm
 //December 2016
+
+// EE = 0  Do not update velocities
+// EE >= 1, Do update velocities
 // ****************************************
-__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, int N, int NencMax, int EE){
+__global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax, const int EE){
 
 	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;	
+	int id = blockIdx.x * blockDim.x + idy + Nstart;	
 
 	double3 a;
 
@@ -709,6 +712,31 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 
 		}
 //if(id == 50) printf("K %d %.40g %.40g %.40g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.x, a.y, acck_d[id].x, acck_d[id].y);
+	}
+}
+
+// *****************************************************
+// This kernel collects the Encpairs2 information from multiple GPUs into the main array.
+//
+// Author: Simon Grimm
+// November 2022
+// ********************************************************
+__global__ void CollectGPUsAb_kernel(double4 *x4_dj, int2 *Encpairs2_dj, int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;	
+
+	if(id < N){
+		double4 x4i = x4_dj[id];
+		if(x4i.w >= 0.0){
+			int NI = Encpairs2_dj[id * NencMax].x;
+			Encpairs2_d[id * NencMax].x = NI;
+			NI = min(NI, NencMax);
+			for(int i = 0; i < NI; ++i){
+				int jj = Encpairs2_dj[id * NencMax + i].y;
+				Encpairs2_d[id * NencMax + i].y = jj;
+			}
+		}
 	}
 }
 
