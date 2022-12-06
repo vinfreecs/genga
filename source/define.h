@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.164
+#define def_Version 3.165
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -102,7 +102,8 @@
 #define def_FormatP 1			//0: one file per particle, 1: all particles in the same file
 #define def_FormatO 0			//output numbering, 0: time steps or 1: output steps
 #define def_WriteEncounters 0		//Write all close encounters to a file
-#define def_WriteEncountersRadius 3	//factor in terms fo physical radii
+#define def_WriteEncountersRadius 3.0	//factor in terms fo physical radii
+#define def_WriteEncountersCloudSize 1	//Index range of particles belonging to a cloud of particles
 #define def_StopAtEncounter 0		//Stop simulations at close encounters
 #define def_StopAtEncounterRadius 1.0	//factor in terms of Hill radii
 #define def_StopAtCollision 0		//1 Stop Simulation when a Collision occurs, 0 continue simulation with merged bodies (default)
@@ -307,6 +308,7 @@ __constant__ int CollisionModel_c[1];
 __constant__ int2 CollTshiftpairs_c[1]; 
 __constant__ int WriteEncounters_c[1]; 
 __constant__ double WriteEncountersRadius_c[1]; 
+__constant__ int WriteEncountersCloudSize_c[1]; 
 __constant__ int StopAtEncounter_c[1]; 
 __constant__ double StopAtEncounterRadius_c[1]; 
 __constant__ double Asteroid_eps_c[1];
@@ -397,6 +399,7 @@ struct Parameter{
 	char Gasfilename[128];
 	int WriteEncounters;
 	double WriteEncountersRadius;
+	int WriteEncountersCloudSize;
 	int StopAtEncounter;
 	double StopAtEncounterRadius;
 	int StopAtCollision;

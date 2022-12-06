@@ -6,10 +6,10 @@ typedef Node* NodePtr;
 // are not tested in the gravity pre-checker. 
 // For large N, a tree code should be used instead
 //
-// Date: October 2022
+// Date: December 2022
 // Author: Simon Grimm
 // **************************************************
-__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N, int iy){
+__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N, int iy){
 
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int idy = (blockIdx.y + iy) * blockDim.y + threadIdx.y;
@@ -34,8 +34,13 @@ __global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *Nenc
 		if(idx >= idy){
 			overlap = false;
 		}
+		//ingnore encounters within the same particle cloud
+		if(index_d[idx] / WriteEncountersCloudSize_c[0] == index_d[idy] / WriteEncountersCloudSize_c[0]){
+			overlap = false;
+		}
 
-		if(overlap && idy > idx){
+
+		if(overlap){
 			int ne = atomicAdd(&Nencpairs2_d[0], 1);
 			Encpairs2_d[ne].x = idx;
 			Encpairs2_d[ne].y = idy;
@@ -442,7 +447,7 @@ __device__ int highestBit(unsigned int *morton_d, int i){
 
 // ***********************************************************
 // This kernel build a BVH tree
-// It uses a bottum up appreoach as described in Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
+// It uses a bottom up approach as described in Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
 //
 // (Apetri 2014: Optional kernel to store delta(i,j) beforehand)
 // Date: October 2022
@@ -453,7 +458,6 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 
 	if(id < N){
 		int p = 0;
-		int pc = 0;
 		float xmin;
 		float xmax;
 		float ymin;
@@ -470,63 +474,65 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 		int rangeL, rangeR;
 
 		for(int i = 0; i < N; ++i){
-			if(p >= 0) pc = atomicAdd(&(node->counter), 1);
+			if(p >= 0){
+				if(atomicAdd(&(node->counter), 1) == 1){
 
-			if(pc == 1){
+					rangeL = node->rangeL;
+					rangeR = node->rangeR;
 
-				rangeL = node->rangeL;
-				rangeR = node->rangeR;
+					if(rangeL == 0 || (rangeR != (N - 1) && highestBit(morton_d, rangeR) < highestBit(morton_d, rangeL - 1))){
+						parent = &internalNodes_d[rangeR];
+						parent->childL = node;
+						parent->rangeL = rangeL;
+						node->parent = parent;
+					}
+					else{
+						parent = &internalNodes_d[rangeL - 1];
+						parent->childR = node;
+						parent->rangeR = rangeR;
+						node->parent = parent;
+					}
+//printf("node %d | %d | %u %d %d | %u %d %u\n", i, id, node->nodeID, rangeL, rangeR, parent->nodeID, parent->isLeaf, node->parent->nodeID);
 
-				if(rangeL == 0 || (rangeR != (N - 1) && highestBit(morton_d, rangeR) < highestBit(morton_d, rangeL - 1))){
-					parent = &internalNodes_d[rangeR];
-					parent->childL = node;
-					parent->rangeL = rangeL;
-					node->parent = parent;
-				}
-				else{
-					parent = &internalNodes_d[rangeL - 1];
-					parent->childR = node;
-					parent->rangeR = rangeR;
-					node->parent = parent;
-				}
-//printf("node %d | %d %d | %u %d %d | %u %d %u\n", i, id, pc, node->nodeID, rangeL, rangeR, parent->nodeID, parent->isLeaf, node->parent->nodeID);
+					if(!(node->isLeaf)){
+						childL = node->childL;
+						childR = node->childR;
 
-				if(!(node->isLeaf)){
-					childL = node->childL;
-					childR = node->childR;
+						xmin = fminf(childL->xmin, childR->xmin);
+						xmax = fmaxf(childL->xmax, childR->xmax);
+						ymin = fminf(childL->ymin, childR->ymin);
+						ymax = fmaxf(childL->ymax, childR->ymax);
+						zmin = fminf(childL->zmin, childR->zmin);
+						zmax = fmaxf(childL->zmax, childR->zmax);
 
-					xmin = fminf(childL->xmin, childR->xmin);
-					xmax = fmaxf(childL->xmax, childR->xmax);
-					ymin = fminf(childL->ymin, childR->ymin);
-					ymax = fmaxf(childL->ymax, childR->ymax);
-					zmin = fminf(childL->zmin, childR->zmin);
-					zmax = fmaxf(childL->zmax, childR->zmax);
-
-					node->xmin = xmin;
-					node->xmax = xmax;
-					node->ymin = ymin;
-					node->ymax = ymax;
-					node->zmin = zmin;
-					node->zmax = zmax;
+						node->xmin = xmin;
+						node->xmax = xmax;
+						node->ymin = ymin;
+						node->ymax = ymax;
+						node->zmin = zmin;
+						node->zmax = zmax;
 
 //printf("volume %d %d %d %d\n", i, node->nodeID, childL->nodeID, childR->nodeID);
 //printf("LeafNode %d %d %g %g\n", i, node->nodeID, xmin, ymin);
 //printf("LeafNode %d %d %g %g\n", i, node->nodeID, xmin, ymax);
 //printf("LeafNode %d %d %g %g\n", i, node->nodeID, xmax, ymin);
 //printf("LeafNode %d %d %g %g\n", i, node->nodeID, xmax, ymax);
-				}
-				//node is root node
-				if(rangeL == 0 && rangeR == N -1){
+					}
+					//node is root node
+					if(rangeL == 0 && rangeR == N -1){
 //printf("root %d %d\n", id, node->nodeID);
-					internalNodes_d[N - 1].childR = node; // escape node
+						internalNodes_d[N - 1].childR = node; // escape node
+						break;
+					}
+
+					node = parent;
+					//make sure that global memory updates is visible to other threads
+					__threadfence();
+					}
+					else{
+						p = -1;
 					break;
 				}
-
-				node = parent;
-				}
-				else{
-					p = -1;
-				break;
 			}
 		}
 	}
@@ -557,7 +563,7 @@ __device__ bool checkOverlap(Node *nodeA, Node *nodeB){
 // The kernel uses a local stack to store the traversal path
 // See https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
 // ***********************************************************
-__global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N){
+__global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
@@ -590,9 +596,13 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 
 			if(overlapL && childL->isLeaf){
 				if(leaf->nodeID >= N1 && childL->nodeID >= N1){
-					int ne = atomicAdd(&Nencpairs2_d[0], 1);
-					Encpairs2_d[ne].x = leaf->nodeID;
-					Encpairs2_d[ne].y = childL->nodeID;
+
+					//ingnore encounters within the same particle cloud
+					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childL->nodeID] / WriteEncountersCloudSize_c[0]){
+						int ne = atomicAdd(&Nencpairs2_d[0], 1);
+						Encpairs2_d[ne].x = leaf->nodeID;
+						Encpairs2_d[ne].y = childL->nodeID;
+					}
 //if(leaf->nodeID == 127 || leaf->nodeID == 493) printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childL->nodeID, leaf->xmin, leaf->ymin, leaf->zmin, childL->xmin, childL->ymin, childL->zmin);
 //printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childL->nodeID, leaf->xmin, leaf->ymax, leaf->zmin, childL->xmin, childL->ymax, childL->zmin);
 //printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childL->nodeID, leaf->xmax, leaf->ymin, leaf->zmin, childL->xmax, childL->ymin, childL->zmin);
@@ -601,9 +611,12 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 			}
 			if(overlapR && childR->isLeaf){
 				if(leaf->nodeID >= N1 && childR->nodeID >= N1){
-					int ne = atomicAdd(&Nencpairs2_d[0], 1);
-					Encpairs2_d[ne].x = leaf->nodeID;
-					Encpairs2_d[ne].y = childR->nodeID;
+					//ingnore encounters within the same particle cloud
+					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childR->nodeID] / WriteEncountersCloudSize_c[0]){
+						int ne = atomicAdd(&Nencpairs2_d[0], 1);
+						Encpairs2_d[ne].x = leaf->nodeID;
+						Encpairs2_d[ne].y = childR->nodeID;
+					}
 //if(leaf->nodeID == 127 || leaf->nodeID == 493) printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childR->nodeID, leaf->xmin, leaf->ymin, leaf->zmin, childR->xmin, childR->ymin, childR->zmin);
 //printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childR->nodeID, leaf->xmin, leaf->ymax, leaf->zmin, childR->xmin, childR->ymax, childR->zmin);
 //printf("encounter %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", leaf->nodeID, childR->nodeID, leaf->xmax, leaf->ymin, leaf->zmin, childR->xmax, childR->ymin, childR->zmin);
@@ -629,6 +642,7 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 //printf("%d id %d %d reached the end\n", i, id, leaf->nodeID);
 			break;
 			}
+			__threadfence();
 		}
 	}
 }
@@ -652,7 +666,7 @@ __host__ void Data::BVHCall1(){
 	for(int i = 0; i < N; i += 32768){
 		int Ny = min(N - i, 32768);
 		if(Ny > 0){
-			collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
+			collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, index_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
 		}
 	}
 }
@@ -679,6 +693,6 @@ __host__ void Data::BVHCall2(){
 	buildBVH_kernel <<< (N + 255) / 256, 256 >>> (morton_d, leafNodes_d, internalNodes_d, N);
 //	checkNodes <<< (N + 255) / 256, 256 >>> (internalNodes_d, N);
 
-	traverseBVH_kernel <<< (N + 255) / 256, 256 >>> (leafNodes_d, internalNodes_d, Nencpairs2_d, Encpairs2_d, N_h[0], N);
+	traverseBVH_kernel <<< (N + 255) / 256, 256 >>> (leafNodes_d, internalNodes_d, index_d, Nencpairs2_d, Encpairs2_d, N_h[0], N);
 }
 

@@ -98,6 +98,7 @@ MCMC NE = 0
 MCMC Restart = 0
 Report Encounters = 0
 Report Encounters Radius = 3
+Report Encounters Cloud Size = 1
 Stop at Encounter = 0
 Stop at Encounter Radius = 1
 Stop at Collision = 0

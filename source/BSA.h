@@ -587,10 +587,14 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
+									//ingnore encounters within the same particle cloud
+									if(index_d[idi] / WriteEncountersCloudSize_c[0] != index_d[jg] / WriteEncountersCloudSize_c[0]){
+
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jg);
-									int ne = atomicAdd(NWriteEnc_d, 1);
-									if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
-									storeEncounters(xt_s, vt_s, idy, j, idi, jg, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+										int ne = atomicAdd(NWriteEnc_d, 1);
+										if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
+										storeEncounters(xt_s, vt_s, idy, j, idi, jg, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+									}
 								}
 							}
 						}
@@ -1158,10 +1162,14 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 								if(delta < writeRadius * writeRadius){
 
 									if(enct > 0.0 && enct < 1.0){
+										//ingnore encounters within the same particle cloud
+										if(index_d[idi] / WriteEncountersCloudSize_c[0] != index_d[j] / WriteEncountersCloudSize_c[0]){
+
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, idi, j);
-										int ne = atomicAdd(NWriteEnc_d, 1);
-										if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
-										storeEncounters(xt_d, vt_d, idi, j, idi, j, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+											int ne = atomicAdd(NWriteEnc_d, 1);
+											if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
+											storeEncounters(xt_d, vt_d, idi, j, idi, j, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+										}
 									}
 								}
 							}
@@ -1630,10 +1638,13 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
+									//ingnore encounters within the same particle cloud
+									if(index_d[idi] / WriteEncountersCloudSize_c[0] != index_d[j] / WriteEncountersCloudSize_c[0]){
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, idi, j);
-									int ne = atomicAdd(NWriteEnc_d, 1);
-									if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
-									storeEncounters(xt_d, vt_d, idi, j, idi, j, index_d, ne, writeEnc_d, time + (t1 + dt1) / dayUnit, spin_d);
+										int ne = atomicAdd(NWriteEnc_d, 1);
+										if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
+										storeEncounters(xt_d, vt_d, idi, j, idi, j, index_d, ne, writeEnc_d, time + (t1 + dt1) / dayUnit, spin_d);
+									}
 								}
 							}
 						}

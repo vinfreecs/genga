@@ -438,10 +438,17 @@ Options for encounters
    -  | 2: Report also encounters events between test particles and other test particles.
          This mode is only allowed when the test particle mode is used.
          Since the distance between test particles and other test particles is not calculated in the gravity calculation step,
-         this mode need another function call in order to find the encounters. See :ref:`precheck_small`.
+         this mode needs another function call in order to find the encounters. See :ref:`precheck_small`.
 
 - | :literal:`Report Encounters Radius`, used for :literal:`Report Encounters`, (default = 1.0).
   | In units of physical radii.
+  | See :ref:`Report_Encounters`.
+
+- | :literal:`Report Encounters Cloud Size`, used filter :literal:`Report Encounters` depending on the particle indices.
+  | See :ref:`Report_Encounters`.
+
+   -  | 1 (default):  Encounter events between all particles are reported.
+   -  | >1:  Encounter events between particles belonging to the same particle cloud are not reported. 
 
 - | :literal:`Stop at Encounter`, flag to stop simulations when a close encounter between two bodies happens, (default = 0).
   | See :ref:`StopAtEncounter`. 

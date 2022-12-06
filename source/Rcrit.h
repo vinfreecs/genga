@@ -81,18 +81,19 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 			//rescale to non n2 rcrit 
 			rcrit = StopAtEncounterRadius_c[0] * rcrit / n1;
 		}
-		
-		rcritv = fmax(rcrit, n2 * dt * v);
+
+		double rc2 = n2 * fabs(dt) * v;
+		rcritv = fmax(rcrit, rc2);
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
-		if(n2 * dt * v > rcrit){
+		if(rc2 > rcrit){
 			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
 		}
 		else{
 			rcritv_d[id] = rcritv;
 		}
-		//if(id == 3) printf("%d %g %g %g %g %g %g\n", id, rcritv_d[id], rcrit_d[id], rcritv, n2 * dt * v, rcrit, r);
+		//if(id == 3) printf("%d %g %g %g %g %g %g\n", id, rcritv_d[id], rcrit_d[id], rcritv, rc2, rcrit, r);
 		//test_d[id] = rcritv_d[id];
 		//Check for Ejections or too small distances to the Sun
 		if((rsq > Rcut_c[0] * Rcut_c[0] || rsq < RcutSun_c[0] * RcutSun_c[0]) && x4_d[id].w >= 0.0){
@@ -173,11 +174,12 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 			rcrit = StopAtEncounterRadius_c[0] * rcrit / n1;
 		}
 		
-		rcritv = fmax(rcrit, n2 * dt * v);
+		double rc2 = n2 * fabs(dt) * v;
+		rcritv = fmax(rcrit, rc2);
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planets
-		if(n2 * dt * v > rcrit){
+		if(rc2 > rcrit){
 			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
 		}
 		else{
@@ -259,11 +261,12 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 			rcrit = StopAtEncounterRadius_c[0] * rcrit / n1;
 		}
 		
-		rcritv = fmax(rcrit, n2 * dt * v);
+		double rc2 = n2 * fabs(dt) * v;
+		rcritv = fmax(rcrit, rc2);
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
-		if(n2 * dt * v > rcrit){
+		if(rc2 > rcrit){
 			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
 		}
 		else{
@@ -317,9 +320,10 @@ __global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 #if def_SLn1 == 1
 			rcrit = fmax(rcrit, 3.0 * v4i.w);
 #endif
-			rcritv = fmax(rcrit, n2 * dt * v);
+			double rc2 = n2 * fabs(dt) * v;
+			rcritv = fmax(rcrit, rc2);
 			
-			if(n2 * dt * v > rcrit){
+			if(rc2 > rcrit){
 				rcritv_d[id + SLevel * NconstT] = fmax(rcritv, rcritv_d[id + SLevel * NconstT]);
 			}
 			else{
@@ -422,11 +426,12 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 			rcrit = StopAtEncounterRadius_c[0] * rcrit / n1;
 		}
 		
-		rcritv = fmax(rcrit, n2 * dt * v);
+		double rc2 = n2 * fabs(dt) * v;
+		rcritv = fmax(rcrit, rc2);
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
-		if(n2 * dt * v > rcrit){
+		if(rc2 > rcrit){
 			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
 		}
 		else{

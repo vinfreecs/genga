@@ -50,6 +50,7 @@ __host__ void Data::constantCopyDirectAcc(){
 	cudaMemcpyToSymbol(CollisionModel_c, &P.CollisionModel, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(WriteEncounters_c, &P.WriteEncounters, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(WriteEncountersRadius_c, &P.WriteEncountersRadius, sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(WriteEncountersCloudSize_c, &P.WriteEncountersCloudSize, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(StopAtEncounter_c, &P.StopAtEncounter, sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(StopAtEncounterRadius_c, &P.StopAtEncounterRadius, sizeof(double), 0, cudaMemcpyHostToDevice);
 
@@ -1445,6 +1446,11 @@ __host__ int Data::tuneBVH(int &useBVH){
 
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
+
+	printf("Use BVH method %d\n", UseBVH);
+	fprintf(GSF[0].logfile, "Use BVH method %d\n", UseBVH);
+
+
 	fclose(GSF[0].logfile);
 
 	return 1;

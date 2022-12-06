@@ -327,6 +327,7 @@ __host__ void Host::Halloc(){
 	P.FormatO = def_FormatO;
 	P.WriteEncounters = def_WriteEncounters;
 	P.WriteEncountersRadius = def_WriteEncountersRadius;
+	P.WriteEncountersCloudSize = def_WriteEncountersCloudSize;
 	P.StopAtEncounter = def_StopAtEncounter;
 	P.StopAtEncounterRadius = def_StopAtEncounterRadius;
 	P.StopAtCollision = def_StopAtCollision;
@@ -1884,6 +1885,22 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 			continue;
 		}
+		if(strcmp(sp, "Report Encounters Cloud Size =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.WriteEncountersCloudSize);
+				if(er <= 0){
+					printf("Error: Report Encounters Cloud Size value is not valid!\n");
+					return 0;
+				}
+				
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
 		if(strcmp(sp, "Stop at Encounter =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.StopAtEncounter);
@@ -3399,6 +3416,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Gas file name: %s\n", P.Gasfilename);			// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters: %d\n", P.WriteEncounters);		// use only argument in simulation 0
 			fprintf(infofile, "Report Encounters Radius: %g\n", P.WriteEncountersRadius);	// use only argument in simulation 0
+			fprintf(infofile, "Report Encounters Cloud Size: %d\n", P.WriteEncountersCloudSize);	// use only argument in simulation 0
 			fprintf(infofile, "Stop at close Encounters: %d\n", P.StopAtEncounter);
 			fprintf(infofile, "Stop at close Encounter Radius: %g\n", P.StopAtEncounterRadius);
 			fprintf(infofile, "Stop at Collision: %d\n", P.StopAtCollision);

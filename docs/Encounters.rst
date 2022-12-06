@@ -41,6 +41,23 @@ by this value. As a consequence, the integration can be slowed down if :literal:
 When a collision happens, the coordinates of the two involved bodies are reported in the encounters file (see :ref:`EncounterFile`).
 
 
+.. _Report_Encounters_Cloud_Size:
+
+Report Encounters Cloud Size
+----------------------------
+
+A particle cloud is a collection of particles, representing the same physical object. Encounters between particles belonging to the same cloud are not reported in the encounters file. The cloud index is computed via the particles index and the cloud size as
+
+.. math::
+
+	\text{Cloud index} = (\text{round to integer}) \left( \frac{\text{Particle index}}{\text{Cloud Size}} \right),
+
+where the cloud size is set by the :literal:`Report Encounters Cloud Size` parameter.
+
+Therefore, the particle indices can be used to assign particles to different particle clouds. 
+If the cloud size is equal to 1, then all encounters between all particles are reported.
+
+
 .. _StopAtEncounter: 
 
 Stop at Encounter

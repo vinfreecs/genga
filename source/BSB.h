@@ -664,10 +664,16 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
+									//ingnore encounters within the same particle cloud
+									int indexi = Encpairs2_d[start + ii].x;
+									int indexj = Encpairs2_d[start + jj + l].x;
+									if(index_d[indexi] / WriteEncountersCloudSize_c[0] != index_d[indexj] / WriteEncountersCloudSize_c[0]){
+
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
-									int ne = atomicAdd(NWriteEnc_d, 1);
-									if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
-									storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+										int ne = atomicAdd(NWriteEnc_d, 1);
+										if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+										storeEncounters(xt_s, vt_s, ii, jj + l, indexi, indexj, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+									}
 								}
 							}
 						}
