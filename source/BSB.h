@@ -118,6 +118,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		error_s[0] = 0.0;
 	}
 	__syncthreads();
+
 	for(int tt = 0; tt < 10000; ++tt){
 		__syncthreads();
 
@@ -200,6 +201,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 		volatile int f = 1;
 		__syncthreads();
+
 		for(int ff = 0; ff < 1e6; ++ff){
 			__syncthreads();
 			for(int n = 1; n <= 8; ++n){
@@ -627,6 +629,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							noColl = 2;
 							BSstop_d[0] = 3;
 						}
+
 //if( Encpairs2_d[start + ii].x == 0 &&  Encpairs2_d[start + jj + l].x == 1) printf("BSBEE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, tt, ff, n);
 						if(delta < rcrit*rcrit){
 							int Ni = atomicAdd(&Ncol_s[0], 1);
@@ -758,6 +761,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					__syncthreads();
 					break;
 				}
+				__syncthreads();
 				if(BSstop_d[0] == 3){
 //if(idy == 0) printf("Stop BSB\n");
 					__syncthreads();
@@ -771,7 +775,6 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		if(sgnt * t >= sgnt * dt){
 			break;
 		}
-
 
 		__syncthreads();
 	}//end of tt loop

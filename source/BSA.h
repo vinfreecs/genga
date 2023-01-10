@@ -452,7 +452,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 						vt.x = dv0.x;
 						vt.y = dv0.y;
 						vt.z = dv0.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						if(n >= 2){
 							xt_s[idy].x += dx1.x;
 							xt_s[idy].y += dx1.y;
@@ -460,7 +460,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv1.x;
 							vt.y += dv1.y;
 							vt.z += dv1.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 3){
 							xt_s[idy].x += dx2.x;
@@ -469,7 +469,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv2.x;
 							vt.y += dv2.y;
 							vt.z += dv2.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 4){
 							xt_s[idy].x += dx3.x;
@@ -478,7 +478,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv3.x;
 							vt.y += dv3.y;
 							vt.z += dv3.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 5){
 							xt_s[idy].x += dx4.x;
@@ -487,7 +487,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv4.x;
 							vt.y += dv4.y;
 							vt.z += dv4.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 6){
 							xt_s[idy].x += dx5.x;
@@ -496,7 +496,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv5.x;
 							vt.y += dv5.y;
 							vt.z += dv5.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 7){
 							xt_s[idy].x += dx6.x;
@@ -505,7 +505,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv6.x;
 							vt.y += dv6.y;
 							vt.z += dv6.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 						if(n >= 8){
 							xt_s[idy].x += dx7.x;
@@ -514,14 +514,14 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							vt.x += dv7.x;
 							vt.y += dv7.y;
 							vt.z += dv7.z;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("xt %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 						}
 					}
 					vt_s[idy].x = vt.x;
 					vt_s[idy].y = vt.y;
 					vt_s[idy].z = vt.z;
 					vt_s[idy].w = vt.w;
-///*if(Ne >= 0 && tt == 8 && n == 7)*/ printf("x %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
+///*if(Ne >= 0 && tt == 8 && n == 7)* / printf("x %d %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, idy, idi, xt_s[idy].x, xt_s[idy].y, xt_s[idy].z, vt.x, vt.y, vt.z);
 					__syncthreads();
 					for(int i = 0; i < Ne; ++i){
 						double delta = 100.0;
@@ -678,7 +678,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 							v4_s[idy].y = vt.y;
 							v4_s[idy].z = vt.z;
 							v4_s[idy].w = vt.w;
-///*if(idi == 11723)*/ printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g %g %g %d %d %d\n", idy, idx, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, x4_s[idy].w, v4_s[idy].w, rcritv_s[idy], t / dayUnit, dt1 / dayUnit, tt, ff, n);
+//printf("update %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g %g %g %d %d %d\n", idy, idx, idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, x4_s[idy].w, v4_s[idy].w, rcritv_s[idy], t / dayUnit, dt1 / dayUnit, tt, ff, n);
 						}
 					}
 					else{
@@ -689,6 +689,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 					__syncthreads();
 					break;
 				}
+				__syncthreads();
 				if(BSstop_d[0] == 3){
 //if(idy == 0) printf("Stop BSA\n");
 					__syncthreads();
@@ -721,7 +722,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 			rcritv_d[idi + l * NconstT] = rcritv_s[idy + l * NN];
 		}
 //}
-///*if(idi == 4077)*/ printf("final %g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, idi, NN, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, x4_d[idi].w, v4_d[idi].w);
+///*if(idi == 4077)* / printf("final %g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time, idi, NN, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, x4_d[idi].w, v4_d[idi].w);
 	}
 #if USE_RANDOM == 1
 	random_d[idx] = random;
@@ -1263,6 +1264,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 					__syncthreads();
 					break;
 				}
+				__syncthreads();
 				if(BSstop_d[0] == 3){
 //if(idy == 0) printf("Stop BSA512 %d\n", idx);
 					__syncthreads();

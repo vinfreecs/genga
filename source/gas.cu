@@ -515,8 +515,10 @@ __global__ void GasAcc(double4 *x4_d, double4 *v4_d, int *index_d, double3 *GasD
 					double iTauwave_gwave = iTau_tid1 * r1h2 / (1.0 + 0.25 * chi3);
 					iTau_tid1 *= 3.8 * (1.0 - 0.683 * chi3 * chi) / (1.0 + 0.269329 * chi3 * chi * chi);
 
+					//type I migration
 					a_th += -0.5 * iTau_tid1 * v_kep; //circular
 
+					//damping
 					a_r += (0.104 * v_rel_th + 0.176 * v_rel_r) * iTauwave_gwave;
 					a_th += (-1.736 * v_rel_th + 0.325 * v_rel_r) * iTauwave_gwave;
 					a_z += (-1.088 * v_rel3.z - 0.871 * v_kep * x4.z / r1) * iTauwave_gwave;

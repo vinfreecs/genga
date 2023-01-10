@@ -27,6 +27,8 @@ for i in range(len(Lines)):
         line = line.replace('nvcc', 'hipcc')
     if(line.find('--compiler-options') != -1):
         line = line.replace('--compiler-options', '')
+    if(line.find('hipcc') != -1):
+        line = line.replace('\n', ' -I/opt/rocm/hiprand/include/ -I/opt/rocm/rocrand/include/\n')
 
     print(line, file=file2, end='')
 
@@ -57,11 +59,8 @@ for i in range(len(Lines)):
 
     if(line.find('#define def_OldShuffle') != -1):
         line = line.replace('0', '1')
-    if(line.find('define USE_RANDOM') != -1):
-        line = line.replace('1', '0')
-
-    #if(line.find('#include <curand_kernel.h>') != -1):  #<----------------- fix that
-    #    line = line.replace('#include', '//#include')
+    #if(line.find('define USE_RANDOM') != -1):
+    #    line = line.replace('1', '0')
 
     if(line.find('curand') != -1):
         line = line.replace('curand', 'hiprand')

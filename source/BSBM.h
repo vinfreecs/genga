@@ -579,6 +579,7 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					__syncthreads();
 					break;
 				}
+				__syncthreads();
 				if(BSstop_d[0] == 3){
 //if(idy == 0) printf("Stop BSB\n");
 					__syncthreads();
