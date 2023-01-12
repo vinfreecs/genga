@@ -93,7 +93,7 @@ and type::
 
 	make SM=xx
 
-into a terminal, where :literal:`xx` corresponds to the compute capability of the GPU.
+into a terminal, where :literal:`xx` corresponds to the compute capability of the GPU (NVIDIA) or the target ID (AMD).
 
 Use e.g. 'make SM=60' for compute capability of 6.0, or 'make SM=65' for compute capability of 6.5.
 
@@ -106,6 +106,8 @@ For example use::
 	make SM=61 for GeForce GTX 1080 ti
 	make SM=75 for GeForce RTX 2080 ti
 	make SM=86 for GeForce RTX 3090
+	make SM=gfx906 for AMD Radeon VII
+	make SM=gfx90a for AMD Instinct MI200 
 
 
 When compiling GENGA with the openGL real time visualization, go to the GengaGL directory.
@@ -115,8 +117,8 @@ When GENGA is compiled for a newer compute capability then the GPU is able to ru
 `FGAlloc  error = 13 = invalid device symbol`.
 
 
-Compile GENGA with HIP
-^^^^^^^^^^^^^^^^^^^^^^
+Compile GENGA with HIP for AMD GPUs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 GENGA provides a tool to translate the source code from CUDA to HIP. The HIP version can run on AMD and on NVIDIA GPUs.
 The translation tool is located in the HIP directory.
 

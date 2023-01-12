@@ -21,6 +21,10 @@ for i in range(len(Lines)):
 
     line = Lines[i]
 
+    if(line.find('SM=') != -1):
+        line = 'SM=gfx90a\n'
+    if(line.find('-arch sm_') != -1):
+        line = line.replace('-arch sm_', '--offload-arch=')
     if(line.find('.cu') != -1):
         line = line.replace('.cu', '.cpp')
     if(line.find('nvcc') != -1):
