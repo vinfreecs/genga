@@ -220,6 +220,27 @@ Example for FormatT = 1, FormatP = 0::
 This example will generate Kepler-Element files from particle index 0 to 2048 for a simulation name 'test'.
 
 
+.. _cleanTime:
+
+Cleaning the time files
+-----------------------
+
+The time file contains the time in seconds, GENGA needed to reach the next coordinate interval. When the
+code was interrupted in between of two output intervals, then the time file contains additional lines with
+the divided times in it. The the code was interrupted many times due to e.g. limited wall times, the time files
+can get hard to read. 
+
+The tool :literal:`cleanTime.py` in the :literal:`tools` directory can be used to clean the time files and
+add the divided times together to the original coordinate output intervals. 
+
+The tool can be used with::
+
+    python3 cleanTime.py -n <name> -ci <I>
+
+where <name> is the name in the simulation files, and <I> is the coordinate output interval used in the 
+param.dat file. 
+
+The tool will create a new file :literal:`timeClean<name>.dat` with the cleaned times. 
 
 .. _IrregularOutput:
 

@@ -325,6 +325,7 @@ public:
 	__host__ int step_largeN(int);
 	__host__ int step_small(int);
 	__host__ int step_M(int);
+	__host__ int step_M3(int);
 	__host__ int step_MSimple();
 	__host__ int ttv_step();
 	

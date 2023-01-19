@@ -368,6 +368,11 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 
 	extern volatile __shared__ float3 af_s[];
 
+//        extern __shared__ double s_s[];
+//        double *K_s = s_s;                              //size NBx * NBy
+//        double *x_s = (double*)&K_s[NBx * NBy];         //size NBx
+
+
 	float4 x4i1, x4i2, x4i3, x4i4;
 	float rcritvi1, rcritvi2, rcritvi3, rcritvi4;
 

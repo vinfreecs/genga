@@ -535,7 +535,7 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 //Authors: Simon Grimm
 //April 2019
 //  *****************************************
-__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const double dt, const double dtiMsun, const int N, const int UseGR){
+__global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseGR){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -634,12 +634,119 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const d
 //if(idx == 2 && idy + i == 0) printf("HCz %d %.20e %.20g %.20e\n", idy + i, x4_d[idy + i].x, a, dtiMsun);
 			if(UseGR == 1){
 				double c2 = def_cm * def_cm;
-				double4 v4 = v4_d[idy];
+				double4 v4 = v4_d[idy + i];
 				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
 				double vcdt = 2.0 * vsq / c2 * dt;
 				if(idx == 0) x4_d[idy + i].x -= __dmul_rn(v4.x, vcdt);
 				if(idx == 1) x4_d[idy + i].y -= __dmul_rn(v4.y, vcdt);
 				if(idx == 2) x4_d[idy + i].z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+	}
+}
+
+__global__ void HC32aM_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double2 *Msun_d, int *N_d, int *NBS_d, const int Nst, const double Ct, const int UseGR){
+
+	int st = blockIdx.x;
+	int idy = threadIdx.x;				//must be in x dimension in order to be in the same warp
+
+	if(st < Nst){
+
+		double3 a = {0.0, 0.0, 0.0};
+		double m;
+		double4 v4i;
+
+		int Ni = N_d[st];
+		int NBS = NBS_d[st];
+
+		double dt = dt_d[st] * Ct;
+		double dtiMsun = dt / Msun_d[st].x;
+
+		for(int i = 0; i < Ni; i += blockDim.x){	
+			if(idy + i < Ni){
+				m = x4_d[NBS + idy + i].w;
+				v4i = v4_d[NBS + idy + i];
+				if(m > 0.0){
+					a.x += m * v4i.x;
+					a.y += m * v4i.y;
+					a.z += m * v4i.z;
+				}
+			}
+		}
+//printf("%d %d %.20g %.20g %.20g\n", st, idy, a.x, a.y, a.z);
+		__syncthreads();
+
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+#endif
+		}
+		__syncthreads();
+
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			extern __shared__ double3 HCaM_s[];
+			double3 *a_s = HCaM_s;
+
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				a_s[threadIdx.x].x = 0.0;
+				a_s[threadIdx.x].y = 0.0;
+				a_s[threadIdx.x].z = 0.0;
+			}
+			__syncthreads(); 
+
+			if(lane == 0){
+				a_s[warp] = a;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				a = a_s[threadIdx.x];
+				for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
+#else
+					a.x += __shfld_xor(a.x, i);
+					a.y += __shfld_xor(a.y, i);
+					a.z += __shfld_xor(a.z, i);
+#endif
+				}
+				if(lane == 0){
+					a_s[0] = a;
+				}
+			}
+			__syncthreads();
+			
+			a = a_s[0];
+		}
+		__syncthreads();
+		for(int i = 0; i < Ni; i += blockDim.x){
+			if(idy + i < Ni && x4_d[NBS + idy + i].w >= 0.0){
+//printf("HC A %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.29g %.20g %.20g %.20g %.20g\n", st, idy + i, a.x, a.y, a.z, x4_d[NBS + idy + i].x, x4_d[NBS + idy + i].y, x4_d[NBS + idy + i].z, v4_d[NBS + idy + i].x, v4_d[NBS + idy + i].y, v4_d[NBS + idy + 1].z, x4_d[NBS + idy + i].w, dtiMsun);
+				x4_d[NBS + idy + i].x += a.x * dtiMsun;
+				x4_d[NBS + idy + i].y += a.y * dtiMsun;
+				x4_d[NBS + idy + i].z += a.z * dtiMsun;
+
+				if(UseGR == 1){
+					double c2 = def_cm * def_cm;
+					double4 v4 = v4_d[NBS + idy + i];
+					double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+					double vcdt = 2.0 * vsq / c2 * dt;
+					x4_d[NBS + idy + i].x -= __dmul_rn(v4.x, vcdt);
+					x4_d[NBS + idy + i].y -= __dmul_rn(v4.y, vcdt);
+					x4_d[NBS + idy + i].z -= __dmul_rn(v4.z, vcdt);
+				}
 			}
 		}
 	}
@@ -722,7 +829,7 @@ __host__ void Data::HCCall(const double Ct, const int f){
 	}
 	else if(N_h[0] + Nsmall_h[0] <= 512){
 		int nn = (N_h[0] + Nsmall_h[0] + WarpSize - 1) / WarpSize;
-		HC32a_kernel <<< 3, nn * WarpSize, WarpSize * sizeof(double)  >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+		HC32a_kernel <<< 3, nn * WarpSize, WarpSize * sizeof(double)  >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 	}
 	else{
 		int nct = 512;

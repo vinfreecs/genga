@@ -7,9 +7,12 @@
 #endif
 
 
-__global__ void setNencpairs(int *Nencpairs_d){
+__global__ void setNencpairs(int *Nencpairs_d, int N){
 
-	Nencpairs_d[0] = 0;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	if(id < N){
+		Nencpairs_d[id] = 0;
+	}
 }
 
 

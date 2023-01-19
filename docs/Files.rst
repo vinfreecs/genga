@@ -291,6 +291,15 @@ This file contains the execution time spent for the corresponding Coordinate Out
 The first column indicates the time step. This last entry in the file is used for the automated restart (restart timestep = -1).
 
 
+When the code was interrupted in between of two output intervals, then the time file contains additional lines with the divided times in it. The the code was interrupted many times due to e.g. limited wall times, the time files
+can get hard to read.
+
+The tool :literal:`cleanTime.py` in the :literal:`tools` directory can be used to clean the time files and
+add the divided times together to the original coordinate output intervals.
+
+See :ref:`cleanTime`.
+
+
 .. _CollisionsFile:
 
 The Collisions File: Collisions<name>.dat

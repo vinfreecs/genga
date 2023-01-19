@@ -339,6 +339,130 @@ __global__ void comB_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const
 	}
 }
 
+//multiple warps, but only 1 thread block
+__global__ void comBM_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, double2 *Msun_d, int *N_d, int *NBS_d, const int Nst, const int f){
+
+	int st = blockIdx.x;
+	int idy = threadIdx.x;
+
+	if(st < Nst){
+		double4 p = {0.0, 0.0, 0.0, 0.0};
+		double m;
+		double4 v4i;
+
+		int Ni = N_d[st];
+		int NBS = NBS_d[st];
+
+		double Msun = Msun_d[st].x;
+
+		for(int i = 0; i < Ni; i += blockDim.x){
+			if(idy + i < Ni){
+				m = x4_d[NBS + idy + i].w;
+				v4i = v4_d[NBS + idy + i];
+				if(m > 0.0){
+					p.x += m * v4i.x;
+					p.y += m * v4i.y;
+					p.z += m * v4i.z;
+					p.w += m;
+				}
+			}
+		}
+		__syncthreads();
+
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+			p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+			p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+			p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
+#else
+			p.x += __shfld_xor(p.x, i);
+			p.y += __shfld_xor(p.y, i);
+			p.z += __shfld_xor(p.z, i);
+			p.w += __shfld_xor(p.w, i);
+#endif
+	//if(i >= 16) printf("BA %d %d %.20g\n", idy, i, p.x);
+		}
+
+		__syncthreads();
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			extern __shared__ double4 comBM_s[];
+			double4 *p_s = comBM_s;
+
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				p_s[threadIdx.x].x = 0.0;
+				p_s[threadIdx.x].y = 0.0;
+				p_s[threadIdx.x].z = 0.0;
+				p_s[threadIdx.x].w = 0.0;
+			}
+			__syncthreads();
+
+			if(lane == 0){
+				p_s[warp] = p;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				p = p_s[threadIdx.x];
+				for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+					p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+					p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+					p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+					p.w += __shfl_xor_sync(0xffffffff, p.w, i, warpSize);
+#else
+					p.x += __shfld_xor(p.x, i);
+					p.y += __shfld_xor(p.y, i);
+					p.z += __shfld_xor(p.z, i);
+					p.w += __shfld_xor(p.w, i);
+#endif
+	//if(i >= 16) printf("BB %d %d %.20g\n", idy, i, p.x);
+				}
+				if(lane == 0){
+					p_s[0] = p;
+				}
+			}
+			__syncthreads();
+
+			p = p_s[0];
+		}
+		__syncthreads();
+
+		double iMsun = 1.0 / Msun;
+
+		if(idy == 0){
+			if(f == 0){
+				vcom_d[st].x = p.x;
+				vcom_d[st].y = p.y;
+				vcom_d[st].z = p.z;
+			}
+		}
+	//if(idy == 0) printf("comB %d %.20g %.20g %.20g %.20g\n", idy, p.x, p.y, p.z, p.w);
+		for(int i = 0; i < Ni; i += blockDim.x){
+			if(idy + i < Ni){
+				m = x4_d[NBS + idy + i].w;
+				if(m >= 0.0 && f == 1){
+					//Convert to Heliocentric coordinates
+					v4_d[NBS + idy + i].x += p.x * iMsun;
+					v4_d[NBS + idy + i].y += p.y * iMsun;
+					v4_d[NBS + idy + i].z += p.z * iMsun;
+				}
+				if(m >= 0.0 && f == -1){
+					//Convert to Democratic coordinates
+					double iMsunp = 1.0 / (Msun + p.w);
+					v4_d[NBS + idy + i].x -= p.x * iMsunp;
+					v4_d[NBS + idy + i].y -= p.y * iMsunp;
+					v4_d[NBS + idy + i].z -= p.z * iMsunp;
+				}
+			}
+		}
+	}
+}
+
 //only 1 single warp
 __global__ void comC_kernel(double4 *x4_d, double4 *v4_d, double3 *vcom_d, const double Msun, const int N, const int f){
 

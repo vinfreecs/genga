@@ -963,6 +963,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, EncFlag_d, idy, idx, NencMax, test); 
 //printf("Kick1 %d %d %g %g %.20g %.20g %.20g\n", idx, idy, x4i.w, x4j.w, a.x, a.y, a.z);
 		}
+//if(idx == 0) printf("Kick %d %d %.20g %.20g %.20g\n", idx, idy, a.x, a.y, a.z);
 
 		__syncthreads();
 
@@ -1089,89 +1090,6 @@ __global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 				acck_d[idx].x = b.x;
 				acck_d[idx].y = b.y;
 				acck_d[idx].z = b.z;
-			}
-		}
-		if(E <= 2){
-			if(idy == 0){
-				Encpairs2_d[NencMax * idx].x = NencpairsI_s;
-			}
-			if(idy < NencpairsI_s && idy < NencMax){
-				int jj = Encpairs2_d[idx * NencMax + idy].y;
-				if(idx < jj){
-					int Ne = atomicAdd(Nencpairs_d, 1);
-					Encpairs_d[Ne].x = idx;
-					Encpairs_d[Ne].y = jj;
-				}
-			}
-		}
-	}
-}
-template <int E>
-__global__ void kick16cM_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, int *N_d, int *NBS_d){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
-	int st = blockIdx.y;
-
-	int NBS = NBS_d[st];
-	int N = N_d[st]; 
-
-	if(idx < N){
-
-		__shared__ int NencpairsI_s;
-
-		double4 x4i = x4_d[idx + NBS];
-		double rcritvi = rcritv_d[idx + NBS];
-
-		double3 a = {0.0, 0.0, 0.0};
-		double3 b = {0.0, 0.0, 0.0};
-
-		double test;
-
-		if(idy == 0){
-			NencpairsI_s = 0;
-		}
-
-		__syncthreads();
-
-
-		if(idy < N){
-			double4 x4j = x4_d[idy + NBS];
-			double rcritvj = rcritv_d[idy + NBS];
-			acc_d<E>(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI_s, Encpairs2_d, EncFlag_d, idy, idx, NencMax, test); 
-		}
-
-		__syncthreads();
-
-		for(int i = 1; i < warpSize; i*=2){
-#if def_OldShuffle == 0
-			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
-			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
-			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
-
-			b.x += __shfl_xor_sync(0xffffffff, b.x, i, warpSize);
-			b.y += __shfl_xor_sync(0xffffffff, b.y, i, warpSize);
-			b.z += __shfl_xor_sync(0xffffffff, b.z, i, warpSize);
-#else
-			a.x += __shfld_xor(a.x, i);
-			a.y += __shfld_xor(a.y, i);
-			a.z += __shfld_xor(a.z, i);
-
-			b.x += __shfld_xor(b.x, i);
-			b.y += __shfld_xor(b.y, i);
-			b.z += __shfld_xor(b.z, i);
-#endif
-		}
-
-		if(idy == 0){
-			if(E >= 1){
-				v4_d[idx + NBS].x += __dmul_rn(a.x, dtksq);
-				v4_d[idx + NBS].y += __dmul_rn(a.y, dtksq);
-				v4_d[idx + NBS].z += __dmul_rn(a.z, dtksq);
-			}
-			if(E <= 1){
-				acck_d[idx + NBS].x = b.x;
-				acck_d[idx + NBS].y = b.y;
-				acck_d[idx + NBS].z = b.z;
 			}
 		}
 		if(E <= 2){
@@ -1943,6 +1861,160 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			}
 		}
 
+	}
+}
+
+__global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, int *N_d, int *NBS_d, const int EE){
+
+	int idy = threadIdx.x;	//must be in x dimension in order to be in the same warp
+	int id = blockIdx.x * blockDim.y + threadIdx.y;
+
+//if(idy == 0) printf("id %d %d %d %d\n", id, blockIdx.x, blockDim.x, threadIdx.x);
+
+	if(id < NT){
+
+		int st = index_d[id] / def_MaxIndex;
+		int NBS = NBS_d[st];
+		double4 x4i = x4_d[id];
+		double rcritvi = rcritv_d[id];
+		int Ni = N_d[st];
+		
+		double3 a = {0.0, 0.0, 0.0};
+
+		__syncthreads();
+
+		for(int i = 0; i < Ni; i += blockDim.x){
+			if(idy + i < Ni){
+				double4 x4j = x4_d[NBS + idy + i];
+
+				if(idy + i != id - NBS && x4i.w >= 0.0 && x4j.w >= 0.0){
+					double rcritvj = rcritv_d[NBS + idy + i];
+
+					double rcritv = fmax(rcritvi, rcritvj);
+					double rcritv2 = rcritv * rcritv;
+					double rx = x4j.x - x4i.x;
+					double ry = x4j.y - x4i.y;
+					double rz = x4j.z - x4i.z;
+
+					double rsq = rx * rx + ry * ry + rz * rz;
+					double ir = 1.0 / sqrt(rsq);
+					double ir3 = ir * ir * ir;
+//	if( EE == 0 && idy + i == 0) printf("Kick %d %d %d %d\n", id, NBS + idy + i, index_d[id], index_d[NBS + idy + i]);
+					if(EE <= 2){
+						if(rsq < def_pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
+							int Ne = atomicAdd(Nencpairs_d, 1);
+							atomicAdd(Nencpairs_d + st + 1, 1);
+							int2 ij;
+							ij.x = id;
+							ij.y = NBS + idy + i;
+							//printf("precheck E %d %d %d %d %d %d\n", E, st_s[idy], id, id + j, index_d[id], index_d[id + j]);     
+							Encpairs_d[Ne] = ij;
+						}
+					}
+
+					double s;
+					if(rsq >= rcritv2){
+						s = x4j.w * ir3;
+					}
+					else{
+						if(rsq <= 0.01 * rcritv2){
+							s = 0.0;
+						}
+						else{
+							double y = (rsq * ir - 0.1 * rcritv) / (0.9 * rcritv);
+							double yy = y * y;
+							double K = ir3 * yy / (2.0 * yy - 2.0 * y + 1.0);
+							s = K * x4j.w;
+						}
+					}
+
+					a.x += __dmul_rn(rx, s);
+					a.y += __dmul_rn(ry, s);
+					a.z += __dmul_rn(rz, s);
+//if(id == 0) printf("Kick %d %d %.20g %.20g %.20g\n", id, idy + i, a.x, a.y, a.z);
+				}
+			}
+		}
+
+		__syncthreads();
+
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+#endif
+		//if(idx == 0 && i >= 16) printf("KickA %d %d %.20g\n", idy, i, a.x);
+		}
+
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			extern __shared__ double3 KickM3_s[];
+			double3 *a_s = KickM3_s;                       //size: warpSize
+
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				a_s[threadIdx.x].x = 0.0;
+				a_s[threadIdx.x].y = 0.0;
+				a_s[threadIdx.x].z = 0.0;
+			}
+			__syncthreads();
+
+			if(lane == 0){
+				a_s[warp] = a;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				a = a_s[threadIdx.x];
+				for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+					a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+					a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+					a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
+#else
+					a.x += __shfld_xor(a.x, i);
+					a.y += __shfld_xor(a.y, i);
+					a.z += __shfld_xor(a.z, i);
+#endif
+				//if(idx == 0 && i >= 16) printf("KickA2 %d %d %.20g\n", idy, i, a.x);
+
+				}
+				if(lane == 0){
+					a_s[0] = a;
+				}
+			}
+			__syncthreads();
+
+			a = a_s[0];
+		}
+
+		__syncthreads();
+
+//if(idy == 0 && idx < 10)	printf("Kick %d %d %d %.20g %.20g %.20g\n", id, threadIdx.y, idy, a_s[idy].x, a_s[idy].y, a_s[idy].z); 
+
+
+		if(EE <= 1){
+			if(idy == 0){
+				acck_d[id].x = a.x;
+				acck_d[id].y = a.y;
+				acck_d[id].z = a.z;
+			}
+		}
+		if(EE >= 1){
+			if(idy == 0){
+				double dtksqKt = dt_d[st] * Kt * def_ksq;
+				v4_d[id].x += __dmul_rn(a.x, dtksqKt);
+				v4_d[id].y += __dmul_rn(a.y, dtksqKt);
+				v4_d[id].z += __dmul_rn(a.z, dtksqKt);
+			}
+		}
 	}
 }
 #endif
