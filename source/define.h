@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.166
+#define def_Version 3.167
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -178,6 +178,7 @@
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
 #define NmaxM 32			//maximal size of sub simulations
+//#define NmaxM 128			//maximal size of sub simulations
 #define HCM_Bl2 (HCM_Bl - NmaxM - NmaxM / 2)
 
 #define KM_Bl 128
@@ -192,9 +193,9 @@
 
 
 //Parameters for fastfg
-#define FGN 127				//Number of elements in table for fastfg
-#define PI_N M_PI/FGN
-#define N_PI FGN/M_PI
+#define def_FGN 127				//Number of elements in table for fastfg
+#define PI_N M_PI/def_FGN
+#define N_PI def_FGN/M_PI
 
 //Build Data
 #ifndef GIT_BRANCH
@@ -222,9 +223,9 @@
 #endif
 
 // * Only for testing **
-#define G3 0				//New integrator scheme
-#define G3Limit	1.5e-12	//2.0e-12
-#define G3Limit2 2.0e-16 //2.0e-16
+#define def_G3 0				//New integrator scheme
+#define def_G3Limit	1.5e-12	//2.0e-12
+#define def_G3Limit2 2.0e-16 //2.0e-16
 // *********************
 
 
@@ -255,7 +256,7 @@
 #define MCMC_NE 5 			//2: a M; 3: a M m; 5: a M m e w; 7: a m M e w inc Omega,; 8: + r
 #define MCMC_NT 1			//number of temperature levels in parallel tempering
 #define MCMC_NCOV 0			//number of parameters per planet in covariance matrix
-#define NoEncounters 0			
+#define def_NoEncounters 0			
 //----------------------------
 
 

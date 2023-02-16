@@ -12,7 +12,7 @@
 //
 //  ****************************************
 template< int NN, int nb>
-__global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double2 *Msun_d, double *U_d, int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, double *time_d, double4 *spin_d, double3 *love_d, int *createFlag_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseGR, double MinMass, int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, double *dt_d, double FGt, double2 *Msun_d, double *U_d, int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, double *time_d, double4 *spin_d, double3 *love_d, int *createFlag_d, const int Nst, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, int UseGR, double MinMass, int UseTestParticles, const int SLevels, int noColl, const int NencMax){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -36,15 +36,17 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 	__shared__ double4 x4_s[NN];
 	__shared__ double4 v4_s[NN];
 	__shared__ double rcritv_s[NN * def_SLevelsMax];
-	__shared__ double3 a0_s[nb * NN +NN];
-	__shared__ double3 a_s[nb * NN + NN];
+	__shared__ double3 a0_s[NN];
+	__shared__ double3 a_s[NN];
 	__shared__ double4 xp_s[NN];
 	__shared__ double4 vp_s[NN];
 	__shared__ double4 xt_s[NN];
 	__shared__ double4 vt_s[NN];
-
 	__shared__ double3 dx_s[NN][8];
 	__shared__ double3 dv_s[NN][8];
+
+	double3 a0, a;
+
 
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
@@ -57,14 +59,15 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 	double3 scalex;
 	double3 scalev;
 
-	__shared__ double error_s[2*NN];
+	__shared__ double error_s[1];
+	double error = 0.0;
 	double test;
 	int idi;
-	int si = Encpairs2_d[ (st+1) + NmaxM * idx].y;
+	int si = Encpairs2_d[ (st+1) + NencMax * idx].y;
 	N2 = Encpairs_d[si + Nst].y;
 	if(idy < N2){
-		idi = Encpairs_d[(si * NmaxM) + idy].x;
-//printf("BS %d %d %d %d %d %d\n", idx, st, si, idi, index_d[idi], N2);
+		idi = Encpairs_d[(si * NencMax) + idy].x;
+//printf("BS %d %d %d %d %d %d %d\n", idx, st, si, idi, index_d[idi], N2, NN);
 	}
 	else idi = 0;
 
@@ -117,25 +120,19 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			rcritv_s[idy + l * NN] = 0.0;
 		}
 	}
-	if(idy < NN){
-		a0_s[idy + nb*NN].x = 0.0;
-		a0_s[idy + nb*NN].y = 0.0;
-		a0_s[idy + nb*NN].z = 0.0;
-
-		a_s[idy + nb*NN].x = 0.0;
-		a_s[idy + nb*NN].y = 0.0;
-		a_s[idy + nb*NN].z = 0.0;
-	}
 	if(idy < def_MaxColl){
 		Colpairs_s[idy].x = 0;
 		Colpairs_s[idy].y = 0;
 		Coltime_s[idy] = 0.0;
 	}
-	if(idy < 2 * NN) error_s[idy] = 0.0;
+	if(idy == 0){
+		 error_s[0] = 0.0;
+	}
 	__syncthreads();
 
+
 	for(int tt = 0; tt < 10000; ++tt){
-	__syncthreads();
+		__syncthreads();
 
 		if(idy < N2){
 
@@ -149,35 +146,73 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 
 		}
 
-		a0_s[idy].x = 0.0;
-		a0_s[idy].y = 0.0;
-		a0_s[idy].z = 0.0;
+		if(idy < NN){
+			a0_s[idy].x = 0.0;
+			a0_s[idy].y = 0.0;
+			a0_s[idy].z = 0.0;
+		}
+		a0.x = 0.0;
+		a0.y = 0.0;
+		a0.z = 0.0;
+
 		__syncthreads();
+
 		for(int l = 0; l < NN; l += nb){
-			accEnc(x4_s[ii], x4_s[jj + l], a0_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+			accEnc(x4_s[ii], x4_s[jj + l], a0, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 		}
 		__syncthreads();
 		{
-			volatile double3 *a = a0_s;
-			if(nb >= 16) a[idy].x += a[idy + 8].x;
-			if(nb >= 8) a[idy].x += a[idy + 4].x;
-			if(nb >= 4) a[idy].x += a[idy + 2].x;
-			if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-			if(nb >= 16) a[idy].y += a[idy + 8].y;
-			if(nb >= 8) a[idy].y += a[idy + 4].y;
-			if(nb >= 4) a[idy].y += a[idy + 2].y;
-			if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-			if(nb >= 16) a[idy].z += a[idy + 8].z;
-			if(nb >= 8) a[idy].z += a[idy + 4].z;
-			if(nb >= 4) a[idy].z += a[idy + 2].z;
-			if(nb >= 2) a[idy].z += a[idy + 1].z;
+#if def_OldShuffle == 0
+			if(nb >= 16){
+				a0.x += __shfl_down_sync(0xffffffff, a0.x, 8, warpSize);
+				a0.y += __shfl_down_sync(0xffffffff, a0.y, 8, warpSize);
+				a0.z += __shfl_down_sync(0xffffffff, a0.z, 8, warpSize);
+			}
+			if(nb >= 8){
+				a0.x += __shfl_down_sync(0xffffffff, a0.x, 4, warpSize);
+				a0.y += __shfl_down_sync(0xffffffff, a0.y, 4, warpSize);
+				a0.z += __shfl_down_sync(0xffffffff, a0.z, 4, warpSize);
+			}
+			if(nb >= 4){
+				a0.x += __shfl_down_sync(0xffffffff, a0.x, 2, warpSize);
+				a0.y += __shfl_down_sync(0xffffffff, a0.y, 2, warpSize);
+				a0.z += __shfl_down_sync(0xffffffff, a0.z, 2, warpSize);
+			}
+			if(nb >= 2){
+				a0.x += __shfl_down_sync(0xffffffff, a0.x, 1, warpSize);
+				a0.y += __shfl_down_sync(0xffffffff, a0.y, 1, warpSize);
+				a0.z += __shfl_down_sync(0xffffffff, a0.z, 1, warpSize);
+			}
+#else
+			if(nb >= 16){
+				a0.x += __shfld_down(a0.x, 8);
+				a0.y += __shfld_down(a0.y, 8);
+				a0.z += __shfld_down(a0.z, 8);
+			}
+			if(nb >= 8){
+				a0.x += __shfld_down(a0.x, 4);
+				a0.y += __shfld_down(a0.y, 4);
+				a0.z += __shfld_down(a0.z, 4);
+			}
+			if(nb >= 4){
+				a0.x += __shfld_down(a0.x, 2);
+				a0.y += __shfld_down(a0.y, 2);
+				a0.z += __shfld_down(a0.z, 2);
+			}
+			if(nb >= 2){
+				a0.x += __shfld_down(a0.x, 1);
+				a0.y += __shfld_down(a0.y, 1);
+				a0.z += __shfld_down(a0.z, 1);
+			}
+			#endif
+			if(jj == 0){
+				a0_s[ii] = a0;
+			}
 		}
 		__syncthreads();
 
 		if(idy < N2){
-			accEncSun(x4_s[idy], a0_s[idy * nb], def_ksq * Msun * dtgr);
+			accEncSun(x4_s[idy], a0_s[idy], def_ksq * Msun * dtgr);
 		}
 
 		volatile int f = 1;
@@ -194,173 +229,316 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					xp_s[idy].z = x4_s[idy].z + dt2 * dtgr * v4_s[idy].z;
 					xp_s[idy].w = x4_s[idy].w;
 
-					vp_s[idy].x = v4_s[idy].x + dt2 * a0_s[idy * nb].x;  
-					vp_s[idy].y = v4_s[idy].y + dt2 * a0_s[idy * nb].y;  
-					vp_s[idy].z = v4_s[idy].z + dt2 * a0_s[idy * nb].z; 
+					vp_s[idy].x = v4_s[idy].x + dt2 * a0_s[idy].x;
+					vp_s[idy].y = v4_s[idy].y + dt2 * a0_s[idy].y;
+					vp_s[idy].z = v4_s[idy].z + dt2 * a0_s[idy].z;
 					vp_s[idy].w = v4_s[idy].w;
 				}
 
-				a_s[idy].x = 0.0;
-				a_s[idy].y = 0.0;
-				a_s[idy].z = 0.0;
+				if(idy < NN){
+					a_s[idy].x = 0.0;
+					a_s[idy].y = 0.0;
+					a_s[idy].z = 0.0;
+				}
+				a.x = 0.0;
+				a.y = 0.0;
+				a.z = 0.0;
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-					accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 				}
 				__syncthreads();
 				{
-					volatile double3 *a = a_s;
-					if(nb >= 16) a[idy].x += a[idy + 8].x;
-					if(nb >= 8) a[idy].x += a[idy + 4].x;
-					if(nb >= 4) a[idy].x += a[idy + 2].x;
-					if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-					if(nb >= 16) a[idy].y += a[idy + 8].y;
-					if(nb >= 8) a[idy].y += a[idy + 4].y;
-					if(nb >= 4) a[idy].y += a[idy + 2].y;
-					if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-					if(nb >= 16) a[idy].z += a[idy + 8].z;
-					if(nb >= 8) a[idy].z += a[idy + 4].z;
-					if(nb >= 4) a[idy].z += a[idy + 2].z;
-					if(nb >= 2) a[idy].z += a[idy + 1].z;
+#if def_OldShuffle == 0
+					if(nb >= 16){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 8, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 8, warpSize);
+					}
+					if(nb >= 8){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 4, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 4, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 4, warpSize);
+					}
+					if(nb >= 4){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 2, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 2, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 2, warpSize);
+					}
+					if(nb >= 2){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 1, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 1, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 1, warpSize);
+					}
+#else
+					if(nb >= 16){
+						a.x += __shfld_down(a.x, 8);
+						a.y += __shfld_down(a.y, 8);
+						a.z += __shfld_down(a.z, 8);
+					}
+					if(nb >= 8){
+						a.x += __shfld_down(a.x, 4);
+						a.y += __shfld_down(a.y, 4);
+						a.z += __shfld_down(a.z, 4);
+					}
+					if(nb >= 4){
+						a.x += __shfld_down(a.x, 2);
+						a.y += __shfld_down(a.y, 2);
+						a.z += __shfld_down(a.z, 2);
+					}
+					if(nb >= 2){
+						a.x += __shfld_down(a.x, 1);
+						a.y += __shfld_down(a.y, 1);
+						a.z += __shfld_down(a.z, 1);
+					}
+#endif
+					if(jj == 0){
+						a_s[ii] = a;
+					}
 				}
 				__syncthreads();
 				if(idy < NN){
-					accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+					accEncSun(xp_s[idy], a_s[idy], def_ksq * Msun * dtgr);
 
 					xt_s[idy].x = x4_s[idy].x + dt22 * dtgr * vp_s[idy].x;
 					xt_s[idy].y = x4_s[idy].y + dt22 * dtgr * vp_s[idy].y;
 					xt_s[idy].z = x4_s[idy].z + dt22 * dtgr * vp_s[idy].z;
 					xt_s[idy].w = x4_s[idy].w;
 
-					vt_s[idy].x = v4_s[idy].x + dt22 * a_s[idy * nb].x;
-					vt_s[idy].y = v4_s[idy].y + dt22 * a_s[idy * nb].y;
-					vt_s[idy].z = v4_s[idy].z + dt22 * a_s[idy * nb].z;
+					vt_s[idy].x = v4_s[idy].x + dt22 * a_s[idy].x;
+					vt_s[idy].y = v4_s[idy].y + dt22 * a_s[idy].y;
+					vt_s[idy].z = v4_s[idy].z + dt22 * a_s[idy].z;
 					vt_s[idy].w = v4_s[idy].w;
 				}
 				__syncthreads();
 				
 				for(int m = 2; m <= n; ++m){
-					a_s[idy].x = 0.0;
-					a_s[idy].y = 0.0;
-					a_s[idy].z = 0.0;
-
+					if(idy < NN){
+						a_s[idy].x = 0.0;
+						a_s[idy].y = 0.0;
+						a_s[idy].z = 0.0;
+					}
+					a.x = 0.0;
+					a.y = 0.0;
+					a.z = 0.0;
+				
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+						accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 					}
 					__syncthreads();
 					{
-						volatile double3 *a = a_s;
-						if(nb >= 16) a[idy].x += a[idy + 8].x;
-						if(nb >= 8) a[idy].x += a[idy + 4].x;
-						if(nb >= 4) a[idy].x += a[idy + 2].x;
-						if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-						if(nb >= 16) a[idy].y += a[idy + 8].y;
-						if(nb >= 8) a[idy].y += a[idy + 4].y;
-						if(nb >= 4) a[idy].y += a[idy + 2].y;
-						if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-						if(nb >= 16) a[idy].z += a[idy + 8].z;
-						if(nb >= 8) a[idy].z += a[idy + 4].z;
-						if(nb >= 4) a[idy].z += a[idy + 2].z;
-						if(nb >= 2) a[idy].z += a[idy + 1].z; 
+#if def_OldShuffle == 0
+						if(nb >= 16){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 8, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 8, warpSize);
+						}
+						if(nb >= 8){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 4, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 4, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 4, warpSize);
+						}
+						if(nb >= 4){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 2, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 2, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 2, warpSize);
+						}
+						if(nb >= 2){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 1, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 1, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 1, warpSize);
+						}
+#else
+						if(nb >= 16){
+							a.x += __shfld_down(a.x, 8);
+							a.y += __shfld_down(a.y, 8);
+							a.z += __shfld_down(a.z, 8);
+						}
+						if(nb >= 8){
+							a.x += __shfld_down(a.x, 4);
+							a.y += __shfld_down(a.y, 4);
+							a.z += __shfld_down(a.z, 4);
+						}
+						if(nb >= 4){
+							a.x += __shfld_down(a.x, 2);
+							a.y += __shfld_down(a.y, 2);
+							a.z += __shfld_down(a.z, 2);
+						}
+						if(nb >= 2){
+							a.x += __shfld_down(a.x, 1);
+							a.y += __shfld_down(a.y, 1);
+							a.z += __shfld_down(a.z, 1);
+						}
+#endif
+						if(jj == 0){
+							a_s[ii] = a;
+						}
 					}
 					__syncthreads();
-
 					if(idy < N2){
-						accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+						accEncSun(xt_s[idy], a_s[idy], def_ksq * Msun * dtgr);
 
 						xp_s[idy].x += dt22 * dtgr * vt_s[idy].x;
 						xp_s[idy].y += dt22 * dtgr * vt_s[idy].y;
 						xp_s[idy].z += dt22 * dtgr * vt_s[idy].z;
 
-						vp_s[idy].x += dt22 * a_s[idy * nb].x;
-						vp_s[idy].y += dt22 * a_s[idy * nb].y;
-						vp_s[idy].z += dt22 * a_s[idy * nb].z;
+						vp_s[idy].x += dt22 * a_s[idy].x;
+						vp_s[idy].y += dt22 * a_s[idy].y;
+						vp_s[idy].z += dt22 * a_s[idy].z;
 					}
 					__syncthreads();
-					a_s[idy].x = 0.0;
-					a_s[idy].y = 0.0;
-					a_s[idy].z = 0.0;
+					if(idy < NN){
+						a_s[idy].x = 0.0;
+						a_s[idy].y = 0.0;
+						a_s[idy].z = 0.0;
+					}
+					a.x = 0.0;
+					a.y = 0.0;
+					a.z = 0.0;
 
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						accEnc(xp_s[ii], xp_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+						accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 					}
 					__syncthreads();
 					{
-						volatile double3 *a = a_s;
-						if(nb >= 16) a[idy].x += a[idy + 8].x;
-						if(nb >= 8) a[idy].x += a[idy + 4].x;
-						if(nb >= 4) a[idy].x += a[idy + 2].x;
-						if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-						if(nb >= 16) a[idy].y += a[idy + 8].y;
-						if(nb >= 8) a[idy].y += a[idy + 4].y;
-						if(nb >= 4) a[idy].y += a[idy + 2].y;
-						if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-						if(nb >= 16) a[idy].z += a[idy + 8].z;
-						if(nb >= 8) a[idy].z += a[idy + 4].z;
-						if(nb >= 4) a[idy].z += a[idy + 2].z;
-						if(nb >= 2) a[idy].z += a[idy + 1].z;
+#if def_OldShuffle == 0
+						if(nb >= 16){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 8, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 8, warpSize);
+						}
+						if(nb >= 8){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 4, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 4, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 4, warpSize);
+						}
+						if(nb >= 4){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 2, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 2, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 2, warpSize);
+						}
+						if(nb >= 2){
+							a.x += __shfl_down_sync(0xffffffff, a.x, 1, warpSize);
+							a.y += __shfl_down_sync(0xffffffff, a.y, 1, warpSize);
+							a.z += __shfl_down_sync(0xffffffff, a.z, 1, warpSize);
+						}
+#else
+						if(nb >= 16){
+							a.x += __shfld_down(a.x, 8);
+							a.y += __shfld_down(a.y, 8);
+							a.z += __shfld_down(a.z, 8);
+						}
+						if(nb >= 8){
+							a.x += __shfld_down(a.x, 4);
+							a.y += __shfld_down(a.y, 4);
+							a.z += __shfld_down(a.z, 4);
+						}
+						if(nb >= 4){
+							a.x += __shfld_down(a.x, 2);
+							a.y += __shfld_down(a.y, 2);
+							a.z += __shfld_down(a.z, 2);
+						}
+						if(nb >= 2){
+							a.x += __shfld_down(a.x, 1);
+							a.y += __shfld_down(a.y, 1);
+							a.z += __shfld_down(a.z, 1);
+						}
+#endif
+						if(jj == 0){
+							a_s[ii] = a;
+						}
 					}
 					__syncthreads();
 
 					if(idy < N2){
-						accEncSun(xp_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+						accEncSun(xp_s[idy], a_s[idy], def_ksq * Msun * dtgr);
 
 						xt_s[idy].x += dt22 * dtgr * vp_s[idy].x;
 						xt_s[idy].y += dt22 * dtgr * vp_s[idy].y;
 						xt_s[idy].z += dt22 * dtgr * vp_s[idy].z;
 
-						vt_s[idy].x += dt22 * a_s[idy * nb].x;
-						vt_s[idy].y += dt22 * a_s[idy * nb].y;
-						vt_s[idy].z += dt22 * a_s[idy * nb].z;
+						vt_s[idy].x += dt22 * a_s[idy].x;
+						vt_s[idy].y += dt22 * a_s[idy].y;
+						vt_s[idy].z += dt22 * a_s[idy].z;
 					}
 					__syncthreads();
+				}//end of m loop
+				if(idy < NN){
+					a_s[idy].x = 0.0;
+					a_s[idy].y = 0.0;
+					a_s[idy].z = 0.0;
 				}
-				a_s[idy].x = 0.0;
-				a_s[idy].y = 0.0;
-				a_s[idy].z = 0.0;
+				a.x = 0.0;
+				a.y = 0.0;
+				a.z = 0.0;
 
 				__syncthreads();
 				for(int l = 0; l < NN; l += nb){
-					accEnc(xt_s[ii], xt_s[jj + l], a_s[idy], rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
 				}
 				__syncthreads();
 				{
-					volatile double3 *a = a_s;
-					if(nb >= 16) a[idy].x += a[idy + 8].x;
-					if(nb >= 8) a[idy].x += a[idy + 4].x;
-					if(nb >= 4) a[idy].x += a[idy + 2].x;
-					if(nb >= 2) a[idy].x += a[idy + 1].x;
-
-					if(nb >= 16) a[idy].y += a[idy + 8].y;
-					if(nb >= 8) a[idy].y += a[idy + 4].y;
-					if(nb >= 4) a[idy].y += a[idy + 2].y;
-					if(nb >= 2) a[idy].y += a[idy + 1].y;
-
-					if(nb >= 16) a[idy].z += a[idy + 8].z;
-					if(nb >= 8) a[idy].z += a[idy + 4].z;
-					if(nb >= 4) a[idy].z += a[idy + 2].z;
-					if(nb >= 2) a[idy].z += a[idy + 1].z; 
+#if def_OldShuffle == 0
+					if(nb >= 16){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 8, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 8, warpSize);
+					}
+					if(nb >= 8){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 4, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 4, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 4, warpSize);
+					}
+					if(nb >= 4){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 2, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 2, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 2, warpSize);
+					}
+					if(nb >= 2){
+						a.x += __shfl_down_sync(0xffffffff, a.x, 1, warpSize);
+						a.y += __shfl_down_sync(0xffffffff, a.y, 1, warpSize);
+						a.z += __shfl_down_sync(0xffffffff, a.z, 1, warpSize);
+					}
+#else
+					if(nb >= 16){
+						a.x += __shfld_down(a.x, 8);
+						a.y += __shfld_down(a.y, 8);
+						a.z += __shfld_down(a.z, 8);
+					}
+					if(nb >= 8){
+						a.x += __shfld_down(a.x, 4);
+						a.y += __shfld_down(a.y, 4);
+						a.z += __shfld_down(a.z, 4);
+					}
+					if(nb >= 4){
+						a.x += __shfld_down(a.x, 2);
+						a.y += __shfld_down(a.y, 2);
+						a.z += __shfld_down(a.z, 2);
+					}
+					if(nb >= 2){
+						a.x += __shfld_down(a.x, 1);
+						a.y += __shfld_down(a.y, 1);
+						a.z += __shfld_down(a.z, 1);
+					}
+#endif
+					if(jj == 0){
+						a_s[ii] = a;
+					}
 				}
 				__syncthreads();
 				if(idy < N2){
-					accEncSun(xt_s[idy], a_s[idy * nb], def_ksq * Msun * dtgr);
+					accEncSun(xt_s[idy], a_s[idy], def_ksq * Msun * dtgr);
 
 					dx_s[idy][n-1].x = 0.5 * (xt_s[idy].x + (xp_s[idy].x + (dt2 * dtgr * vt_s[idy].x)));
 					dx_s[idy][n-1].y = 0.5 * (xt_s[idy].y + (xp_s[idy].y + (dt2 * dtgr * vt_s[idy].y)));
 					dx_s[idy][n-1].z = 0.5 * (xt_s[idy].z + (xp_s[idy].z + (dt2 * dtgr * vt_s[idy].z)));
 
-					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy * nb].x)));
-					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy * nb].y)));
-					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy * nb].z)));	
+					dv_s[idy][n-1].x = 0.5 * (vt_s[idy].x + (vp_s[idy].x + (dt2 * a_s[idy].x)));
+					dv_s[idy][n-1].y = 0.5 * (vt_s[idy].y + (vp_s[idy].y + (dt2 * a_s[idy].y)));
+					dv_s[idy][n-1].z = 0.5 * (vt_s[idy].z + (vp_s[idy].z + (dt2 * a_s[idy].z)));	
 				}
 				
 				if(idy < N2){
@@ -386,23 +564,34 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					errorx = fmax(errorx, dx_s[idy][0].z * dx_s[idy][0].z * scalex.z);
 					errorv = fmax(errorv, dv_s[idy][0].z * dv_s[idy][0].z * scalev.z);
 
-					error_s[idy] = fmax(errorx, errorv);
+					error = fmax(errorx, errorv);
 	
 					Ncol_s[0] = 0;
 					Coltime_s[0] = 10.0;
 
 				}
-				__syncthreads();
-				if(idy < N2){
-					volatile  double *error = error_s;
-					if(NN >= 32) error[idy] = fmax(error[idy], error[idy + 16]);
-					if(NN >= 16) error[idy] = fmax(error[idy], error[idy + 8]); 
-					if(NN >= 8) error[idy] = fmax(error[idy], error[idy + 4]);
-					if(NN >= 4) error[idy] = fmax(error[idy], error[idy + 2]);
-					if(NN >= 2) error[idy] = fmax(error[idy], error[idy + 1]);
+				else{
+					error = 0.0;
 				}
 				__syncthreads();
-//printf("Error %d %d  ff: %d %d %g\n", sstt, n, ff, idy, error_s[0]);
+				{
+#if def_OldShuffle == 0
+					if(NN >= 32) error = fmax(error, __shfl_down_sync(0xffffffff, error, 16, warpSize));
+					if(NN >= 16) error = fmax(error, __shfl_down_sync(0xffffffff, error,  8, warpSize));
+					if(NN >= 8)  error = fmax(error, __shfl_down_sync(0xffffffff, error,  4, warpSize));
+					if(NN >= 4)  error = fmax(error, __shfl_down_sync(0xffffffff, error,  2, warpSize));
+					if(NN >= 2)  error = fmax(error, __shfl_down_sync(0xffffffff, error,  1, warpSize));
+#else
+					if(NN >= 32) error = fmax(error, __shfld_down(error, 16));
+					if(NN >= 16) error = fmax(error, __shfld_down(error,  8));
+					if(NN >= 8)  error = fmax(error, __shfld_down(error,  4));
+					if(NN >= 4)  error = fmax(error, __shfld_down(error,  2));
+					if(NN >= 2)  error = fmax(error, __shfld_down(error,  1));
+#endif
+					if(idy == 0) error_s[0] = error;
+				}
+				__syncthreads();
+//printf("Error %d %d ff: %d %d %g\n", sstt, n, ff, idy, error_s[0]);
 				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < def_dtmin){
 
 					if(idy < N2){
@@ -426,80 +615,81 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						double delta = 1000.0;
-						double enct = 100.0;
-						double colt = 100.0;
-						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
-						if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].y){
-							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
-						}
-						if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs_d[(si * NmaxM) + jj + l].x] == CollTshiftpairs_c[0].x){
-							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
-						}
-						if(CollisionPrecision_c[0] < 0.0){
-							//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
-							rcrit *= (1.0 - CollisionPrecision_c[0]);	
-						}
+						if(ii < N2 && jj + l < N2){
+							double delta = 1000.0;
+							double enct = 100.0;
+							double colt = 100.0;
+							double rcrit = v4_s[ii].w + v4_s[jj + l].w;
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NencMax) + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NencMax) + jj + l].x] == CollTshiftpairs_c[0].y){
+								rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
+							}
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NencMax) + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs_d[(si * NencMax) + jj + l].x] == CollTshiftpairs_c[0].x){
+								rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
+							}
+							if(CollisionPrecision_c[0] < 0.0){
+								//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+								rcrit *= (1.0 - CollisionPrecision_c[0]);
+							}
 
-						if(Encpairs_d[(si * NmaxM) + ii].x > Encpairs_d[(si * NmaxM) + jj + l].x){
-							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
-						}
-//printf("delta %d %d %d %g %g %g\n", si, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, sqrt(delta), rcrit, colt);
-						if((noColl == 1 || noColl == -1) && colt == 100.0){
-							delta = 100.0;
-						}
-						if((noColl == 1 || noColl == -1) && colt == 200.0){
-							noColl = 2;
-							BSstop_d[0] = 3;
-						}
-						if(delta < rcrit*rcrit){
-							int Ni = atomicAdd(&Ncol_s[0], 1);
-							if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
-//printf("EE1 %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", si, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, Ni);
-							if(xt_s[ii].w >= xt_s[jj + l].w){
+							if(Encpairs_d[(si * NencMax) + ii].x > Encpairs_d[(si * NencMax) + jj + l].x){
+								delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
+							}
+//printf("delta %d %d %d %g %g %g\n", si, Encpairs_d[(si * NencMax) + ii].x, Encpairs_d[(si * NencMax) + jj + l].x, sqrt(delta), rcrit, colt);
+							if((noColl == 1 || noColl == -1) && colt == 100.0){
+								delta = 100.0;
+							}
+							if((noColl == 1 || noColl == -1) && colt == 200.0){
+								noColl = 2;
+								BSstop_d[0] = 3;
+							}
+							if(delta < rcrit*rcrit){
+								int Ni = atomicAdd(&Ncol_s[0], 1);
+								if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
+//printf("EE1 %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", si, Encpairs_d[(si * NencMax) + ii].x, Encpairs_d[(si * NencMax) + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, Ni);
+								if(xt_s[ii].w >= xt_s[jj + l].w){
+									Colpairs_s[Ni].x = ii;
+									Colpairs_s[Ni].y = jj + l;
+								}
+								else{
+									Colpairs_s[Ni].x = jj + l;
+									Colpairs_s[Ni].y = ii;
+								}
+								Coltime_s[Ni] = colt;
+
+								// *****************
+								//dont group test particles
+								/*
+								if(xt_s[ii].w == 0.0){
 								Colpairs_s[Ni].x = ii;
-								Colpairs_s[Ni].y = jj + l;
-							}
-							else{
-								Colpairs_s[Ni].x = jj + l;
 								Colpairs_s[Ni].y = ii;
+								}
+								if(xt_s[jj + l].w == 0.0){
+								Colpairs_s[Ni].x = jj + l;
+								Colpairs_s[Ni].y = jj + l;
+								}
+								*/
+								// *****************
 							}
-							Coltime_s[Ni] = colt;
-
-							// *****************
-							//dont group test particles
-							/*
-							if(xt_s[ii].w == 0.0){
-							Colpairs_s[Ni].x = ii;
-							Colpairs_s[Ni].y = ii;
-							}
-							if(xt_s[jj + l].w == 0.0){
-							Colpairs_s[Ni].x = jj + l;
-							Colpairs_s[Ni].y = jj + l;
-							}
-							*/
-							// *****************
-						}
 
 
-						//write Encounters to file
-						if(WriteEncounters_c[0] > 0 && noColl == 0){
-							double writeRadius = 0.0;
-							//in scales of planetary Radius
-							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
-							if(delta < writeRadius * writeRadius){
+							//write Encounters to file
+							if(WriteEncounters_c[0] > 0 && noColl == 0){
+								double writeRadius = 0.0;
+								//in scales of planetary Radius
+								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
+								if(delta < writeRadius * writeRadius){
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 
-								if(enct > 0.0 && enct < 1.0){
-									//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);
-									int ne = atomicAdd(NWriteEnc_d, 1);
-									if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
-									writeEnc_d[ne * def_NColl + 0] = (time + dt * enct / dayUnit) / 365.25;
-									storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NmaxM) + ii].x, Encpairs_d[(si * NmaxM) + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+									if(enct > 0.0 && enct < 1.0){
+										//printf("Enc %g %g %g %g %g %d %d\n", t, writeRadius, delta, enct, colt, ii, jj + l);
+										int ne = atomicAdd(NWriteEnc_d, 1);
+										if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
+										writeEnc_d[ne * def_NColl + 0] = (time + dt * enct / dayUnit) / 365.25;
+										storeEncounters(xt_s, vt_s, ii, jj + l, Encpairs_d[(si * NencMax) + ii].x, Encpairs_d[(si * NencMax) + jj + l].x, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+									}
 								}
 							}
 						}
-
 					}
 					__syncthreads();
 					if(idy == 0){
@@ -515,7 +705,7 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 							double d = sqrt(dx * dx + dy * dy + dz * dz);
 							double R = vt_s[i].w + vt_s[j].w;
 
-							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y){
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NencMax) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NencMax) + j].x] == CollTshiftpairs_c[0].y){
 								R = vt_s[i].w * CollTshift_c[0] + vt_s[j].w * CollTshift_c[0];
 							}
 							if(CollisionPrecision_c[0] < 0.0){
@@ -545,7 +735,7 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 								int j = Colpairs_s[c].y;
 								if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 									int nc = 0;
-									if(noColl == 0 || ((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NmaxM) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NmaxM) + j].x] == CollTshiftpairs_c[0].y)){
+									if(noColl == 0 || ((noColl == 1 || noColl == -1) && index_d[Encpairs_d[(si * NencMax) + i].x] == CollTshiftpairs_c[0].x && index_d[Encpairs_d[(si * NencMax) + j].x] == CollTshiftpairs_c[0].y)){
 										nc = atomicAdd(Ncoll_d, 1);
 										if(nc >= def_MaxColl) nc = def_MaxColl - 1;
 										if(noColl == 1 || noColl == -1){
@@ -553,7 +743,7 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 											BSstop_d[0] = 3;
 										}
 									}
-									collide(random, xt_s, vt_s, i, j, Encpairs_d[(si * NmaxM) + i].x, Encpairs_d[(si * NmaxM) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, love_d, createFlag_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+									collide(random, xt_s, vt_s, i, j, Encpairs_d[(si * NencMax) + i].x, Encpairs_d[(si * NencMax) + j].x, Msun, U_d + sstt, test, index_d, nc, Coll_d, time + t / dayUnit, spin_d, love_d, createFlag_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
 								}
 							}
 						}
@@ -585,14 +775,15 @@ __global__ void BSBMStep_kernel(curandState *random_d, double4 *x4_d, double4 *v
 					__syncthreads();
 					return;
 				}
-			}
+			} //end of n loop
 			if(f == 0) break;
 			__syncthreads();
 			dt1 *= 0.5;
-		}
+		} //end of ff loop
 		if(sgnt * t >= sgnt * dt) break;
 		__syncthreads();
-	}
+	} //end of tt loop
+	__syncthreads();
 	if(idy < N2){ 
 		x4_d[idi] = x4_s[idy]; 
 		v4_d[idi] = v4_s[idy];

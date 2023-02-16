@@ -2,7 +2,7 @@
 #define ENCOUNTER_H
 #include "Orbit2.h"
 
-#if G3 ==1
+#if def_G3 ==1
 #include "Encounter3G3.h"
 #endif
 
@@ -446,10 +446,8 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 // July  2016
 //
 // ****************************************
-template < int Nmax >
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass){
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass, const int NencMax){
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int ii = 0;
 	int jj = 0;
@@ -477,7 +475,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
-//printf("encB %d %d %d %d %d %d\n", ii, jj, st, index_d[ii], index_d[jj], NBS);
+//printf("encB %d %d %d %d %d %d %d\n", ii, jj, st, index_d[ii], index_d[jj], NBS, Ne);
 
 			if(StopAtEncounter > 0){ 
 				if(enccount == 1){
@@ -489,14 +487,15 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 				//write a list with simulations containing close encounters
 				int NT = atomicAdd(Nencpairs2_d, 1);
 				Encpairs_d[NT].y = st;
+//printf("NT %d %d\n", st, NT);
 			}
 			if(x4_d[ii].w >= x4_d[jj].w){
-				Encpairs2_d[Ne + NBS * Nmax].x = ii;
-				Encpairs2_d[Ne + NBS * Nmax].y = jj;
+				Encpairs2_d[Ne + NBS * NencMax].x = ii;
+				Encpairs2_d[Ne + NBS * NencMax].y = jj;
 			}
 			else{
-				Encpairs2_d[Ne + NBS * Nmax].x = jj;
-				Encpairs2_d[Ne + NBS * Nmax].y = ii;
+				Encpairs2_d[Ne + NBS * NencMax].x = jj;
+				Encpairs2_d[Ne + NBS * NencMax].y = ii;
 			}
 		}
 		if(si == 0 && enccount > 0){
@@ -532,9 +531,9 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	__syncthreads();
 	int enccount = 0;	
 	if(id < Nencpairs){
-#if G3 == 0
+#if def_G3 == 0
 		enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, time, MinMass);
-#elif G3 == 1
+#elif def_G3 == 1
 		enccount = encounterb(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, MinMass);
 #else
 //change here ii and jj to index[ii], index[jj]
@@ -808,7 +807,7 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 		__syncthreads();
 
 		for(int i = 0; i < NT; i += Bl){
-			if(idy + i< NT){
+			if(idy + i < NT){
 				if(B[idy + i].y < BN2) B2[idy + i].y = B[B[idy + i].y].y;
 			}
 		}
@@ -942,19 +941,19 @@ __global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int
 }
 
 
-template <int Bl>
-__global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *NBS_d, int *N_d, const int Nst){
+template <int nb, int Bl>
+__global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *NBS_d, int *N_d, const int Nst, const int NencMax){
 
 	int idy = threadIdx.x;
-	int idx = blockIdx.x;
+	int idx = blockIdx.x;	//The number of blocks corresponds to the number of simulations with close encounter groups
 
-	int st = Encpairs_d[idx].y;
+	int st = Encpairs_d[idx].y; //idx is maximally = Nst
 
 	__shared__ int2 encpairs_s[Bl];
 	__shared__ int A_s[Bl];
 	__shared__ int AOld_s[Bl];
-	__shared__ int B_s[NmaxM];
-	__shared__ int B2_s[NmaxM];
+	__shared__ int B_s[nb];
+	__shared__ int B2_s[nb];
 	__shared__ volatile int T_s;
 	__shared__ int Nenc_s;
 
@@ -962,7 +961,10 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	int N = N_d[st];
 
 	int Ne = Nencpairs2_d[st + 1];
-	int BN2 = NmaxM * NmaxM - 1;
+	int BN2 = nb * nb - 1;
+
+//if(idy == 0) printf("st %d %d %d | %d %d\n", idy, idx, st, NBS, Ne);
+
 	__syncthreads();
 	if(idy == 0){
 		T_s = 1;
@@ -972,10 +974,10 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	__syncthreads();
 
 	if(idy < Ne){ 
-		encpairs_s[idy].x = Encpairs2_d[idy + NBS * NmaxM].x - NBS;
-		encpairs_s[idy].y = Encpairs2_d[idy + NBS * NmaxM].y - NBS;
+		encpairs_s[idy].x = Encpairs2_d[idy + NBS * NencMax].x - NBS;
+		encpairs_s[idy].y = Encpairs2_d[idy + NBS * NencMax].y - NBS;
 		A_s[idy] = encpairs_s[idy].x;
-//printf("encpairs %d %d %d %d\n", Ne, idy, encpairs_s[idy].x, encpairs_s[idy].y);
+//printf("encpairs %d %d %d %d %d\n", st, Ne, idy, encpairs_s[idy].x, encpairs_s[idy].y);
 	}
 	//encpairs_s[idy] contains the two close encounter pairs//
 	else{
@@ -983,7 +985,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		encpairs_s[idy].y = -1;
 		A_s[idy] = -1;
 	}
-	if(idy < NmaxM){
+	if(idy < nb){
 		B_s[idy] = BN2;
 		B2_s[idy] = BN2;
 	}
@@ -1005,7 +1007,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		}
 		__syncthreads();
 
-		if(idy < NmaxM){
+		if(idy < nb){
 			if(B_s[idy] < BN2) B2_s[idy] = B_s[B_s[idy]];
 		}
 		__syncthreads();
@@ -1013,7 +1015,7 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 		__syncthreads();
 		if(AOld_s[idy] != A_s[idy]) T_s = 1;
 		__syncthreads();
-		if(idy < NmaxM){
+		if(idy < nb){
 			B_s[idy] = B2_s[idy];
 		}
 		AOld_s[idy] = A_s[idy];
@@ -1024,29 +1026,29 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	}
 	//At this point B_s[idy] contains the smallest index of the group//
 	__syncthreads();
-	if(idy < NmaxM){
+	if(idy < nb){
 //printf("B %d %d %d\n", st, idy, B_s[idy]);
 		B2_s[idy] = -1;
 	}
 	__syncthreads();
 	//Check now for new groups and increase the total number of groups//
-	if(idy < NmaxM){
+	if(idy < nb){
 		if(B_s[idy] == idy){
 			B2_s[idy] = atomicAdd(&Nenc_s,1);
 		}		
 	}
 	__syncthreads();
 	//Transform now the smallest index of the group into a consecutive group index//
-	if(idy < NmaxM){
+	if(idy < nb){
 		if(B_s[idy] < BN2) B_s[idy] = B2_s[B_s[idy]];
 		encpairs_s[idy].y = 0;
 	}
 	//At this point B_s[idy] contains a consecutive group index//
 	__syncthreads();
-	if(idy < NmaxM){
+	if(idy < nb){
 		if(B_s[idy] < BN2){
 			int ne = atomicAdd(&encpairs_s[B_s[idy]].y,1);
-			Encpairs_d[(B_s[idy] + NBS) * NmaxM + ne].x = idy + NBS;
+			Encpairs_d[(B_s[idy] + NBS) * NencMax + ne].x = idy + NBS;
 		}
 
 		//At this point Encpairs_d.x contains now line by line the members of the groups, encpairs_s.y contains the sizes of the groups//
@@ -1054,25 +1056,28 @@ __global__ void groupM1_kernel(int *Nencpairs2_d, int2 *Encpairs_d, int2 *Encpai
 	__syncthreads();
 
 	if(idy < N){
+		//Nst is the maximum offset, where the array was used before, it is the number simulations containing close encounters
+		//Each simulation can have maximally N/2 groups, therefore NBS is enough 
 		Encpairs_d[idy + NBS + Nst].y = encpairs_s[idy].y;
-//printf("S %d\n", encpairs_s[idy].y);
+//printf("S %d %d %d %d\n", idx, st, idy, encpairs_s[idy].y);
 	}
+
 }
 
 
-__global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int *NBS_d, int *N_d, const int Nst){
+__global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d, int *NBS_d, int *N_d, const int Nst, const int NencMax){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
-	int st = Encpairs_d[idx].y;
+	int st = Encpairs_d[idx].y;	//simulation index
 
 	int NBS = NBS_d[st];
 	int N = N_d[st];
 
 	if(idy < N){
 
-		int nn = Encpairs_d[idy + NBS + Nst].y;
+		int nn = Encpairs_d[idy + NBS + Nst].y;	//Sizes of the groups
 //printf("n %d %d %d %d\n", st, idy, nn, NBS);
 
 		volatile int ne2 = 2;
@@ -1080,7 +1085,7 @@ __global__ void groupM2_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int *Nenc_d,
 //printf("nn %d %d %d %d %d %d\n", st, idy, nn, Encpairs_d[(idy + NBS)* 16].x, Encpairs_d[((idy  + NBS)* 16)+ 1].x, Encpairs_d[((idy + NBS) * 16) + 2].x);
 			for(volatile int ii = 0; ii < def_GMax - 1; ++ii){
 				if(nn <= ne2){
-					Encpairs2_d[ (ii+1) + NmaxM * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
+					Encpairs2_d[ (ii+1) + NencMax * atomicAdd(&Nenc_d[ii + 1],1)].y = idy + NBS;
 					break;
 				} 
 				else{

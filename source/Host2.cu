@@ -3156,6 +3156,7 @@ __host__ int Host::icSize(int st){
 //January 2017
 // ***********************************************3
 __host__ int Host::size(){
+	NBmax = 0;
 	for(int st = 0; st < Nst; ++st){
 		//Determine the size of the simulations
 		int er = icSize(st);
@@ -3177,7 +3178,10 @@ __host__ int Host::size(){
 		if( N_h[st] > 32768) NB[st] = 65536;
 		if( N_h[st] > 65536) NB[st] = 131072;
 		if( N_h[st] > 131072) NB[st] = 262144;
-		
+
+		NBmax = max(NBmax, NB[st]);
+//printf("NBmax %d\n", NBmax);
+	
 		NBT[st] = 16;
 		if( (N_h[st] + Nsmall_h[st]) > 16) NBT[st] = 32;
 		if( (N_h[st] + Nsmall_h[st]) > 32) NBT[st] = 64;
@@ -3333,9 +3337,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Solar Constant: %g\n", P.SolarConstant);				// use only argument in simulation 0
 			fprintf(infofile, "n1: %g\n", n1_h[st]);
 			fprintf(infofile, "n2: %g\n", n2_h[st]);
-			#if G3 > 0
-			fprintf(infofile, "G3Limit: %g\n", G3Limit);
-			fprintf(infofile, "G3Limit2: %g\n", G3Limit2);
+			#if def_G3 > 0
+			fprintf(infofile, "G3Limit: %g\n", def_G3Limit);
+			fprintf(infofile, "G3Limit2: %g\n", def_G3Limit2);
 			#endif
 			fprintf(infofile, "Input file: %s\n", GSF[st].Originputfilename);
 			fprintf(infofile, "Input file format: ");
@@ -3459,7 +3463,7 @@ __host__ void Host::Tsizes(){
 		NEnergy[st] = NEnergyT;
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
-		NBNencT += NB[st] * NmaxM;
+		NBNencT += NB[st] * P.NencMax;
 		NEnergyT += max(N_h[st], 8);
 	}
 	

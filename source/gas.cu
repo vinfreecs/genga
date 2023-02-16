@@ -999,60 +999,82 @@ __global__ void gasEnergyc_kernel(double *Energy_d, double *U_d, int N){
 
 
 // ************************************
-//this kernel sums up all the Energy loss due to the Gas Disc and adds to the internal Energy
-//Author: Simon Grimm
-//August 2016
+// This kernel sums up all the Energy loss due to the Gas Disc and adds to the internal Energy
+// Uses paralel reduction sum with warp shuffle operations
+// Author: Simon Grimm
+// February 2023
 // *************************************
-template < int Bl2 >
 __global__ void gasEnergy_kernel(double *Energy_d, double *U_d, double *test_d, int N){
 
 	int idy = threadIdx.x;
 
-	__shared__ volatile double U_s[Bl2];
+	double U = 0.0;
 
-	for(int i = 0; i < Bl2; i += blockDim.x){
-		U_s[idy + i] = 0.0;
-	}
-
-	__syncthreads();
-
-	for(int i = 0; i < N ;i += blockDim.x){
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
-			U_s[idy] += Energy_d[idy + i];
+			U += Energy_d[idy + i];
 		}
 	}
 //printf("%d %g\n", idy, U_s[idy]);
 	__syncthreads();
-	int s = blockDim.x/2;
-	for(int i = 6; i < log2f(blockDim.x); ++i){
-		if( idy < s ) {
-			U_s[idy] += U_s[idy + s];
+
+	for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+		U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
+#else
+		U += __shfld_xor(U, i);
+#endif
+}
+	__syncthreads();
+
+	if(blockDim.x > warpSize){
+		//reduce across warps
+		extern __shared__ double UEM_s[];
+		double *U_s = UEM_s;
+
+		int lane = threadIdx.x % warpSize;
+		int warp = threadIdx.x / warpSize;
+		if(warp == 0){
+			U_s[threadIdx.x] = 0.0;
 		}
 		__syncthreads();
-		s /= 2;
-	}
 
-	if(idy < 32){
-		if(blockDim.x >= 64) U_s[idy] += U_s[idy + 32];
-		if(blockDim.x >= 32) U_s[idy] += U_s[idy + 16];
-		if(blockDim.x >= 16) U_s[idy] += U_s[idy + 8];
-		if(blockDim.x >= 8) U_s[idy] += U_s[idy + 4];
-		if(blockDim.x >= 4) U_s[idy] += U_s[idy + 2];
-		if(blockDim.x >= 2) U_s[idy] += U_s[idy + 1];
+		if(lane == 0){
+			U_s[warp] = U;
+		}
+
+		__syncthreads();
+		//reduce previous warp results in the first warp
+		if(warp == 0){
+			U = U_s[threadIdx.x];
+			for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+				U += __shfl_xor_sync(0xffffffff, U, i, warpSize);
+#else
+				U += __shfld_xor(U, i);
+#endif
+			}
+			if(lane == 0){
+				U_s[0] = U;
+			}
+		}
+		__syncthreads();
+
+		U = U_s[0];
 	}
 
 	__syncthreads();
 
+
 	if(idy == 0){
-		U_d[0] += U_s[0];
+		U_d[0] += U;
 //printf("U %.20g %.20g\n", U_s[0], U_d[0]);
 	}
-	for(int i = 0; i < N ;i += blockDim.x){
+	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			Energy_d[idy + i] = 0.0;
 		}
 	}
-
 }
 
 //This function calls the Gas Energy kernel
@@ -1072,8 +1094,8 @@ __host__ void Data::gasEnergyCall(double* Energy_d, double *test_d, double *U_d,
 		gasEnergyd2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double), hstream>>> (U_d, vold_d, ncb);
 	}
 }
-__host__ void Data::gasEnergyMCall(double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int N){
-	gasEnergy_kernel < 2 * NmaxM > <<< 1, NmaxM, 0, hstream>>> (Energy_d, U_d, test_d, N);
+__host__ void Data::gasEnergyMCall(double* Energy_d, double *test_d, double *U_d, cudaStream_t hstream, int N, int NB){
+	gasEnergy_kernel <<< 1, NB, WarpSize * sizeof(double), hstream>>> (Energy_d, U_d, test_d, N);
 }
 
 __host__ void Data::GasAccCall(double *time_d, double *dt_d, double Ct){

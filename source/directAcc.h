@@ -195,7 +195,7 @@ __device__ inline void CorrectKick(double4 x4i, double4 x4j, double3 &ac, double
 		s = 0.0;
 
 		//correct
-#if G3 == 2
+#if def_G3 == 2
 		if(Kold < 1.0) Kold = 0.0;
 #endif
 		s = (K - Kold) * x4j.w * ir3 * def_ksq;

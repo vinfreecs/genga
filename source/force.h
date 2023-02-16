@@ -536,7 +536,7 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			}
 
 		}
-		else{ //Nst > 1
+		else if(id < N + Nstart){ //Nst > 1
 			vold_d[id].x = T3sun.x * dt;
 			vold_d[id].y = T3sun.y * dt;
 			vold_d[id].z = T3sun.z * dt;
@@ -766,7 +766,93 @@ __global__ void forceM_kernel(double4 *vold_d, int *index_d, double4 *Spinsun_d,
 	}
 }
 
+__global__ void forceBM_kernel(double4 *vold_d, double4 *Spinsun_d, int *N_d, int *NBS_d, const int Nst){
 
+	int st = blockIdx.x;
+	int idy = threadIdx.x;
+
+	if(st < Nst){
+		double3 p = {0.0, 0.0, 0.0};
+		double4 v4i;
+
+		int Ni = N_d[st];
+		int NBS = NBS_d[st];
+
+		for(int i = 0; i < Ni; i += blockDim.x){
+			if(idy + i < Ni){
+				v4i = vold_d[NBS + idy + i];
+				p.x += v4i.x;
+				p.y += v4i.y;
+				p.z += v4i.z;
+			}
+		}
+		__syncthreads();
+
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+			p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+			p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+			p.x += __shfld_xor(p.x, i);
+			p.y += __shfld_xor(p.y, i);
+			p.z += __shfld_xor(p.z, i);
+#endif
+		//if(i >= 16) printf("BA %d %d %.20g\n", idy, i, p.x);
+		}
+
+		__syncthreads();
+		if(blockDim.x > warpSize){
+			//reduce across warps
+			extern __shared__ double3 forceBM_s[];
+			double3 *p_s = forceBM_s;
+
+			int lane = threadIdx.x % warpSize;
+			int warp = threadIdx.x / warpSize;
+			if(warp == 0){
+				p_s[threadIdx.x].x = 0.0;
+				p_s[threadIdx.x].y = 0.0;
+				p_s[threadIdx.x].z = 0.0;
+			}
+			__syncthreads();
+
+			if(lane == 0){
+				p_s[warp] = p;
+			}
+
+			__syncthreads();
+			//reduce previous warp results in the first warp
+			if(warp == 0){
+				p = p_s[threadIdx.x];
+				for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+					p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+					p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+					p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+					p.x += __shfld_xor(p.x, i);
+					p.y += __shfld_xor(p.y, i);
+					p.z += __shfld_xor(p.z, i);
+#endif
+				//if(i >= 16) printf("BB %d %d %.20g\n", idy, i, p.x);
+				}
+				if(lane == 0){
+					p_s[0] = p;
+				}
+			}
+			__syncthreads();
+
+			p = p_s[0];
+		}
+		__syncthreads();
+
+		if(idy == 0){
+			Spinsun_d[st].x += p.x;
+			Spinsun_d[st].y += p.y;
+			Spinsun_d[st].z += p.z;
+		}
+	}
+}
 
 __constant__ int setElementsNumbers_c[3];
 __constant__ int setElements_c[25];

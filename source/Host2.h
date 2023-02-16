@@ -32,6 +32,8 @@ public:
 
 	int *NB;				//number of bodies increased to integer block size
 	int *NBT;				//number of bodies + number of test particles, increased to integer block size
+	int NBmax;				//maximum of NB[i]
+
 	int2 *Nmin;				//minimal number of bodies
 	double *rho;				//default density of bodies
 	long long *delta_h, *delta_d;		//number of timesteps

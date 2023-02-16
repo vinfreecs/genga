@@ -332,10 +332,10 @@ __device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
-#if G3 == 1
+#if def_G3 == 1
 			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) || rsq < def_pc * rcritv) && x4i.w > 0.0 && x4j.w > 0.0){	
 #else
-			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) || B > G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
+			if(((groupIndexi == groupIndexj && groupIndexi >= 0 && groupIndexi < NconstT) || B > def_G3Limit2) && x4i.w > 0.0 && x4j.w > 0.0){	
 
 #endif
 //printf("Precheck %d %d\n", i, j);
@@ -477,6 +477,7 @@ __global__ void kick32BMTTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d
 			v4_d[id].y += __dmul_rn(a.y, dtksqKt);
 			v4_d[id].z += __dmul_rn(a.z, dtksqKt);
 //printf("KickB %d %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a.x, a.y, a.z, v4_d[id].x * dayUnit, v4_d[id].y * dayUnit, v4_d[id].z * dayUnit);
+//printf("KickBMTTV %d %.20e %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a.x, a.y, a.z, v4_d[id].x, v4_d[id].y, v4_d[id].z, dtksqKt);
 
 			//calculate acceleration from the central star
 			double rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
@@ -1820,6 +1821,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			acck_d[id].y = (a_s[idy].y + b_s[idy].y);
 			acck_d[id].z = (a_s[idy].z + b_s[idy].z);
 		}
+//printf("KickM2TTV %d %.20e %.20e %.20e %.20e %.20e %.20e\n", id, a_s[idy].x, a_s[idy].y, a_s[idy].z, v4_d[id].x, v4_d[id].y, v4_d[id].z);
 
 		//calculate acceleration from the central star
 		double rsq = x4_s[idy].x*x4_s[idy].x + x4_s[idy].y*x4_s[idy].y + x4_s[idy].z*x4_s[idy].z + 1.0e-30;

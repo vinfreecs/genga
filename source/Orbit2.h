@@ -313,6 +313,7 @@ public:
 	__host__ void firstKick_largeN(int);
 	__host__ void firstKick_small(int);
 	__host__ void firstKick_M(long long, int);
+	__host__ void firstKick_M3(long long, int);
 
 	__host__ void SEnc(double &, int, double, int, int);
 	__host__ int bStep(int);
@@ -353,7 +354,7 @@ public:
 	__host__ int setGasDisk();
 	__host__ int freeGas();
 	__host__ void gasEnergyCall(double *, double *, double *, cudaStream_t, int, int);
-	__host__ void gasEnergyMCall(double *, double *, double *, cudaStream_t, int);
+	__host__ void gasEnergyMCall(double *, double *, double *, cudaStream_t, int, int);
 	__host__ void GasAccCall(double *, double *, double);
 	__host__ void GasAccCall_small(double *, double *, double);
 	__host__ void GasAccCall2_small(double *, double *, double);
@@ -389,7 +390,7 @@ private:
 	int GridNae;
 	int GridNai;
 	__host__ int readic(int);
-	__host__ void resize(int, int &);
+	__host__ void resize(int, int &, int);
 
 	//output
 	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);

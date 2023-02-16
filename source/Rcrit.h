@@ -362,7 +362,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 	double rsq, vsq, r, v;
 	
 	if(id < NT + Nstart){
-//printf("Rcrit %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g\n", id, index_d[id], x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
+//printf("Rcrit %d %d %.20e %.20e %.20e %.20e %.20e %.20e %g\n", id, index_d[id], x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, n1_d[st]);
 		double Msun = Msun_d[st].x;
 		double n1 = n1_d[st];
 		double n2 = n2_d[st];
@@ -457,6 +457,7 @@ __host__ void Data::firstStep(int noColl){
 
 		#else
 		  firstKick_M(0, noColl);
+		  //firstKick_M3(0, noColl);
 		#endif
 	}
 	else{
@@ -476,9 +477,9 @@ __host__ int Data::step(int noColl){
 		  er = ttv_step();
 		#else
 
-		  #if NoEncounters == 0
-			//er = step_M(noColl);
-			er = step_M3(noColl);
+		  #if def_NoEncounters == 0
+			er = step_M(noColl);
+			//er = step_M3(noColl);
 	 	  #else
 			er = step_MSimple();
 		  #endif

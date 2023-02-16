@@ -2240,7 +2240,6 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double P = elementsTOld_d[st0 * N0 + ii].z;		//period
 			double T = elementsTOld_d[st0 * N0 + ii].x;		//time of first transit
 			double Sy = elementsSpinOld_d[st0 * N0 + ii].y;		//Spiny
-
 			if(EE == 5 || EE == -1){
 				P = fmax(P, 1.0e-16);
 				e = fmax(e, 1.0e-16);

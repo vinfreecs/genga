@@ -603,79 +603,80 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					}
 					__syncthreads();
 					for(int l = 0; l < NN; l += nb){
-						double delta = 1000.0;
-						double enct = 100.0;
-						double colt = 100.0;
-						double rcrit = v4_s[ii].w + v4_s[jj + l].w;
-						if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].y){
-							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
-						}
-						if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].x){
-							rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
-						}
+						if(ii < N2 && jj + l < N2){
+							double delta = 1000.0;
+							double enct = 100.0;
+							double colt = 100.0;
+							double rcrit = v4_s[ii].w + v4_s[jj + l].w;
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].y){
+								rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
+							}
+							if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].y && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].x){
+								rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
+							}
 
-						if(CollisionPrecision_c[0] < 0.0){
-							//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
-							rcrit *= (1.0 - CollisionPrecision_c[0]);	
-						}
-
-						if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
-							delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
-						}
-						if((noColl == 1 || noColl == -1) && colt == 100.0){
-							delta = 100.0;
-						}
-						if((noColl == 1 || noColl == -1) && colt == 200.0){
-							noColl = 2;
-							BSstop_d[0] = 3;
-						}
+							if(CollisionPrecision_c[0] < 0.0){
+								//do not overlap bodies when collision, increase therefore radius slightly, R + R * precision
+								rcrit *= (1.0 - CollisionPrecision_c[0]);	
+							}
+							if(Encpairs2_d[start + ii].x > Encpairs2_d[start + jj + l].x){
+								delta = encounter1(xt_s[ii], vt_s[ii], x4_s[ii], v4_s[ii], xt_s[jj + l], vt_s[jj + l], x4_s[jj + l], v4_s[jj + l], rcrit, dt1 * dtgr, ii, jj + l, enct, colt, MinMass, noColl);
+							}
+							if((noColl == 1 || noColl == -1) && colt == 100.0){
+								delta = 100.0;
+							}
+							if((noColl == 1 || noColl == -1) && colt == 200.0){
+								noColl = 2;
+								BSstop_d[0] = 3;
+							}
 
 //if( Encpairs2_d[start + ii].x == 0 &&  Encpairs2_d[start + jj + l].x == 1) printf("BSBEE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, tt, ff, n);
-						if(delta < rcrit*rcrit){
-							int Ni = atomicAdd(&Ncol_s[0], 1);
-							if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
+							if(delta < rcrit*rcrit){
+								int Ni = atomicAdd(&Ncol_s[0], 1);
+								if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
 //printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", Encpairs2_d[start + ii].x, Encpairs2_d[start + jj + l].x, xt_s[ii].w, xt_s[jj + l].w, xt_s[ii].x, xt_s[ii].y, xt_s[ii].z, xt_s[jj + l].x, xt_s[jj + l].y, xt_s[jj + l].z, delta, rcrit*rcrit, colt, Ni);
-							if(xt_s[ii].w >= xt_s[jj + l].w){
-								Colpairs_s[Ni].x = ii;
-								Colpairs_s[Ni].y = jj + l;
-							}
-							else{
-								Colpairs_s[Ni].x = jj + l;
-								Colpairs_s[Ni].y = ii;
-							}
-							Coltime_s[Ni] = colt;
+								if(xt_s[ii].w >= xt_s[jj + l].w){
+									Colpairs_s[Ni].x = ii;
+									Colpairs_s[Ni].y = jj + l;
+								}
+								else{
+									Colpairs_s[Ni].x = jj + l;
+									Colpairs_s[Ni].y = ii;
+								}
+								Coltime_s[Ni] = colt;
 
-							// *****************
-							//dont group test particles
-/*							if(xt_s[ii].w == 0.0){
-								Colpairs_s[Ni].x = ii;
-								Colpairs_s[Ni].y = ii;
-							}
-							if(xt_s[jj + l].w == 0.0){
-								Colpairs_s[Ni].x = jj + l;
-								Colpairs_s[Ni].y = jj + l;
-							}
+								// *****************
+								//dont group test particles
+/*								if(xt_s[ii].w == 0.0){
+									Colpairs_s[Ni].x = ii;
+									Colpairs_s[Ni].y = ii;
+								}
+								if(xt_s[jj + l].w == 0.0){
+									Colpairs_s[Ni].x = jj + l;
+									Colpairs_s[Ni].y = jj + l;
+								}
 */
-							// *****************
-						}
+								// *****************
+							}
 
-						if(WriteEncounters_c[0] > 0 && noColl == 0){
-							double writeRadius = 0.0;
-							//in scales of planetary Radius
-							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
+							if(WriteEncounters_c[0] > 0 && noColl == 0){
+								double writeRadius = 0.0;
+								//in scales of planetary Radius
+								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
 //printf("Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
-							if(delta < writeRadius * writeRadius){
+								if(delta < writeRadius * writeRadius){
 
-								if(enct > 0.0 && enct < 1.0){
-									//ingnore encounters within the same particle cloud
-									int indexi = Encpairs2_d[start + ii].x;
-									int indexj = Encpairs2_d[start + jj + l].x;
-									if(index_d[indexi] / WriteEncountersCloudSize_c[0] != index_d[indexj] / WriteEncountersCloudSize_c[0]){
+									if(enct > 0.0 && enct < 1.0){
+										//ingnore encounters within the same particle cloud
+										int indexi = Encpairs2_d[start + ii].x;
+										int indexj = Encpairs2_d[start + jj + l].x;
+										if(index_d[indexi] / WriteEncountersCloudSize_c[0] != index_d[indexj] / WriteEncountersCloudSize_c[0]){
 
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
-										int ne = atomicAdd(NWriteEnc_d, 1);
-										if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
-										storeEncounters(xt_s, vt_s, ii, jj + l, indexi, indexj, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+											int ne = atomicAdd(NWriteEnc_d, 1);
+											if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+											storeEncounters(xt_s, vt_s, ii, jj + l, indexi, indexj, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
+										}
 									}
 								}
 							}

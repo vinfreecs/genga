@@ -6,8 +6,8 @@
 
 __constant__ float Gridae_c[9];
 __constant__ int GridaeN_c[3];
-__constant__ double S_c[FGN + 1];
-__constant__ double C_c[FGN + 1];
+__constant__ double S_c[def_FGN + 1];
+__constant__ double C_c[def_FGN + 1];
 __constant__ int UseaeGrid_c[1];
 
 

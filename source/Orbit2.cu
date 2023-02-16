@@ -418,7 +418,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
 	cudaMalloc((void **) &BSstop_d, sizeof(int));
 	cudaMalloc((void **) &Coltime_d, sizeof(double));
-#if G3 > 0
+#if def_G3 > 0
 	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &groupIndex_d, NconstT*sizeof(int));
@@ -553,11 +553,11 @@ __host__ int Data::GridaeAlloc(){
 
 __host__ int Data::FGAlloc(){
 	cudaError_t error;
-	double S_h[FGN + 1];
-	double C_h[FGN + 1];
+	double S_h[def_FGN + 1];
+	double C_h[def_FGN + 1];
 
 	//Table for fastfg//
-	for (int j = 0; j<= FGN; ++j) {
+	for (int j = 0; j<= def_FGN; ++j) {
 		double dEj = j*PI_N;
 		S_h[j] = sin(dEj);
 		C_h[j] = cos(dEj);
@@ -885,7 +885,6 @@ __host__ int Data::ic(){
 		}
 	}
 	//Copy memory to device//
-
 	cudaMemcpy(x4_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(v4_d, v4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(x4b_d, x4_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
@@ -1063,81 +1062,87 @@ __host__ int Data::readic(int st){
 					fscanf (infile, "%lf",&x.x);
 					cartCheck += 1;
 				}
-				else if (GSF[st].informat[f] == 2){
+				if (GSF[st].informat[f] == 2){
 					//y
 					fscanf (infile, "%lf",&x.y);
 					cartCheck += 2;
 				}
-				else if (GSF[st].informat[f] == 3){
+				if (GSF[st].informat[f] == 3){
 					//z
 					fscanf (infile, "%lf",&x.z);
 					cartCheck += 4;
 				}
-				else if (GSF[st].informat[f] == 4){
+				if (GSF[st].informat[f] == 4){
 					//m
 					fscanf (infile, "%lf",&x.w);
 				}
-				else if (GSF[st].informat[f] == 5){
+				if (GSF[st].informat[f] == 5){
 					//vx
 					fscanf (infile, "%lf",&v.x);
 					cartCheck += 8;
 				}
-				else if (GSF[st].informat[f] == 6){
+				if (GSF[st].informat[f] == 6){
 					//vy
 					fscanf (infile, "%lf",&v.y);
 					cartCheck += 16;
 				}
-				else if (GSF[st].informat[f] == 7){
+				if (GSF[st].informat[f] == 7){
 					//vz
 					fscanf (infile, "%lf",&v.z);
 					cartCheck += 32;
 				}
-				else if (GSF[st].informat[f] == 8){
+				if (GSF[st].informat[f] == 8){
 					//r
 					fscanf (infile, "%lf",&v.w);
 				}
-				else if (GSF[st].informat[f] == 9){
+				if (GSF[st].informat[f] == 9){
 					//default rho
 					fscanf (infile, "%lf",&rho[st]);
 				}
-				else if (GSF[st].informat[f] == 10){
+				if (GSF[st].informat[f] == 10){
 					//Sx
 					fscanf (infile, "%lf",&spin.x);
 #if def_TTV > 0
 					elementsSpin.y = spin.x;
 #endif
 				}
-				else if (GSF[st].informat[f] == 11){
+				if (GSF[st].informat[f] == 11){
 					//Sy
 					fscanf (infile, "%lf",&spin.y);
 #if def_TTV > 0
 					elementsSpin.y = spin.y;
 #endif
 				}
-				else if (GSF[st].informat[f] == 12){
+				if (GSF[st].informat[f] == 12){
 					//Sz
 					fscanf (infile, "%lf",&spin.z);
 #if def_TTV > 0
 					elementsSpin.y = spin.z;
 #endif
 				}
-				else if (GSF[st].informat[f] == 13){
+				if (GSF[st].informat[f] == 13){
 					//index
 					fscanf (infile, "%d",&index);
 				}
-				else if (GSF[st].informat[f] == 14) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);	//amin
-				else if (GSF[st].informat[f] == 16) fscanf (infile, "%f",&aelimits.y);
-				else if (GSF[st].informat[f] == 17) fscanf (infile, "%f",&aelimits.z);
-				else if (GSF[st].informat[f] == 18) fscanf (infile, "%f",&aelimits.w);
-				else if (GSF[st].informat[f] == 19){
-					if(ict_h[st] == 0) fscanf (infile, "%lf",&ict_h[st]);
-					else fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 14){
+					fscanf (infile, "%lf",&skip);
 				}
-				else if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
-				else if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
-				else if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
-				else if (GSF[st].informat[f] == 23){
+				if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);	//amin
+				if (GSF[st].informat[f] == 16) fscanf (infile, "%f",&aelimits.y);
+				if (GSF[st].informat[f] == 17) fscanf (infile, "%f",&aelimits.z);
+				if (GSF[st].informat[f] == 18) fscanf (infile, "%f",&aelimits.w);
+				if (GSF[st].informat[f] == 19){
+					if(ict_h[st] == 0){
+						fscanf (infile, "%lf",&ict_h[st]);
+					}
+					else{
+						fscanf (infile, "%lf",&skip);
+					}
+				}
+				if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
+				if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
+				if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
+				if (GSF[st].informat[f] == 23){
 					//a
 					fscanf (infile, "%lf",&x.x);
 #if def_TTV > 0
@@ -1146,7 +1151,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 1;
 				}
-				else if (GSF[st].informat[f] == 24){
+				if (GSF[st].informat[f] == 24){
 					//e
 					fscanf (infile, "%lf",&x.y);
 #if def_TTV > 0
@@ -1155,7 +1160,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 2;
 				}
-				else if (GSF[st].informat[f] == 25){
+				if (GSF[st].informat[f] == 25){
 					//inc
 					fscanf (infile, "%lf",&x.z);
 					if(P.AngleUnits == 1) x.z = x.z / 180.0 * M_PI;
@@ -1165,7 +1170,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 4;
 				}
-				else if (GSF[st].informat[f] == 26){
+				if (GSF[st].informat[f] == 26){
 					//Omega
 					fscanf (infile, "%lf",&v.x);
 					if(P.AngleUnits == 1) v.x = v.x / 180.0 * M_PI;
@@ -1175,7 +1180,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 8;
 				}
-				else if (GSF[st].informat[f] == 27){
+				if (GSF[st].informat[f] == 27){
 					//w
 					fscanf (infile, "%lf",&v.y);
 					if(P.AngleUnits == 1) v.y = v.y / 180.0 * M_PI;
@@ -1185,7 +1190,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 16;
 				}
-				else if (GSF[st].informat[f] == 28){
+				if (GSF[st].informat[f] == 28){
 					//M
 					fscanf (infile, "%lf",&v.z);
 					if(P.AngleUnits == 1) v.z = v.z / 180.0 * M_PI;
@@ -1195,7 +1200,7 @@ __host__ int Data::readic(int st){
 					keplerian = 1;
 					kepCheck += 32;
 				}
-				else if (GSF[st].informat[f] == 38){
+				if (GSF[st].informat[f] == 38){
 					//P
 					fscanf (infile, "%lf",&p);
 #if def_TTV > 0
@@ -1206,7 +1211,7 @@ __host__ int Data::readic(int st){
 					convertPToA = 1;
 					kepCheck += 1;
 				}
-				else if (GSF[st].informat[f] == 40){
+				if (GSF[st].informat[f] == 40){
 					//T
 					fscanf (infile, "%lf",&T);
 #if def_TTV > 0
@@ -1217,81 +1222,81 @@ __host__ int Data::readic(int st){
 					convertTToM = 1;
 					kepCheck += 32;
 				}
-				else if (GSF[st].informat[f] == 42){
+				if (GSF[st].informat[f] == 42){
 					//Rcrit
 					fscanf (infile, "%lf",&rcrit);
 				}
-				else if (GSF[st].informat[f] == 44){
+				if (GSF[st].informat[f] == 44){
 					//Ic
 					fscanf (infile, "%lf",&spin.w);
 				}
-				else if (GSF[st].informat[f] == 45){
+				if (GSF[st].informat[f] == 45){
 					//test
 					fscanf (infile, "%lf",&test);
 				}
-				else if (GSF[st].informat[f] == 46){
+				if (GSF[st].informat[f] == 46){
 					//encc
 					fscanf (infile, "%llu",&enccountT);
 				}
 #if def_TTV > 0
-				else if (GSF[st].informat[f] == 29){
+				if (GSF[st].informat[f] == 29){
 					fscanf (infile, "%lf",&elementsL.a);	//aL
 				}
-				else if (GSF[st].informat[f] == 30){
+				if (GSF[st].informat[f] == 30){
 					fscanf (infile, "%lf",&elementsL.e);	//eL
 				}
-				else if (GSF[st].informat[f] == 31){
+				if (GSF[st].informat[f] == 31){
 					fscanf (infile, "%lf",&elementsL.inc);	//incL
 					if(P.AngleUnits == 1) elementsL.inc = elementsL.inc / 180.0 * M_PI;
 				}
-				else if (GSF[st].informat[f] == 32){
+				if (GSF[st].informat[f] == 32){
 					 fscanf (infile, "%lf",&elementsL.m);	//mL
 				}
-				else if (GSF[st].informat[f] == 33){
+				if (GSF[st].informat[f] == 33){
 					fscanf (infile, "%lf",&elementsL.O);	//OmegaL
 					if(P.AngleUnits == 1) elementsL.O = elementsL.O / 180.0 * M_PI;
 				}
-				else if (GSF[st].informat[f] == 34){
+				if (GSF[st].informat[f] == 34){
 					fscanf (infile, "%lf",&elementsL.w);	//wL
 					if(P.AngleUnits == 1) elementsL.w = elementsL.w / 180.0 * M_PI;
 				}
-				else if (GSF[st].informat[f] == 35){
+				if (GSF[st].informat[f] == 35){
 					fscanf (infile, "%lf",&elementsL.M);	//ML
 					if(P.AngleUnits == 1) elementsL.M = elementsL.M / 180.0 * M_PI;
 				}
-				else if (GSF[st].informat[f] == 36){
+				if (GSF[st].informat[f] == 36){
 					fscanf (infile, "%lf",&elementsL.r);	//rL
 				}
-				else if (GSF[st].informat[f] == 37){
+				if (GSF[st].informat[f] == 37){
 					fscanf (infile, "%lf",&elementsSA);	//SAT
 				}
-				else if (GSF[st].informat[f] == 39){
+				if (GSF[st].informat[f] == 39){
 					fscanf (infile, "%lf",&elementsL.P);	//PL
 				}
-				else if (GSF[st].informat[f] == 41){
+				if (GSF[st].informat[f] == 41){
 					fscanf (infile, "%lf",&elementsL.T);	//TL
 				}
-				else if (GSF[st].informat[f] == 43){
+				if (GSF[st].informat[f] == 43){
 					fscanf (infile, "%lf",&elementsP.w);	//gw
 				}
 
 #else
-				else if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
-				else if (GSF[st].informat[f] == 43) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 43) fscanf (infile, "%lf",&skip);
 #endif
-				else if (GSF[st].informat[f] == 0){
+				if (GSF[st].informat[f] == 0){
 				}
-				else{
+				if (GSF[st].informat[f] < 0 || GSF[st].informat[f] > 43){
 					printf("Error, initial condition file format is not valid, %d\n", GSF[st].informat[f]);
 					return 0;
 				}
@@ -1426,10 +1431,12 @@ __host__ int Data::readic(int st){
 			if(x.w >= 0 && x.w <= P.MinMass && P.UseTestParticles > 0) ++iismall;
 		}// end of particle loop
 		//check now if the file is finished
-		er = fscanf (infile, "%lf",&skip);
-		if(er != -1 && st == Nst -1){
-			printf("Error, initial condition file format is not correct\n");
-			return 0;
+		if(def_TTV == 0){
+			er = fscanf (infile, "%lf",&skip);
+			if(er != -1 && st == Nst -1){
+				printf("Error, initial condition file format is not correct\n");
+				return 0;
+			}
 		}
 
 	}
@@ -2035,7 +2042,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					nafx_d[(Nb) * nafn + i] = 0.0;
 					nafy_d[(Nb) * nafn + i] = 0.0;
 				}
-#if G3 > 0
+#if def_G3 > 0
 				for(int i = 0; i < N; ++i){
 					K_d[(Na) * NB + i] = K_d[(Nb) * NB + i];
 					K_d[i * NB + Na] = K_d[i * NB + (Nb)];
@@ -2328,6 +2335,7 @@ __host__ void Data::Ejection(){
 //It returns 1 if a simulation has less than the minimal number of bodies, otherwise zero
 __host__ int Data::remove(){
 	int NminFlag = 0;
+	NBmax = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
 		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
@@ -2336,8 +2344,8 @@ __host__ int Data::remove(){
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
-		resize(N_h[st], NB[st]);
-		resize(N_h[st] + Nsmall_h[st], NBT[st]);
+		resize(N_h[st], NB[st], 1);
+		resize(N_h[st] + Nsmall_h[st], NBT[st], 0);
 
 		if(N_h[st] < Nmin[st].x){
 			NminFlag = 1;
@@ -2356,7 +2364,7 @@ __host__ int Data::remove(){
 //This function recomputes the value of NB, which is the next bigger 
 //number to N which is a power of two.
 //also called for NBT with test particles
-__host__ void Data::resize(int N, int &NB){
+__host__ void Data::resize(int N, int &NB, int f){
 
 	NB = 16;
 	if( N > 16) NB = 32;
@@ -2373,6 +2381,10 @@ __host__ void Data::resize(int N, int &NB){
 	if( N > 32768) NB = 65536;
 	if( N > 65536) NB = 131072;
 	if( N > 131072) NB = 262144;
+
+	if(f == 1){
+		NBmax = max(NBmax, NB);
+	}
 }
 
 
@@ -2637,7 +2649,7 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
 	if(Nst > 0){
-		remove3M_kernel <<< Nst, NmaxM >>> (index_d, N_d, NBS_d);
+		remove3M_kernel <<< Nst, NBmax >>> (index_d, N_d, NBS_d);
 		if(Nencpairs_h[0] > 0) remove4M_kernel <<< (Nencpairs_h[0] + 255) / 256, 256 >>>  (Encpairs_d, Encpairs2_d, Nencpairs_h[0]);
 	}
 }
@@ -2781,7 +2793,7 @@ __host__ int Data::freeOrbit(){
 #if def_poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
-#if G3 > 0
+#if def_G3 > 0
 	cudaFree(K_d);
 	cudaFree(Kold_d);
 	cudaFree(groupIndex_d);

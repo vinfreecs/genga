@@ -662,7 +662,7 @@ __host__ int Data::EnergyOutput(int irregular){
 		else{
 			for(int st = 0; st < Nst; ++st){
 				int NBS = NBS_h[st];
-				gasEnergyMCall(Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], N_h[st]);
+				gasEnergyMCall(Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], N_h[st], NB[st]);
 			}
 		}
 	}
