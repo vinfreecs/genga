@@ -2910,7 +2910,7 @@ __host__ int Host::icict(int st){
 // *********************************************
 __host__ int Host::icSize(int st){
 
-	printf("Determine the size of the file %s\n", GSF[st].inputfilename);
+//printf("Determine the size of the file %s\n", GSF[st].inputfilename);
 	
 	//Determine the simulation start time
 	double time, test, rcrit;
@@ -3009,7 +3009,7 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
-	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
+//	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
@@ -3135,9 +3135,9 @@ __host__ int Host::icSize(int st){
 		P.NencMax = min(P.NencMax, N_h[0] + Nsmall_h[0]);
 	}
 	
-	if(Nst > 1 && NN > NmaxM){
-		fprintf(masterfile,"Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
-		printf("Error in Simulation %s: More particles than set in NmaxM: %d\n", GSF[st].path, NN);
+	if(Nst > 1 && NN > 128){
+		fprintf(masterfile,"Error in Simulation %s: More particles than 128: %d\n", GSF[st].path, NN);
+		printf("Error in Simulation %s: More particles than 128: %d\n", GSF[st].path, NN);
 		return 0;
 	}
 	if(N_h[st] + Nsmall_h[st] == 0){
@@ -3146,7 +3146,7 @@ __host__ int Host::icSize(int st){
 		return 0;
 	}
 
-	printf("icSize B: st: %d, N: %d, Nsmall: %d\n", st, N_h[st], Nsmall_h[st]);	
+//	printf("icSize B: st: %d, N: %d, Nsmall: %d\n", st, N_h[st], Nsmall_h[st]);	
 	return 1;
 }
 

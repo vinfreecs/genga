@@ -44,6 +44,7 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 					int Ne = atomicAdd(Nencpairs_d, 1);
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
+//printf("Precheck %d %d %d\n", i, j, EE);
 				}
 			}
 			if(EE > 0){
@@ -51,6 +52,7 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 					int Ne = atomicAdd(Nencpairs_d, 1);
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
+//printf("Precheck %d %d %d\n", i, j, EE);
 				}
 			}
 
@@ -155,7 +157,7 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int KickFloa
 			double dx = fabs(a_d[id].x - ab_d[id].x);
 			double dy = fabs(a_d[id].y - ab_d[id].y);
 			double dz = fabs(a_d[id].z - ab_d[id].z);
-
+//printf("compare a %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", id, a_d[id].x, a_d[id].y, a_d[id].z, ab_d[id].x, ab_d[id].y, ab_d[id].z);
 			if(KickFloat == 0){
 				if(dx + dy + dz > 1.0e-8){
 					printf("Comparison of acc from different kick kernel tuning parameters failed %d %.20g %.20g %.20g %.20g %.20g %.20g\n", id, a_d[id].x, ab_d[id].x, a_d[id].y, ab_d[id].y, a_d[id].z, ab_d[id].z);

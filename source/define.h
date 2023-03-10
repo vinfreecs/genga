@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.167
+#define def_Version 3.168
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -178,7 +178,7 @@
 //Block Sizes for multi simulation run
 #define HCM_Bl 128
 #define NmaxM 32			//maximal size of sub simulations
-//#define NmaxM 128			//maximal size of sub simulations
+//#define NmaxM 4				//maximal size of sub simulations
 #define HCM_Bl2 (HCM_Bl - NmaxM - NmaxM / 2)
 
 #define KM_Bl 128

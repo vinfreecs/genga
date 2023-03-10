@@ -37,7 +37,7 @@ public:
 	double *rcritv_d1;			//used for multiGPUs
 	double *rcritv_d2;			//used for multiGPUs
 	double *rcritv_d3;			//used for multiGPUs
-	int *groupIndex_d;
+	int2 *groupIndex_d;
 	int *Nencpairs_h, *Nencpairs_d;
 	int *Nencpairs2_h, *Nencpairs2_d;
 	int *Nencpairs3_h, *Nencpairs3_d;
@@ -305,6 +305,8 @@ public:
 	__host__ int tuneRcrit(int &);
 	__host__ int tuneKick(int, int &, int &, int &);
 	__host__ int tuneForce(int &);
+	__host__ int tuneKickM3(int &);
+	__host__ int tuneHCM3(int &);
 	__host__ int tuneBVH(int &);
 	__host__ int tuneBS();
 	__host__ int tuneBS2();
@@ -318,6 +320,7 @@ public:
 	__host__ void SEnc(double &, int, double, int, int);
 	__host__ int bStep(int);
 	__host__ int bStepM(int);
+	__host__ int bStepM3(int);
 
 	__host__ void firstStep(int);
 	__host__ int step(int);
@@ -343,6 +346,7 @@ public:
 	__host__ int StopAtEncounterCall();
 	__host__ void BSCall(int, double, int, double);
 	__host__ void BSBMCall(int, int, double);
+	__host__ void BSBM3Call(int, int, double);
 
 	__host__ void BSACall(int, int, int, int, double, double, int);
 

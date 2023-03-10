@@ -89,6 +89,10 @@ public:
 	int FrTX;
 	//BVH
 	int UseBVH;
+	//Multi simulation mode
+	int KTM3;
+	int HCTM3;
+	int UseM3;
 
 	//data for irregular outputs
 	int bufferCount;

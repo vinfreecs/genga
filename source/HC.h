@@ -645,7 +645,7 @@ __global__ void HC32a_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 	}
 }
 
-__global__ void HC32aM_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double2 *Msun_d, int *N_d, int *NBS_d, const int Nst, const double Ct, const int UseGR){
+__global__ void HC32aM_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double2 *Msun_d, int *N_d, int *NBS_d, const int Nst, const double Ct, const int UseGR, const int si){
 
 	int st = blockIdx.x;
 	int idy = threadIdx.x;				//must be in x dimension in order to be in the same warp
@@ -734,18 +734,20 @@ __global__ void HC32aM_kernel(double4 *x4_d, double4 *v4_d, double *dt_d, double
 		for(int i = 0; i < Ni; i += blockDim.x){
 			if(idy + i < Ni && x4_d[NBS + idy + i].w >= 0.0){
 //printf("HC A %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.29g %.20g %.20g %.20g %.20g\n", st, idy + i, a.x, a.y, a.z, x4_d[NBS + idy + i].x, x4_d[NBS + idy + i].y, x4_d[NBS + idy + i].z, v4_d[NBS + idy + i].x, v4_d[NBS + idy + i].y, v4_d[NBS + idy + 1].z, x4_d[NBS + idy + i].w, dtiMsun);
-				x4_d[NBS + idy + i].x += a.x * dtiMsun;
-				x4_d[NBS + idy + i].y += a.y * dtiMsun;
-				x4_d[NBS + idy + i].z += a.z * dtiMsun;
+				if(si == 1){
+					x4_d[NBS + idy + i].x += a.x * dtiMsun;
+					x4_d[NBS + idy + i].y += a.y * dtiMsun;
+					x4_d[NBS + idy + i].z += a.z * dtiMsun;
 
-				if(UseGR == 1){
-					double c2 = def_cm * def_cm;
-					double4 v4 = v4_d[NBS + idy + i];
-					double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
-					double vcdt = 2.0 * vsq / c2 * dt;
-					x4_d[NBS + idy + i].x -= __dmul_rn(v4.x, vcdt);
-					x4_d[NBS + idy + i].y -= __dmul_rn(v4.y, vcdt);
-					x4_d[NBS + idy + i].z -= __dmul_rn(v4.z, vcdt);
+					if(UseGR == 1){
+						double c2 = def_cm * def_cm;
+						double4 v4 = v4_d[NBS + idy + i];
+						double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+						double vcdt = 2.0 * vsq / c2 * dt;
+						x4_d[NBS + idy + i].x -= __dmul_rn(v4.x, vcdt);
+						x4_d[NBS + idy + i].y -= __dmul_rn(v4.y, vcdt);
+						x4_d[NBS + idy + i].z -= __dmul_rn(v4.z, vcdt);
+					}
 				}
 			}
 		}

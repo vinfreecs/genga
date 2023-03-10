@@ -205,6 +205,13 @@ __host__ int Data::AllocateOrbit(){
 		internalNodes_d = nullptr;
 	}
 
+	if(Nst > 1){
+		cudaMalloc((void **) &groupIndex_d, NconstT*sizeof(int2));
+	}
+	else{
+		groupIndex_d = NULL;
+	}
+
 	// ------------------------
 	// MultiGPU allocation
 	if(P.ndev > 1){
@@ -421,14 +428,12 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #if def_G3 > 0
 	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NconstT * NconstT * sizeof(double));
-	cudaMalloc((void **) &groupIndex_d, NconstT*sizeof(int));
 	cudaMalloc((void **) &StopTime_d, NconstT * NconstT * sizeof(double4));
 	cudaMalloc((void **) &x4G3_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &v4G3_d, NconstT * sizeof(double4));
 #else
 	K_d = NULL;
 	Kold_d = NULL;
-	groupIndex_d = NULL;
 	StopTime_d = NULL;
 	x4G3_d = NULL;
 	v4G3_d = NULL;
@@ -998,7 +1003,7 @@ __host__ int Data::readic(int st){
 				infile = fopen(GSF[st].inputfilename, "r");
 			}
 		}
-		printf("Read file %s %d %d\n", GSF[st].inputfilename, N, Nsmall);
+//		printf("Read file %s %d %d\n", GSF[st].inputfilename, N, Nsmall);
 	}
 	else{
 		if(st == 0){
@@ -2753,6 +2758,10 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs3_d);
 	cudaFree(scan_d);
 
+	if(Nst > 1){
+		cudaFree(groupIndex_d);
+	}
+
 	cudaFree(coordinateBuffer_d);
 	cudaFree(coordinateBufferIrr_d);
 
@@ -2796,7 +2805,6 @@ __host__ int Data::freeOrbit(){
 #if def_G3 > 0
 	cudaFree(K_d);
 	cudaFree(Kold_d);
-	cudaFree(groupIndex_d);
 	cudaFree(StopTime_d);
 #endif
 

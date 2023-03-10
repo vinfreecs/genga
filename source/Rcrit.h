@@ -456,8 +456,12 @@ __host__ void Data::firstStep(int noColl){
 		#if def_TTV == 2
 
 		#else
-		  firstKick_M(0, noColl);
-		  //firstKick_M3(0, noColl);
+		if(UseM3 == 0){
+			firstKick_M(0, noColl);
+		}
+		else{
+			firstKick_M3(0, noColl);
+		}
 		#endif
 	}
 	else{
@@ -478,8 +482,12 @@ __host__ int Data::step(int noColl){
 		#else
 
 		  #if def_NoEncounters == 0
-			er = step_M(noColl);
-			//er = step_M3(noColl);
+			if(UseM3 == 0){
+				er = step_M(noColl);
+			}
+			else{
+				er = step_M3(noColl);
+			}
 	 	  #else
 			er = step_MSimple();
 		  #endif

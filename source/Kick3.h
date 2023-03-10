@@ -5,7 +5,7 @@
 // **************************************
 // This function computes the term a = mi/rij^3 * Kij
 // ****************************************
-__device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i){
+__device__ void accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i){
 	if( i != j && x4i.w >= 0.0 && x4j.w > 0.0){
 		volatile double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -62,7 +62,7 @@ __device__ void  accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, d
 //August 2016
 //****************************************
 template < int E >
-__device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int2 *Encpairs2_d, int *EncFlag_d, int j, int i, int NencMax, double &test){
+__device__ void acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int *NencpairsI, int2 *Encpairs2_d, int *EncFlag_d, int j, int i, int NencMax, double &test){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		volatile double rsq, ir, ir3, s, sb;
 		double3 r3ij;
@@ -79,7 +79,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
-			if(rsq < def_pc * rcritv2){  //prechecker
+			if(rsq < def_pc * rcritv2){	//prechecker
 				int Ni = atomicAdd(NencpairsI, 1);
 				if(Ni >= NencMax){
 					atomicMax(&EncFlag_d[0], Ni);
@@ -91,7 +91,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 			}
 		}
 		if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
-			if(rsq < def_pc * rcritv2 && *NencpairsI < NencMax){  //prechecker
+			if(rsq < def_pc * rcritv2 && *NencpairsI < NencMax){	//prechecker
 //printf("Precheck %d %d\n", i, j);
 				Encpairs2_d[NencMax * i + *NencpairsI].y = j;
 				*NencpairsI += 1;
@@ -135,7 +135,7 @@ __device__ void  acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doub
 }
 //float version
 template < int E >
-__device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rcritvi, float rcritvj, int *NencpairsI, int2 *Encpairs2_d, int *EncFlag_d, int j, int i, int NencMax, float &test){
+__device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rcritvi, float rcritvj, int *NencpairsI, int2 *Encpairs2_d, int *EncFlag_d, int j, int i, int NencMax, float &test){
 	if( i != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
 		volatile float rsq, ir, ir3, s, sb;
 		float3 r3ij;
@@ -153,7 +153,7 @@ __device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float r
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){
-			if(rsq < def_pcf * rcritv2){  //prechecker
+			if(rsq < def_pcf * rcritv2){	//prechecker
 				int Ni = atomicAdd(NencpairsI, 1);
 				if(Ni >= NencMax){
 					atomicMax(&EncFlag_d[0], Ni);
@@ -165,7 +165,7 @@ __device__ void  acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float r
 			}
 		}
 		if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
-			if(rsq < def_pcf * rcritv2 && *NencpairsI < NencMax){  //prechecker
+			if(rsq < def_pcf * rcritv2 && *NencpairsI < NencMax){	//prechecker
 //printf("Precheck %d %d\n", i, j);
 				Encpairs2_d[NencMax * i + *NencpairsI].y = j;
 				*NencpairsI += 1;
@@ -243,7 +243,7 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 			rcritv = fmax(rcritvi, rcritvj);
 			rcritv2 = rcritv * rcritv;
 
-			if(rsq <  1.0 * rcritv2){
+			if(rsq < 1.0 * rcritv2){
 				if(rsq <= 0.01 * rcritv2){
 					s *= 1.0;
 				}
@@ -286,7 +286,7 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 			}
 			//prechecker
 			if(E == 0 || E == 2){	
-				if(rsq < def_pc * rcritv2){  //prechecker
+				if(rsq < def_pc * rcritv2){	//prechecker
 //printf("Precheck %d %d\n", i, j);
 					Encpairs2_d[NencMax * i + NencpairsI].y = j;
 					++NencpairsI;
@@ -310,7 +310,7 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, do
 //
 // ********************************
 template < int E >
-__device__ void  accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NconstT, int NencMax, double &test, double t){
+__device__ void accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int groupIndexi, int groupIndexj, int *NencpairsI, int *NencpairsJ, int2 *Encpairs_d, int j, int i, int NconstT, int NencMax, double &test, double t){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -1522,7 +1522,7 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			ir = 1.0 / sqrt(rsq);
 			ir3 = ir * ir * ir;
 			if(E <= 2){
-				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){  //prechecker
+				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){	//prechecker
 					if(idy >= Nmax){
 						int Ne = atomicAdd(Nencpairs_d, 1);
 						atomicAdd(Nencpairs_d + st_s[idy] + 1, 1);
@@ -1771,7 +1771,7 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 			ir = 1.0 / sqrt(rsq);
 			ir3 = ir * ir * ir;
 			if(E <= 2){
-				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){  //prechecker
+				if(rsq < def_pc * rcritv2 && (x4_s[idy].w > 0.0 || x4_s[idy + j].w > 0.0)){	//prechecker
 					if(idy >= Nmax){
 						int Ne = atomicAdd(Nencpairs_d, 1);
 						atomicAdd(Nencpairs_d + st_s[idy] + 1, 1);
@@ -1866,7 +1866,9 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	}
 }
 
-__global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, int *N_d, int *NBS_d, const int EE){
+// CC = 1, do pre-check
+// CC = 0, don't do pre-check
+__global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, int *Nencpairs_d, int2 *Encpairs_d, double *dt_d, double Kt, int *index_d, int NT, int *N_d, int *NBS_d, const int EE, const int CC){
 
 	int idy = threadIdx.x;	//must be in x dimension in order to be in the same warp
 	int id = blockIdx.x * blockDim.y + threadIdx.y;
@@ -1889,7 +1891,7 @@ __global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 			if(idy + i < Ni){
 				double4 x4j = x4_d[NBS + idy + i];
 
-				if(idy + i != id - NBS && x4i.w >= 0.0 && x4j.w >= 0.0){
+				if(NBS + idy + i != id && x4i.w >= 0.0 && x4j.w >= 0.0){
 					double rcritvj = rcritv_d[NBS + idy + i];
 
 					double rcritv = fmax(rcritvi, rcritvj);
@@ -1901,16 +1903,18 @@ __global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 					double rsq = rx * rx + ry * ry + rz * rz;
 					double ir = 1.0 / sqrt(rsq);
 					double ir3 = ir * ir * ir;
-//	if( EE == 0 && idy + i == 0) printf("Kick %d %d %d %d\n", id, NBS + idy + i, index_d[id], index_d[NBS + idy + i]);
-					if(EE <= 2){
-						if(rsq < def_pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){  //prechecker
-							int Ne = atomicAdd(Nencpairs_d, 1);
-							atomicAdd(Nencpairs_d + st + 1, 1);
-							int2 ij;
-							ij.x = id;
-							ij.y = NBS + idy + i;
-							//printf("precheck E %d %d %d %d %d %d\n", E, st_s[idy], id, id + j, index_d[id], index_d[id + j]);     
-							Encpairs_d[Ne] = ij;
+//if( EE == 0 && idy + i == 0) printf("Kick %d %d %d %d\n", id, NBS + idy + i, index_d[id], index_d[NBS + idy + i]);
+					if(CC == 1){
+						if(rsq < def_pc * rcritv2 && (x4i.w > 0.0 || x4j.w > 0.0)){	//prechecker
+							if(id < NBS + idy + i){
+								int Ne = atomicAdd(Nencpairs_d, 1);
+								atomicAdd(Nencpairs_d + st + 1, 1);
+								int2 ij;
+								ij.x = id;
+								ij.y = NBS + idy + i;
+//printf("precheck E %d %d %d %d %d %d\n", EE, st, id, NBS + idy + i, index_d[id], index_d[NBS + idy + i]);
+								Encpairs_d[Ne] = ij;
+							}
 						}
 					}
 
@@ -1956,7 +1960,7 @@ __global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		if(blockDim.x > warpSize){
 			//reduce across warps
 			extern __shared__ double3 KickM3_s[];
-			double3 *a_s = KickM3_s;                       //size: warpSize
+			double3 *a_s = KickM3_s;			//size: warpSize
 
 			int lane = threadIdx.x % warpSize;
 			int warp = threadIdx.x / warpSize;

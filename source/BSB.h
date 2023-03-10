@@ -69,7 +69,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 //printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
 	if(idy < N2){
 		idi = Encpairs2_d[start + idy].x;
-//printf("BS2 %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], N2);
+//printf("BS2 %d %d %d %d %d %d %d\n", idx, st, si, idi, index_d[idi], N2, NN);
 	}
 	else idi = 0;
 
@@ -80,9 +80,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
  	__syncthreads();
 	if(idy < N2){
-		x4_s[idy] = xold_d[idi];  
+		x4_s[idy] = xold_d[idi];
 		v4_s[idy] = vold_d[idi];
-		for(int l = 0; l < SLevels; ++l){  
+		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NconstT];
 		}
 //printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
@@ -214,9 +214,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					xp_s[idy].z = x4_s[idy].z + (dt2 * dtgr * v4_s[idy].z);
 					xp_s[idy].w = x4_s[idy].w;
 
-					vp_s[idy].x = v4_s[idy].x + (dt2 * a0_s[idy].x);  
-					vp_s[idy].y = v4_s[idy].y + (dt2 * a0_s[idy].y);  
-					vp_s[idy].z = v4_s[idy].z + (dt2 * a0_s[idy].z); 
+					vp_s[idy].x = v4_s[idy].x + (dt2 * a0_s[idy].x);
+					vp_s[idy].y = v4_s[idy].y + (dt2 * a0_s[idy].y);
+					vp_s[idy].z = v4_s[idy].z + (dt2 * a0_s[idy].z);
 					vp_s[idy].w = v4_s[idy].w;
 				}
 
@@ -285,6 +285,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				__syncthreads();
 				if(idy < NN){
 					accEncSun(xp_s[idy], a_s[idy], def_ksq * Msun * dtgr);
+
 					xt_s[idy].x = x4_s[idy].x + (dt22 * dtgr * vp_s[idy].x);
 					xt_s[idy].y = x4_s[idy].y + (dt22 * dtgr * vp_s[idy].y);
 					xt_s[idy].z = x4_s[idy].z + (dt22 * dtgr * vp_s[idy].z);
@@ -674,7 +675,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj + l);
 											int ne = atomicAdd(NWriteEnc_d, 1);
-											if(ne >= def_MaxWriteEnc -1) ne = def_MaxWriteEnc -1;
+											if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
 											storeEncounters(xt_s, vt_s, ii, jj + l, indexi, indexj, index_d, ne, writeEnc_d, time + (t + dt1) / dayUnit, spin_d);
 										}
 									}
@@ -779,6 +780,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 		__syncthreads();
 	}//end of tt loop
+	__syncthreads();
 	if(idy < N2){
 //if(x4_s[idy].w <= 0){
 		x4_d[idi] = x4_s[idy]; 

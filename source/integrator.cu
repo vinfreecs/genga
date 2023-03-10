@@ -7,13 +7,14 @@
 #include "BSB.h"
 //#include "BSB2.h"
 #include "BSBM.h"
-#include "BSB64M.h"
+#include "BSBM3.h"
 #include "ComEnergy.h"
 #include "convert.h"
 #include "force.h"
 #include "forceYarkovskyOld.h"
 #include "Kick4.h"
 #include "BSA.h"
+#include "BSAM3.h"
 #if def_TTV > 0
   #include "BSTTV.h"
 #endif
@@ -360,6 +361,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 				if(er == 0) return 0;
 			}
 
+
 			tuneFile = fopen("tuningParameters.dat", "w");
 			fprintf(tuneFile, "FTX %d\n", FTX);
 			fprintf(tuneFile, "RTX %d\n", RTX);
@@ -377,6 +379,79 @@ __host__ int Data::beforeTimeStepLoop1(){
 		if(P.doSLTuning == 1){
 			er = tuneBS();
 			if(er == 0) return 0;
+		}
+	}
+	else{
+		//set default kernel parameters
+		KTM3 = 32;
+		HCTM3 = 32;
+		UseM3 = 0;
+
+		FILE *tuneFile;
+
+		if(P.doTuning == 0){
+
+			//check if tuneParameters file exists.
+			tuneFile = fopen("tuningParameters.dat", "r");
+			if(tuneFile == NULL){
+				printf("tuningParameters.dat file not available, use default settings\n");
+				GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+				fprintf(GSF[0].logfile, "tuningParameters.dat file not available, use default settings\n");
+				fclose(GSF[0].logfile);
+			}
+			else{
+				printf("Read tuningParameters.dat file\n");
+			
+				char sp[16];	
+				int er = 0;
+
+				for(int i = 0; i < 20; ++i){
+					er = fscanf(tuneFile, "%s", sp);
+					if(er <= 0) break;
+					if(strcmp(sp, "KTM3") == 0){
+						fscanf(tuneFile, "%d", &KTM3);
+					}
+					if(strcmp(sp, "HCTM3") == 0){
+						fscanf(tuneFile, "%d", &HCTM3);
+					}
+					if(strcmp(sp, "UseM3") == 0){
+						fscanf(tuneFile, "%d", &UseM3);
+					}
+				}
+				if(NBmax > NmaxM){
+					UseM3 = 1;
+				}
+
+				fclose(tuneFile);
+				printf("KTM3 %d\n", KTM3);
+				printf("HCTM3 %d\n", HCTM3);
+				printf("UseM3 %d\n", UseM3);
+
+				GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+				fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
+				fprintf(GSF[0].logfile, "KTM3 %d\n", KTM3);
+				fprintf(GSF[0].logfile, "HCTM3 %d\n", HCTM3);
+				fprintf(GSF[0].logfile, "UseM3 %d\n", UseM3);
+				fclose(GSF[0].logfile);
+			}
+		}
+		else{
+			//Tune kernel parameters
+			er = tuneKickM3(KTM3);
+			if(er == 0) return 0;
+
+			er = tuneHCM3(HCTM3);
+			if(er == 0) return 0;
+
+			if(NBmax > NmaxM){
+				UseM3 = 1;
+			}
+
+			tuneFile = fopen("tuningParameters.dat", "w");
+			fprintf(tuneFile, "KTM3 %d\n", KTM3);
+			fprintf(tuneFile, "HCTM3 %d\n", HCTM3);
+			fprintf(tuneFile, "UseM3 %d\n", UseM3);
+			fclose(tuneFile);
 		}
 	}
 
@@ -907,7 +982,7 @@ __host__ void Data::IrregularStep(double dTau){
 //March 2016
 // **************************************3
 template <int Bl>
-__global__ void initial_kernel(double *K_d, double *Kold_d, double4 *StopTime_d, int *groupIndex_d, int NB){
+__global__ void initial_kernel(double *K_d, double *Kold_d, double4 *StopTime_d, int NB){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 	
@@ -918,9 +993,6 @@ __global__ void initial_kernel(double *K_d, double *Kold_d, double4 *StopTime_d,
 		StopTime_d[(idy +i)* NB + idx].y = -1.0;
 		StopTime_d[(idy +i)* NB + idx].z = -1.0;
 		StopTime_d[(idy +i)* NB + idx].w = -1.0;
-		if(idx == 0){
-			groupIndex_d[idy + i] = -1;
-		}
 	}
 }
 
@@ -1404,6 +1476,132 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 	return 1;
 }
 
+__host__ int Data::tuneKickM3(int &KTM3){
+
+	int ttM3[3] =  {32, 64, 128};
+
+	KTM3 = 32;
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	int T = 10;	//number of kick calls
+	int f = 0; //flag for comparison
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("\nStarting KickM3 kernel parameters tuning\n");
+	fprintf(GSF[0].logfile, "\nStarting KickM3 kernel parameters tuning\n");
+	
+	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, timeStep, StopFlag_d, NconstT, P.SLevels, 0, Nstart);
+
+	for(int i = 0; i < 3; ++i){
+		int tM3 = ttM3[i];
+		cudaEventRecord(start, 0);	
+		for(int t = 0; t < T; ++t){
+
+			KickM3_kernel <<< NT, dim3(tM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 0, 0);
+		}
+
+		cudaEventRecord(stop, 0);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+		printf("KTM3:%d   \ttime: %.15f s\n", tM3, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"KTM3:%d   \ttime: %.15f s\n", tM3, times * 0.001);	//time in seconds
+		if(times < timesMin){
+			KTM3 = tM3;
+		}
+		timesMin = fmin(times, timesMin);
+		//check if different tunig parameters give the same result
+		compare_a_kernel <<< (NT + 255) / 256, 256 >>> (a_d, ab_d, P.KickFloat, NT, f);
+		if(f == 0) f = 1;
+	}
+
+	if(EncFlag_m[0] > 0){
+		printf("Error: more encounters than allowed: %d %d. Increase 'Maximum encounter pairs'.\n", EncFlag_m[0], P.NencMax);
+		fprintf(masterfile, "Error: more encounters than allowed: %d %d. Increase 'Maximum encounter pairs'.\n", EncFlag_m[0], P.NencMax);
+		return 0;
+	}
+
+	if(timesMin <= 0.0f){
+		printf("Error in KickM3 tuning, %g\n", timesMin);
+		return 0;
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		printf("Using Serial Grouping, this disables the tuning parameters\n");
+		fprintf(GSF[0].logfile, "Using Serial Grouping, this disables the tuning parameters\n");
+		KTM3 = 32;
+	}
+
+	printf("Best parameters: KTM3:%d\t time: %.15f s\n", KTM3, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: KTM3:%d\t time: %.15f s\n", KTM3, timesMin * 0.001);	//time in seconds
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+}
+__host__ int Data::tuneHCM3(int &HCTM3){
+
+	int hhcM3[3] =  {32, 64, 128};
+
+	HCTM3 = 32;
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	int T = 10;	//number of kick calls
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("\nStarting HCM3 kernel parameters tuning\n");
+	fprintf(GSF[0].logfile, "\nStarting HCM3 kernel parameters tuning\n");
+	
+	for(int i = 0; i < 3; ++i){
+		int hcM3 = hhcM3[i];
+		cudaEventRecord(start, 0);	
+		for(int t = 0; t < T; ++t){
+			HC32aM_kernel <<< Nst, hcM3, WarpSize * sizeof(double3) >>> (x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[0], P.UseGR, 0);
+		}
+
+		cudaEventRecord(stop, 0);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+		printf("HCTM3:%d   \ttime: %.15f s\n", hcM3, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"HCTM3:%d   \ttime: %.15f s\n", hcM3, times * 0.001);	//time in seconds
+		if(times < timesMin){
+			HCTM3 = hcM3;
+		}
+		timesMin = fmin(times, timesMin);
+	}
+
+	if(timesMin <= 0.0f){
+		printf("Error in HCM3 tuning, %g\n", timesMin);
+		return 0;
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		printf("Using Serial Grouping, this disables the tuning parameters\n");
+		fprintf(GSF[0].logfile, "Using Serial Grouping, this disables the tuning parameters\n");
+		HCTM3 = 32;
+	}
+
+	printf("Best parameters: HCTM3:%d\t time: %.15f s\n", HCTM3, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: HCTM3:%d\t time: %.15f s\n", HCTM3, timesMin * 0.001);	//time in seconds
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+}
+
 __host__ int Data::tuneBVH(int &useBVH){
 
 	cudaEvent_t start, stop;
@@ -1830,7 +2028,7 @@ __host__ void Data::firstKick_M(long long ts, int noColl){
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	cudaMemset(BSstop_d, 0, sizeof(int));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
-	RcritM_kernel <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, ts, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
+	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, ts, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1] * def_ksq, index_d, NT, Nstart);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
@@ -1839,8 +2037,8 @@ __host__ void Data::firstKick_M3(long long ts, int noColl){
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
 	cudaMemset(BSstop_d, 0, sizeof(int));
 	initialb_kernel <<< (NBNencT + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, NBNencT);
-	RcritM_kernel <<< (NT + 31) / 32, 32>>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, ts, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
-	KickM3_kernel <<< NT, dim3(32, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 0);
+	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, ts, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
+	KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 0, 1);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
 
@@ -1919,12 +2117,38 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 }
 
 __host__ void Data::BSBMCall(int si, int noColl, double ll){
+
+//printf(" %d | %d %d %d | %d %d %d | %d %d %d | %d %d %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9],  Nenc_m[10],  Nenc_m[11],  Nenc_m[12]);
+
 	if(Nenc_m[1] > 0) BSBMStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 0, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
 	if(Nenc_m[2] > 0) BSBMStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, BSStream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 1, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
 	if(Nenc_m[3] > 0) BSBMStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, BSStream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 2, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
 	if(Nenc_m[4] > 0) BSBMStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, BSStream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 3, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
 	if(Nenc_m[5] > 0) BSBMStep_kernel <32, 8> <<< Nenc_m[5], 256, 0, BSStream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 4, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
-	//if(Nenc_m[6] > 0) BSBMStep64_kernel <64, 4> <<< Nenc_m[6], 256, 0, BSStream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs_d, Encpairs2_d, dt_d, FGt[si] / ll, Msun_d, U_d, 5, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, Nst, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d. P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, P.NencMax);
+
+	cudaDeviceSynchronize();
+}
+
+__host__ void Data::BSBM3Call(int si, int noColl, double ll){
+
+//printf(" %d | %d %d %d | %d %d %d | %d %d %d | %d %d %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9],  Nenc_m[10],  Nenc_m[11],  Nenc_m[12]);
+
+	if(Nenc_m[1] > 0) BSBM3Step_kernel <2, 2> <<< Nenc_m[1], 4, 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 0, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NT, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[2] > 0) BSBM3Step_kernel <4, 4> <<< Nenc_m[2], 16, 0, BSStream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 1, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NT, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSBM3Step_kernel <8, 8> <<< Nenc_m[3], 64, 0, BSStream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 2, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NT, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[4] > 0) BSBM3Step_kernel <16, 16> <<< Nenc_m[4], 256, 0, BSStream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 3, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NT, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[5] > 0) BSBM3Step_kernel <32, 8> <<< Nenc_m[5], 256, 0, BSStream[4] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 4, index_d, BSstop_d, Ncoll_d, Coll_d, time_d, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NT, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+
+
+	/*
+	if(Nenc_m[1] > 0) BSAM3_kernel < 64 > <<< Nenc_m[1], 64 , 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 0, NT, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[2] > 0) BSAM3_kernel < 64 > <<< Nenc_m[2], 64 , 0, BSStream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 1, NT, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	if(Nenc_m[3] > 0) BSAM3_kernel < 64 > <<< Nenc_m[3], 64 , 0, BSStream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 2, NT, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+	*/
+
+	if(Nenc_m[6] > 0) BSAM3_kernel < 64 > <<< Nenc_m[6], 64 , 0, BSStream[5] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, groupIndex_d, dt_d, FGt[si] / ll, Msun_d, U_d, 5, NT, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+
+
 	cudaDeviceSynchronize();
 }
 
@@ -2104,7 +2328,12 @@ printf("Tshiftpairs %d %d\n", ij.x, ij.y);
 
 				int N0 = Ncoll_m[0];
 				cudaMemset(BSstop_d, 0, sizeof(int));
-				bStepM(1);
+				if(UseM3 == 0){
+					bStepM(1);
+				}
+				else{
+					bStepM3(1);
+				}
 				cudaDeviceSynchronize();
 				error = cudaGetLastError();
 				if(error != 0){
@@ -2120,7 +2349,12 @@ printf("Revert time step\n");
 printf("Backup step -1 %.20g\n", -1.0);
 					N0 = Ncoll_m[0];
 					cudaMemset(BSstop_d, 0, sizeof(int));
-					bStepM(-1);
+					if(UseM3 == 0){
+						bStepM(-1);
+					}
+					else{
+						bStepM3(-1);
+					}
 					cudaDeviceSynchronize();
 					error = cudaGetLastError();
 					if(error != 0){
@@ -2152,7 +2386,12 @@ printf("Backup step 2 %.20g\n", Coltime * 365.25);
 	//st
 			IrregularStep(1.0 * ((Coltime * 365.25 - time_h[0] + idt_h[0]) / idt_h[0]));
 			cudaMemset(BSstop_d, 0, sizeof(int));
-			bStepM(2);
+			if(UseM3 == 0){
+				bStepM(2);
+			}
+			else{
+				bStepM3(2);
+			}
 			cudaDeviceSynchronize();
 			error = cudaGetLastError();
 			if(error != 0){
@@ -2440,6 +2679,29 @@ __host__ int Data::bStepM(int noColl){
 		convertPseudovToVM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, NT);
 	}
 	KickM2Simple_kernel < KM_Bl, KM_Bl2, NmaxM, 2 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl>>> (x4_d, v4_d, v4b_d, a_d, dt_d, Kt[0], index_d, NT, Nst, Nstart);
+
+	return 0;
+}
+__host__ int Data::bStepM3(int noColl){
+	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, test_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, timeStep, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
+
+	KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[0], index_d, NT, N_d, NBS_d, 1, 0);
+
+	if(P.UseGR == 1){
+		convertVToPseidovM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, ErrorFlag_m, Msun_d, NT);
+	}
+	HC32aM_kernel <<< Nst, HCTM3, WarpSize * sizeof(double3) >>> (x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[0], P.UseGR, 1);
+
+	fgMSimple_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, xold_d, vold_d, dt_d, Msun_d, test_d, index_d, NT, FGt[0], 0, P.UseGR, Nstart);
+	cudaDeviceSynchronize();
+
+	BSBM3Call(0, noColl, 1.0);
+
+	HC32aM_kernel <<< Nst, HCTM3, WarpSize * sizeof(double3) >>> (x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[0], P.UseGR, 1);
+	if(P.UseGR == 1){
+		convertPseudovToVM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, NT);
+	}
+	KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[0], index_d, NT, N_d, NBS_d, 2, 0);
 
 	return 0;
 }
@@ -3817,11 +4079,11 @@ __host__ int Data::step_M3(int noColl){
 			kick32BM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, a_d, ab_d, index_d, NT, dt_d, Kt[SIn - 1], Nstart);
 		}
 		else{
-			KickM3_kernel <<< NT, dim3(32, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 3);
+			KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 2, 0);
 		}
 	}
 	else{
-		KickM3_kernel <<< NT, dim3(32, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 1);
+		KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 1, 1);
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 		//cudaEventRecord(KickEvent, 0);
 		//cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3847,7 +4109,7 @@ __host__ int Data::step_M3(int noColl){
 		if(P.UseGR == 1){
 			convertVToPseidovM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, ErrorFlag_m, Msun_d, NT);
 		}
-		HC32aM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[si], P.UseGR);
+		HC32aM_kernel <<< Nst, HCTM3, WarpSize * sizeof(double3) >>> (x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[si], P.UseGR, 1);
 		fgM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, xold_d, vold_d, dt_d, Msun_d, test_d, index_d, NT, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, FGt[si], si, P.UseGR, Nstart);
 		cudaStreamSynchronize(copyStream);
 
@@ -3855,30 +4117,30 @@ __host__ int Data::step_M3(int noColl){
 			Nenc_m[i] = 0;
 		}
 		setNencpairs <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs2_d, Nst + 1);
+		setNencpairs2 <<< (NT + 127) / 128, 128 >>> (groupIndex_d, NT);
 
 		if(Nencpairs_h[0] > 0){
-			encounterM_kernel <<< (Nencpairs_h[0] + 127) / 128 , 128 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_d, Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, index_d, NBS_d, enccount_d, si, FGt[si], Nst, time_d, P.StopAtEncounter, Ncoll_d, n1_d, P.MinMass, P.NencMax);
+			encounterM3_kernel <<< (Nencpairs_h[0] + 127) / 128 , 128 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_d, Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, test_d, index_d, NBS_d, enccount_d, si, FGt[si], Nst, time_d, P.StopAtEncounter, Ncoll_d, n1_d, P.MinMass, P.NencMax);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			
 			if(P.StopAtEncounter > 0 && Ncoll_m[0] > 0){
 				Ncoll_m[0] = 0;
 				StopAtEncounterFlag2 = 1;
 			}
-			
 			if(Nencpairs2_h[0] > 0){
 				if(NBmax < 64){
-					groupM1_kernel < 32, 256 > <<< Nencpairs2_h[0], 256 >>> (Nencpairs2_d, Encpairs_d, Encpairs2_d, NBS_d, N_d, Nst, P.NencMax);
+					groupM3_kernel < 32, 256 > <<< Nst, 256 >>> (Nenc_d, Nencpairs2_d, Encpairs_d, Encpairs2_d, groupIndex_d, NBS_d, N_d, NT, P.NencMax, P.SERIAL_GROUPING);
 				}
 				else if(NBmax < 128){
-					groupM1_kernel < 64, 256 > <<< Nencpairs2_h[0], 256 >>> (Nencpairs2_d, Encpairs_d, Encpairs2_d, NBS_d, N_d, Nst, P.NencMax);
+					groupM3_kernel < 64, 256 > <<< Nst, 256 >>> (Nenc_d, Nencpairs2_d, Encpairs_d, Encpairs2_d, groupIndex_d, NBS_d, N_d, NT, P.NencMax, P.SERIAL_GROUPING);
 				}
 				else if(NBmax < 256){
-					groupM1_kernel < 128, 256 > <<< Nencpairs2_h[0], 256 >>> (Nencpairs2_d, Encpairs_d, Encpairs2_d, NBS_d, N_d, Nst, P.NencMax);
+					groupM3_kernel < 128, 256 > <<< Nst, 256 >>> (Nenc_d, Nencpairs2_d, Encpairs_d, Encpairs2_d, groupIndex_d, NBS_d, N_d, NT, P.NencMax, P.SERIAL_GROUPING);
 				}
 
-				groupM2_kernel <<< Nencpairs2_h[0], NBmax >>> (Encpairs_d, Encpairs2_d, Nenc_d, NBS_d, N_d, Nst, P.NencMax);
+				groupM3_2_kernel <<< (NT + 127) / 128, 128 >>> (Nenc_d, Nencpairs2_d, Encpairs_d, Encpairs2_d, groupIndex_d, NBS_d, NT, NBmax);
 				cudaDeviceSynchronize();
-				BSBMCall(si, noColl, 1.0);
+				BSBM3Call(si, noColl, 1.0);
 			}
 		}
 		if(StopAtEncounterFlag2 == 1){
@@ -3899,13 +4161,13 @@ __host__ int Data::step_M3(int noColl){
 			if(enc == 0) return 0;
 		}
 		
-		HC32aM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>>(x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[si], P.UseGR);
+		HC32aM_kernel <<< Nst, HCTM3, WarpSize * sizeof(double3) >>>(x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[si], P.UseGR, 1);
 		setNencpairs <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs_d, Nst + 1);
 		if(P.UseGR == 1){
 			convertPseudovToVM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, NT);
 		}
 		if(si < SIn - 1){
-			KickM3_kernel <<< NT, dim3(32, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[si], index_d, NT, N_d, NBS_d, 2);
+			KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[si], index_d, NT, N_d, NBS_d, 2, 1);
 			cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 		//	cudaEventRecord(KickEvent, 0);
 		//	cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3928,7 +4190,7 @@ __host__ int Data::step_M3(int noColl){
 			}
 		}
 	}
-	KickM3_kernel <<< NT, dim3(32, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 1);
+	KickM3_kernel <<< NT, dim3(KTM3, 1, 1), WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1], index_d, NT, N_d, NBS_d, 1, 1);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 	//cudaEventRecord(KickEvent, 0);
 	//cudaStreamWaitEvent(copyStream, KickEvent, 0);
