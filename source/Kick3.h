@@ -1957,6 +1957,8 @@ __global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 		//if(idx == 0 && i >= 16) printf("KickA %d %d %.20g\n", idy, i, a.x);
 		}
 
+		__syncthreads();
+
 		if(blockDim.x > warpSize){
 			//reduce across warps
 			extern __shared__ double3 KickM3_s[];

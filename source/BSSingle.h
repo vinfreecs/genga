@@ -12,7 +12,7 @@
 ////March 2014
 //
 // ****************************************
-__device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const double dt, double &test, int id){
+__device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const double dt, int id){
 
 	double3 a;
 	double3 a0;

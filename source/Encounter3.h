@@ -38,7 +38,7 @@ __global__ void setNencpairs2(int2 *Nencpairs_d, int N){
 // April 2016
 //
 // ****************************************
-__device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, double &time, const double MinMass){
+__device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double &time, const double MinMass){
 
 //printf("E0 %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g %.20g %.20g | m %.20g %.20g\n", i ,j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z, x4oldj.x, x4oldj.y, x4oldj.z, v4oldj.x, v4oldj.y, v4oldj.z, x4oldi.w, x4oldj.w);
 //printf("E1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g | %.20g %.20g %.20g %.20g %.20g %.20g | m %.20g %.20g\n", i ,j, x4i.x, x4i.y, x4i.z, v4i.x, v4i.y, v4i.z, x4j.x, x4j.y, x4j.z, v4j.x, v4j.y, v4j.z, x4i.w, x4j.w);
@@ -154,7 +154,7 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 	}
 	else return 0;
 }
-__device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double *test_d, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, const double MinMass){
+__device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcriti, const double rcritj, const double rcritvi, const double rcritvj, const double dt, const int i, const int j, double &Ki, double &Kj, double &Kiold, double &Kjold, double &time, const double MinMass){
 
 //printf("E %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", i , j, x4oldi.x, x4oldi.y, x4oldi.z, v4oldi.x, v4oldi.y, v4oldi.z);
 
@@ -455,7 +455,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 // July  2016
 //
 // ****************************************
-__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass, const int NencMax){
+__global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass, const int NencMax){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int ii = 0;
@@ -480,7 +480,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 	__syncthreads();
 
 	if(id < Nencpairs_d[0] && ii >= 0 && jj >= 0 && st < Nst){
-		int enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, time, MinMass);
+		int enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , time, MinMass);
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
@@ -523,7 +523,7 @@ __global__ void encounterM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d,
 // March  2023
 //
 // ****************************************
-__global__ void encounterM3_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass, const int NencMax){
+__global__ void encounterM3_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, double *dt_d, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, int *index_d, int *NBS_d, unsigned int *enccount_d, const int si, const double FGt, const int Nst, double* time_d, const int StopAtEncounter, int *Ncoll_d, double *n1_d, const double MinMass, const int NencMax){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -549,7 +549,7 @@ __global__ void encounterM3_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d
 	__syncthreads();
 
 	if(id < Nencpairs && ii >= 0 && jj >= 0 && st < Nst){
-		int enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , test_d, time, MinMass);
+		int enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt * FGt, ii, jj , time, MinMass);
 //printf("enc %d %d %d %d %d\n", ii, jj, enccount, st, Nencpairs2_d[st + 1]);
 		if(enccount > 0){
 			int Ne = atomicAdd(&Nencpairs2_d[st + 1], 1);
@@ -594,7 +594,7 @@ __global__ void encounterM3_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d
 //April 2019
 //
 // ****************************************
-__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, const double dt, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, double *test_d, unsigned int *enccount_d, const int si, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
+__global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, const double dt, int Nencpairs, int *Nencpairs_d, int2 *Encpairs_d, int *Nencpairs2_d, int2 *Encpairs2_d, unsigned int *enccount_d, const int si, const int NB, double time, const int StopAtEncounter, int *Ncoll_d, const double MinMass){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -611,12 +611,12 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 	int enccount = 0;	
 	if(id < Nencpairs){
 #if def_G3 == 0
-		enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, time, MinMass);
+		enccount = encounter(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , time, MinMass);
 #elif def_G3 == 1
-		enccount = encounterb(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, MinMass);
+		enccount = encounterb(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit_d[ii], rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], time, MinMass);
 #else
 //change here ii and jj to index[ii], index[jj]
-		enccount = encounterG3(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , test_d, Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, MinMass);
+		enccount = encounterG3(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4G3_d[ii], v4G3_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], x4G3_d[jj], v4G3_d[jj], rcrit_d[ii], ii, jj, rcrit_d[jj], rcritv_d[ii], rcritv_d[jj], dt, ii, jj , Encpairs2_d, *Nencpairs2_d, 0, K_d[ii * NB + jj], K_d[jj * NB + ii], Kold_d[ii * NB + jj], Kold_d[jj * NB + ii], StopTime_d[ii * NB + jj], StopTime_d[jj * NB + ii], time, MinMass);
 #endif
 		if(enccount > 0){
 			int Ne = atomicAdd(Nencpairs2_d, 1);
@@ -727,7 +727,7 @@ __global__ void encounter_small__kernel(double4 *x4_d, double4 *v4_d, double4 *x
 //March  2016
 // ****************************************
 template <int bn, int Bl>
-__global__ void group_kernel(int *Nenc_d, double *test_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, const int NT, const int N, const int SERIAL_GROUPING){
+__global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, int2 *Encpairs_d, const int NencMax, const int NT, const int N, const int SERIAL_GROUPING){
 
 	int idy = threadIdx.x;
 
@@ -1531,42 +1531,42 @@ __host__ void Data::groupCall(){
 		if(NB[0] <= 512){
 			switch(NB[0]){
 				case 16:{
-					group_kernel < 16, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 16, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 				case 32:{
-					group_kernel < 32, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 32, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 				case 64:{
-					group_kernel < 64, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 64, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 				case 128:{
-					group_kernel < 128, 512> <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 128, 512> <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 				case 256:{
-					group_kernel < 256, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 256, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 				case 512:{
-					group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 				}
 				break;
 			}
 		}
 		else{
-			group_kernel < 1, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+			group_kernel < 1, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 		}
 	}
 	else{
 		//assume here  E = 3 or E = 4
 		if(P.UseTestParticles < 2){
-			group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
+			group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
 		}
 		else{
-			group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, test_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0] + Nsmall_h[0], P.SERIAL_GROUPING);
+			group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0] + Nsmall_h[0], P.SERIAL_GROUPING);
 		}
 	}
 }

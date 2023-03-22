@@ -296,6 +296,7 @@ __host__ void Host::Halloc(){
 	P.UseTides = def_UseTides;
 	P.UseRotationalDeformation = def_UseRotationalDeformation;
 	P.UseYarkovsky = def_UseYarkovsky;
+	P.UseMigrationForce = def_UseMigrationForce;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.CreateParticles = def_CreateParticles;
 	P.CreateParticlesN = def_CreateParticlesN;
@@ -419,6 +420,9 @@ __host__ void Host::Halloc(){
 	sprintf(fileFormat[46], "%s", "encc");	//enccountT
 	sprintf(fileFormat[47], "%s", "aec");	//aecount
 	sprintf(fileFormat[48], "%s", "aecT");	//aecountT
+	sprintf(fileFormat[49], "%s", "mig");	//artificial migration time scale
+	sprintf(fileFormat[50], "%s", "mige");	//artificial migration time scale e
+	sprintf(fileFormat[51], "%s", "migi");	//artifitial migration time scale i
 
 	char iformat[def_Ninformat * 5];
 	sprintf(iformat, def_InputFileFormat);
@@ -1670,6 +1674,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			fgets(sp, 3, paramfile);
 			continue;
 		}
+		if(strcmp(sp, "Use Migration Force =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.UseMigrationForce);
+				if(er <= 0){
+					printf("Error: Use Migration Force value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			fgets(sp, 3, paramfile);
+			continue;
+		}
 		if(strcmp(sp, "Asteroid emissivity eps =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%lf", &P.Asteroid_eps);
@@ -2468,7 +2487,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	}
 
 	ForceFlag = 0;
-	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0 || P.UseMigrationForce > 0){
 		ForceFlag = 1;
 	}
 	//set UseGR when old UseForce is used, choose Hamiltonian splitting
@@ -2495,6 +2514,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		int check_k2f = 0;
 		int check_tau = 0;
 		int check_Ic = 0;
+		int check_mig = 0;
+		int check_mige = 0;
+		int check_migi = 0;
 
 		for(int f = 0; f < def_Ninformat; ++f){
 			if(GSF[st].outformat[f] == 19)	check_time = 1;
@@ -2514,6 +2536,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			else if(GSF[st].outformat[f] == 21)	check_k2f = 1;
 			else if(GSF[st].outformat[f] == 22)	check_tau = 1;
 			else if(GSF[st].outformat[f] == 44)	check_Ic = 1;
+			else if(GSF[st].outformat[f] == 49)	check_mig = 1;
+			else if(GSF[st].outformat[f] == 50)	check_mige = 1;
+			else if(GSF[st].outformat[f] == 51)	check_migi = 1;
 
 			else if(GSF[st].outformat[f] == 15) ;	//amin	
 			else if(GSF[st].outformat[f] == 16) ;	//amax
@@ -2531,17 +2556,23 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 		}
 
-		//check if parametes are given in the initial conditions
-		//otherwise there are constan for all particles and does not need to be stored
+		//check if parameters are given in the initial conditions
+		//otherwise these are constant for all particles and does not need to be stored
 		int check_k2_in = 0;
 		int check_k2f_in = 0;
 		int check_tau_in = 0;
 		int check_Ic_in = 0;
+		int check_mig_in = 0;
+		int check_mige_in = 0;
+		int check_migi_in = 0;
 		for(int f = 0; f < def_Ninformat; ++f){
 			if(GSF[st].informat[f] == 20)	check_k2_in = 1;
 			if(GSF[st].informat[f] == 21)	check_k2f_in = 1;
 			if(GSF[st].informat[f] == 22)	check_tau_in = 1;
 			if(GSF[st].informat[f] == 44)	check_Ic_in = 1;
+			if(GSF[st].informat[f] == 49)	check_mig_in = 1;
+			if(GSF[st].informat[f] == 50)	check_mige_in = 1;
+			if(GSF[st].informat[f] == 51)	check_migi_in = 1;
 		}
 
 		if(check_time == 0){
@@ -2582,6 +2613,18 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		}
 		if(check_Ic == 0 && check_Ic_in == 1){
 			printf("Error, Output file format not valid, 'Ic' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_mig == 0 && check_mig_in == 1){
+			printf("Error, Output file format not valid, 'mig' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_mige == 0 && check_mige_in == 1){
+			printf("Error, Output file format not valid, 'mige' is not included, needed for restart\n");
+			return 0;
+		}
+		if(check_migi == 0 && check_migi_in == 1){
+			printf("Error, Output file format not valid, 'migi' is not included, needed for restart\n");
 			return 0;
 		}
 
@@ -2803,7 +2846,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 //Authors: Simon Grimm
 //July 2022
 // *****************************************
-__host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, double3 &love, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &rcrit, double &test, FILE *infile, int st){
+__host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v, double4 &spin, double3 &love, double3 &migration, float4 &aelimits, double &skip, double &aecount, unsigned long long &enccountT, double &rcrit, double &test, FILE *infile, int st){
 
 	int er = 0;
 	for(int f = 0; f < def_Ninformat; ++f){
@@ -2835,6 +2878,9 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 			else if(ff == 42)	er = fscanf (infile, "%lf",&rcrit);
 			else if(ff == 44)	er = fscanf (infile, "%lf",&spin.w);
 			else if(ff == 45)	er = fscanf (infile, "%lf",&test);
+			else if(ff == 49)	er = fscanf (infile, "%lf",&migration.x);
+			else if(ff == 50)	er = fscanf (infile, "%lf",&migration.y);
+			else if(ff == 51)	er = fscanf (infile, "%lf",&migration.z);
 		}
 		else{
 			if(f == 19)		er = fread(&time, sizeof(double), 1, infile);
@@ -2863,6 +2909,9 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 			else if(ff == 42) 	er = fread(&rcrit, sizeof(double), 1, infile);
 			else if(ff == 44)	er = fread(&spin.w, sizeof(double), 1, infile);
 			else if(ff == 45) 	er = fread(&test, sizeof(double), 1, infile);
+			else if(ff == 49)	er = fread(&migration.x, sizeof(double), 1, infile);
+			else if(ff == 50)	er = fread(&migration.y, sizeof(double), 1, infile);
+			else if(ff == 51)	er = fread(&migration.z, sizeof(double), 1, infile);
 		}
 	}
 	return er;
@@ -2918,6 +2967,7 @@ __host__ int Host::icSize(int st){
 	double4 x, v;
 	double4 spin;
 	double3 love;
+	double3 migration;
 	float4 aelimits;
 	double aecountf, aecountTf;
 	unsigned long long enccountT;
@@ -2974,7 +3024,7 @@ __host__ int Host::icSize(int st){
 		}
 		else{
 
-			er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+			er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 		}
 		if(er <= 0){ //error by reading
 			er1 = 0;
@@ -3077,7 +3127,7 @@ __host__ int Host::icSize(int st){
 //printf("Read file %d %s %d %d %d\n", k, infilename, NNN, NNNsmall, NN);
 			if(infile == NULL) continue;
 			for(int it = 0; it < 1000000000; ++it){
-				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("%d %d %d %.20g %.20g | %g %g\n", er, i, it, time, Et, idt_h[st], ict_h[st]);
 
 				if(er <= 0){ //error in reading
@@ -3412,6 +3462,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0
+			fprintf(infofile, "Use Migration Force: %d\n", P.UseMigrationForce);		// use only argument in simulation 0
 			fprintf(infofile, "Solar Wind factor: %g\n", P.SolarWind);			// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
 			fprintf(infofile, "Create Particles file name: %s\n", P.CreateParticlesfilename);// use only argument in simulation 0

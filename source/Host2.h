@@ -144,7 +144,7 @@ public:
 	//force
 	__host__ void constantCopy3(int *, int, int, int);
 
-	__host__ int readOutLine(double &, int &, double4 &, double4 &, double4 &, double3 &, float4 &, double &, double &, unsigned long long &, double &, double &, FILE *, int);
+	__host__ int readOutLine(double &, int &, double4 &, double4 &, double4 &, double3 &, double3 &, float4 &, double &, double &, unsigned long long &, double &, double &, FILE *, int);
 
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);

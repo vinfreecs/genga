@@ -184,11 +184,9 @@ Output files can be converted into Keplerian-elements output files with the :lit
 
 Compile with typing:: 
 
-        make SM=xx
+        make
 
-into a terminal, where :literal:`xx` corresponds to the compute capability of the GPU.
-
-Use e.g. 'make SM=60' for compute capability of 6.0, or 'make SM=65' for compute capability of 6.5.
+into a terminal.
 
 
 Then run :literal:`KE` with::
@@ -218,6 +216,40 @@ Example for FormatT = 1, FormatP = 0::
     ./KE -pmin 0 -pmax 2048 -in test
 
 This example will generate Kepler-Element files from particle index 0 to 2048 for a simulation name 'test'.
+
+
+.. _HelioToBary:
+
+Convert output files to barycentric coordinates
+-----------------------------------------------
+Heliocentric output files can be converted into barycentric output files with the :literal:`ConvertHelioToBarry` tool, located in the :literal:`tools` directory.
+
+Compile with typing:: 
+
+        make
+
+into a terminal.
+
+
+Then run :literal:`ConvertHelioToBarry` with::
+
+    ./ConvertHelioToBarry [options]
+
+where :literal:`[options]` are the following optional user parameters:
+
+- :literal:`-tmin`: starting time step, (used for FormatT = 0, FormatP = 1).
+- :literal:`-tmax`: ending time step ,(used for FormatT = 0, FormatP = 1).
+- :literal:`-step`: output interval, (used for FormatT = 0, FormatP = 1).
+- :literal:`-in`: name of the files
+- :literal:`-Msun`: Solar Mass (default = 1.0 :math:`M_\odot`)
+
+The ConvertHelioToBarry tool generates for each coordinate output file a corresponding barycentric output file, see :ref:`baryFiles`.
+ 
+Example for FormatT = 0, FormatP = 1 (default)::
+
+    ./ConvertHelioToBarry -tmin 0 -tmax 1000 -step 10 -in test
+
+This example will generate barycentric output files from timestep 0 to 1000 in output intervals of 10 for a simulation name 'test'.
 
 
 .. _cleanTime:

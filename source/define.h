@@ -82,8 +82,9 @@
 #define def_UseGR 0			//Flag for GR, 1:Hamiltonian splitting, 2: implicit midpoint, 3:direct force
 #define def_UseTides 0			//Flag for tidal force
 #define def_UseRotationalDeformation 0	//Flag for Rotational deformation
-#define def_UseYarkovsky 0
-#define def_UsePR 0
+#define def_UseYarkovsky 0		//Flag for Yarkovsky effect
+#define def_UsePR 0			//Flag for Poynting-Robertson effect
+#define def_UseMigrationForce 0		//Flag for artifitial migration force
 #define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
 #define def_SolarWind 0.0		//ratio of solar wind drag to Poynting-Robertson drag
 #define def_Asteroid_eps 0.95		//Emissivity
@@ -127,9 +128,9 @@
 #define def_NAFnfreqs 1
 #define def_NAFformat 1
 #define def_NAFinterval 1
-#define def_Ninformat 50		//number of entries in informat array
+#define def_Ninformat 55		//number of entries in informat array
 #define def_NColl 25			//number of parameters in Coll and writeEnc arrays
-#define def_BufferSize 26		//number of parameters in the Buffer arrays
+#define def_BufferSize 29		//number of parameters in the Buffer arrays
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates
 #define def_pcf 3.0f			//float version of def_pc
@@ -365,6 +366,7 @@ struct Parameter{
 	int UseRotationalDeformation;
 	int UseJ2;
 	int UseYarkovsky;
+	int UseMigrationForce;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int CreateParticles;
 	int CreateParticlesN;

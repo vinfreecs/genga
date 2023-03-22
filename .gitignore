@@ -5,6 +5,7 @@ source/CheckGPU
 GengaGL/gengaGL
 tools/KE
 tools/CoordinatesTransformation
+tools/ConvertHelioToBarry
 
 #HIP
 HIP/*.h

@@ -248,6 +248,19 @@ with
 - m: mass, in Solar masses
 - r: radius, in AU
 
+
+.. _baryFiles:
+
+Barycentric output Files: OutBary<name>.dat
+-------------------------------------------
+
+The barycentric coordinate output files can be generated with the :ref:`ConvertHelioToBarry<HelioToBary>` tool.
+
+The files contain the same information as the orgiginal heliocentric coordinate output files, but they
+contain at the beginning an additional particles, representing the barycentrum, with an index of -1.
+
+
+
 .. _EnergyFile:
 
 The Energy Output File: Energy<name>.dat

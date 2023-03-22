@@ -188,7 +188,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 				}
 
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
 				if(P.FormatP == 1) fclose(GSF[st].outputfile);
 			}
 		}
@@ -330,7 +330,7 @@ __host__ int Data::firstoutput(int irregular){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, double *rcrit_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, double3 *migration_h, double *rcrit_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
 	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
 	//BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
@@ -475,6 +475,29 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					}
 					if(GSF[st].outformat[f] == 45){
 						fprintf(outputfile,"%.40g ", test_h[j]);
+					}	
+					if(P.UseMigrationForce > 0){
+						if(GSF[st].outformat[f] == 49){
+							fprintf(outputfile,"%.40g ", migration_h[j].x);
+						}
+						if(GSF[st].outformat[f] == 50){
+							fprintf(outputfile,"%.40g ", migration_h[j].y);
+						}
+						if(GSF[st].outformat[f] == 51){
+							fprintf(outputfile,"%.40g ", migration_h[j].z);
+						}
+					}
+					else{
+						if(GSF[st].outformat[f] == 49){
+							fprintf(outputfile,"%.40g ", 0.0);
+						}
+						if(GSF[st].outformat[f] == 50){
+							fprintf(outputfile,"%.40g ", 0.0);
+						}
+						if(GSF[st].outformat[f] == 51){
+							fprintf(outputfile,"%.40g ", 0.0);
+						}
+
 					}
 				}
 				fprintf(outputfile,"\n");
@@ -561,6 +584,29 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 					}
 					if(GSF[st].outformat[f] == 45){
 						fwrite(&test_h[j], sizeof(double), 1, outputfile);
+					}
+					if(P.UseMigrationForce > 0){
+						if(GSF[st].outformat[f] == 49){
+							fwrite(&migration_h[j].x, sizeof(double), 1, outputfile);
+						}
+						if(GSF[st].outformat[f] == 50){
+							fwrite(&migration_h[j].y, sizeof(double), 1, outputfile);
+						}
+						if(GSF[st].outformat[f] == 51){
+							fwrite(&migration_h[j].z, sizeof(double), 1, outputfile);
+						}
+					}
+					else{
+						double d = 0.0;
+						if(GSF[st].outformat[f] == 49){
+							fwrite(&d, sizeof(double), 1, outputfile);
+						}
+						if(GSF[st].outformat[f] == 50){
+							fwrite(&d, sizeof(double), 1, outputfile);
+						}
+						if(GSF[st].outformat[f] == 51){
+							fwrite(&d, sizeof(double), 1, outputfile);
+						}
 					}
 				}
 			}
@@ -750,7 +796,7 @@ __host__ int Data::EnergyOutput(int irregular){
 }
 
 
-__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double *rcrit_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, int Nst, int NT, int NsmallT, int NconstT, int bufferCount, double dTau){
+__global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, double *rcrit_d, float4 *aelimits_d, unsigned int* aecount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *test_d, double *coordinateBuffer_d, double *time_d, double *idt_d, const int Nst, const int NT, const int NsmallT, const int NconstT, const int bufferCount, const double dTau, const int UseMigrationForce){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -788,16 +834,21 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 23] = love_d[id].y;
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 24] = love_d[id].z;
 		coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 25] = rcrit_d[id];
+		if(UseMigrationForce > 0){
+			coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 26] = migration_d[id].x;
+			coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 27] = migration_d[id].y;
+			coordinateBuffer_d[def_BufferSize * NconstT * bufferCount + def_BufferSize * id + 28] = migration_d[id].z;
+		}
 	}
 }
 
 __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dTau){
 	if(NT + NsmallT > 0){
 		if(irregular == 0){
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, migration_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau, P.UseMigrationForce);
 		}
 		else{
-			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau);
+			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, migration_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBufferIrr_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau, P.UseMigrationForce);
 
 		}
 	}
@@ -815,6 +866,9 @@ __host__ void Data::CoordinateOutput(int irregular){
 	cudaMemcpy(test_h, test_d, sizeof(double)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(spin_h, spin_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(love_h, love_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
+	if(P.UseMigrationForce > 0){
+		cudaMemcpy(migration_h, migration_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
+	}
 	cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 	cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
@@ -965,7 +1019,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		//}
@@ -1026,6 +1080,11 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			love_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 23];
 			love_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 24];
 			rcrit_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 25];
+			if(P.UseMigrationForce > 0){
+				migration_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 26];
+				migration_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 27];
+				migration_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 28];
+			}
 
 		}
 		for(int st = 0; st < Nst; ++st){
@@ -1117,13 +1176,13 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
 				int N = NBuffer[Nst * bf + st].x;		
 				int Nsmall = NBuffer[Nst * bf + st].y;
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 			else{
 				int N = NBufferIrr[Nst * bf + st].x;		
 				int Nsmall = NBufferIrr[Nst * bf + st].y;		
 				time = coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
@@ -1216,6 +1275,9 @@ __host__ int Data::MaxGroups(){
 			cudaMemcpy(test_h, test_d, sizeof(double)*NB[0], cudaMemcpyDeviceToHost);
 			cudaMemcpy(spin_h, spin_d, sizeof(double4)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(love_h, love_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
+			if(P.UseMigrationForce > 0){
+				cudaMemcpy(migration_h, migration_d, sizeof(double3)*NconstT, cudaMemcpyDeviceToHost);
+			}
 			cudaMemcpy(aelimits_h, aelimits_d, sizeof(float4)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(aecount_h, aecount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
 			cudaMemcpy(enccount_h, enccount_d, sizeof(unsigned int)*NconstT, cudaMemcpyDeviceToHost);
@@ -1230,7 +1292,7 @@ __host__ int Data::MaxGroups(){
 			else{
 				GSF[0].outputfile = fopen(GSF[0].outputfilename, "wb");	
 			}
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, rcrit_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
+			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, migration_h, rcrit_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);

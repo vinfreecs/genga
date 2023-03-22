@@ -2311,4 +2311,116 @@ __global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *inde
 		}
 	}	
 }
+__global__ void artificialMigration_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *migration_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart, int si){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+
+	int st = 0;
+	double dt = 0.0;
+
+	if(id < N + Nstart){
+	
+		int index = index_d[id];
+		if(Nst > 1) st = index / def_MaxIndex;		//st is the sub simulation index
+
+		double4 x4 = x4_d[id];
+		double4 v4 = v4_d[id];
+		double3 migration = migration_d[id];		//migration time scales in 1/year
+
+		migration.x /= (365.25 * dayUnit);		// in 1 / day'
+		migration.y /= (365.25 * dayUnit);
+		migration.z /= (365.25 * dayUnit);
+
+		if(migration.x == 0.0) migration.x = 1.0e20;
+		if(migration.y == 0.0) migration.y = 1.0e20;
+		if(migration.z == 0.0) migration.z = 1.0e20;
+
+		double Msun = Msun_d[st].x;			//This is the mass of the central star
+		dt = dt_d[st] * Kt;				//This is the time step to do
+
+		double3 a3;
+
+		double r = sqrt(x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
+		double ir = 1.0 / r;
+
+		//Kepler velocity for circular bodies
+		double v_kep = sqrt(Msun * def_ksq * ir);
+
+
+		double vr = (x4.x * v4.x + x4.y * v4.y) * ir;
+		double vO = (x4.x * v4.y - x4.y * v4.x) * ir;
+		double vz = v4.z;
+
+
+		//Ida et al 2000, equation 46 with reverted sign in migration.x1
+		double ar = -vr / migration.y;
+		double ath = -(vO - v_kep) / migration.y + v_kep / (2.0 * migration.x);
+		//double az = - 2.0 * vz / migration.z;
+		double az = -vz / migration.z;
+
+
+		a3.x = (x4.x * ar - x4.y * ath) * ir;	//cos(theta) = x / r, sin(theta) = y / r
+		a3.y = (x4.y * ar + x4.x * ath) * ir;
+		a3.z = az;
+
+		//apply the Kick
+		v4.x += a3.x * dt;
+		v4.y += a3.y * dt;
+		v4.z += a3.z * dt;
+
+//printf("Force %d %g %g %g %g\n", id, x4.w, a3.x, a3.y, a3.z);
+// printf("Force %d %g %g %g %g\n", id, x4.w, v4.x, v4.y, v4.z);
+		if(si == 1){
+			v4_d[id] = v4;
+		}
+	}
+}
+
+//Test with a constant additional acceleration
+__global__ void artificialMigration2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst, int Nstart, int si){
+
+	int idy = threadIdx.x;
+	int id = blockIdx.x * blockDim.x + idy + Nstart;
+
+	int st = 0;
+	double dt = 0.0;
+
+	if(id < N + Nstart){
+	
+		int index = index_d[id];
+		if(Nst > 1) st = index / def_MaxIndex;		//st is the sub simulation index
+		dt = dt_d[st] * Kt;
+
+		double3 a3;
+
+		double4 x4 = x4_d[id];
+		double4 v4 = v4_d[id];
+
+		double r = sqrt(x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
+		double ir = 1.0 / r;
+
+		double ar = -1e-8;				//in AU / day^2
+		ar = ar / (dayUnit * dayUnit);			//in AU / day'^2
+		double ath = 0.0;
+		double az = 0.0;
+
+		a3.x = (x4.x * ar - x4.y * ath) * ir;	//cos(theta) = x / r, sin(theta) = y / r
+		a3.y = (x4.y * ar + x4.x * ath) * ir;
+		a3.z = az;
+
+		//apply the Kick
+		v4.x += a3.x * dt;
+		v4.y += a3.y * dt;
+		v4.z += a3.z * dt;
+
+//printf("Force %d %g %g %g %g\n", id, x4.w, a3.x, a3.y, a3.z);
+// printf("Force %d %g %g %g %g\n", id, x4.w, v4.x, v4.y, v4.z);
+		if(si == 1){
+			v4_d[id] = v4;
+		}
+	}
+}
+
+
 

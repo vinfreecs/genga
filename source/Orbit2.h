@@ -30,6 +30,7 @@ public:
 	int *index_h, *index_d;
 	double4 *spin_h, *spin_d;
 	double3 *love_h, *love_d;
+	double3 *migration_h, *migration_d;	//artificial migration force
 	int *createFlag_h, *createFlag_d;
 	double3 *a_d;
 	double *rcrit_h, *rcrit_d;
@@ -397,7 +398,7 @@ private:
 	__host__ void resize(int, int &, int);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

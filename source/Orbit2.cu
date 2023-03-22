@@ -17,6 +17,12 @@ __host__ int Data::AllocateOrbit(){
 	index_h = (int*)malloc(NconstT * sizeof(int));
 	spin_h = (double4*)malloc(NconstT * sizeof(double4));
 	love_h = (double3*)malloc(NconstT * sizeof(double3));
+	if(P.UseMigrationForce > 0){
+		migration_h = (double3*)malloc(NconstT * sizeof(double3));
+	}
+	else{
+		migration_h = NULL;
+	}
 	if(P.CreateParticles > 0){
 		createFlag_h = (int*)malloc(NconstT * sizeof(int));
 	}
@@ -153,9 +159,12 @@ __host__ int Data::AllocateOrbit(){
 	cudaMalloc((void **) &spinb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &spinbb_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &love_d, NconstT * sizeof(double3));
-
-	
-
+	if(P.UseMigrationForce > 0){
+		cudaMalloc((void **) &migration_d, NconstT * sizeof(double3));
+	}
+	else{
+		migration_d = NULL;
+	}
 	if(P.CreateParticles > 0){
 		cudaMalloc((void **) &createFlag_d, NconstT * sizeof(int));
 	}
@@ -737,6 +746,11 @@ __host__ int Data::init(){
 		love_h[i].x = 0.0;
 		love_h[i].y = 0.0;
 		love_h[i].z = 0.0;
+		if(P.UseMigrationForce > 0){ 
+			migration_h[i].x = 0.0;
+			migration_h[i].y = 0.0;
+			migration_h[i].z = 0.0;
+		}
 		if(P.CreateParticles > 0){
 			createFlag_h[i] = -1;
 		}
@@ -915,6 +929,9 @@ __host__ int Data::ic(){
 	cudaMemcpy(indexbb_d, index_h, sizeof(int) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(spin_d, spin_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(love_d, love_h, sizeof(double3) * NconstT, cudaMemcpyHostToDevice);
+	if(P.UseMigrationForce > 0){
+		cudaMemcpy(migration_d, migration_h, sizeof(double3) * NconstT, cudaMemcpyHostToDevice);
+	}
 	cudaMemcpy(N_d, N_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs_d, Nencpairs_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Nencpairs2_d, Nencpairs2_h, (Nst + 1) * sizeof(int), cudaMemcpyHostToDevice);
@@ -1027,6 +1044,7 @@ __host__ int Data::readic(int st){
 	double rcrit;
 	double4 spin;
 	double3 love;
+	double3 migration;
 	int index;
 	float4 aelimits;
 	unsigned long long enccountT;
@@ -1039,6 +1057,9 @@ __host__ int Data::readic(int st){
 			rcrit = rcrit_h[i + NBS];
 			spin = spin_h[i + NBS];
 			love = love_h[i + NBS];
+			if(P.UseMigrationForce > 0){
+				migration = migration_h[i + NBS];
+			}
 			test = test_h[i + NBS];
 			enccountT = enccountT_h[i + NBS];
 			//index = index_h[i + NBS];
@@ -1299,9 +1320,20 @@ __host__ int Data::readic(int st){
 				if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
 				if (GSF[st].informat[f] == 43) fscanf (infile, "%lf",&skip);
 #endif
+				if(P.UseMigrationForce > 0){	
+					if (GSF[st].informat[f] == 49) fscanf (infile, "%lf",&migration.x);
+					if (GSF[st].informat[f] == 50) fscanf (infile, "%lf",&migration.y);
+					if (GSF[st].informat[f] == 51) fscanf (infile, "%lf",&migration.z);
+				}
+				else{
+					if (GSF[st].informat[f] == 49) fscanf (infile, "%lf",&skip);
+					if (GSF[st].informat[f] == 50) fscanf (infile, "%lf",&skip);
+					if (GSF[st].informat[f] == 51) fscanf (infile, "%lf",&skip);
+
+				}
 				if (GSF[st].informat[f] == 0){
 				}
-				if (GSF[st].informat[f] < 0 || GSF[st].informat[f] > 43){
+				if (GSF[st].informat[f] < 0 || GSF[st].informat[f] > 51){
 					printf("Error, initial condition file format is not valid, %d\n", GSF[st].informat[f]);
 					return 0;
 				}
@@ -1416,6 +1448,9 @@ __host__ int Data::readic(int st){
 			rcrit_h[ii + NBSN] = rcrit;
 			spin_h[ii + NBSN] = spin;
 			love_h[ii + NBSN] = love;
+			if(P.UseMigrationForce > 0){
+				migration_h[ii + NBSN] = migration;
+			}
 			if(Nst == 1) index_h[ii + NBSN] = index;
 			else index_h[ii + NBSN] = index % def_MaxIndex + def_MaxIndex * st;
 			aelimits_h[ii + NBSN] = aelimits;
@@ -1476,20 +1511,23 @@ __host__ int Data::readic(int st){
 		love.x = 0.0;
 		love.y = 0.0;
 		love.z = 0.0;
+		migration.x = 0.0;
+		migration.y = 0.0;
+		migration.z = 0.0;
 		rcrit = 0.0;
 
 		if(P.FormatP == 1){
 
 			//skip previous time steps
 			if(P.FormatT == 0){
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 			}
 			if(P.FormatT == 1){
-				readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et) break;
-					int er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					int er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 					if(er <= 0){
 						break;
@@ -1501,14 +1539,14 @@ __host__ int Data::readic(int st){
 			//skip previous simulation data
 			if(P.FormatS == 1){
 				for(int i = 0; i < NBS; ++i){
-					readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 				}
 			}
 
 			int iismall = 0;
 			for(int i = 0; i < N + Nsmall; ++i){
-				if(i > 0) readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				if(i > 0) readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
@@ -1529,6 +1567,9 @@ __host__ int Data::readic(int st){
 				rcrit_h[ii + NBSN] = rcrit;
 				spin_h[ii + NBSN] = spin;
 				love_h[ii + NBSN] = love;
+				if(P.UseMigrationForce > 0){
+					migration_h[ii + NBSN] = migration;
+				}
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
 				aecount_h[ii + NBSN] = aecount;
@@ -1602,13 +1643,13 @@ __host__ int Data::readic(int st){
 				if(infile == NULL) continue;
 	
 				//skip previous time steps
-				er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
 					if(time == Et){
 						break;
 					}
-					er = readOutLine(time, index, x, v, spin, love, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
 					if(er <= 0){
 						break;
@@ -1637,6 +1678,9 @@ __host__ int Data::readic(int st){
 				rcrit_h[ii + NBSN] = rcrit;
 				spin_h[ii + NBSN] = spin;
 				love_h[ii + NBSN] = love;
+				if(P.UseMigrationForce > 0){
+					migration_h[ii + NBSN] = migration;
+				}
 				aelimits_h[ii + NBSN] = aelimits;
 				enccountT_h[ii + NBSN] = enccountT;
 				aecount_h[ii + NBSN] = aecount;
@@ -1957,7 +2001,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -2007,6 +2051,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].x = 0.0;
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
+
+				if(UseMigrationForce > 0){
+					migration_d[Na] = migration_d[Nb];
+					migration_d[Nb].x = 0.0;
+					migration_d[Nb].y = 0.0;
+					migration_d[Nb].z = 0.0;
+				}
 
 				if(CreateParticles > 0){
 					createFlag_d[Na] = createFlag_d[Nb];
@@ -2105,6 +2156,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					love_d[Nb].x = 0.0;
 					love_d[Nb].y = 0.0;
 					love_d[Nb].z = 0.0;
+	
+					if(UseMigrationForce > 0){
+						migration_d[Na] = migration_d[Nb];
+						migration_d[Nb].x = 0.0;
+						migration_d[Nb].y = 0.0;
+						migration_d[Nb].z = 0.0;
+					}
 
 					if(CreateParticles > 0){
 						createFlag_d[Na] = createFlag_d[Nb];
@@ -2188,6 +2246,13 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 				love_d[Nb].y = 0.0;
 				love_d[Nb].z = 0.0;
 
+				if(UseMigrationForce > 0){
+					migration_d[Na] = migration_d[Nb];
+					migration_d[Nb].x = 0.0;
+					migration_d[Nb].y = 0.0;
+					migration_d[Nb].z = 0.0;
+				}
+
 				if(CreateParticles > 0){
 					createFlag_d[Na] = createFlag_d[Nb];
 					createFlag_d[Nb] = -1;
@@ -2268,6 +2333,9 @@ __host__ void Data::Ejection(){
 			cudaMemcpy(index_h + NBS, index_d + NBS, sizeof(int) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
 			cudaMemcpy(spin_h + NBS, spin_d + NBS, sizeof(double4) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
 			cudaMemcpy(love_h + NBS, love_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			if(P.UseMigrationForce > 0){
+				cudaMemcpy(migration_h + NBS, migration_d + NBS, sizeof(double3) * (N_h[st] + Nsmall_h[st]), cudaMemcpyDeviceToHost);
+			}
 
 			cudaMemset(Nencpairs_d, 0, sizeof(int));
 
@@ -2343,9 +2411,9 @@ __host__ int Data::remove(){
 	NBmax = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.CreateParticles, NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2395,8 +2463,8 @@ __host__ void Data::resize(int N, int &NB, int f){
 
 //This function rearranges the memory if a simulations is stopped
 //It runs with only one thread on the GPU, to avoid unnecesary data copies
-__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *spin_d, double3 *love_d, int *createFlag_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
-double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int SLevels, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
+__global__ void removeM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double3 *a_d, double *test_d, int *index_d, double *rcrit_d,
+double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT, int NsmallT, const int NconstT, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn, int2 *Encpairs2_d, int Nh){
 
 	for(int j = 0; j < N_d[st]; ++j){
 //printf("removeM %d %d %d %d %d\n", st, N_d[st], j, j + NBS, j + NT);
@@ -2408,6 +2476,9 @@ double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT,
 		vold_d[j + NT] = vold_d[j + NBS];
 		spin_d[j + NT] = spin_d[j + NBS];
 		love_d[j + NT] = love_d[j + NBS];
+		if(UseMigrationForce > 0){
+			migration_d[j + NT] = migration_d[j + NBS];
+		}
 		if(CreateParticles > 0){
 			createFlag_d[j + NT] = createFlag_d[j + NBS];
 		}
@@ -2468,7 +2539,6 @@ __global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpai
 		if(Encpairs2_d[i].y == 0) Encpairs_d[idy].x = -1;
 		if(Encpairs2_d[j].y == 0) Encpairs_d[idy].y = -1;
 
-
 	}
 }
 
@@ -2501,13 +2571,13 @@ __host__ void Data::stopSimulations(){
 		}
 		//rearange arrays//
 #if USE_NAF == 1
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d,  
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, migration_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d,  
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.CreateParticles, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n, Encpairs2_d, N_h[st]);
 #else
-		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d, 
+		removeM_kernel <<< 1, 1>>> (x4_d, v4_d, xold_d, vold_d, spin_d, love_d, migration_d, createFlag_d, a_d, test_d, index_d, rcrit_d, rcritv_d, 
 					    st, NBS_h[st], NsmallS_h[st], N_d, Nsmall_d, NT, NsmallT, NconstT, aelimits_d,
-					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.CreateParticles, NULL, NULL, 0, Encpairs2_d, N_h[st]);
+					    aecount_d, enccount_d, aecountT_d, enccountT_d, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0, Encpairs2_d, N_h[st]);
 #endif
 
 		NBS_h[st] = NT;
@@ -2669,6 +2739,9 @@ __host__ int Data::freeOrbit(){
 	free(index_h);
 	free(spin_h);
 	free(love_h);
+	if(P.UseMigrationForce > 0){
+		free(migration_h);
+	}
 	if(P.CreateParticles > 0){
 		free(createFlag_h);
 	}
@@ -2739,6 +2812,9 @@ __host__ int Data::freeOrbit(){
 	cudaFree(spinb_d);
 	cudaFree(spinbb_d);
 	cudaFree(love_d);
+	if(P.UseMigrationForce > 0){
+		cudaFree(migration_d);
+	}
 	if(P.CreateParticles > 0){
 		cudaFree(createFlag_d);
 	}

@@ -1,7 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
-#include <cuda.h>
+
+struct double3{
+        double x;
+        double y;
+        double z;
+};
+
+struct double4{
+        double x;
+        double y;
+        double z;
+        double w;
+};
 
 //in parabolic orbits, a is used as the periapsis distance q
 
