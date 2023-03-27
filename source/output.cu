@@ -1035,11 +1035,15 @@ __host__ void Data::CoordinateOutput(int irregular){
 //This function copies the data from the coordinate buffer and calls the printoutput function
 __host__ void Data::CoordinateOutputBuffer(int irregular){
 
+	double *buffer_h;
+
 	if(irregular == 0){
 		cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+		buffer_h = coordinateBuffer_h;
 	}
 	else{
-		cudaMemcpy(coordinateBuffer_h, coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(coordinateBufferIrr_h, coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
+		buffer_h = coordinateBuffer_h;
 	}
 	cudaDeviceSynchronize();
 
@@ -1055,35 +1059,35 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 	if(irregular == 1) Nbf = bufferCountIrr;
 	for(int bf = 0; bf < Nbf; ++bf){
 		for(int i = 0; i < NT + NsmallT; ++i){
-			index_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 1];
-			x4_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 2];
-			v4_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 3];
-			x4_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 4];
-			x4_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 5];
-			x4_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 6];
-			v4_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 7];
-			v4_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 8];
-			v4_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 9];
-			spin_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 10];
-			spin_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 11];
-			spin_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 12];
-			aelimits_h[i].x =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 13];
-			aelimits_h[i].y =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 14];
-			aelimits_h[i].z =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 15];
-			aelimits_h[i].w =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 16];
-			aecount_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 17];
-			aecountT_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 18];
-			enccountT_h[i] =	coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 19];
-			test_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 20];
-			spin_h[i].w =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 21];
-			love_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 22];
-			love_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 23];
-			love_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 24];
-			rcrit_h[i] =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 25];
+			index_h[i] =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 1];
+			x4_h[i].w =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 2];
+			v4_h[i].w =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 3];
+			x4_h[i].x =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 4];
+			x4_h[i].y =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 5];
+			x4_h[i].z =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 6];
+			v4_h[i].x =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 7];
+			v4_h[i].y =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 8];
+			v4_h[i].z =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 9];
+			spin_h[i].x =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 10];
+			spin_h[i].y =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 11];
+			spin_h[i].z =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 12];
+			aelimits_h[i].x =	buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 13];
+			aelimits_h[i].y =	buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 14];
+			aelimits_h[i].z =	buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 15];
+			aelimits_h[i].w =	buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 16];
+			aecount_h[i] =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 17];
+			aecountT_h[i] =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 18];
+			enccountT_h[i] =	buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 19];
+			test_h[i] =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 20];
+			spin_h[i].w =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 21];
+			love_h[i].x =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 22];
+			love_h[i].y =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 23];
+			love_h[i].z =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 24];
+			rcrit_h[i] =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 25];
 			if(P.UseMigrationForce > 0){
-				migration_h[i].x =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 26];
-				migration_h[i].y =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 27];
-				migration_h[i].z =		coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 28];
+				migration_h[i].x =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 26];
+				migration_h[i].y =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 27];
+				migration_h[i].z =		buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * i + 28];
 			}
 
 		}
@@ -1181,7 +1185,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			else{
 				int N = NBufferIrr[Nst * bf + st].x;		
 				int Nsmall = NBufferIrr[Nst * bf + st].y;		
-				time = coordinateBuffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
+				time = buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
 				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 

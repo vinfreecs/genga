@@ -99,7 +99,6 @@ public:
 	// G3 Data
 	double *K_d;
 	double *Kold_d;
-	double4 *StopTime_d;
 	double4 *x4G3_d;
 	double4 *v4G3_d;
 
@@ -168,7 +167,7 @@ public:
 	
 	//Buffer
 	double *coordinateBuffer_h, *coordinateBuffer_d;
-	double *coordinateBufferIrr_d;
+	double *coordinateBufferIrr_h, *coordinateBufferIrr_d;
 	long long int *timestepBuffer;
 	long long int *timestepBufferIrr;
 	int2 *NBuffer;
@@ -191,8 +190,6 @@ public:
 	double4 *xold_h;
 	double4 *vold_h;
 	double3 *a_h;
-	double *rcritv_h;
-
 	double4 *x4b_h;
 	double4 *v4b_h;
 	double4 *x4bb_h;
@@ -200,12 +197,22 @@ public:
 	double3 *ab_h;
 	int *indexb_h;
 	int *indexbb_h;
+
+	double *rcritv_h;
 	double *rcritb_h, *rcritvb_h;
 	double *rcritbb_h, *rcritvbb_h;
+
 	double4 *spinb_h;
 	double4 *spinbb_h;
 
 	double3 *vcom_h;
+	double *Energy2_h;
+	int2 *Encpairs_h;
+	int2 *Encpairs2_h;
+	int *Encpairs3_h;
+	int2 *scan_h;
+
+	int2 *groupIndex_h;
 
 	double4 *xt_h;
 	double4 *vt_h;
@@ -217,16 +224,20 @@ public:
 	double *t1_h;
 	double *dtgr_h;
 	double *Coltime_h;
-
-	int2 *Encpairs_h;
-	int2 *Encpairs2_h;
-	int *Encpairs3_h;
-	int2 *scan_h;
-	double *Energy2_h;
+	int *BSstop_h;
 
 	double *K_h;
 	double *Kold_h;
-	double4 *StopTime_h;
+
+	double *random_h;
+
+	//BVH
+	unsigned int *morton_h;
+	unsigned int *sortRank_h;
+	unsigned int *sortCount_h;
+	int2 *sortIndex_h;
+	Node *leafNodes_h;
+	Node *internalNodes_h;
 
 #endif
 

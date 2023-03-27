@@ -132,7 +132,8 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 //March 2014
 // **********************************************
 __host__ int Host::DeviceInfo(){
-	
+
+#if def_CPU == 0	
 	cudaError_t error;
 	error = cudaGetDeviceCount(&devCount);
 	if(error > 0){
@@ -178,7 +179,7 @@ __host__ int Host::DeviceInfo(){
 			return 0;
 		}
 	}
-
+#endif
 	return 1;
 }
 
@@ -2630,7 +2631,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 
 	}
 
-
+#if def_CPU == 0
 	//check peer to peer access for multi GPU runs:
 	cudaSetDevice(P.dev[0]);
 	for(int i = 1; i < P.ndev; ++i){
@@ -2656,6 +2657,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			}
 		}
 	}
+#endif
 	return 1;
 }
 
@@ -3694,7 +3696,7 @@ __host__ int Host::readTransits(){
 
 	cudaMemcpy(TransitTimeObs_d, TransitTimeObs_h, def_NtransitTimeMax * N_h[0] * sizeof(double2), cudaMemcpyHostToDevice);
 	cudaMemcpy(NtransitsTObs_d, NtransitsTObs_h, N_h[0] * sizeof(int), cudaMemcpyHostToDevice);
-	
+
 	return 1;
 }
 
@@ -4202,8 +4204,12 @@ __host__ int Host::readGasFile2(double time){
 __host__ int Host::freeHost(){
 	cudaError_t error;
 	free(NB);
+	free(NBT);
 	free(Nmin);
 	free(rho);
+	free(GSF);
+	free(IrrOutputs);
+	free(NEnergy);
 	
 	free(n1_h);
 	free(n2_h);
@@ -4220,6 +4226,14 @@ __host__ int Host::freeHost(){
 	free(time_h);
 	free(dt_h);
 	free(delta_h);
+	free(NBS_h);
+	free(NsmallS_h);
+	free(setElementsData_h);
+	free(GasData_h);
+
+#if def_CPU == 1
+	free(setElementsLine_h);
+#endif
 	
 	cudaFree(n1_d);
 	cudaFree(n2_d);
@@ -4236,6 +4250,10 @@ __host__ int Host::freeHost(){
 	cudaFree(time_d);
 	cudaFree(dt_d);
 	cudaFree(delta_d);
+	cudaFree(NBS_d);
+	cudaFree(setElementsData_d);
+	cudaFree(setElementsLine_d);
+	cudaFree(GasData_d);
 	
 	error = cudaGetLastError();
 	if(error != 0){

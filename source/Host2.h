@@ -124,7 +124,11 @@ public:
 	double4 *GasData_h, *GasData_d;
 	int GasDatanr;
 	double2 GasDatatime;
-	
+
+
+#if def_CPU == 1
+	int *setElementsLine_h;
+#endif	
 	__host__ Host(long long);
 	__host__ int NSimulations(int, char*argv[]);
 	__host__ int DeviceInfo();

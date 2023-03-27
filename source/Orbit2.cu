@@ -44,6 +44,7 @@ __host__ int Data::AllocateOrbit(){
 	enccountT_h = (unsigned long long*)malloc(NconstT * sizeof(unsigned long long));
 
 	coordinateBuffer_h = (double*)malloc(P.Buffer * def_BufferSize * NconstT * sizeof(double));
+	coordinateBufferIrr_h = (double*)malloc(P.Buffer * def_BufferSize * NconstT * sizeof(double));
 	timestepBuffer = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	timestepBufferIrr = (long long int*)malloc(P.Buffer * sizeof(long long int));
 	NBuffer = (int2*)malloc(Nst * P.Buffer * sizeof(int2));
@@ -130,10 +131,18 @@ __host__ int Data::AllocateOrbit(){
 	}
 
 	//allocate pinned memory on host//
+#if def_CPU == 0
 	cudaHostAlloc((void **)&test_h, NconstT * sizeof(double), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs_h, P.ndev * (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs2_h, (Nst + 1) * sizeof(int), cudaHostAllocDefault);
 	cudaHostAlloc((void **)&Nencpairs3_h, P.SLevels * sizeof(int), cudaHostAllocDefault);
+#else
+	test_h = (double*)malloc(NconstT * sizeof(double));
+	Nencpairs_h = (int*)malloc(P.ndev * (Nst + 1) * sizeof(int));
+	Nencpairs2_h = (int*)malloc((Nst + 1) * sizeof(int));
+	Nencpairs3_h = (int*)malloc(P.SLevels * sizeof(int));
+
+#endif
 
 	error = cudaGetLastError();
 	fprintf(masterfile,"CPU HostAlloc error = %d = %s\n",error, cudaGetErrorString(error));
@@ -221,8 +230,85 @@ __host__ int Data::AllocateOrbit(){
 		groupIndex_d = NULL;
 	}
 
+
+#if def_CPU == 1
+	//arrays for backup step
+	xold_h = (double4*)malloc(NconstT * sizeof(double4));
+	vold_h = (double4*)malloc(NconstT * sizeof(double4));
+	a_h = (double3*)malloc(NconstT * sizeof(double3));
+
+
+	x4b_h = (double4*)malloc(NconstT * sizeof(double4));
+	v4b_h = (double4*)malloc(NconstT * sizeof(double4));
+	x4bb_h = (double4*)malloc(NconstT * sizeof(double4));
+	v4bb_h = (double4*)malloc(NconstT * sizeof(double4));
+	ab_h = (double3*)malloc(NconstT * sizeof(double3));
+	indexb_h = (int*)malloc(NconstT * sizeof(int));
+	indexbb_h = (int*)malloc(NconstT * sizeof(int));
+
+	rcritb_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
+	rcritbb_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
+	rcritv_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
+	rcritvb_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
+	rcritvbb_h = (double*)malloc(NconstT * P.SLevels * sizeof(double));
+
+	spinb_h = (double4*)malloc(NconstT * sizeof(double4));
+	spinbb_h = (double4*)malloc(NconstT * sizeof(double4));
+
+	vcom_h = (double3*)malloc(Nst * sizeof(double3));
+	Energy2_h = (double*)malloc(NEnergyT * sizeof(double));
+	Encpairs_h = (int2*)malloc(NBNencT * sizeof(int2));
+	Encpairs2_h = (int2*)malloc(NBNencT * sizeof(int2));
+	Encpairs3_h = (int*)malloc(NBNencT * P.SLevels * sizeof(int));
+	scan_h = (int2*)malloc(NconstT * sizeof(int2));
+
+	if(Nst > 1){
+		groupIndex_h = (int2*)malloc(NconstT * sizeof(int2));
+	}
+	else{
+		groupIndex_h = NULL;
+	}
+
+	xt_h = (double4*)malloc(NconstT * sizeof(double4));
+	vt_h = (double4*)malloc(NconstT * sizeof(double4));
+	xp_h = (double4*)malloc(NconstT * sizeof(double4));
+	vp_h = (double4*)malloc(NconstT * sizeof(double4));
+	dx_h = (double3*)malloc(NconstT * 8 * sizeof(double3));
+	dv_h = (double3*)malloc(NconstT * 8 * sizeof(double3));
+	dt1_h = (double*)malloc(NconstT * sizeof(double));
+	t1_h = (double*)malloc(NconstT * sizeof(double));
+	dtgr_h = (double*)malloc(NconstT * sizeof(double));
+	Coltime_h = (double*)malloc(sizeof(double));
+	BSAstop_h = (int*)malloc(sizeof(int));
+
+  #if USE_RANDOM == 1
+	srand48(time(NULL));
+	random_h = (double*)malloc(NconstT * sizeof(double));
+  #else
+	random_h = NULL;
+  #endif
+	if(P.WriteEncounters == 2){
+		morton_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
+		sortRank_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
+		sortCount_h = (unsigned int*)malloc(((NconstT + 255) / 256 + 1) * 16 * sizeof(unsigned int));
+		sortIndex_h = (int2*)malloc(NconstT * sizeof(int2));
+		leafNodes_h = (Node*)malloc(NconstT * sizeof(Node));
+		internalNodes_h = (Node*)malloc(NconstT * sizeof(Node));
+	}
+	else{
+		morton_h = nullptr;
+		sortRank_h = nullptr;
+		sortCount_h = nullptr;
+		sortIndex_h = nullptr;
+		leafNodes_h = nullptr;
+		internalNodes_h = nullptr;
+	}
+
+#endif
+
 	// ------------------------
 	// MultiGPU allocation
+#if def_CPU == 0
 	if(P.ndev > 1){
 		cudaSetDevice(P.dev[1]);
 		cudaMalloc((void **) &rcritv_d1, NconstT * P.SLevels * sizeof(double));
@@ -272,6 +358,7 @@ __host__ int Data::AllocateOrbit(){
 	if(P.ndev > 1){
 		cudaSetDevice(P.dev[0]);
 	}
+#endif
 	// ------------------------
 
 
@@ -437,13 +524,11 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #if def_G3 > 0
 	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
 	cudaMalloc((void **) &Kold_d, NconstT * NconstT * sizeof(double));
-	cudaMalloc((void **) &StopTime_d, NconstT * NconstT * sizeof(double4));
 	cudaMalloc((void **) &x4G3_d, NconstT * sizeof(double4));
 	cudaMalloc((void **) &v4G3_d, NconstT * sizeof(double4));
 #else
 	K_d = NULL;
 	Kold_d = NULL;
-	StopTime_d = NULL;
 	x4G3_d = NULL;
 	v4G3_d = NULL;
 	
@@ -458,7 +543,6 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 #endif
 
 #if USE_RANDOM == 1
-	//srand48(time(NULL));
 	cudaMalloc((void **) &random_d, NconstT * sizeof(curandState));
 #else
 	random_d = NULL;
@@ -479,7 +563,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 
 //This function allocates mapped memory
 __host__ int Data::CMallocateOrbit(){
-
+#if def_CPU == 0
 	cudaError_t error;
 
 	cudaHostAlloc((void **)&Nenc_m, def_GMax * sizeof(int), cudaHostAllocMapped);
@@ -510,6 +594,17 @@ __host__ int Data::CMallocateOrbit(){
 
 	cudaHostAlloc((void **)&ErrorFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&ErrorFlag_d, (void *)ErrorFlag_m, 0);
+#else
+	Nenc_m = (int*)malloc(def_GMax * sizeof(int));
+	Ncoll_m = (int*)malloc(sizeof(int));
+	Ntransit_m = (int*)malloc(sizeof(int));
+	NWriteEnc_m = (int*)malloc(sizeof(int));
+	EjectionFlag_m = (int*)malloc((Nst + 1) * sizeof(int));
+	nFragments_m = (int*)malloc(sizeof(int));
+	EncFlag_m = (int*)malloc(sizeof(int));
+	StopFlag_m = (int*)malloc(sizeof(int));
+	ErrorFlag_m = (int*)malloc(sizeof(int));
+#endif
 	ErrorFlag_m[0] = 0;
 
 	error = cudaGetLastError();
@@ -555,9 +650,9 @@ __host__ int Data::GridaeAlloc(){
 	constantCopy();
 
 	error = cudaGetLastError();
-	fprintf(masterfile,"GrideaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+	fprintf(masterfile,"GrideaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
-		printf("GrideaeAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("GrideaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -578,9 +673,9 @@ __host__ int Data::FGAlloc(){
 	}
 	constantCopySC(S_h, C_h);
 	error = cudaGetLastError();
-	fprintf(masterfile,"FGAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+	fprintf(masterfile,"FGAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
-		printf("FGAlloc  error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("FGAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 	return 1;
@@ -688,7 +783,7 @@ __host__ int Data::readMCMC_COV(){
 	return 1;
 }
 
-__global__ void BufferInit_kernel(double *coordinateBuffer_d, int N){
+__global__ void BufferInit_kernel(double *coordinateBuffer_d, const int N){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	if(id < N){
@@ -697,13 +792,15 @@ __global__ void BufferInit_kernel(double *coordinateBuffer_d, int N){
 }
 
 #if USE_RANDOM == 1
-__global__ void randomInit_kernel(curandState *random_d, int N){
+__global__ void randomInit_kernel(curandState *random_d, const int N){
+  #if def_CPU == 0
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
 		//curand_init(0, id, 0, &random_d[id]);
 		curand_init(clock64(), id, 0, &random_d[id]);
 	}
+  #endif
 }
 
 #endif
@@ -824,6 +921,7 @@ __host__ int Data::init(){
 	}
 	for(int i = 0; i < P.Buffer * def_BufferSize * NconstT; ++i){
 		coordinateBuffer_h[i] = 0.0;
+		coordinateBufferIrr_h[i] = 0.0;
 	}
 	for(int i = 0; i < P.Buffer; ++i){
 		timestepBuffer[i] = 0ll;
@@ -946,6 +1044,25 @@ __host__ int Data::ic(){
 	cudaMemcpy(enccountT_d, enccountT_h, sizeof(unsigned long long) * NconstT, cudaMemcpyHostToDevice);
 
 	cudaMemcpy(Nsmall_d, Nsmall_h, Nst * sizeof(int), cudaMemcpyHostToDevice);
+
+#if def_CPU == 1
+	memcpy(x4b_h, x4_h, sizeof(double4) * NconstT);
+	memcpy(v4b_h, v4_h, sizeof(double4) * NconstT);
+	memcpy(x4bb_h, x4_h, sizeof(double4) * NconstT);
+	memcpy(v4bb_h, v4_h, sizeof(double4) * NconstT);
+	memcpy(xold_h, x4_h, sizeof(double4) * NconstT);
+	memcpy(vold_h, v4_h, sizeof(double4) * NconstT);
+	memcpy(rcritv_h, rcrit_h, sizeof(double3) * NconstT * P.SLevels);
+	memcpy(rcritb_h, rcrit_h, sizeof(double3) * NconstT * P.SLevels);
+	memcpy(rcritvb_h, rcrit_h, sizeof(double3) * NconstT * P.SLevels);
+	memcpy(rcritbb_h, rcrit_h, sizeof(double3) * NconstT * P.SLevels);
+	memcpy(rcritvbb_h, rcrit_h, sizeof(double3) * NconstT * P.SLevels);
+	memcpy(indexb_h, index_h, sizeof(int) * NconstT);
+	memcpy(indexbb_h, index_h, sizeof(int) * NconstT);
+
+#endif
+
+
 #if def_TTV > 0
 	cudaMemcpy(elementsA_d, elementsA_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(elementsB_d, elementsB_h, sizeof(double4) * NconstT, cudaMemcpyHostToDevice);
@@ -1372,7 +1489,7 @@ __host__ int Data::readic(int st){
 				double w = v.y;
 				double e = x.y;
 
-				double nu = M_PI * 0.5 - w;     //true anomaly at first transit
+				double nu = M_PI * 0.5 - w;	//true anomaly at first transit
 				double ee2 = e * e;
 				double ee4 = ee2 * ee2;
 				//double time = time_h[0] - dt_h[0] / dayUnit;
@@ -1396,7 +1513,7 @@ __host__ int Data::readic(int st){
 				double e = x.y;
 				double M = v.z;
 
-				double nu = M_PI * 0.5 - w;     //true anomaly at first transit
+				double nu = M_PI * 0.5 - w;	//true anomaly at first transit
 				double ee2 = e * e;
 				double ee4 = ee2 * ee2;
 				//double time = time_h[0] - dt_h[0] / dayUnit;
@@ -1817,9 +1934,9 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	}
 
 
-	x.x =  t1 * Px + t2 * Qx;
-	x.y =  t1 * Py + t2 * Qy;
-	x.z =  t1 * Pz + t2 * Qz;
+	x.x = t1 * Px + t2 * Qx;
+	x.y = t1 * Py + t2 * Qy;
+	x.z = t1 * Pz + t2 * Qz;
 
 	if(e < 1.0 - 1.0e-10){
 		//elliptic
@@ -1840,7 +1957,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 		double Theta = 2.0 * atan(E);
 		t0 = mu / sqrt(2.0 * a * mu);
 		t1 = -sin(Theta);
-		t2 = 1.0 +  cos(Theta);
+		t2 = 1.0 + cos(Theta);
 	}
 
 
@@ -2001,7 +2118,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, double4 *StopTime_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *Energy_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -2108,16 +2225,6 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					Kold_d[i * NB + Na] = Kold_d[i * NB + (Nb)];
 					Kold_d[(Nb) * NB + i] = 1.0;
 					Kold_d[i * NB + (Nb)] = 1.0;
-					StopTime_d[(Na) * NB + i] = StopTime_d[(Nb) * NB + i];
-					StopTime_d[i * NB + Na] = StopTime_d[i * NB + (Nb)];
-					StopTime_d[(Nb) * NB + i].x = -1.0;
-					StopTime_d[i * NB + (Nb)].x = -1.0;
-					StopTime_d[(Nb) * NB + i].y = -1.0;
-					StopTime_d[i * NB + (Nb)].y = -1.0;
-					StopTime_d[(Nb) * NB + i].z = -1.0;
-					StopTime_d[i * NB + (Nb)].z = -1.0;
-					StopTime_d[(Nb) * NB + i].w = -1.0;
-					StopTime_d[i * NB + (Nb)].w = -1.0;
 				}
 #endif
 				//move Test Particles
@@ -2411,9 +2518,9 @@ __host__ int Data::remove(){
 	NBmax = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, StopTime_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, Energy_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2503,41 +2610,44 @@ double *rcritv_d, int st, int NBS, int NsmallS, int *N_d, int *Nsmall_d, int NT,
 
 
 //this kernel rearranges the simulations index
-__global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d){
+__global__ void remove3M_kernel(int *index_d, int *N_d, int *NBS_d, const int Nst){
 
 	int idy = threadIdx.x;
 	int st = blockIdx.x;
 
-	int N = N_d[st];
-	int NBS = NBS_d[st];
+	if(st < Nst){
 
-	if(idy < N){
+		int N = N_d[st];
+		int NBS = NBS_d[st];
 
-		int index = index_d[idy + NBS] % def_MaxIndex;
-		index_d[idy + NBS] = index + st * def_MaxIndex;
-//printf("index %d %d %d\n", st, index + st * def_MaxIndex, N);
+		if(idy < N){
+
+			int index = index_d[idy + NBS] % def_MaxIndex;
+			index_d[idy + NBS] = index + st * def_MaxIndex;
+	//printf("index %d %d %d\n", st, index + st * def_MaxIndex, N);
+		}
 	}
 }
 
 
 //this kernel rearranges the indices of the prechecker list
-__global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int Nencpairs){
+__global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, const int Nencpairs){
 
-	int idy = blockIdx.x * blockDim.x + threadIdx.x;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if(idy < Nencpairs){
+	if(id < Nencpairs){
 
-		int i = Encpairs_d[idy].x;
-		int j = Encpairs_d[idy].y;
+		int i = Encpairs_d[id].x;
+		int j = Encpairs_d[id].y;
 		
 		int ii = Encpairs2_d[i].x;
 		int jj = Encpairs2_d[j].x;
 
-		Encpairs_d[idy].x = ii;
-		Encpairs_d[idy].y = jj;
+		Encpairs_d[id].x = ii;
+		Encpairs_d[id].y = jj;
 
-		if(Encpairs2_d[i].y == 0) Encpairs_d[idy].x = -1;
-		if(Encpairs2_d[j].y == 0) Encpairs_d[idy].y = -1;
+		if(Encpairs2_d[i].y == 0) Encpairs_d[id].x = -1;
+		if(Encpairs2_d[j].y == 0) Encpairs_d[id].y = -1;
 
 	}
 }
@@ -2724,8 +2834,8 @@ __host__ void Data::stopSimulations(){
 	cudaMemcpy(NBS_d, NBS_h, Nst*sizeof(int), cudaMemcpyHostToDevice);
 
 	if(Nst > 0){
-		remove3M_kernel <<< Nst, NBmax >>> (index_d, N_d, NBS_d);
-		if(Nencpairs_h[0] > 0) remove4M_kernel <<< (Nencpairs_h[0] + 255) / 256, 256 >>>  (Encpairs_d, Encpairs2_d, Nencpairs_h[0]);
+		remove3M_kernel <<< Nst, NBmax >>> (index_d, N_d, NBS_d, Nst);
+		if(Nencpairs_h[0] > 0) remove4M_kernel <<< (Nencpairs_h[0] + 255) / 256, 256 >>> (Encpairs_d, Encpairs2_d, Nencpairs_h[0]);
 	}
 }
 
@@ -2746,7 +2856,6 @@ __host__ int Data::freeOrbit(){
 		free(createFlag_h);
 	}
 	free(rcrit_h);
-	cudaFreeHost(Nenc_m);
 	free(aelimits_h);
 	free(aecount_h);
 	free(enccount_h);
@@ -2754,6 +2863,7 @@ __host__ int Data::freeOrbit(){
 	free(enccountT_h);
 
 	free(coordinateBuffer_h);
+	free(coordinateBufferIrr_h);
 	free(timestepBuffer);
 	free(timestepBufferIrr);
 	free(NBuffer);
@@ -2786,6 +2896,10 @@ __host__ int Data::freeOrbit(){
 	free(Energy_h);
 	free(Energy0_h);
 	free(LI0_h);
+
+#if def_CPU == 0
+
+	cudaFreeHost(Nenc_m);
 	cudaFreeHost(Ncoll_m);
 	cudaFreeHost(Ntransit_m);
 	cudaFreeHost(NWriteEnc_m);
@@ -2794,10 +2908,81 @@ __host__ int Data::freeOrbit(){
 	cudaFreeHost(EncFlag_m);
 	cudaFreeHost(StopFlag_m);
 	cudaFreeHost(ErrorFlag_m);
+	cudaFreeHost(test_h);
+	cudaFreeHost(Nencpairs_h);
+	cudaFreeHost(Nencpairs2_h);
+	cudaFreeHost(Nencpairs3_h);
+#else
+#if def_CPU == 1
+	free(xold_h);
+	free(vold_h);
+	free(x4b_h);
+	free(v4b_h);
+	free(x4bb_h);
+	free(v4bb_h);
+	free(a_h);
+	free(ab_h);
+	free(indexb_h);
+	free(indexbb_h);
+	free(rcritb_h);
+	free(rcritbb_h);
+	free(rcritv_h);
+	free(rcritvb_h);
+	free(rcritvbb_h);
+	free(spinb_h);
+	free(spinbb_h);
+	free(vcom_h);
+	free(Energy2_h);
+	free(Encpairs_h);
+	free(Encpairs2_h);
+	free(Encpairs3_h);
+	free(scan_h);
+
+	free(groupIndex_h);
+
+	//BSA
+	free(xt_h);
+	free(vt_h);
+	free(xp_h);
+	free(vp_h);
+	free(dx_h);
+	free(dv_h);
+	free(dt1_h);
+	free(t1_h);
+	free(dtgr_h);
+	free(Coltime_h);
+	free(BSstop_h);
+
+	if(P.WriteEncounters == 2){
+		free(morton_h);
+		free(sortRank_h);
+		free(sortCount_h);
+		free(sortIndex_h);
+		free(leafNodes_h);
+		free(internalNodes_h);
+	}
+#endif
+
+
+	free(Nenc_m);
+	free(Ncoll_m);
+	free(Ntransit_m);
+	free(NWriteEnc_m);
+	free(EjectionFlag_m);
+	free(nFragments_m);
+	free(EncFlag_m);
+	free(StopFlag_m);
+	free(ErrorFlag_m);
+	free(test_h);
+	free(Nencpairs_h);
+	free(Nencpairs2_h);
+	free(Nencpairs3_h);
+#endif
+
 	free(Coll_h);
 	free(writeEnc_h);
 	free(Fragments_h);
-	cudaFreeHost(test_h);
+
 #if def_poincareFlag == 1
 	free(PFlag_h);
 #endif	
@@ -2807,6 +2992,13 @@ __host__ int Data::freeOrbit(){
 	cudaFree(v4_d);
 	cudaFree(xold_d);
 	cudaFree(vold_d);
+	cudaFree(rcrit_d);
+	cudaFree(rcritv_d);
+	cudaFree(rcritb_d);
+	cudaFree(rcritvb_d);
+	cudaFree(rcritbb_d);
+	cudaFree(rcritvbb_d);
+	cudaFree(test_d);
 	cudaFree(index_d);
 	cudaFree(spin_d);
 	cudaFree(spinb_d);
@@ -2818,13 +3010,12 @@ __host__ int Data::freeOrbit(){
 	if(P.CreateParticles > 0){
 		cudaFree(createFlag_d);
 	}
+	cudaFree(U_d);
+	cudaFree(LI_d);
 	cudaFree(a_d);
-	cudaFree(rcrit_d);
-	cudaFree(rcritv_d);
-	cudaFree(rcritb_d);
-	cudaFree(rcritvb_d);
-	cudaFree(rcritbb_d);
-	cudaFree(rcritvbb_d);
+	cudaFree(Energy_d);
+	cudaFree(Energy0_d);
+	cudaFree(LI0_d);
 	cudaFree(Nencpairs_d);
 	cudaFree(Nencpairs2_d);
 	cudaFree(Nencpairs3_d);
@@ -2833,13 +3024,53 @@ __host__ int Data::freeOrbit(){
 	cudaFree(Encpairs2_d);
 	cudaFree(Encpairs3_d);
 	cudaFree(scan_d);
+	cudaFree(Coll_d);
+	cudaFree(writeEnc_d);
+	cudaFree(Fragments_d);
+	cudaFree(aelimits_d);
+	cudaFree(aecount_d);
+	cudaFree(enccount_d);
+	cudaFree(aecountT_d);
+	cudaFree(enccountT_d);
+
+	cudaFree(coordinateBuffer_d);
+	cudaFree(coordinateBufferIrr_d);
+
+	if(P.WriteEncounters == 2){
+		cudaFree(morton_d);
+		cudaFree(sortRank_d);
+		cudaFree(sortCount_d);
+		cudaFree(sortIndex_d);
+		cudaFree(leafNodes_d);
+		cudaFree(internalNodes_d);
+	}
 
 	if(Nst > 1){
 		cudaFree(groupIndex_d);
 	}
 
-	cudaFree(coordinateBuffer_d);
-	cudaFree(coordinateBufferIrr_d);
+	if(P.ndev > 1){
+		cudaFree(rcritv_d1);
+		cudaFree(x4_d1);
+		cudaFree(Nencpairs_d1);
+		cudaFree(Encpairs_d1);
+		cudaFree(Encpairs2_d1);
+	}
+	if(P.ndev > 2){
+		cudaFree(rcritv_d2);
+		cudaFree(x4_d2);
+		cudaFree(Nencpairs_d2);
+		cudaFree(Encpairs_d2);
+		cudaFree(Encpairs2_d2);
+	}
+	if(P.ndev > 3){
+		cudaFree(rcritv_d3);
+		cudaFree(x4_d3);
+		cudaFree(Nencpairs_d3);
+		cudaFree(Encpairs_d3);
+		cudaFree(Encpairs2_d3);
+	}
+
 
 	cudaFree(xt_d);
 	cudaFree(vt_d);
@@ -2854,11 +3085,6 @@ __host__ int Data::freeOrbit(){
 	cudaFree(BSstop_d);
 	cudaFree(Coltime_d);
 
-	cudaFree(aelimits_d);
-	cudaFree(aecount_d);
-	cudaFree(enccount_d);
-	cudaFree(aecountT_d);
-	cudaFree(enccountT_d);
 
 	cudaFree(x4b_d);
 	cudaFree(v4b_d);
@@ -2870,28 +3096,18 @@ __host__ int Data::freeOrbit(){
 
 	cudaFree(vcom_d);
 	
-	cudaFree(U_d);
-	cudaFree(LI_d);
-	cudaFree(Energy_d);
-	cudaFree(Energy0_d);
-	cudaFree(LI0_d);
 #if def_poincareFlag == 1
 	cudaFree(PFlag_d);
 #endif
 #if def_G3 > 0
 	cudaFree(K_d);
 	cudaFree(Kold_d);
-	cudaFree(StopTime_d);
 #endif
 
 #if USE_RANDOM == 1
 	cudaFree(random_d);
 #endif
 
-	cudaFree(Coll_d);
-	cudaFree(writeEnc_d);
-	cudaFree(Fragments_d);
-	cudaFree(test_d);
 
 	cudaFree(Transit_d);
 	cudaFree(RV_d);

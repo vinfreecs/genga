@@ -55,7 +55,7 @@ __host__ void Data::constantCopySC(double *S_h, double *C_h){
 //July 2016
 //
 //***************************************/
-__device__ void fgfull(double4 &x4i, double4 &v4i, double dt, const double mu, const double Msun, const float4 aelimits, unsigned int &aecount, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int id, const int index, const int UseGR){
+__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, const double mu, const double Msun, const float4 aelimits, unsigned int &aecount, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int id, const int index, const int UseGR){
 
 	if(x4i.w >= 0.0){
 

@@ -10,8 +10,7 @@
 //****************************************/
 __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
 	
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
 	double4 x4i;
 	double4 v4i;
@@ -19,7 +18,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 	double rcrit, rcritv;
 	double rsq, vsq, r, v;
 	
-	if(idy == 0) time_d[0] = time;
+	if(id == 0) time_d[0] = time;
 	
 	if(id < N){
 		
@@ -103,8 +102,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 
 __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){
 	
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
 	double4 x4i;
 	double4 v4i;
@@ -112,7 +110,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 	double rcrit, rcritv;
 	double rsq, vsq, r, v;
 	
-	if(idy == 0) time_d[0] = time;
+	if(id == 0) time_d[0] = time;
 	
 	if(id < N){
 		
@@ -344,8 +342,7 @@ __global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 // ****************************************
 __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict__ v4_d, double4 * __restrict__ x4b_d, double4 * __restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double2 *Msun_d, double *rcrit_d, double *rcritb_d, double *rcritv_d, double *rcritvb_d, double *dt_d, double *n1_d, double *n2_d, double *Rcut_d, double *RcutSun_d, int *EjectionFlag_d, int * __restrict__ index_d, int * __restrict__ indexb_d, const int Nst, const int NT, double *time_d, double *idt_d, double *ict_d, long long *delta_d, long long timeStep, int *StopFlag_d, const int NconstT, const int SLevels, const int f, const int Nstart){
 	
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 	int st = 0;
 	
 	if(id < NT + Nstart) st = index_d[id] / def_MaxIndex;
@@ -448,6 +445,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 
 
 __host__ void Data::firstStep(int noColl){
+#if def_CPU == 0
 	if(Nst > 1){
 		#if def_TTV == 2
 
@@ -461,16 +459,26 @@ __host__ void Data::firstStep(int noColl){
 		#endif
 	}
 	else{
-		if(P.UseTestParticles > 0) firstKick_small(noColl);
+		if(P.UseTestParticles > 0){
+			firstKick_small(noColl);
+		}
 		else{
-			if(NB[0] <= WarpSize) firstKick_16(noColl);
-			else firstKick_largeN(noColl);
+			if(NB[0] <= WarpSize){
+				firstKick_16(noColl);
+			}
+			else{
+				firstKick_largeN(noColl);
+			}
 		}
 	}
+#else
+	//firstKick_cpu(noColl);
+#endif
 }
 
 __host__ int Data::step(int noColl){
 	int er;
+#if def_CPU == 0
 	//Multi simulation mode
 	if(MultiSim == 1){
 		#if def_TTV == 2
@@ -498,10 +506,19 @@ __host__ int Data::step(int noColl){
 		}
 		//check the number of massive particles
 		else{
-			if(NB[0] <= WarpSize) er =  step_16(noColl);
-			else er = step_largeN(noColl);
+			if(NB[0] <= WarpSize){
+				er =  step_16(noColl);
+			}
+			else{
+				er = step_largeN(noColl);
+			}
 			if(er == 0) return 0;
 		}
 	}
+#else
+	//er = step_cpu(noColl);
+	//if(er == 0) return 0;
+
+#endif
 	return 1;
 }

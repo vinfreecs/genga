@@ -93,31 +93,9 @@ __host__ void Data::constantCopyBS(){
 }
 
 
-// **************************************
-// This kernel sets initial values for the Encouter pair arrays
-//Authors: Simon Grimm, Joachim Stadel
-//March 2016
-// **************************************3
-template <int Bl>
-__global__ void initial_kernel(double *K_d, double *Kold_d, double4 *StopTime_d, int NB){
-	int idy = threadIdx.x;
-	int idx = blockIdx.x;
+__global__ void initialb_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, const int NBNencT){
 	
-	for(int i = 0; i < NB; i += Bl){
-		K_d[(idy +i)* NB + idx] = 1.0;
-		Kold_d[(idy +i)* NB + idx] = 1.0;
-		StopTime_d[(idy +i)* NB + idx].x = -1.0;
-		StopTime_d[(idy +i)* NB + idx].y = -1.0;
-		StopTime_d[(idy +i)* NB + idx].z = -1.0;
-		StopTime_d[(idy +i)* NB + idx].w = -1.0;
-	}
-}
-
-// **************************************
-__global__ void initialb_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NBNencT){
-	
-	int idx = blockIdx.x;
-	int id = blockIdx.x * blockDim.x + idx;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
 	if(id < NBNencT){
 		Encpairs_d[id].x = -1;
@@ -129,21 +107,20 @@ __global__ void initialb_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, int NBNencT
 }
 
 /*
- __global__ void test_kernel(double4 *x4_d, double3 *a_d, int *index_d, int N){
+ __global__ void test_kernel(double4 *x4_d, double3 *a_d, int *index_d, const int N){
  
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
  
-	if(id < N && fabs(a_d[id].x) > 10) printf("test %d %.g\n", id, a_d[id].x);
- 
+	if(id < N){
+		 if(fabs(a_d[id].x) > 10) printf("test %d %.g\n", id, a_d[id].x);
+ 	}
  }
  */
 
 
-__global__ void save_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, double4 *v4bb_d, double4 *spin_d, double4 *spinbb_d, double *rcrit_d, double *rcritv_d, double *rcritbb_d, double *rcritvbb_d, int *index_d, int *indexbb_d, int N, int NconstT, int SLevels, int f){
+__global__ void save_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, double4 *v4bb_d, double4 *spin_d, double4 *spinbb_d, double *rcrit_d, double *rcritv_d, double *rcritbb_d, double *rcritvbb_d, int *index_d, int *indexbb_d, const int N, const int NconstT, const int SLevels, const int f){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
 		if(f == 1){
@@ -169,13 +146,6 @@ __global__ void save_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, doubl
 	}
 }
 
-__global__ void testA_kernel(double4 *x4_d, double4 *v4_d, int A){
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-	
-if(id == 203) printf("%d %.20g %.20g %d\n", id, x4_d[id].z, v4_d[id].z, A);
-	
-}
 
 __host__ int Data::beforeTimeStepLoop1(){
 
@@ -307,6 +277,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 	cudaDeviceSynchronize();
 	cudaMemset(Energy_d, 0, NEnergyT*sizeof(double));
 
+#if def_CPU == 0
 	if(Nst == 1){
 
 		//set default kernel parameters
@@ -532,6 +503,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 			fclose(tuneFile);
 		}
 	}
+#endif 
 
 	if(Nst == 1) printf("Start integration with %d simulation\n", Nst);
 	else printf("Start integration with %d simulations\n", Nst);
@@ -1946,6 +1918,7 @@ __host__ void Data::firstKick_16(int noColl){
 	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
+
 __host__ void Data::firstKick_largeN(int noColl){
 	//use last time information, the beginning of the time step
 	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
@@ -1985,6 +1958,7 @@ __host__ void Data::firstKick_largeN(int noColl){
 	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
+
 __host__ void Data::firstKick_small(int noColl){
 	//use last time information, the beginning of the time step
 	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
@@ -2032,6 +2006,7 @@ __host__ void Data::firstKick_M(long long ts, int noColl){
 	KickM2_kernel < KM_Bl, KM_Bl2, NmaxM, 0 > <<< (NT + KM_Bl2 - 1) / KM_Bl2, KM_Bl >>> (x4_d, v4_d, a_d, rcritv_d, Nencpairs_d, Encpairs_d, dt_d, Kt[SIn - 1] * def_ksq, index_d, NT, Nstart);
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
+
 __host__ void Data::firstKick_M3(long long ts, int noColl){
 	cudaMemset(a_d, 0, NconstT*sizeof(double3));
 	cudaMemset(ab_d, 0, NconstT * sizeof(double3));
@@ -2498,7 +2473,7 @@ __host__ int Data::PoincareSectionCall(double t){
 		fprintf(masterfile, "Compute Poincare Sections only with the second Order integrator!\n");
 		return 0;
 	}
-	PoincareSection <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
+	PoincareSection_kernel <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 	
 	cudaMemcpy(PFlag_h, PFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(PFlag_h[0] == 1){
