@@ -1,17 +1,20 @@
 #include "Orbit2.h"
 
+#if def_CPU == 1
+double CreateParticlesParameters_c[12];
+#endif
+
+
 // **************************************
 // This kernel generates new test particles according to ranges in Kepler elements
 //
 // Date: September 2022
 // Author: Simon Grimm
 // **************************************
-__global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int NN, double dt, double Msun, double time, int MaxIndex, double *Fragments_d, int *nFragments_d, int NT){
+__global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, const int NN, const double dt, const double Msun, const double time, int MaxIndex, double *Fragments_d, int *nFragments_d, const int NT){
 #if USE_RANDOM == 1
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	double p =  CreateParticlesParameters_c[1];		//probability of creating a new particle, per year
 	double aa = CreateParticlesParameters_c[2];		//in AU
@@ -29,13 +32,11 @@ __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	if(id < NN){
 
 		curandState random = random_d[id];
-		curand_uniform(&random);
+		double rd = curand_uniform(&random);
 		random_d[id] = random;
-
 
 		p = p / 365.25 * dt / dayUnit;          //probability per time step and per thread
 
-		double rd = curand_uniform(&random);
 		if(rd < p){
 
 			double a = curand_uniform(&random) * da + aa - 0.5 * da;   //in AU
@@ -66,7 +67,11 @@ __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 			v4i.z = M;
 			KepToCart_M(x4i, v4i, Msun);
 
+#if def_CPU == 0
 			int nf = atomicAdd(&nFragments_d[0], 1);
+#else
+			int nf = nFragments_d[0]++;
+#endif
 
 			if(NN + nf < NT){
 printf("Create particle, %d %d\n", nf, MaxIndex + nf + 1);
@@ -102,12 +107,10 @@ printf("Create particle, %d %d\n", nf, MaxIndex + nf + 1);
 // Date: September 2022
 // Author: Simon Grimm
 // **************************************
-__global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int *index_d, int NN, double dt, double time, int MaxIndex, double *Fragments_d, int *nFragments_d, int NT){
+__global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int *index_d, const int NN, const double dt, const double time, int MaxIndex, double *Fragments_d, int *nFragments_d, const int NT){
 #if USE_RANDOM == 1
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
-
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	double p = CreateParticlesParameters_c[1];		//probability of creating a new particle, per year
 	double m = CreateParticlesParameters_c[8];		//mass in Solar Masses
@@ -122,12 +125,11 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 		if(createFlag_d[id] == 1){
 			curandState random = random_d[id];
-			curand_uniform(&random);
+			double rd = curand_uniform(&random);
 			random_d[id] = random;
 
 			p = p / 365.25 * dt / dayUnit;          //probability per time step and per thread
 
-			double rd = curand_uniform(&random);
 			if(rd < p){
 
 				double4 xp = x4_d[id];		//Coordinates of the parent body
@@ -177,7 +179,11 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				v4i.z = vp.z + vz;
 
 
+#if def_CPU == 0
 				int nf = atomicAdd(&nFragments_d[0], 1);
+#else
+				int nf = nFragments_d[0]++;
+#endif
 
 				if(NN + nf < NT){
 printf("Create particle, %d %d %d\n", id, nf, MaxIndex + nf + 1);
@@ -216,6 +222,7 @@ __host__ int Data::createCall(){
 	if(P.CreateParticles == 1){
 		create1_kernel <<< 1, 1 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_h[0] + Nsmall_h[0], dt_h[0], Msun_h[0].x, time_h[0], MaxIndex, Fragments_d, nFragments_d, P.CreateParticlesN);
 	}
+
 	if(P.CreateParticles == 2){
 		create2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (random_d, x4_d, v4_d, spin_d, love_d, createFlag_d, index_d, N_h[0] + Nsmall_h[0], dt_h[0], time_h[0], MaxIndex, Fragments_d, nFragments_d, P.CreateParticlesN);
 	}
@@ -491,7 +498,11 @@ printf("%d %d %d\n", i, id, j);
 	parameters[10] = Vmin;
 	parameters[11] = Vmax;
 
+#if def_CPU == 0
 	cudaMemcpyToSymbol(CreateParticlesParameters_c, parameters, 12 * sizeof(double), 0, cudaMemcpyHostToDevice);
+#else
+	*CreateParticlesParameters_c = *parameters;
+#endif
 
 
 	return 1;

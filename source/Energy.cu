@@ -57,7 +57,7 @@ __device__ inline double PESun(double4 x4i, double ksqMsun){
 //Authors: Simon Grimm
 //August 2016
 // ****************************************
-__global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun, double *Energy_d, int st, int N){
+__global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, const double Msun, double *EnergySum_d, const int st, const int N){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -127,11 +127,11 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 				V *= 0.5 * def_ksq * x4_d[idx].w;
 				V += PESun(x4_d[idx], def_ksq * Msun);
 
-				Energy_d[idx] = V;
+				EnergySum_d[idx] = V;
 //printf("%d %.20g\n", idx, V);
 			}
 		}
-		else Energy_d[idx] = 0.0;
+		else EnergySum_d[idx] = 0.0;
 	}
 }
 
@@ -143,7 +143,7 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, double Msun
 //Authors: Simon Grimm
 //September 2019
 // ****************************************
-__global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, int N){
+__global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int idx, double *U_d, double *LI_d, double3 *vcom_d, const int N){
 
 	int idy = threadIdx.x;
 
@@ -640,7 +640,7 @@ __global__ void EjectionEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 //Authors: Simon Grimm
 //August 2016
 // ****************************************
-__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *Energy_d, double Msun, double4 *Spinsun_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, int st, int N, int EE){
+__global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, double *EnergySum_d, double *Energy_d, double Msun, double4 *Spinsun_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, int st, int N, int EE){
 	int idy = threadIdx.x;
 
 	double T = 0.0;
@@ -760,7 +760,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
-			V += Energy_d[idy + i];
+			V += EnergySum_d[idy + i];
 			double4 x4 = x4_d[idy + i];
 			double4 v4 = v4_d[idy + i];
 			if(x4.w > 0.0){
@@ -913,18 +913,26 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 //Authors: Simon Grimm
 //August 2016
 // *************************************
-__host__ void Data::EnergyCall(int NBT, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, double* Energy_d, double *test_d, double *U_d, double *LI_d, double *Energy0_d, double *LI0_d, cudaStream_t hstream, int st, int N, int Nsmall, int E){
+__host__ void Data::EnergyCall(int st, int E){
 
-	potentialEnergy_kernel  <<< N + Nsmall, min(NBT, 512), WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, Msun, Energy_d, st, N + Nsmall);
-	kineticEnergy_kernel <<< 1, min(NBT, 512), 12 * WarpSize * sizeof(double), hstream>>> (x4_d, v4_d, spin_d, Energy_d, Msun, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, N + Nsmall, E);
+	int NBS = NBS_h[st];
+	int NE = NEnergy[st];
+	int NN = N_h[st] + Nsmall_h[st];
+
+	potentialEnergy_kernel  <<< NN, min(NB[st], 512), WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS , v4_d + NBS, Msun_h[st].x, EnergySum_d + NBS, st, NN);
+	kineticEnergy_kernel <<< 1, min(NBT[st], 512), 12 * WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS, v4_d + NBS, spin_d + NBS, EnergySum_d + NBS, Energy_d + NE, Msun_h[st].x, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, NN, E);
 }
 // *************************************
 //This function calls the EjectionEnergy kernels
 //
 //Authors: Simon Grimm
 //April 2016
-// *************************************3
-__host__ void Data::EjectionEnergyCall(int NBT, double4 *x4_d, double4 *v4_d, double4 *spin_d, double Msun, int i, double *U_d, double *LI_d, double3 *vcom_d, int N, int Nsmall){
-	EjectionEnergy_kernel <<<1, min(NBT, 512), 12 * WarpSize * sizeof(double) >>> (x4_d, v4_d, spin_d, Msun, i, U_d, LI_d, vcom_d, N + Nsmall);
+// *************************************
+__host__ void Data::EjectionEnergyCall(int st, int i){
+
+	int NBS = NBS_h[st];
+	int NN = N_h[st] + Nsmall_h[st];
+
+	EjectionEnergy_kernel <<<1, min(NBT[st], 512), 12 * WarpSize * sizeof(double) >>> (x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, i, U_d + st, LI_d + st, vcom_d + st, NN);
 }
 

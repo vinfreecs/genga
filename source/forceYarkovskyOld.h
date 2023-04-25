@@ -297,10 +297,9 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 }	
 
-__global__ void CallYarkovsky_averaged(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky_averaged_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	//Compute the Kepler Elements
 

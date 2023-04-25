@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.169
+#define def_Version 3.170
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -269,12 +269,14 @@
   #define curandState int
 #endif
 
-#define def_CPU 0
 
+#define def_CPU 0
 #if def_CPU == 1
+
+ #ifndef CPU_H
+ #define CPU_H
 /*
 	#define cudaError_t int
-	#define curandState double
 
 	int cudaGetLastError(){
 		return 0;
@@ -314,22 +316,20 @@
 		devProp.minor = 0;
 		warpSize = 1;
 	}
-
-	inline double __dmul_rn(double x, double y){
+*/
+	inline double __dmul_rn_cpu(double x, double y){
 		return (x * y);
 	}
-	inline float __fmul_rn(float x, float y){
+	inline float __fmul_rn_cpu(float x, float y){
 		return (x * y);
 	}
-	inline double __fma_rn(double x, double y, double z){
+	inline double __fma_rn_cpu(double x, double y, double z){
 		return (x * y + z);
 	}
 
-*/
+ #endif
 #endif
 
-#ifndef STRUCT_H
-#define STRUCT_H
 
 #if def_OldShuffle == 1
 //Use this for older CUDA version where shfl_xor is not available in double precision
@@ -356,9 +356,13 @@ double __shfld_down(double x, int k) {
 	return *reinterpret_cast<double*>(&a);
 }
 #endif
-__constant__ double  Rcut_c[1];
-__constant__ double  RcutSun_c[1];
-__constant__ int  StopAtCollision_c[1];
+
+#ifndef STRUCT_H
+#define STRUCT_H
+
+__constant__ double Rcut_c[1];
+__constant__ double RcutSun_c[1];
+__constant__ int StopAtCollision_c[1];
 __constant__ double StopMinMass_c[1];
 __constant__ double CollisionPrecision_c[1]; 
 __constant__ double CollTshift_c[1]; 
@@ -385,6 +389,9 @@ __constant__ double BSddt_c[8];		//time stepping factors in Bulirsch-Stoer metho
 __constant__ double BSt0_c[8 * 8];
 
 __constant__ double CreateParticlesParameters_c[12];
+
+
+
 
 struct Parameter{
 	int dev[32];			//device number array 

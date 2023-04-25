@@ -3,7 +3,7 @@
 
 // **************************************
 // For less than 64 bodies
-//This Kernel intergrates the independent groups of close encunters for a time step
+//This Kernel integrates the independent groups of close encunters for a time step
 //using a Bulirsh Stoer method with nb threads. Where n is the minimum of n^2 and 256
 //The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
 //

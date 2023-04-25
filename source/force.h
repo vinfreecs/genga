@@ -13,9 +13,9 @@
 // October 2021
 // Authors: Simon Grimm, Jean-Baptiste Delisle
 // **********************************************************
-__global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double2 *J2_d, double4 *vold_d, double *dt_d, double Kt, double *time_d, int N, int Nst, int UseGR, int UseTides, int UseRotationalDeformation, int Nstart, int si){
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+__global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_d, double3 *love_d, double2 *Msun_d, double4 *Spinsun_d, double3 *Lovesun_d, double2 *J2_d, double4 *vold_d, double *dt_d, const double Kt, double *time_d, const int N, const int Nst, const int UseGR, const int UseTides, const int UseRotationalDeformation, const int Nstart, const int si){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	double3 T3sun = {0.0, 0.0, 0.0};
 
@@ -460,17 +460,18 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 	//Sum up all torques of the star
 	if(UseTides > 0 || UseRotationalDeformation > 0){
 //printf("A %d %d %g %g %g\n", id, 0, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt);
+#if def_CPU == 0
 		if(Nst == 1){
 			for(int i = 1; i < warpSize; i*=2){
-#if def_OldShuffle == 0
+ #if def_OldShuffle == 0
 				T3sun.x += __shfl_xor_sync(0xffffffff, T3sun.x, i, warpSize);
 				T3sun.y += __shfl_xor_sync(0xffffffff, T3sun.y, i, warpSize);
 				T3sun.z += __shfl_xor_sync(0xffffffff, T3sun.z, i, warpSize);
-#else
+ #else
 				T3sun.x += __shfld_xor(T3sun.x, i);
 				T3sun.y += __shfld_xor(T3sun.y, i);
 				T3sun.z += __shfld_xor(T3sun.z, i);
-#endif
+ #endif
 //printf("A1 %d %d %g %g %g\n", id, i, T3sun.x, T3sun.y, T3sun.z);
 			}
 			__syncthreads();
@@ -541,10 +542,18 @@ __global__ void force(double4 *x4_d, double4 *v4_d, int *index_d, double4 *spin_
 			vold_d[id].y = T3sun.y * dt;
 			vold_d[id].z = T3sun.z * dt;
 		}
+#else
+		if(si == 1){
+			Spinsun_d[st].x += T3sun.x * dt;
+			Spinsun_d[st].y += T3sun.y * dt;
+			Spinsun_d[st].z += T3sun.z * dt;
+		}
+		
+#endif
 	}
 }
 
-__global__ void forced2_kernel(double4 *vold_d, double4 *Spinsun_d, const int N, int si){
+__global__ void forced2_kernel(double4 *vold_d, double4 *Spinsun_d, const int N, const int si){
 
 	int idy = threadIdx.x;
 
@@ -863,10 +872,16 @@ __constant__ int setElements_c[25];
 //June 2015
 //Authors: Simon Grimm
 //***************************************/
-__host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int nlines){
+__host__ void Host::constantCopy3(int *Elements, const int nelements, const int nbodies, const int nlines){
+
 	int setElementsNumbers[3] = {nelements, nbodies, nlines};	
+#if def_CPU == 0
 	cudaMemcpyToSymbol(setElements_c, Elements, 25 * sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int), 0, cudaMemcpyHostToDevice);
+#else
+	*setElements_c = *Elements;
+	*setElementsNumbers_c = *setElementsNumbers;
+#endif
 }
 
 // ***************************************************************
@@ -878,10 +893,9 @@ __host__ void Host::constantCopy3(int *Elements, int nelements, int nbodies, int
 // March 2017
 // Authors: Simon Grimm
 // *****************************************************************
-__global__ void setElements(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double2 *Msun_d, double *dt_d, double *time_d, int N, int Nst, int EE){
+__global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *setElementsData_d, int *setElementsLine_d, double2 *Msun_d, double *dt_d, double *time_d, const int N, const int Nst, const int EE){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int line = setElementsLine_d[0];
 	int nelements = setElementsNumbers_c[0];
@@ -1307,12 +1321,11 @@ if(setElements_c[i] == 13){
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int st, double *Fragments_d, double time, int *nFragments_d){
 
 	int N = N_d[st];
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + N;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + N;
 
 	int Nsmall = Nsmall_d[st];
 	double dt = dt_d[st];
@@ -1353,7 +1366,12 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double rd = curand_uniform(&random);
 			int accept = -2;
 			if(rd < p && omega > 0.0) {
+#if def_CPU == 0
 				accept = atomicMax(&nFragments_d[0], 0);
+#else
+				accept = nFragments_d[0];
+#endif
+
 printf("rotation reset %d %d %g %g %g\n", id, index_d[id], time/365.25, rd, p);
 printf("rA %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 			}
@@ -1368,7 +1386,7 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				double u = curand_uniform(&random);
 				double theta = curand_uniform(&random) * 2.0 * M_PI;
 				//sign
-				double s = curand_uniform(&random);;
+				double s = curand_uniform(&random);
 
 				double t2 = S * sqrt(1.0 - u * u);
 				spin.x = t2 * cos(theta);
@@ -1394,7 +1412,11 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				Fragments_d[11] = spin_d[id].y;
 				Fragments_d[12] = spin_d[id].z;
 
+#if def_CPU == 0
 				atomicMax(&nFragments_d[0], 1);
+#else
+				nFragments_d[0] = 1;
+#endif
 			}
 #endif
 		}
@@ -1409,12 +1431,11 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, int NconstT, int MaxIndex, int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int MaxIndex, const int st, double *Fragments_d, double time, int *nFragments_d){
 #if USE_RANDOM == 1
 	int N = N_d[st];
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + N;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + N;
 
 	int Nsmall = Nsmall_d[st];
 	double dt = dt_d[st];
@@ -1441,7 +1462,11 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double rd = curand_uniform(&random);
 			volatile int accept = -2;
 			if(rd < p) {
+#if def_CPU == 0
 				accept = atomicMax(&nFragments_d[0], 0);
+#else
+				accept = nFragments_d[0];
+#endif
 printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
 			}
 			if(accept == -1){
@@ -1548,7 +1573,11 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 					if(M == 0.0) break;
 					if(N + Nsmall + ii >= NconstT){
 						Nsmall_d[st] += ii;
+#if def_CPU == 0
 						atomicMax(&nFragments_d[0], ii);
+#else
+						nFragments_d[0] = ii;
+#endif
 						break;
 					}
 				}
@@ -1608,8 +1637,11 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 			
 //printf("%d %g %g %g %d %d %d\n", id, p, RR, rd, ii, N + Nsmall, NconstT);
 				Nsmall_d[st] += ii;
+#if def_CPU == 0
 				atomicMax(&nFragments_d[0], ii);
-
+#else
+				nFragments_d[0] = ii;
+#endif
 				Fragments_d[0] = time/365.25;
 				Fragments_d[1] = (double)(index_d[id]);
 				Fragments_d[2] = x4_d[id].w;
@@ -1651,23 +1683,25 @@ printf("Remove Fragment %d %g\n", i + N + Nsmall, r * def_AU);
 #endif
 }
 
-__host__ void fragmentCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, int NconstT, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d, int &MaxIndex){
+__host__ void Data::fragmentCall(){
 	if(Nsmall_h[0] > 0.0){
 		int st = 0;
 		nFragments_m[0] = -1;
-		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time, nFragments_d);
+		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time_h[0], nFragments_d);
 		cudaDeviceSynchronize();
 		if(nFragments_m[0] > 0){
+#if def_CPU == 0
 			Nsmall_h[st] += nFragments_m[0];
+#endif
 			MaxIndex += nFragments_m[0];
 		}
 	}
 }
-__host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_h, int *N_d, int *Nsmall_h, int *Nsmall_d, double *dt_d, int Nst, double *Fragments_d, double time, int *nFragments_m, int *nFragments_d){
+__host__ void Data::rotationCall(){
 	if(Nsmall_h[0] > 0.0){
 		int st = 0;
 		nFragments_m[0] = -1;
-		rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time, nFragments_d);
+		rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time_h[0], nFragments_d);
 		cudaDeviceSynchronize();
 	}
 }
@@ -1682,10 +1716,9 @@ __host__ void rotationCall(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void CallYarkovsky2(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	int st = 0;
 
@@ -2046,10 +2079,9 @@ __device__ void alpha(double e){
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonEffect_averaged(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	//Compute the Kepler Elements
 
@@ -2219,10 +2251,9 @@ __global__ void PoyntingRobertsonEffect_averaged(double4 *x4_d, double4 *v4_d, i
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst, int Nstart){
+__global__ void PoyntingRobertsonEffect2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	if(id < N + Nstart){
 		if(x4_d[id].w >= 0.0){
@@ -2311,10 +2342,10 @@ __global__ void PoyntingRobertsonEffect2(double4 *x4_d, double4 *v4_d, int *inde
 		}
 	}	
 }
-__global__ void artificialMigration_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *migration_d, double2 *Msun_d, double *dt_d, double Kt, int N, int Nst, int Nstart, int si){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+__global__ void artificialMigration_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double3 *migration_d, double2 *Msun_d, double *dt_d, double Kt, const int N, const int Nst, const int Nstart, const int si){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	int st = 0;
 	double dt = 0.0;
@@ -2378,10 +2409,9 @@ __global__ void artificialMigration_kernel(double4 *x4_d, double4 *v4_d, int *in
 }
 
 //Test with a constant additional acceleration
-__global__ void artificialMigration2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, double Kt, int N, int Nst, int Nstart, int si){
+__global__ void artificialMigration2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart, const int si){
 
-	int idy = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + idy + Nstart;
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
 	int st = 0;
 	double dt = 0.0;

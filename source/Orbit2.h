@@ -25,6 +25,7 @@ public:
 	double4 *x4_d2;				//used for multiGPUs
 	double4 *x4_d3;				//used for multiGPUs
 	double4 *v4_h, *v4_d;
+	double4 *v4Helio_h;
 	double4 *xold_d;
 	double4 *vold_d;
 	int *index_h, *index_d;
@@ -110,6 +111,7 @@ public:
 	double *LI_h, *LI_d;	//internal Angular Momentum
 	double *Energy_h, *Energy_d;
 	double *Energy0_h, *Energy0_d;
+	double *EnergySum_d;
 	double *LI0_h, *LI0_d;
 	int *Ncoll_m, *Ncoll_d;
 	int *EjectionFlag_d, *EjectionFlag_m;
@@ -206,7 +208,7 @@ public:
 	double4 *spinbb_h;
 
 	double3 *vcom_h;
-	double *Energy2_h;
+	double *EnergySum_h;
 	int2 *Encpairs_h;
 	int2 *Encpairs2_h;
 	int *Encpairs3_h;
@@ -229,7 +231,7 @@ public:
 	double *K_h;
 	double *Kold_h;
 
-	double *random_h;
+	curandState *random_h;
 
 	//BVH
 	unsigned int *morton_h;
@@ -264,7 +266,7 @@ public:
 	__host__ void KepToCart(double4 &, double4 &, double);
 	__host__ void HelioToDemo(double4 *, double4 *, double, int);
 	__host__ void HelioToBary(double4 *, double4 *, double, int);
-	__host__ void DemoToHelio(double4 *, double4 *, double, int);
+	__host__ void DemoToHelio(double4 *, double4 *, double4 *, double, int);
 	__host__ void BaryToHelio(double4 *, double4 *, double, int);
 	__host__ int remove();
 	__host__ void stopSimulations();
@@ -307,8 +309,8 @@ public:
 	__host__ void CoordinateToBuffer(int, int, double);
 
 	//Energy
-	__host__ void EnergyCall(int, double4 *, double4 *, double4 *, double, double *, double *, double *, double *, double *, double *, cudaStream_t, int, int, int, int);
-	__host__ void EjectionEnergyCall(int, double4 *, double4 *, double4 *, double, int, double *, double *, double3 *, int, int);
+	__host__ void EnergyCall(int, int);
+	__host__ void EjectionEnergyCall(int, int);
 
 	//integrator
 	__host__ void SymplecticP(int);
@@ -369,12 +371,17 @@ public:
 	__host__ void GasAlloc();
 	__host__ int setGasDisk();
 	__host__ int freeGas();
-	__host__ void gasEnergyCall(double *, double *, double *, cudaStream_t, int, int);
-	__host__ void gasEnergyMCall(double *, double *, double *, cudaStream_t, int, int);
+	__host__ void gasEnergyCall();
+	__host__ void gasEnergyMCall(int);
 	__host__ void GasAccCall(double *, double *, double);
 	__host__ void GasAccCall_small(double *, double *, double);
 	__host__ void GasAccCall2_small(double *, double *, double);
 	__host__ void GasAccCall_M(double *, double *, double);
+
+
+	//force
+	__host__ void fragmentCall();
+	__host__ void rotationCall();
 
 	//createparticle
 	__host__ int createReadFile1();
@@ -409,7 +416,7 @@ private:
 	__host__ void resize(int, int &, int);
 
 	//output
-	__host__ void printOutput(double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
+	__host__ void printOutput(double4 *, double4 *, double4 *, int *, double *, double, long long, int, FILE *, double, double4 *, double3 *, double3 *, double *, int, int, float4 *, unsigned int *, unsigned int *, unsigned long long *, unsigned long long *, int, int);
 
 };
 #endif

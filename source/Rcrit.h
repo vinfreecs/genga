@@ -472,7 +472,7 @@ __host__ void Data::firstStep(int noColl){
 		}
 	}
 #else
-	//firstKick_cpu(noColl);
+	firstKick_cpu(noColl);
 #endif
 }
 
@@ -516,9 +516,8 @@ __host__ int Data::step(int noColl){
 		}
 	}
 #else
-	//er = step_cpu(noColl);
-	//if(er == 0) return 0;
-
+	er = step_cpu(noColl);
+	if(er == 0) return 0;
 #endif
 	return 1;
 }

@@ -5,7 +5,6 @@
 #include "FG2.h"
 #include "Encounter3.h"
 #include "BSB.h"
-//#include "BSB2.h"
 #include "BSBM.h"
 #include "BSBM3.h"
 #include "ComEnergy.h"
@@ -41,7 +40,41 @@ double *Kt;		//time factor for Kick steps
 int EjectionFlag2 = 0;
 int StopAtEncounterFlag2 = 0;
 
+
+#if def_CPU == 1
+double Rcut_c[1];
+double RcutSun_c[1];
+int StopAtCollision_c[1];
+double StopMinMass_c[1];
+double CollisionPrecision_c[1]; 
+double CollTshift_c[1]; 
+int CollisionModel_c[1];
+int2 CollTshiftpairs_c[1]; 
+int WriteEncounters_c[1]; 
+double WriteEncountersRadius_c[1]; 
+int WriteEncountersCloudSize_c[1]; 
+int StopAtEncounter_c[1]; 
+double StopAtEncounterRadius_c[1]; 
+double Asteroid_eps_c[1];
+double Asteroid_rho_c[1];
+double Asteroid_C_c[1];
+double Asteroid_A_c[1];
+double Asteroid_K_c[1];
+double Asteroid_V_c[1];
+double Asteroid_rmin_c[1];
+double Asteroid_rdel_c[1];
+double SolarConstant_c[1];
+double Qpr_c[1];
+double SolarWind_c[1];
+
+double BSddt_c[8];		//time stepping factors in Bulirsch-Stoer method
+double BSt0_c[8 * 8];
+
+#endif
+
+
 __host__ void Data::constantCopyDirectAcc(){
+#if def_CPU == 0
 	cudaMemcpyToSymbol(Rcut_c, &Rcut_h[0], sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(RcutSun_c, &RcutSun_h[0], sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(StopAtCollision_c, &P.StopAtCollision, sizeof(int), 0, cudaMemcpyHostToDevice);
@@ -71,6 +104,35 @@ __host__ void Data::constantCopyDirectAcc(){
 	cudaMemcpyToSymbol(Asteroid_V_c, &P.Asteroid_V, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_rmin_c, &P.Asteroid_rmin, sizeof(double), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Asteroid_rdel_c, &P.Asteroid_rdel, sizeof(double), 0, cudaMemcpyHostToDevice);
+#else
+	*Rcut_c = *Rcut_h;
+	*RcutSun_c = *RcutSun_h;
+	*StopAtCollision_c = P.StopAtCollision;
+	*StopMinMass_c = P.StopMinMass;
+	*CollisionPrecision_c = P.CollisionPrecision;
+	*CollTshift_c = P.CollTshift;
+	*CollisionModel_c = P.CollisionModel;
+	*WriteEncounters_c = P.WriteEncounters;
+	*WriteEncountersRadius_c = P.WriteEncountersRadius;
+	*WriteEncountersCloudSize_c = P.WriteEncountersCloudSize;
+	*StopAtEncounter_c = P.StopAtEncounter;
+	*StopAtEncounterRadius_c = P.StopAtEncounterRadius;
+
+	CollTshiftpairs_c[0].x = -1;
+	CollTshiftpairs_c[0].y = -1;
+
+	*SolarConstant_c = P.SolarConstant;
+	*Qpr_c = P.Qpr;
+	*SolarWind_c = P.SolarWind;
+	*Asteroid_eps_c = P.Asteroid_eps;
+	*Asteroid_rho_c = P.Asteroid_rho;
+	*Asteroid_C_c = P.Asteroid_C;
+	*Asteroid_A_c = P.Asteroid_A;
+	*Asteroid_K_c = P.Asteroid_K;
+	*Asteroid_V_c = P.Asteroid_V;
+	*Asteroid_rmin_c = P.Asteroid_rmin;
+	*Asteroid_rdel_c = P.Asteroid_rdel;
+#endif
 }
 
 
@@ -88,8 +150,13 @@ __host__ void Data::constantCopyBS(){
 			t0[(n-1) * 8 + (j -1)] = 1.0 / (ddt[j-1] - ddt[n-1]);
 		}
 	}
+#if def_CPU == 0
 	 cudaMemcpyToSymbol(BSddt_c, ddt, 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
 	 cudaMemcpyToSymbol(BSt0_c, t0, 8 * 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
+#else
+	*BSddt_c = *ddt;
+	*BSt0_c = *t0;
+#endif
 }
 
 
@@ -275,7 +342,6 @@ __host__ int Data::beforeTimeStepLoop1(){
 	SymplecticP(0);
 
 	cudaDeviceSynchronize();
-	cudaMemset(Energy_d, 0, NEnergyT*sizeof(double));
 
 #if def_CPU == 0
 	if(Nst == 1){
@@ -1163,7 +1229,7 @@ __host__ int Data::tuneForce(int &TX){
 		int tx = ttx[i];
 		cudaEventRecord(start, 0);
 		int nn = (NN + tx - 1) / tx;
-		force <<< nn, tx, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
+		force_kernel <<< nn, tx, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NN, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 0);
 
 		if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 			int ncb = min(nn, 1024);
@@ -1273,10 +1339,10 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			for(int t = 0; t < T; ++t){
 				EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
 				if(P.KickFloat == 0){
-					kick16c_kernel < 0 > <<< NN, NB[0] >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN);
+					kick16c_kernel <<< NN, NB[0] >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN, 0);
 				}
 				else{
-					kick16cf_kernel < 0 > <<< NN, NB[0] >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN);
+					kick16cf_kernel <<< NN, NB[0] >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN, 0);
 				}
 			}
 			cudaEventRecord(stop, 0);
@@ -1291,10 +1357,10 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			for(int t = 0; t < T; ++t){
 				EncpairsZeroC <<< (NN + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, NN);
 				if(P.KickFloat == 0){
-					kick32c_kernel < 0 > <<< NN, NB[0], 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN);
+					kick32c_kernel <<< NN, NB[0], 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN, 0);
 				}
 				else{
-					kick32cf_kernel < 0 > <<< NN, NB[0], 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN);
+					kick32cf_kernel <<< NN, NB[0], 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], NN, 0);
 				}
 			}
 			cudaEventRecord(stop, 0);
@@ -1649,10 +1715,15 @@ __host__ int Data::tuneBS(){
 	fprintf(GSF[0].logfile, "\nStarting close-encounter parameters tuning\n");
 
 
+#if def_CPU == 0
 	int2 ij;
 	ij.x = -1;
 	ij.y = -1;
 	cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+#else
+	CollTshiftpairs_c[0].x = -1;
+	CollTshiftpairs_c[0].y = -1;
+#endif
 
 	int NN = N_h[0] + Nsmall_h[0];
 	//save backup values
@@ -1695,8 +1766,9 @@ __host__ int Data::tuneBS(){
 		if(Nenc_m[0] > 0){
 			for(int i = 0; i < def_GMax; ++i){
 				Nenc_m[i] = 0;
-			}			
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			}
+			Nencpairs2_h[0] = 0;		
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 
 		if(EncFlag_m[0] > 0){
@@ -1798,10 +1870,15 @@ __host__ int Data::tuneBS2(){
 	fprintf(GSF[0].logfile, "\nStarting close-encounter parameters tuning\n");
 
 
+#if def_CPU == 0
 	int2 ij;
 	ij.x = -1;
 	ij.y = -1;
 	cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+#else
+	CollTshiftpairs_c[0].x = -1;
+	CollTshiftpairs_c[0].y = -1;
+#endif
 
 	int NN = N_h[0] + Nsmall_h[0];
 	//save backup values
@@ -1895,6 +1972,35 @@ __host__ int Data::tuneBS2(){
 }
 
 
+#if def_CPU == 1
+void Data::firstKick_cpu(int noColl){
+	//use last time information, the beginning of the time step
+	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
+	for(int i = 0; i < NconstT; ++i){
+		a_h[i] = {0.0, 0.0, 0.0};
+		ab_h[i] = {0.0, 0.0, 0.0};
+	}
+	BSstop_h[0] = 0;
+	initialb_cpu (Encpairs_h, Encpairs2_h, NBNencT);
+
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time, EjectionFlag_m, N_h[0], NconstT, P.SLevels, noColl);
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comCall(1);
+	}
+	if(P.setElementsV > 0){
+		setElements_cpu (x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
+	}
+	if(P.setElementsV == 2){
+		comCall(-1);
+	}
+	if(P.KickFloat == 0){
+		kick_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 0);
+	}
+	else{
+		kickf_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 0);
+	}
+}
+#endif
 __host__ void Data::firstKick_16(int noColl){
 	//use last time information, the beginning of the time step
 	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
@@ -1906,15 +2012,17 @@ __host__ void Data::firstKick_16(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
 	if(P.KickFloat == 0){
-		kick16c_kernel < 0 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+		kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 0);
 	}
 	else{
-		kick16cf_kernel < 0 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+		kick16cf_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 0);
 	}
 	cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 }
@@ -1930,16 +2038,18 @@ __host__ void Data::firstKick_largeN(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
 	if(UseAcc == 0){
 		if(P.KickFloat == 0){
-			kick32c_kernel < 0 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+			kick32c_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 0);
 		}
 		else{
-			kick32cf_kernel < 0 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+			kick32cf_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 0);
 		}
 	}
 	else{
@@ -1970,7 +2080,9 @@ __host__ void Data::firstKick_small(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}	
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
@@ -2024,7 +2136,7 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 	double dt = dt_h[0] / ll * FGt[si];
 	
 //printf(" %d | %d %d %d | %d %d %d | %d %d %d | %d %d %d\n", Nenc_m[0], Nenc_m[1], Nenc_m[2], Nenc_m[3], Nenc_m[4], Nenc_m[5], Nenc_m[6], Nenc_m[7], Nenc_m[8], Nenc_m[9],  Nenc_m[10],  Nenc_m[11],  Nenc_m[12]);
-	
+#if def_CPU == 0	
 	//if(Nenc_m[1] > 0) BSB2Step_kernel <2 * 16, 2> <<< (Nenc_m[1] + 15)/ 16, 2 * 16, 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	//if(Nenc_m[1] > 0) BSB2Step_kernel <2, 2> <<< Nenc_m[1], 2, 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, Nenc_m[1], BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 
@@ -2089,6 +2201,24 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 	//for(int i = 0; i < def_GMax; ++i){
 	//	Nenc_m[i] = 0;
 	//}
+#else
+	for(int idx = 0; idx < Nenc_m[1]; ++idx){ 
+		BSBStep_cpu <2> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 0, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+	for(int idx = 0; idx < Nenc_m[2]; ++idx){ 
+		BSBStep_cpu <4> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 1, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+	for(int idx = 0; idx < Nenc_m[3]; ++idx){ 
+		BSBStep_cpu <8> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 2, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+	for(int idx = 0; idx < Nenc_m[4]; ++idx){ 
+		BSBStep_cpu <16> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 3, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+	for(int idx = 0; idx < Nenc_m[5]; ++idx){ 
+		BSBStep_cpu <32> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 4, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+
+#endif
 }
 
 __host__ void Data::BSBMCall(int si, int noColl, double ll){
@@ -2173,7 +2303,12 @@ printf("Backup step 1 %d %.20g %.20g %.20g\n", i, Coll_h[i * def_NColl] * 365.25
 				ij.x = int(Coll_h[i * def_NColl + 1]);
 				ij.y = int(Coll_h[i * def_NColl + 13]);
 printf("Tshiftpairs %d %d\n", ij.x, ij.y);
+#if def_CPU == 0
 				cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+#else
+				CollTshiftpairs_c[0].x = ij.x;
+				CollTshiftpairs_c[0].y = ij.y;
+#endif
 
 				IrregularStep(1.0);
 
@@ -2297,7 +2432,12 @@ printf("Backup step 1 %d %.20g\n", i, Coll_h[i * def_NColl] * 365.25);
 				ij.x = int(Coll_h[i * def_NColl + 1]);
 				ij.y = int(Coll_h[i * def_NColl + 13]);
 printf("Tshiftpairs %d %d\n", ij.x, ij.y);
+#if def_CPU == 0
 				cudaMemcpyToSymbol(CollTshiftpairs_c, &ij, sizeof(int2), 0, cudaMemcpyHostToDevice);
+#else
+				CollTshiftpairs_c[0].x = ij.x;
+				CollTshiftpairs_c[0].y = ij.y;
+#endif
 
 				IrregularStep(1.0);
 
@@ -2499,9 +2639,10 @@ __host__ int Data::PoincareSectionCall(double t){
 //noColl == 1 or -1 is used in collision precision backtracing
 __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl){
 
+#if def_CPU == 0
 	int nt = min(N_h[0] + Nsmall_h[0], 512);
 	int nb = (N_h[0] + Nsmall_h[0] + nt - 1) / nt;
-
+#endif
 	if((noColl == 1 || noColl == -1) && BSAstop_h[0] == 3){
 		printf("stop SEnc call b\n");
 		return; 
@@ -2513,6 +2654,7 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 		setEnc3_kernel <<< nb, nt >>> (NN, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, scan_d, P.NencMax);
 		groupS2_kernel <<< (Nencpairs2_h[0] + 511) / 512, 512 >>> (Nencpairs2_d, Encpairs2_d, Nencpairs3_d + SLevel, Encpairs3_d + SLevel * NBNencT, scan_d, P.NencMax, P.UseTestParticles, N_h[0], SLevel);	
 
+#if def_CPU == 0
 		if(NN <= WarpSize){
 			Scan32c_kernel <<< 1, WarpSize >>> (scan_d, Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, NN, P.NencMax);
 
@@ -2529,17 +2671,21 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 			Scan32d2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(int)  >>> (scan_d, NN);
 			Scan32d3_kernel  <<< ncb, nct >>>  (Encpairs3_d + SLevel * NBNencT, scan_d, Nencpairs3_d + SLevel, NN, P.NencMax);
 		}
+#else
+		Scan_cpu(scan_d, Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, NN, P.NencMax);
+#endif
 
 		cudaMemcpy(Nencpairs3_h + SLevel, Nencpairs3_d + SLevel, sizeof(int), cudaMemcpyDeviceToHost);
 	}
 	cudaDeviceSynchronize();
 // /*if(timeStep % 1000 == 0) */printf("Base0 %d %d %d\n", Nencpairs_h[0], Nencpairs2_h[0], Nencpairs3_h[SLevel]);
 
+#if def_CPU == 0
 	int nt3 = min(Nencpairs3_h[SLevel], 512);
 	int nb3 = (Nencpairs3_h[SLevel] + nt3 - 1) / nt3;
 	int ntf3 = min(Nencpairs3_h[SLevel], 128);
 	int nbf3 = (Nencpairs3_h[SLevel] + ntf3 - 1) / ntf3;
-
+#endif
 	if(P.SERIAL_GROUPING == 1){
 		if(noColl == 0 || SLevel > 0 || noColl == 3){	
 			SortSb_kernel <<< nb3, nt3 >>> (Encpairs3_d + SLevel * NBNencT, Nencpairs3_d + SLevel, N_h[0] + Nsmall_h[0], P.NencMax);
@@ -2583,7 +2729,12 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 					SEnc(time, SLevel, ll, si, noColl);
 				}
 				else{
+#if def_CPU == 0
 					groupCall();
+#else
+					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+#endif
+
 
 					cudaDeviceSynchronize();
 					BSCall(si, time, noColl, ll);
@@ -2602,7 +2753,31 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 	}
 } 
 
+#if def_CPU == 1
+int Data::bStep(int noColl){
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
+	kick32C_cpu (x4_h, v4_h, ab_h, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[0]);
+	HCCall(Ct[0], 1);
+	fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[0], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, 0, P.UseGR);
 
+	if(P.SLevels > 1){
+		if(Nencpairs2_h[0] > 0){
+			double time = time_h[0];
+			SEnc(time, 0, 1.0, 0, noColl);
+		}
+	}
+	else{
+		BSCall(0, time_h[0], noColl, 1.0);
+	}
+
+
+	HCCall(Ct[0], -1);
+	
+	kick32C_cpu (x4_h, v4_h, ab_h, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[0]);
+
+	return 0;
+}
+#else
 __host__ int Data::bStep(int noColl){
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
 	kick32C_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, ab_d, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[0]);
@@ -2627,7 +2802,7 @@ __host__ int Data::bStep(int noColl){
 
 	return 0;
 }
-
+#endif
 __host__ int Data::bStepM(int noColl){
 	RcritM_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, Msun_d, rcrit_d, rcritb_d, rcritv_d, rcritvb_d, dt_d, n1_d, n2_d, Rcut_d, RcutSun_d, EjectionFlag_d, index_d, indexb_d, Nst, NT, time_d, idt_d, ict_d, delta_d, timeStep, StopFlag_d, NconstT, P.SLevels, noColl, Nstart);
 
@@ -2978,6 +3153,173 @@ __host__ int Data::KickfirstndevCall(int EE){
 	return 1;
 }
 
+#if def_CPU == 1
+int Data::step_cpu(int noColl){
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0], NconstT, P.SLevels, noColl);
+
+	//use last time step information for setElements function, the beginning of the time step
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comCall(1);
+	}
+	if(P.setElementsV > 0){
+		setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
+	}
+	if(P.setElementsV == 2){
+		comCall(-1);
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		Sortb_cpu(Encpairs2_h, 0, N_h[0], P.NencMax);
+	}
+	if(doTransits == 0){
+		if(EjectionFlag2 == 0){
+			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+		}
+		else{
+			if(P.KickFloat == 0){
+				kick_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 1);
+			}
+			else{
+				kickf_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 1);
+			}
+		}
+	}
+	if(ForceFlag > 0 || P.setElements > 1){
+		comCall(1);
+		if(P.setElements > 1){
+			setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 1);
+		}
+		if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[SIn - 1]);
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+		}
+		if(P.UseMigrationForce > 0){
+			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
+			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
+		}
+		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		comCall(-1);
+	}
+	EjectionFlag2 = 0;
+
+	for(int si = 0; si < SIn; ++si){
+		HCCall(Ct[si], 1);
+		fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+
+		if(Nenc_m[0] > 0){
+			for(int i = 0; i < def_GMax; ++i){
+				Nenc_m[i] = 0;
+			}
+			Nencpairs2_h[0] = 0;		
+		}
+//printf("Nencpairs %d\n", Nencpairs_h[0]);
+		if(Nencpairs_h[0] > 0){
+			encounter_cpu (x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_h, Encpairs_h, Nencpairs2_h, Encpairs2_h, enccount_h, si, NB[0], time_h[0], P.StopAtEncounter, Ncoll_m, P.MinMass);
+
+			if(P.StopAtEncounter > 0 && Ncoll_m[0] > 0){
+				Ncoll_m[0] = 0;
+				StopAtEncounterFlag2 = 1;
+			}
+			
+			if(P.SLevels > 1){
+				if(Nencpairs2_h[0] > 0){
+					double time = time_h[0];
+					SEnc(time, 0, 1.0, si, noColl);
+				}
+			}
+			else{
+//printf("Nencpairs2 %d\n", Nencpairs2_h[0]);
+				if(Nencpairs2_h[0] > 0){
+					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+				}
+				BSCall(si, time_h[0], noColl, 1.0);
+			}
+		}
+
+		if(StopAtEncounterFlag2 == 1){
+			StopAtEncounterFlag2 = 0;
+			int enc = StopAtEncounterCall();
+			if(enc == 0) return 0;
+		}
+		if(Ncoll_m[0] > 0){
+			int col = CollisionCall(noColl);
+			if(col == 0) return 0;
+		}
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+			int rem = RemoveCall();
+			if( rem == 0) return 0;
+		}
+		if(NWriteEnc_m[0] > 0){
+			int enc = writeEncCall();
+			if(enc == 0) return 0;
+		}
+		HCCall(Ct[si], -1);
+		if(si < SIn - 1){
+			if(P.KickFloat == 0){
+				kick_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 2);
+			}
+			else{
+				kickf_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 2);
+			}
+	
+			if(ForceFlag > 0){
+				comCall(1);
+				if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[si]);
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+					force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[si], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+				}
+				if(P.UseMigrationForce > 0){
+					artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0, 1);
+					//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0], Nst, 0, 1);
+				}
+
+				if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
+				comCall(-1);
+			}
+		}
+	}
+	if(P.KickFloat == 0){
+		kick_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 1);
+	}
+	else{
+		kickf_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 1);
+	}
+	
+	if(ForceFlag > 0){
+		comCall(1);
+		if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[SIn - 1]);
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+		}
+		if(P.UseMigrationForce > 0){
+			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
+			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
+		}
+		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		comCall(-1);
+	}
+	if(EjectionFlag_m[0] > 0){
+		int Ej = EjectionCall();
+		if(Ej == 0) return 0;
+	}
+
+ #if def_poincareFlag == 1
+	int per = PoincareSectionCall(time_h[0]);
+	if(per == 0) return 0;
+ #endif
+	return 1;
+}
+#endif
+
 __host__ int Data::step_1kernel(int noColl){
 	//no Set Elements, no sort, noPoincare, no floatkick, no force
 	// moStopatEncounter, no writeEnc
@@ -2988,7 +3330,7 @@ __host__ int Data::step_1kernel(int noColl){
 		kick32Ab_kernel <<< (N_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0], P.NencMax, 1);
 	}
 	else{
-		kick16c_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+		kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 		cudaEventRecord(KickEvent, 0);
 		cudaStreamWaitEvent(copyStream, KickEvent, 0);
 		cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
@@ -3005,7 +3347,7 @@ __host__ int Data::step_1kernel(int noColl){
 			for(int i = 0; i < def_GMax; ++i){
 				Nenc_m[i] = 0;
 			}			
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 //printf("Nencpairs %d\n", Nencpairs_h[0]);
 		if(Nencpairs_h[0] > 0){
@@ -3048,14 +3390,14 @@ __host__ int Data::step_1kernel(int noColl){
 		}
 		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
-			kick16c_kernel < 2 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+			kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 2);
 			cudaEventRecord(KickEvent, 0);
 			cudaStreamWaitEvent(copyStream, KickEvent, 0);
 			cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
 	
 		}
 	}
-	kick16c_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+	kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 	cudaEventRecord(KickEvent, 0);
 	cudaStreamWaitEvent(copyStream, KickEvent, 0);
 	cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
@@ -3076,7 +3418,9 @@ __host__ int Data::step_16(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
@@ -3090,10 +3434,10 @@ __host__ int Data::step_16(int noColl){
 		}
 		else{
 			if(P.KickFloat == 0){
-				kick16c_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			else{
-				kick16cf_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16cf_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			cudaEventRecord(KickEvent, 0);
 			cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3107,10 +3451,10 @@ __host__ int Data::step_16(int noColl){
 		}
 		else{
 			if(P.KickFloat == 0){
-				kick16c_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			else{
-				kick16cf_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16cf_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			cudaEventRecord(KickEvent, 0);
 			cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3130,12 +3474,14 @@ __host__ int Data::step_16(int noColl){
 #endif
 	if(ForceFlag > 0 || P.setElements > 1){
 		comCall(1);
-		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		if(P.setElements > 1){
+			setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		}
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3146,10 +3492,10 @@ __host__ int Data::step_16(int noColl){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -3164,7 +3510,7 @@ __host__ int Data::step_16(int noColl){
 			for(int i = 0; i < def_GMax; ++i){
 				Nenc_m[i] = 0;
 			}			
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 //printf("Nencpairs %d\n", Nencpairs_h[0]);
 		if(Nencpairs_h[0] > 0){
@@ -3221,10 +3567,10 @@ __host__ int Data::step_16(int noColl){
 		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
-				kick16c_kernel < 2 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 2);
 			}
 			else{
-				kick16cf_kernel < 2 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick16cf_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 2);
 			}
 			cudaEventRecord(KickEvent, 0);
 			cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3236,7 +3582,7 @@ __host__ int Data::step_16(int noColl){
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3248,19 +3594,19 @@ __host__ int Data::step_16(int noColl){
 					//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0, 1);
 				}
 
-				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
 	}
 	if(P.KickFloat == 0){
-		kick16c_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+		kick16c_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 	}
 	else{
-		kick16cf_kernel < 1 > <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+		kick16cf_kernel <<< N_h[0], WarpSize >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 	}
 	cudaEventRecord(KickEvent, 0);
 	cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3272,7 +3618,7 @@ __host__ int Data::step_16(int noColl){
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3283,10 +3629,10 @@ __host__ int Data::step_16(int noColl){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -3311,7 +3657,9 @@ __host__ int Data::step_largeN(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
@@ -3325,10 +3673,10 @@ __host__ int Data::step_largeN(int noColl){
 	else{
 		if(UseAcc == 0){
 			if(P.KickFloat == 0){
-				kick32c_kernel < 1 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick32c_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			else{
-				kick32cf_kernel < 1 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+				kick32cf_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 			}
 			cudaEventRecord(KickEvent, 0);
 			cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3358,12 +3706,14 @@ __host__ int Data::step_largeN(int noColl){
 	}
 	if(ForceFlag > 0 || P.setElements > 1){
 		comCall(1);
-		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		if(P.setElements > 1){
+			setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		}
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3373,10 +3723,10 @@ __host__ int Data::step_largeN(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -3389,7 +3739,7 @@ __host__ int Data::step_largeN(int noColl){
 			for(int i = 0; i < def_GMax; ++i){
 				Nenc_m[i] = 0;
 			}			
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, enccount_d, si, NB[0], time_h[0], P.StopAtEncounter, Ncoll_d, P.MinMass);
@@ -3452,10 +3802,10 @@ __host__ int Data::step_largeN(int noColl){
 			//kick
 			if(UseAcc == 0){
 				if(P.KickFloat == 0){
-					kick32c_kernel < 2 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+					kick32c_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 2);
 				}
 				else{
-					kick32cf_kernel < 2 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+					kick32cf_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 2);
 				}
 				cudaEventRecord(KickEvent, 0);
 				cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3488,7 +3838,7 @@ __host__ int Data::step_largeN(int noColl){
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3498,10 +3848,10 @@ __host__ int Data::step_largeN(int noColl){
 				if(P.UseMigrationForce > 0){
 					artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0, 1);
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -3509,10 +3859,10 @@ __host__ int Data::step_largeN(int noColl){
 	//kick
 	if(UseAcc == 0){
 		if(P.KickFloat == 0){
-			kick32c_kernel < 1 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+			kick32c_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(double3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 		}
 		else{
-			kick32cf_kernel < 1 > <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0]);
+			kick32cf_kernel <<< N_h[0] , min(NB[0], 1024), 2 * WarpSize * sizeof(float3) >>> (x4_d, v4_d, a_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs_d, Encpairs2_d, EncFlag_d, P.NencMax, time_h[0], N_h[0], 1);
 		}
 		cudaEventRecord(KickEvent, 0);
 		cudaStreamWaitEvent(copyStream, KickEvent, 0);
@@ -3547,7 +3897,7 @@ __host__ int Data::step_largeN(int noColl){
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
@@ -3557,10 +3907,10 @@ __host__ int Data::step_largeN(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -3583,7 +3933,9 @@ __host__ int Data::step_small(int noColl){
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
 		comCall(1);
 	}	
-	if(P.setElementsV > 0) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	if(P.setElementsV > 0){
+		setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 0);
+	}
 	if(P.setElementsV == 2){
 		comCall(-1);
 	}
@@ -3621,7 +3973,9 @@ __host__ int Data::step_small(int noColl){
 	}
 	if(ForceFlag > 0 || P.setElements > 1){
 		comCall(1);
-		if(P.setElements > 1) setElements <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		if(P.setElements > 1){
+			setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
+		}
 		if(P.Usegas == 1){
 			GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall_small(time_d, dt_d, Kt[SIn - 1]);
@@ -3633,17 +3987,17 @@ __host__ int Data::step_small(int noColl){
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -3655,7 +4009,7 @@ __host__ int Data::step_small(int noColl){
 		cudaStreamSynchronize(copyStream);
 
 		if(P.WriteEncounters == 2 && si == 0){
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 			if(UseBVH == 1){
 				BVHCall1();
 			}
@@ -3664,17 +4018,17 @@ __host__ int Data::step_small(int noColl){
 			}
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
 			if(Nencpairs2_h[0] > 0){
-				encounter_small__kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
+				encounter_small_kernel <<< (Nencpairs2_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, index_d, spin_d, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_d, NWriteEnc_d, writeEnc_d, time_h[0]);
 			}
 
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 
 		if(Nenc_m[0] > 0){
 			for(int i = 0; i < def_GMax; ++i){
 				Nenc_m[i] = 0;
 			}			
-			setNencpairs <<< 1, 1 >>> (Nencpairs2_d, 1);
+			setNencpairs_kernel <<< 1, 1 >>> (Nencpairs2_d, 1);
 		}
 
 		if(Nencpairs_h[0] > 0){
@@ -3717,7 +4071,7 @@ __host__ int Data::step_small(int noColl){
 			if(col == 0) return 0;
 		}
 		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
-			fragmentCall(random_d, x4_d, v4_d, spin_d, love_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, NconstT, Fragments_d, time_h[0], nFragments_m, nFragments_d, MaxIndex);
+			fragmentCall();
 			if(nFragments_m[0] > 0){
 				int er = printFragments(nFragments_m[0]);
 				if(er == 0) return 0;
@@ -3726,7 +4080,7 @@ __host__ int Data::step_small(int noColl){
 			}
 		}
 		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
-			rotationCall(random_d, x4_d, v4_d, spin_d, index_d, N_h, N_d, Nsmall_h, Nsmall_d, dt_d, Nst, Fragments_d, time_h[0], nFragments_m, nFragments_d);
+			rotationCall();
 			if(nFragments_m[0] > 0){
 				int er = printRotation();
 				if(er == 0) return 0;
@@ -3787,17 +4141,17 @@ __host__ int Data::step_small(int noColl){
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
-					force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						if(N_h[0] + Nsmall_h[0] > FrTX){
 							forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 						}
 					}
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -3838,17 +4192,17 @@ __host__ int Data::step_small(int noColl){
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
-			force <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				if(N_h[0] + Nsmall_h[0] > FrTX){
 					forced2_kernel <<< 1, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, nn, 1);
 				}
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged  <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -3930,15 +4284,15 @@ __host__ int Data::step_M(int noColl){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 	}
 	EjectionFlag2 = 0;
@@ -4005,16 +4359,16 @@ __host__ int Data::step_M(int noColl){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+					force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 					}
 
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 			}
 		}
@@ -4028,16 +4382,16 @@ __host__ int Data::step_M(int noColl){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}
 		}
 
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 	}
 	
@@ -4084,7 +4438,7 @@ __host__ int Data::step_M3(int noColl){
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
 			}
@@ -4092,10 +4446,10 @@ __host__ int Data::step_M3(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 	}
 	EjectionFlag2 = 0;
@@ -4110,8 +4464,8 @@ __host__ int Data::step_M3(int noColl){
 		for(int i = 0; i < def_GMax; ++i){
 			Nenc_m[i] = 0;
 		}
-		setNencpairs <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs2_d, Nst + 1);
-		setNencpairs2 <<< (NT + 127) / 128, 128 >>> (groupIndex_d, NT);
+		setNencpairs_kernel <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs2_d, Nst + 1);
+		setNencpairs2_kernel <<< (NT + 127) / 128, 128 >>> (groupIndex_d, NT);
 
 		if(Nencpairs_h[0] > 0){
 			encounterM3_kernel <<< (Nencpairs_h[0] + 127) / 128 , 128 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, dt_d, Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, index_d, NBS_d, enccount_d, si, FGt[si], Nst, time_d, P.StopAtEncounter, Ncoll_d, n1_d, P.MinMass, P.NencMax);
@@ -4156,7 +4510,7 @@ __host__ int Data::step_M3(int noColl){
 		}
 		
 		HC32aM_kernel <<< Nst, HCTM3, WarpSize * sizeof(double3) >>>(x4_d, v4_d, dt_d, Msun_d, N_d, NBS_d, Nst, Ct[si], P.UseGR, 1);
-		setNencpairs <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs_d, Nst + 1);
+		setNencpairs_kernel <<< (Nst + 1 + 127) / 128, 128 >>> (Nencpairs_d, Nst + 1);
 		if(P.UseGR == 1){
 			convertPseudovToVM <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, NT);
 		}
@@ -4170,7 +4524,7 @@ __host__ int Data::step_M3(int noColl){
 				comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-					force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+					force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
 					}
@@ -4179,10 +4533,10 @@ __host__ int Data::step_M3(int noColl){
 				if(P.UseMigrationForce > 0){
 					artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[si], NT, Nst, 0, 1);
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
 				comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 			}
 		}
@@ -4196,7 +4550,7 @@ __host__ int Data::step_M3(int noColl){
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
-			force <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
+			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
 			}
@@ -4204,10 +4558,10 @@ __host__ int Data::step_M3(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2 <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 	}
 	

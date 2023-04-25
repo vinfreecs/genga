@@ -346,3 +346,19 @@ __global__ void Scan32c_kernel(int2 *scan_d, int *Encpairs3_d, int *Nencpairs3_d
 	}
 }
 
+#if def_CPU == 1
+void Scan_cpu(int2 *scan_h, int *Encpairs3_h, int *Nencpairs3_h, const int N, const int NencMax){
+
+	for(int id = 1; id < N; ++id){
+		scan_h[id].x += scan_h[id - 1].x;
+
+		if(Encpairs3_h[id * NencMax + 0] > 0){
+			int t1 = scan_h[id].x;
+			Encpairs3_h[(t1 - 1) * NencMax + 1] = id;
+		}
+	}
+
+	Nencpairs3_h[0] = scan_h[N - 1].x;
+}
+#endif
+

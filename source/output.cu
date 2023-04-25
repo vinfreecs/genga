@@ -188,7 +188,7 @@ __host__ int Data::firstoutput(int irregular){
 					}
 				}
 
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
+				printOutput(x4_h + NBS, v4_h + NBS, v4Helio_h + NBS, index_h + NBS, test_h + NBS, ict_h[st], 1, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, 0);
 				if(P.FormatP == 1) fclose(GSF[st].outputfile);
 			}
 		}
@@ -330,9 +330,9 @@ __host__ int Data::firstoutput(int irregular){
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, double3 *migration_h, double *rcrit_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
+__host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, double4 *v4Helio_h, int *index_h, double *test_h, double time, long long timeStep, int N, FILE *outputfile, double Msun, double4 *spin_h, double3 *love_h, double3 *migration_h, double *rcrit_h, int Nsmall, int Nst, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int ci, int irregular){
 
-	DemoToHelio(x4_h, v4_h, Msun, N + Nsmall);
+	DemoToHelio(x4_h, v4_h, v4Helio_h, Msun, N + Nsmall);
 	//BaryToHelio(x4_h, v4_h, Msun, N + Nsmall);
 
 	int index;
@@ -396,7 +396,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 
 		if(x4_h[j].w >= 0.0){
 			if(P.OutBinary == 0){
-				//fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4_h[j].x, v4_h[j].y, v4_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
+				//fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4Helio_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4Helio_h[j].x, v4Helio_h[j].y, v4Helio_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
 				for(int f = 0; f < def_Ninformat; ++f){
 					if(GSF[st].outformat[f] == 19){
 						fprintf(outputfile,"%.16g ", time);
@@ -408,7 +408,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 						fprintf(outputfile,"%.40g ", x4_h[j].w);
 					}
 					if(GSF[st].outformat[f] == 8){
-						fprintf(outputfile,"%.40g ", v4_h[j].w);
+						fprintf(outputfile,"%.40g ", v4Helio_h[j].w);
 					}
 					if(GSF[st].outformat[f] == 1){
 						fprintf(outputfile,"%.40g ", x4_h[j].x);
@@ -420,13 +420,13 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 						fprintf(outputfile,"%.40g ", x4_h[j].z);
 					}
 					if(GSF[st].outformat[f] == 5){
-						fprintf(outputfile,"%.40g ", v4_h[j].x);
+						fprintf(outputfile,"%.40g ", v4Helio_h[j].x);
 					}
 					if(GSF[st].outformat[f] == 6){
-						fprintf(outputfile,"%.40g ", v4_h[j].y);
+						fprintf(outputfile,"%.40g ", v4Helio_h[j].y);
 					}
 					if(GSF[st].outformat[f] == 7){
-						fprintf(outputfile,"%.40g ", v4_h[j].z);
+						fprintf(outputfile,"%.40g ", v4Helio_h[j].z);
 					}
 					if(GSF[st].outformat[f] == 10){
 						fprintf(outputfile,"%.40g ", spin_h[j].x);
@@ -517,7 +517,7 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 						fwrite(&x4_h[j].w, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 8){
-						fwrite(&v4_h[j].w, sizeof(double), 1, outputfile);
+						fwrite(&v4Helio_h[j].w, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 1){
 						fwrite(&x4_h[j].x, sizeof(double), 1, outputfile);
@@ -529,13 +529,13 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, int *index_h, doub
 						fwrite(&x4_h[j].z, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 5){
-						fwrite(&v4_h[j].x, sizeof(double), 1, outputfile);
+						fwrite(&v4Helio_h[j].x, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 6){
-						fwrite(&v4_h[j].y, sizeof(double), 1, outputfile);
+						fwrite(&v4Helio_h[j].y, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 7){
-						fwrite(&v4_h[j].z, sizeof(double), 1, outputfile);
+						fwrite(&v4Helio_h[j].z, sizeof(double), 1, outputfile);
 					}
 					if(GSF[st].outformat[f] == 10){
 						fwrite(&spin_h[j].x, sizeof(double), 1, outputfile);
@@ -680,8 +680,7 @@ __host__ void Data::firstInfoB(){
 __host__ int Data::firstEnergy(){
 
 	for(int st = 0; st < Nst; ++st){
-		int NBS = NBS_h[st];
-		EnergyCall(NBT[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NEnergy[st], test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 0);
+		EnergyCall(st, 0);
 	}
 	cudaDeviceSynchronize();
 	error = cudaGetLastError();
@@ -704,18 +703,19 @@ __host__ int Data::EnergyOutput(int irregular){
 		}
 	}
 	if(P.Usegas == 1){
-		if(Nst == 1) gasEnergyCall(Energy_d, test_d, U_d, hstream[0], N_h[0], Nsmall_h[0]);
+		if(Nst == 1){
+			gasEnergyCall();
+		}
 		else{
+#if def_CPU == 0
 			for(int st = 0; st < Nst; ++st){
-				int NBS = NBS_h[st];
-				gasEnergyMCall(Energy_d + NBS, test_d + NBS, U_d + st, hstream[st%16], N_h[st], NB[st]);
+				gasEnergyMCall(st);
 			}
+#endif
 		}
 	}
 	for(int st = 0; st < Nst; ++st){
-		int NBS = NBS_h[st];
-		int NE = NEnergy[st];
-		EnergyCall(NB[st], x4_d + NBS, v4_d + NBS, spin_d + NBS, Msun_h[st].x, Energy_d + NE, test_d + NBS, U_d, LI_d, Energy0_d, LI0_d, hstream[st%16], st, N_h[st], Nsmall_h[st], 1);
+		EnergyCall(st, 1);
 	}
 
 	cudaDeviceSynchronize();
@@ -790,7 +790,6 @@ __host__ int Data::EnergyOutput(int irregular){
 		}
 
 	}
-	cudaMemset(Energy_d, 0, NEnergyT * sizeof(double));
 	
 	return 1;
 }
@@ -1019,7 +1018,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 			}
 		}
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
-			printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+			printOutput(x4_h + NBS, v4_h + NBS, v4Helio_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
 		//}
@@ -1043,7 +1042,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 	}
 	else{
 		cudaMemcpy(coordinateBufferIrr_h, coordinateBufferIrr_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
-		buffer_h = coordinateBuffer_h;
+		buffer_h = coordinateBufferIrr_h;
 	}
 	cudaDeviceSynchronize();
 
@@ -1180,13 +1179,13 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
 				int N = NBuffer[Nst * bf + st].x;		
 				int Nsmall = NBuffer[Nst * bf + st].y;
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, v4Helio_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBuffer[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 			else{
 				int N = NBufferIrr[Nst * bf + st].x;		
 				int Nsmall = NBufferIrr[Nst * bf + st].y;		
 				time = buffer_h[def_BufferSize * NconstT * bf + def_BufferSize * NBS];
-				printOutput(x4_h + NBS, v4_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
+				printOutput(x4_h + NBS, v4_h + NBS, v4Helio_h + NBS, index_h + NBS, test_h + NBS, time/365.25, timestepBufferIrr[bf], N, GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall, Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 			}
 
 			if(P.FormatP == 1) fclose(GSF[st].outputfile);
@@ -1296,7 +1295,7 @@ __host__ int Data::MaxGroups(){
 			else{
 				GSF[0].outputfile = fopen(GSF[0].outputfilename, "wb");	
 			}
-			printOutput(x4_h, v4_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, migration_h, rcrit_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
+			printOutput(x4_h, v4_h, v4Helio_h, index_h, test_h, time_h[0]/365.25, timeStep, N_h[0], GSF[0].outputfile, Msun_h[0].x, spin_h, love_h, migration_h, rcrit_h, Nsmall_h[0], Nst, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, P.ci, 0);
 			fclose(GSF[0].outputfile);
 
 			fprintf(GSF[0].logfile,"Error: Too big group:%g. Integration Stopped at timestep = %lld\n", pow(2.0, nm), timeStep);

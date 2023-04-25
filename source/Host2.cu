@@ -179,6 +179,8 @@ __host__ int Host::DeviceInfo(){
 			return 0;
 		}
 	}
+#else
+	devCount = 1;
 #endif
 	return 1;
 }
@@ -3517,13 +3519,13 @@ __host__ void Host::Tsizes(){
 		NT += N_h[st];
 		NsmallT += Nsmall_h[st];
 		NBNencT += NB[st] * P.NencMax;
-		NEnergyT += max(N_h[st], 8);
+		NEnergyT += 8;
 	}
 	
 	NconstT = NT + NsmallT + P.Nfragments;
 	if(Nst == 1){
 		NBNencT = NconstT * P.NencMax;
-		NEnergyT = max(NconstT, 8);
+		NEnergyT = 8;
 	}
 }
 
