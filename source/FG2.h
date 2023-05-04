@@ -26,8 +26,8 @@ __host__ void Data::constantCopy(){
 	cudaMemcpyToSymbol(Gridae_c, GridaeP, 9*sizeof(float), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(GridaeN_c, GridaeN, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 #else
-	*Gridae_c = *GridaeP;
-	*GridaeN_c = *GridaeN;
+	memcpy(Gridae_c, GridaeP, 9*sizeof(float));
+	memcpy(GridaeN_c, GridaeN, 3*sizeof(int));
 #endif
 }
 //**************************************
@@ -43,18 +43,18 @@ __host__ void Data::constantCopy2(){
 #if def_CPU == 0
 	cudaMemcpyToSymbol(UseaeGrid_c, &P.UseaeGrid, sizeof(int), 0, cudaMemcpyHostToDevice);
 #else
-	*UseaeGrid_c = P.UseaeGrid;
+	memcpy(UseaeGrid_c, &P.UseaeGrid, sizeof(int));
 #endif
 }
 
 
 __host__ void Data::constantCopySC(double *S_h, double *C_h){
 #if def_CPU == 0
-	cudaMemcpyToSymbol(S_c, S_h, sizeof(S_h), 0, cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(C_c, C_h, sizeof(C_h), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(S_c, S_h, (def_FGN + 1) * sizeof(double), 0, cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(C_c, C_h, (def_FGN + 1) * sizeof(double), 0, cudaMemcpyHostToDevice);
 #else
-	*S_c = *S_h;
-	*C_c = *C_h;
+	memcpy(S_c, S_h, (def_FGN + 1) * sizeof(double));
+	memcpy(C_c, C_h, (def_FGN + 1) * sizeof(double));
 #endif
 }
 

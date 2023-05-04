@@ -17,7 +17,6 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 	double dt2, dt22;
 	double t = 0.0;
 
-
 	double dtgr[NN];
 
 	double4 x4_s[NN];
@@ -46,7 +45,7 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 	int N2 = Encpairs2_h[si].y; //Number of bodies in current BS simulation
 	int start = Encpairs2_h[NT + si].y;
 
-printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
+//printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
 
 	if(dt < 0.0){
 		sgnt = -1;
@@ -55,14 +54,14 @@ printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
 
 	for(int i = 0; i < N2; ++i){
 		int idi = Encpairs2_h[start + i].x;
-printf("BS2 %d %d %d %d %d %d %d\n", idx, st, si, idi, index_h[idi], N2, NN);
+//printf("BS2 %d %d %d %d %d %d %d\n", idx, st, si, idi, index_h[idi], N2, NN);
 
 		x4_s[i] = xold_h[idi];
 		v4_s[i] = vold_h[idi];
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[i + l * NN] = rcritv_h[idi + l * NconstT];
 		}
-printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xold_h[idi].y, xold_h[idi].z, vold_h[idi].x, vold_h[idi].y, vold_h[idi].z);
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xold_h[idi].y, xold_h[idi].z, vold_h[idi].x, vold_h[idi].y, vold_h[idi].z);
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
@@ -100,22 +99,17 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 	for(int tt = 0; tt < 10000; ++tt){
 
 		for(int i = 0; i < N2; ++i){
-			scalex_s[i].x = 1.0 / (x4_s[i].x * x4_s[i].x + 1.0e-20);
-			scalex_s[i].y = 1.0 / (x4_s[i].y * x4_s[i].y + 1.0e-20);
-			scalex_s[i].z = 1.0 / (x4_s[i].z * x4_s[i].z + 1.0e-20);
+			scalex_s[i].x = 1.0 / ((x4_s[i].x * x4_s[i].x) + 1.0e-20);
+			scalex_s[i].y = 1.0 / ((x4_s[i].y * x4_s[i].y) + 1.0e-20);
+			scalex_s[i].z = 1.0 / ((x4_s[i].z * x4_s[i].z) + 1.0e-20);
 
-			scalev_s[i].x = 1.0 / (v4_s[i].x * v4_s[i].x + 1.0e-20);
-			scalev_s[i].y = 1.0 / (v4_s[i].y * v4_s[i].y + 1.0e-20);
-			scalev_s[i].z = 1.0 / (v4_s[i].z * v4_s[i].z + 1.0e-20);
+			scalev_s[i].x = 1.0 / ((v4_s[i].x * v4_s[i].x) + 1.0e-20);
+			scalev_s[i].y = 1.0 / ((v4_s[i].y * v4_s[i].y) + 1.0e-20);
+			scalev_s[i].z = 1.0 / ((v4_s[i].z * v4_s[i].z) + 1.0e-20);
 		}
 
 		for(int i = 0; i < N2; ++i){
-			a0_s[i].x = 0.0;
-			a0_s[i].y = 0.0;
-			a0_s[i].z = 0.0;
-		}
-
-		for(int i = 0; i < N2; ++i){
+			a0_s[i] = {0.0, 0.0, 0.0};
 			for(int j = 0; j < N2; ++j){
 				accEnc(x4_s[i], x4_s[j], a0_s[i], rcritv_s, test, i, j, NN, MinMass, UseTestParticles, SLevels);
 			}
@@ -142,12 +136,7 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 				}
 
 				for(int i = 0; i < N2; ++i){
-					a_s[i].x = 0.0;
-					a_s[i].y = 0.0;
-					a_s[i].z = 0.0;
-				}
-
-				for(int i = 0; i < N2; ++i){
+					a_s[i] = {0.0, 0.0, 0.0};
 					for(int j = 0; j < N2; ++j){
 						accEnc(xp_s[i], xp_s[j], a_s[i], rcritv_s, test, i, j, NN, MinMass, UseTestParticles, SLevels);
 					}
@@ -167,13 +156,9 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 				}
 				
 				for(int m = 2; m <= n; ++m){
-					for(int i = 0; i < N2; ++i){
-						a_s[i].x = 0.0;
-						a_s[i].y = 0.0;
-						a_s[i].z = 0.0;
-					}
 
 					for(int i = 0; i < N2; ++i){
+						a_s[i] = {0.0, 0.0, 0.0};
 						for(int j = 0; j < N2; ++j){
 							accEnc(xt_s[i], xt_s[j], a_s[i], rcritv_s, test, i, j, NN, MinMass, UseTestParticles, SLevels);
 						}
@@ -191,12 +176,7 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 					}
 
 					for(int i = 0; i < N2; ++i){
-						a_s[i].x = 0.0;
-						a_s[i].y = 0.0;
-						a_s[i].z = 0.0;
-					}
-
-					for(int i = 0; i < N2; ++i){
+						a_s[i] = {0.0, 0.0, 0.0};
 						for(int j = 0; j < N2; ++j){
 							accEnc(xp_s[i], xp_s[j], a_s[i], rcritv_s, test, i, j, NN, MinMass, UseTestParticles, SLevels);
 						}
@@ -215,12 +195,7 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 				}//end of m loop
 
 				for(int i = 0; i < N2; ++i){
-					a_s[i].x = 0.0;
-					a_s[i].y = 0.0;
-					a_s[i].z = 0.0;
-				}
-
-				for(int i = 0; i < N2; ++i){
+					a_s[i] = {0.0, 0.0, 0.0};
 					for(int j = 0; j < N2; ++j){
 						accEnc(xt_s[i], xt_s[j], a_s[i], rcritv_s, test, i, j, NN, MinMass, UseTestParticles, SLevels);
 					}
@@ -235,16 +210,17 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 					dv_s[i][n-1].x = 0.5 * (vt_s[i].x + (vp_s[i].x + (dt2 * a_s[i].x)));
 					dv_s[i][n-1].y = 0.5 * (vt_s[i].y + (vp_s[i].y + (dt2 * a_s[i].y)));
 					dv_s[i][n-1].z = 0.5 * (vt_s[i].z + (vp_s[i].z + (dt2 * a_s[i].z)));	
-//printf("dx %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, i, , dx_s[i][n-1].x, dx_s[i][n-1].y, dx_s[i][n-1].z, dv_s[i][n-1].x, dv_s[i][n-1].y, dv_s[i][n-1].z);
+//printf("dx %d %d %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", tt, ff, n, i, dx_s[i][n-1].x, dx_s[i][n-1].y, dx_s[i][n-1].z, dv_s[i][n-1].x, dv_s[i][n-1].y, dv_s[i][n-1].z);
 				}
-				
+
+				error = 0.0;
 				for(int i = 0; i < N2; ++i){
 					for(int j = n-1; j >= 1; --j){
 						double t0 = BSt0_c[(n-1) * 8 + (j-1)];
 						double t1 = t0 * BSddt_c[j];
 						double t2 = t0 * BSddt_c[n-1];
-						
-						dx_s[i][j-1].x = (t1 * dx_s[i][j].x) - (t2 * dx_s[i][j-1].x);	
+
+						dx_s[i][j-1].x = (t1 * dx_s[i][j].x) - (t2 * dx_s[i][j-1].x);
 						dx_s[i][j-1].y = (t1 * dx_s[i][j].y) - (t2 * dx_s[i][j-1].y);
 						dx_s[i][j-1].z = (t1 * dx_s[i][j].z) - (t2 * dx_s[i][j-1].z);
 
@@ -252,23 +228,25 @@ printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xol
 						dv_s[i][j-1].y = (t1 * dv_s[i][j].y) - (t2 * dv_s[i][j-1].y);
 						dv_s[i][j-1].z = (t1 * dv_s[i][j].z) - (t2 * dv_s[i][j-1].z);
 					}
-					double errorx = dx_s[i][0].x * dx_s[i][0].x * scalex_s[i].x;
-					double errorv = dv_s[i][0].x * dv_s[i][0].x * scalev_s[i].x;
-					errorx = fmax(errorx, dx_s[i][0].y * dx_s[i][0].y * scalex_s[i].y);
-					errorv = fmax(errorv, dv_s[i][0].y * dv_s[i][0].y * scalev_s[i].y);
+					double errorx = (dx_s[i][0].x * dx_s[i][0].x) * scalex_s[i].x;
+					double errorv = (dv_s[i][0].x * dv_s[i][0].x) * scalev_s[i].x;
 
-					errorx = fmax(errorx, dx_s[i][0].z * dx_s[i][0].z * scalex_s[i].z);
-					errorv = fmax(errorv, dv_s[i][0].z * dv_s[i][0].z * scalev_s[i].z);
+					errorx = fmax(errorx, (dx_s[i][0].y * dx_s[i][0].y) * scalex_s[i].y);
+					errorv = fmax(errorv, (dv_s[i][0].y * dv_s[i][0].y) * scalev_s[i].y);
 
-					error = fmax(errorx, errorv);
-//printf("%d %d %d %d %.20g %g %g %g %g %g %g | %g %g \n", i, tt, ff, n, error, dx_s[i][0].x, dx_s[i][0].y, dx_s[i][0].z, dv_s[i][0].x, dv_s[i][0].y, dv_s[i][0].z, t, dt1); 
+					errorx = fmax(errorx, (dx_s[i][0].z * dx_s[i][0].z) * scalex_s[i].z);
+					errorv = fmax(errorv, (dv_s[i][0].z * dv_s[i][0].z) * scalev_s[i].z);
+
+					error = fmax(error, errorx);
+					error = fmax(error, errorv);
+//printf("%d %d %d %d %.20g %.20g %.20g %g %g %g %g | %g %g \n", i, tt, ff, n, error, dx_s[i][0].x, dx_s[i][0].y, dx_s[i][0].z, dv_s[i][0].x, dv_s[i][0].y, dv_s[i][0].z, t, dt1); 
 	
 
 				}
 				Ncol_s[0] = 0;
 				Coltime_s[0] = 10.0;
 
-
+//printf("error %.20g %.20g %.20g %.20g\n", error, def_tol * def_tol, sgnt * dt1, def_dtmin);
 				if(error < def_tol * def_tol || sgnt * dt1 < def_dtmin){
 
 					for(int i = 0; i < N2; ++i){

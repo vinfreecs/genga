@@ -3063,7 +3063,7 @@ __host__ int Host::icSize(int st){
 		else break;
 	}
 	fclose(infile);
-//	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d\n", st, time, NN, Nsmall_h[st]);
+//	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d %s\n", st, time, NN, Nsmall_h[st], GSF[st].inputfilename);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;

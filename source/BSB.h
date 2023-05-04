@@ -123,13 +123,13 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		__syncthreads();
 
 		if(idy < N2){
-			scalex.x = 1.0 / (x4_s[idy].x * x4_s[idy].x + 1.0e-20);
-			scalex.y = 1.0 / (x4_s[idy].y * x4_s[idy].y + 1.0e-20);
-			scalex.z = 1.0 / (x4_s[idy].z * x4_s[idy].z + 1.0e-20);
+			scalex.x = 1.0 / (__dmul_rn(x4_s[idy].x, x4_s[idy].x) + 1.0e-20);
+			scalex.y = 1.0 / (__dmul_rn(x4_s[idy].y, x4_s[idy].y) + 1.0e-20);
+			scalex.z = 1.0 / (__dmul_rn(x4_s[idy].z, x4_s[idy].z) + 1.0e-20);
 
-			scalev.x = 1.0 / (v4_s[idy].x * v4_s[idy].x + 1.0e-20);
-			scalev.y = 1.0 / (v4_s[idy].y * v4_s[idy].y + 1.0e-20);
-			scalev.z = 1.0 / (v4_s[idy].z * v4_s[idy].z + 1.0e-20);
+			scalev.x = 1.0 / (__dmul_rn(v4_s[idy].x, v4_s[idy].x) + 1.0e-20);
+			scalev.y = 1.0 / (__dmul_rn(v4_s[idy].y, v4_s[idy].y) + 1.0e-20);
+			scalev.z = 1.0 / (__dmul_rn(v4_s[idy].z, v4_s[idy].z) + 1.0e-20);
 		}
 
 		if(idy < NN){
@@ -534,25 +534,34 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 						double t0 = BSt0_c[(n-1) * 8 + (j-1)];
 						double t1 = t0 * BSddt_c[j];
 						double t2 = t0 * BSddt_c[n-1];
-						
-						dx_s[idy][j-1].x = (t1 * dx_s[idy][j].x) - (t2 * dx_s[idy][j-1].x);	
-						dx_s[idy][j-1].y = (t1 * dx_s[idy][j].y) - (t2 * dx_s[idy][j-1].y);
-						dx_s[idy][j-1].z = (t1 * dx_s[idy][j].z) - (t2 * dx_s[idy][j-1].z);
 
-						dv_s[idy][j-1].x = (t1 * dv_s[idy][j].x) - (t2 * dv_s[idy][j-1].x);
-						dv_s[idy][j-1].y = (t1 * dv_s[idy][j].y) - (t2 * dv_s[idy][j-1].y);
-						dv_s[idy][j-1].z = (t1 * dv_s[idy][j].z) - (t2 * dv_s[idy][j-1].z);
+					 	double tx = __dmul_rn(t1, dx_s[idy][j].x) - __dmul_rn(t2, dx_s[idy][j-1].x);
+					 	double ty = __dmul_rn(t1, dx_s[idy][j].y) - __dmul_rn(t2, dx_s[idy][j-1].y);
+					 	double tz = __dmul_rn(t1, dx_s[idy][j].z) - __dmul_rn(t2, dx_s[idy][j-1].z);
+		
+					 	double tvx = __dmul_rn(t1, dv_s[idy][j].x) - __dmul_rn(t2, dv_s[idy][j-1].x);
+					 	double tvy = __dmul_rn(t1, dv_s[idy][j].y) - __dmul_rn(t2, dv_s[idy][j-1].y);
+					 	double tvz = __dmul_rn(t1, dv_s[idy][j].z) - __dmul_rn(t2, dv_s[idy][j-1].z);
+
+						dx_s[idy][j-1].x = tx;
+						dx_s[idy][j-1].y = ty;
+						dx_s[idy][j-1].z = tz;
+
+						dv_s[idy][j-1].x = tvx;
+						dv_s[idy][j-1].y = tvy;
+						dv_s[idy][j-1].z = tvz;
 					}
-					double errorx = dx_s[idy][0].x * dx_s[idy][0].x * scalex.x;
-					double errorv = dv_s[idy][0].x * dv_s[idy][0].x * scalev.x;
-					errorx = fmax(errorx, dx_s[idy][0].y * dx_s[idy][0].y * scalex.y);
-					errorv = fmax(errorv, dv_s[idy][0].y * dv_s[idy][0].y * scalev.y);
+					double errorx = __dmul_rn(dx_s[idy][0].x, dx_s[idy][0].x) * scalex.x;
+					double errorv = __dmul_rn(dv_s[idy][0].x, dv_s[idy][0].x) * scalev.x;
 
-					errorx = fmax(errorx, dx_s[idy][0].z * dx_s[idy][0].z * scalex.z);
-					errorv = fmax(errorv, dv_s[idy][0].z * dv_s[idy][0].z * scalev.z);
+					errorx = fmax(errorx, __dmul_rn(dx_s[idy][0].y, dx_s[idy][0].y) * scalex.y);
+					errorv = fmax(errorv, __dmul_rn(dv_s[idy][0].y, dv_s[idy][0].y) * scalev.y);
+
+					errorx = fmax(errorx, __dmul_rn(dx_s[idy][0].z, dx_s[idy][0].z) * scalex.z);
+					errorv = fmax(errorv, __dmul_rn(dv_s[idy][0].z, dv_s[idy][0].z) * scalev.z);
 
 					error = fmax(errorx, errorv);
-//printf("%d %d %d %d %d %.20g %g %g %g %g %g %g | %g %g \n", idy, tt, ff, n, idi, error, dx_s[idy][0].x, dx_s[idy][0].y, dx_s[idy][0].z, dv_s[idy][0].x, dv_s[idy][0].y, dv_s[idy][0].z, t, dt1); 
+//printf("%d %d %d %d %d %.20g %.20g %.20g %g %g %g %g | %g %g \n", idy, tt, ff, n, idi, error, dx_s[idy][0].x, dx_s[idy][0].y, dx_s[idy][0].z, dv_s[idy][0].x, dv_s[idy][0].y, dv_s[idy][0].z, t, dt1); 
 	
 					Ncol_s[0] = 0;
 					Coltime_s[0] = 10.0;
@@ -579,6 +588,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					if(idy == 0) error_s[0] = error;
 				}
 				__syncthreads();
+//printf("error %.20g %.20g %.20g %.20g\n", error_s[0], def_tol * def_tol, sgnt * dt1, def_dtmin);
 
 				if(error_s[0] < def_tol * def_tol || sgnt * dt1 < def_dtmin){
 

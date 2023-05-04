@@ -879,8 +879,8 @@ __host__ void Host::constantCopy3(int *Elements, const int nelements, const int 
 	cudaMemcpyToSymbol(setElements_c, Elements, 25 * sizeof(int), 0, cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int), 0, cudaMemcpyHostToDevice);
 #else
-	*setElements_c = *Elements;
-	*setElementsNumbers_c = *setElementsNumbers;
+	memcpy(setElements_c, Elements, 25 * sizeof(int));
+	memcpy(setElementsNumbers_c, setElementsNumbers, 3 * sizeof(int));
 #endif
 }
 

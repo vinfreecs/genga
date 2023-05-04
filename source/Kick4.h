@@ -30,10 +30,18 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
 
+#if def_CPU == 0
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+#else
+			int Ni = Encpairs2_d[i * NencMax].x++;
+#endif
 //printf("enc1 %d %d %d\n", i, j, Ni);
 			if(Ni >= NencMax){
+#if def_CPU == 0
 				atomicMax(&EncFlag_d[0], Ni);
+#else
+				EncFlag_m[0] = max(EncFlag_m[0], Ni);
+#endif
 			}
 			else{
 				Encpairs2_d[i * NencMax + Ni].y = j;
@@ -41,7 +49,11 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 			if(EE == 0){
 				if(i < j && Ni < NencMax){
+#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+					int Ne = Nencpairs_d[0]++;
+#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 //printf("Precheck %d %d %d\n", i, j, EE);
@@ -49,7 +61,11 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 			}
 			if(EE > 0){
 				if(i > j && Ni < NencMax){
+#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+					int Ne = Nencpairs_d[0]++;
+#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 //printf("Precheck %d %d %d\n", i, j, EE);
@@ -87,10 +103,18 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 		if(rsq < def_pcf * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
 
+#if def_CPU == 0
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-	//printf("enc1 %d %d %d\n", i, j, Ni);
+#else
+			int Ni = Encpairs2_d[i * NencMax].x++;
+#endif
+//printf("enc1 %d %d %d\n", i, j, Ni);
 			if(Ni >= NencMax){
+#if def_CPU == 0
 				atomicMax(&EncFlag_d[0], Ni);
+#else
+				EncFlag_m[0] = max(EncFlag_m[0], Ni);
+#endif
 			}
 			else{
 				Encpairs2_d[i * NencMax + Ni].y = j;
@@ -98,14 +122,22 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 			if(EE == 0){
 				if(i < j && Ni < NencMax){
+#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+					int Ne = Nencpairs_d[0]++;
+#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 				}
 			}
 			if(EE > 0){
 				if(i > j && Ni < NencMax){
+#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+					int Ne = Nencpairs_d[0]++;
+#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 				}
@@ -130,7 +162,7 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 //Date: March 2019
 //Author: Simon Grimm
 // *******************************************************************************************
-__global__ void EncpairsZeroC(int2 *Encpairs2_d, double3 *a_d, int *Nencpairs_d, int *Nencpairs2_d, const int NencMax, const int N){
+__global__ void EncpairsZeroC_kernel(int2 *Encpairs2_d, double3 *a_d, int *Nencpairs_d, int *Nencpairs2_d, const int NencMax, const int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -185,6 +217,7 @@ __global__ void compare_a_kernel(double3 *a_d, double3 *ab_d, const int KickFloa
 // EE = 2: used for semi test particles
 // Date: April 2019
 // Author: Simon Grimm
+#if def_CPU == 0
 __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	int idy = threadIdx.y;
@@ -552,6 +585,75 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 		}
 	}
 }
+#else
+void acc4C_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_h, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+
+	for(int i = Nstart; i < N; ++i){
+
+		double4 x4i = x4_h[i];
+		double rcritvi = rcritv_h[i];
+		if(EE < 2){
+			Encpairs2_h[i * NencMax].x = 0;
+		}
+
+		double3 a = {0.0, 0.0, 0.0};
+		for(int j = N0; j < N1; ++j){
+			acc_e(a, x4i, x4_h[j], rcritvi, rcritv_h[j], Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_h, j, i, NencMax, EE);
+		}
+
+		if(EE < 2){
+			acck_h[i].x = a.x;
+			acck_h[i].y = a.y;
+			acck_h[i].z = a.z;
+		}
+		if(EE == 2){
+			acck_h[i].x += a.x;
+			acck_h[i].y += a.y;
+			acck_h[i].z += a.z;
+		}
+	}
+}
+
+void acc4Cf_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_h, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+
+	for(int i = Nstart; i < N; ++i){
+
+		float4 x4i;
+
+		x4i.x = float(x4_h[i].x);
+		x4i.y = float(x4_h[i].y);
+		x4i.z = float(x4_h[i].z);
+		x4i.w = float(x4_h[i].w);
+		float rcritvi = float(rcritv_h[i]);
+
+		if(EE < 2){
+			Encpairs2_h[i * NencMax].x = 0;
+		}
+
+		float3 a = {0.0f, 0.0f, 0.0f};
+		for(int j = N0; j < N1; ++j){
+			float4 x4j;
+			x4j.x = float(x4_h[j].x);
+			x4j.y = float(x4_h[j].y);
+			x4j.z = float(x4_h[j].z);
+			x4j.w = float(x4_h[j].w);
+			float rcritvj = float(rcritv_h[j]);
+			acc_ef(a, x4i, x4j, rcritvi, rcritvj, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_h, j, i, NencMax, EE);
+		}
+
+		if(EE < 2){
+			acck_h[i].x = a.x;
+			acck_h[i].y = a.y;
+			acck_h[i].z = a.z;
+		}
+		if(EE == 2){
+			acck_h[i].x += a.x;
+			acck_h[i].y += a.y;
+			acck_h[i].z += a.z;
+		}
+	}
+}
+#endif
 
 
 //******************************************************
@@ -561,7 +663,7 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 //Author: Simon Grimm, Joachim Stadel
 // January 2015
 //********************************************************
-__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int j, int i, int NconstT){
+__device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int j, int i, const int NconstT){
 
 	double3 r3ij;
 
@@ -595,7 +697,7 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 }
 
 
-__device__ void  accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i, int NconstT){
+__device__ void accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, double rcritvj, int j, int i, const int NconstT){
 	if( i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
 		double rsq, ir, ir3, s;
 		double3 r3ij;
@@ -779,7 +881,7 @@ __global__ void ForceSq_kernel(double4 *x4_d, double3 *f_d, double *rcritv_d, in
 	f_d[idy + J * p].z += fj_s[idy].z;
 }
 
-__global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax, int N){
+__global__ void EncpairsZero_kernel(int2 *Encpairs2_d, double3 *a_d, const int NencMax, const int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -794,7 +896,7 @@ __global__ void EncpairsZero(int2 *Encpairs2_d, double3 *a_d, int NencMax, int N
 }
 
 
-__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, double dtksq, int N){
+__global__ void acclargeN_kernel(double4 *x4_d, double3 *f_d, double dtksq, const int N){
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -827,7 +929,7 @@ __host__ void ForceDriver(double4 *x4_d, double *rcritv_d, double3 *f_d, int2 *E
 	const int nb = NB / (2 * p);
 
 	//set NencpairsI and NencpairsJ to zero
-	EncpairsZero <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax, NB);
+	EncpairsZero_kernel <<< (NB + p - 1) / p, p >>> (Encpairs2_d, f_d, NencMax, NB);
 	//Blocks on the Diagonal
 	ForceDiag_kernel < p > <<< NB / p, p>>> (x4_d, f_d, rcritv_d, NconstT);
 

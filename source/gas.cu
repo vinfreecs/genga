@@ -48,7 +48,7 @@ __host__ void Data::GasAlloc(){
 #if def_CPU == 0
 	cudaMemcpyToSymbol(Gas_parameters_c, Gas_parameters_h, 8 * sizeof(double), 0, cudaMemcpyHostToDevice);
 #else
-	*Gas_parameters_c = *Gas_parameters_h;
+	memcpy(Gas_parameters_c, Gas_parameters_h, 8 * sizeof(double));
 #endif
 }
 

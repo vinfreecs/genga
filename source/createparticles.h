@@ -501,7 +501,7 @@ printf("%d %d %d\n", i, id, j);
 #if def_CPU == 0
 	cudaMemcpyToSymbol(CreateParticlesParameters_c, parameters, 12 * sizeof(double), 0, cudaMemcpyHostToDevice);
 #else
-	*CreateParticlesParameters_c = *parameters;
+	memcpy(CreateParticlesParameters_c, parameters, 12 * sizeof(double));
 #endif
 
 

@@ -403,9 +403,9 @@ for line in Lines:
 	if(line.find('forceYarkovskyOld.h') != -1):
 		line = line.replace('forceYarkovskyOld.h', 'forceYarkovskyOldCPU.h')
 	if(line.find('Kick4.h') != -1):
-		line = '//' + line
+		line = line.replace('Kick4.h', 'Kick4CPU.h')
 	if(line.find('BSA.h') != -1):
-		line = '//' + line
+		line = line.replace('BSA.h', 'BSACPU.h')
 	if(line.find('BSAM3.h') != -1):
 		line = '//' + line
 	if(line.find('Scan.h') != -1):
@@ -432,8 +432,6 @@ for line in Lines:
 	if(line.find('int Data::tuneHCM3') != -1):
 		remove = 1
 	if(line.find('int Data::tuneBVH') != -1):
-		remove = 1
-	if(line.find('int Data::tuneBS') != -1):
 		remove = 1
 	if(line.find('int Data::tuneBS2') != -1):
 		remove = 1
@@ -584,6 +582,36 @@ for line in Lines:
 		line = line.replace('>>>', '*/')
 
 	if(line.find('encounter_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('EncpairsZeroC_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('Rcrit_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('acc4C_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('kick32Ab_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('fg_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('setNencpairs_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
@@ -1108,6 +1136,90 @@ for line in Lines:
 file1.close()
 file2.close()
 
+################################################
+# Kick4.h 
+################################################
+
+filename = '../source/Kick4.h'
+filename2 = 'Kick4CPU.h'
+
+file1 = open(filename, 'r')
+file2 = open(filename2, 'w')
+
+Lines = file1.readlines()
+
+remove = 0
+
+for line in Lines:
+
+	#Remove functions
+	if(line.find('void forceij') != -1):
+		remove = 1
+	if(line.find('void accc') != -1):
+		remove = 1
+	if(line.find('void ForceTri_kernel') != -1):
+		remove = 1
+	if(line.find('void ForceDiag_kernel') != -1):
+		remove = 1
+	if(line.find('void ForceSq_kernel') != -1):
+		remove = 1
+	if(line.find('void EncpairsZero_kernel') != -1):
+		remove = 1
+	if(line.find('void acclargeN_kernel') != -1):
+		remove = 1
+	if(line.find('void ForceDriver') != -1):
+		remove = 1
+
+	if(remove == 1):
+		if(line.startswith('}',0,1)):
+			remove = 0
+			continue
+
+	if(remove == 1):
+		continue
+
+
+	if(line.find('__device__') != -1):
+		line = line.replace('__device__ ', '')
+
+	if(line.find('__syncthreads') != -1):
+		continue 
+
+	if(line.find('template') != -1):
+		continue 
+
+	#Add loops
+
+	if(line.find('void EncpairsZeroC_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void compare_a_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+
+	if(addLoop == 1):
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, i_id2, loop_id2, loop_N2)
+		if(line.startswith('}',0,1)):
+			addLoop = 0
+			loop_id = ''
+			loop_id2 = ''
+			loop_N = ''
+			loop_N2 = ''
+			i_id = ''
+			i_id22 = ''
+
+
+	line = DtoH(line)
+	
+	print(line, file=file2, end='')
+
+
+file1.close()
+file2.close()
 
 ################################################
 # Scan.h 
@@ -1798,8 +1910,6 @@ for line in Lines:
 
 
 	#Remove functions
-	if(line.find('void setNencpairs_kernel') != -1):
-		remove = 1
 	if(line.find('void setNencpairs2_kernel') != -1):
 		remove = 1
 	if(line.find('void encounterM_kernel') != -1):
@@ -1827,6 +1937,11 @@ for line in Lines:
 	if(remove == 1):
 		continue
 	
+	if(line.find('void setNencpairs_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
 	if(line.find('void encounter_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'Nencpairs'
