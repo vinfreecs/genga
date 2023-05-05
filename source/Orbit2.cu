@@ -589,11 +589,9 @@ __host__ int Data::CMallocateOrbit(){
 
 	cudaHostAlloc((void **)&EncFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&EncFlag_d, (void *)EncFlag_m, 0);
-	EncFlag_m[0] = 0;
 
 	cudaHostAlloc((void **)&StopFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&StopFlag_d, (void *)StopFlag_m, 0);
-	StopFlag_m[0] = 0;
 
 	cudaHostAlloc((void **)&ErrorFlag_m, sizeof(int), cudaHostAllocMapped);
 	cudaHostGetDevicePointer((void **)&ErrorFlag_d, (void *)ErrorFlag_m, 0);
@@ -608,6 +606,8 @@ __host__ int Data::CMallocateOrbit(){
 	StopFlag_m = (int*)malloc(sizeof(int));
 	ErrorFlag_m = (int*)malloc(sizeof(int));
 #endif
+	EncFlag_m[0] = 0;
+	StopFlag_m[0] = 0;
 	ErrorFlag_m[0] = 0;
 
 	error = cudaGetLastError();

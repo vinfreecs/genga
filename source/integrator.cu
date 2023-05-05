@@ -2010,6 +2010,46 @@ void Data::firstKick_cpu(int noColl){
 		kickf_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, time_h[0], N_h[0], 0);
 	}
 }
+void Data::firstKick_small_cpu(int noColl){
+	//use last time information, the beginning of the time step
+	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
+	for(int i = 0; i < NconstT; ++i){
+		a_h[i] = {0.0, 0.0, 0.0};
+		ab_h[i] = {0.0, 0.0, 0.0};
+	}
+	BSstop_h[0] = 0;
+	initialb_cpu (Encpairs_h, Encpairs2_h, NBNencT);
+
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time, EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comCall(1);
+	}
+	if(P.setElementsV > 0){
+		setElements_cpu (x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
+	}
+	if(P.setElementsV == 2){
+		comCall(-1);
+	}
+
+	if(P.KickFloat == 0){
+		acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+	}
+	else{   
+		acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+	}
+	if(P.UseTestParticles == 2){
+		if(P.KickFloat == 0){
+			acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+		}
+		else{   
+			acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+		}
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+	}
+}
 #endif
 __host__ void Data::firstKick_16(int noColl){
 	//use last time information, the beginning of the time step
@@ -3215,6 +3255,9 @@ __host__ int Data::KickfirstndevCall(int EE){
 }
 
 #if def_CPU == 1
+// *************************************************
+// Step CPU
+// *************************************************
 int Data::step_cpu(int noColl){
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0], NconstT, P.SLevels, noColl);
 
@@ -3278,7 +3321,7 @@ int Data::step_cpu(int noColl){
 		}
 //printf("Nencpairs %d\n", Nencpairs_h[0]);
 		if(Nencpairs_h[0] > 0){
-			encounter_cpu (x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_h, Encpairs_h, Nencpairs2_h, Encpairs2_h, enccount_h, si, NB[0], time_h[0], P.StopAtEncounter, Ncoll_m, P.MinMass);
+			encounter_cpu (x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_h, Encpairs_h, Nencpairs2_h, Encpairs2_h, enccount_h, si, N_h[0], time_h[0], P.StopAtEncounter, Ncoll_m, P.MinMass);
 
 			if(P.StopAtEncounter > 0 && Ncoll_m[0] > 0){
 				Ncoll_m[0] = 0;
@@ -3366,6 +3409,278 @@ int Data::step_cpu(int noColl){
 		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		comCall(-1);
+	}
+	if(EjectionFlag_m[0] > 0){
+		int Ej = EjectionCall();
+		if(Ej == 0) return 0;
+	}
+
+ #if def_poincareFlag == 1
+	int per = PoincareSectionCall(time_h[0]);
+	if(per == 0) return 0;
+ #endif
+	return 1;
+}
+
+// *************************************************
+// Step small CPU
+// *************************************************
+int Data::step_small_cpu(int noColl){
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
+
+	//use last time step information for setElements function, the beginning of the time step
+	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
+		comCall(1);
+	}
+	if(P.setElementsV > 0){
+		setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
+	}
+	if(P.setElementsV == 2){
+		comCall(-1);
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+	}
+	if(EjectionFlag2 == 0){
+		kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+	}
+	else{
+//
+		if(P.KickFloat == 0){
+			acc4C_cpu ( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		}
+		else{
+			acc4Cf_cpu ( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP,1);
+		}
+		if(P.UseTestParticles == 2){
+			if(P.KickFloat == 0){
+				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+			}
+			else{
+				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+			}
+		}
+		if(P.SERIAL_GROUPING == 1){
+			Sortb_cpu (Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+		}
+		kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+
+	}
+//
+	if(ForceFlag > 0 || P.setElements > 1){
+		comCall(1);
+		if(P.setElements > 1){
+			setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 1);
+		}
+		if(P.Usegas == 1){
+			GasAccCall(time_h, dt_h, Kt[SIn - 1]);
+			GasAccCall_small(time_d, dt_d, Kt[SIn - 1]);
+		}
+		if(P.Usegas == 2){
+			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
+			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
+		}
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+		}
+		if(P.UseMigrationForce > 0){
+			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+		}
+		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		comCall(-1);
+	}
+	EjectionFlag2 = 0;
+
+	for(int si = 0; si < SIn; ++si){
+
+		HCCall(Ct[si], 1);
+
+		fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+
+		if(P.WriteEncounters == 2 && si == 0){
+			Nencpairs2_h[0] = 0;		
+			if(UseBVH == 1){
+//				BVHCall1();
+			}
+			if(UseBVH == 2){
+//				BVHCall2();
+			}
+
+			if(Nencpairs2_h[0] > 0){
+				encounter_small_cpu (x4_h, v4_h, xold_h, vold_h, index_h, spin_h, dt_h[0] * FGt[si], Nencpairs2_h[0], Encpairs2_h, NWriteEnc_m, writeEnc_h, time_h[0]);
+			}
+
+			Nencpairs2_h[0] = 0;		
+		}
+
+		if(Nenc_m[0] > 0){
+			for(int i = 0; i < def_GMax; ++i){
+				Nenc_m[i] = 0;
+			}
+			Nencpairs2_h[0] = 0;		
+		}
+//printf("Nencpairs %d\n", Nencpairs_h[0]);
+		if(Nencpairs_h[0] > 0){
+			encounter_cpu (x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, dt_h[0] * FGt[si], Nencpairs_h[0], Nencpairs_h, Encpairs_h, Nencpairs2_h, Encpairs2_h, enccount_h, si, N_h[0] + Nsmall_h[0], time_h[0], P.StopAtEncounter, Ncoll_m, P.MinMass);
+
+			if(P.StopAtEncounter > 0 && Ncoll_m[0] > 0){
+				Ncoll_m[0] = 0;
+				StopAtEncounterFlag2 = 1;
+			}
+			
+			if(P.SLevels > 1){
+				if(Nencpairs2_h[0] > 0){
+					double time = time_h[0];
+					SEnc(time, 0, 1.0, si, noColl);
+				}
+			}
+			else{
+//printf("Nencpairs2 %d\n", Nencpairs2_h[0]);
+				if(Nencpairs2_h[0] > 0){
+					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
+				}
+				BSCall(si, time_h[0], noColl, 1.0);
+			}
+		}
+
+		if(StopAtEncounterFlag2 == 1){
+			StopAtEncounterFlag2 = 0;
+			int enc = StopAtEncounterCall();
+			if(enc == 0) return 0;
+		}
+		if(Ncoll_m[0] > 0){
+			int col = CollisionCall(noColl);
+			if(col == 0) return 0;
+		}
+		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
+			fragmentCall();
+			if(nFragments_m[0] > 0){
+				int er = printFragments(nFragments_m[0]);
+				if(er == 0) return 0;
+				er = RemoveCall();
+				if(er == 0) return 0;
+			}
+		}
+		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
+			rotationCall();
+			if(nFragments_m[0] > 0){
+				int er = printRotation();
+				if(er == 0) return 0;
+			}
+		}
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+			int rem = RemoveCall();
+			if( rem == 0) return 0;
+		}
+		if(NWriteEnc_m[0] > 0){
+			int enc = writeEncCall();
+			if(enc == 0) return 0;
+		}
+
+		if(P.CreateParticles > 0){
+			int er = createCall();
+			if(er == 0) return 0;
+			if(nFragments_m[0] > 0){
+				printCreateparticle(nFragments_m[0]);
+			}
+		}
+
+		HCCall(Ct[si], -1);
+		if(si < SIn - 1){
+			if(P.KickFloat == 0){
+				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+
+			}
+			else{
+				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+			}
+			if(P.UseTestParticles == 2){
+				if(P.KickFloat == 0){
+					acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+				}
+				else{
+					acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+				}
+			}	
+			if(P.SERIAL_GROUPING == 1){
+				Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+			}
+			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+
+			if(ForceFlag > 0){
+				comCall(1);
+				if(P.Usegas == 1){
+					GasAccCall(time_h, dt_h, Kt[si]);
+					GasAccCall_small(time_h, dt_h, Kt[si]);
+				}
+				if(P.Usegas == 2){
+					//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
+					GasAccCall2_small(time_d, dt_d, Kt[si]);
+				}
+				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+					force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[si], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+				}
+				if(P.UseMigrationForce > 0){
+					artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+					//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+				}
+
+				if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				comCall(-1);
+			}
+		}
+	}
+	if(P.KickFloat == 0){
+		acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+	}
+	else{
+		acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+	}
+	if(P.UseTestParticles == 2){
+		if(P.KickFloat == 0){
+			acc4C_cpu( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+		}
+		else{
+			acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+		}
+	}
+
+	if(P.SERIAL_GROUPING == 1){
+		Sortb_cpu (Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+	}
+	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+
+	
+	if(ForceFlag > 0){
+		comCall(1);
+		if(P.Usegas == 1){
+			GasAccCall(time_h, dt_h, Kt[SIn - 1]);
+			GasAccCall_small(time_h, dt_h, Kt[SIn - 1]);
+		}
+		if(P.Usegas == 2){
+			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
+			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
+		}
+		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
+		}
+		if(P.UseMigrationForce > 0){
+			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
+		}
+		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){

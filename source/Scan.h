@@ -329,13 +329,13 @@ __global__ void Scan32c_kernel(int2 *scan_d, int *Encpairs3_d, int *Nencpairs3_d
 		t2 = __shfl_up(t1, i);
 #endif
 		if(idy % warpSize >= i) t1 += t2;
-//printf("Scan a %d %d %d\n", i, idy, t1);
+//printf("Scan b %d %d %d\n", i, idy, t1);
 	}		
 
 	__syncthreads();
 
-	if(idy< N){
-//printf("Scan b %d %d %d\n", idy, t1, Encpairs3_d[idy * NencMax + 0]);
+	if(idy < N){
+//printf("Scan c %d %d %d\n", idy, t1, Encpairs3_d[idy * NencMax + 0]);
 		scan_d[idy].x = t1;
 		if(Encpairs3_d[idy * NencMax + 0] > 0){
 			Encpairs3_d[(t1 - 1) * NencMax + 1] = idy;
@@ -349,8 +349,10 @@ __global__ void Scan32c_kernel(int2 *scan_d, int *Encpairs3_d, int *Nencpairs3_d
 #if def_CPU == 1
 void Scan_cpu(int2 *scan_h, int *Encpairs3_h, int *Nencpairs3_h, const int N, const int NencMax){
 
-	for(int id = 1; id < N; ++id){
-		scan_h[id].x += scan_h[id - 1].x;
+	for(int id = 0; id < N; ++id){
+		if(id > 0){
+			scan_h[id].x += scan_h[id - 1].x;
+		}
 
 		if(Encpairs3_h[id * NencMax + 0] > 0){
 			int t1 = scan_h[id].x;

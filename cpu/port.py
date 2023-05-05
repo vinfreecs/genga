@@ -440,7 +440,7 @@ for line in Lines:
 		remove = 1
 	if(line.find('void Data::firstKick_largeN') != -1):
 		remove = 1
-	if(line.find('void Data::firstKick_small') != -1):
+	if(line.find('void Data::firstKick_small(') != -1):
 		remove = 1
 	if(line.find('void Data::firstKick_M') != -1):
 		remove = 1
@@ -466,7 +466,7 @@ for line in Lines:
 		remove = 1
 	if(line.find('int Data::step_largeN') != -1):
 		remove = 1
-	if(line.find('int Data::step_small') != -1):
+	if(line.find('int Data::step_small(') != -1):
 		remove = 1
 	if(line.find('int Data::step_M') != -1):
 		remove = 1
@@ -1959,7 +1959,7 @@ for line in Lines:
 
 	if(line.find('void groupS2_kernel') != -1):
 		loop_id = 'id'
-		loop_N = 'N'
+		loop_N = 'Ne'
 		addLoop = 1
 
 	if(addLoop == 1):

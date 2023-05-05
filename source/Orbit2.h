@@ -393,10 +393,12 @@ public:
 	__host__ void BVHCall2();
 
 #if def_CPU == 1
-	__host__ void firstKick_cpu(int);
-	__host__ int step_cpu(int);
-	__host__ int tuneKickCPU(int);
-	__host__ void SEncCPU(double &, int, double, int, int);
+	void firstKick_cpu(int);
+	void firstKick_small_cpu(int);
+	int step_cpu(int);
+	int step_small_cpu(int);
+	int tuneKickCPU(int);
+	void SEncCPU(double &, int, double, int, int);
 
 #endif
 

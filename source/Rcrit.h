@@ -472,7 +472,12 @@ __host__ void Data::firstStep(int noColl){
 		}
 	}
 #else
-	firstKick_cpu(noColl);
+	if(P.UseTestParticles > 0){
+		firstKick_small_cpu(noColl);
+	}
+	else{
+		firstKick_cpu(noColl);
+	}
 #endif
 }
 
@@ -516,8 +521,14 @@ __host__ int Data::step(int noColl){
 		}
 	}
 #else
-	er = step_cpu(noColl);
-	if(er == 0) return 0;
+	if(P.UseTestParticles > 0){
+		er = step_small_cpu(noColl);
+		if(er == 0) return 0;
+	}
+	else{
+		er = step_cpu(noColl);
+		if(er == 0) return 0;
+	}
 #endif
 	return 1;
 }

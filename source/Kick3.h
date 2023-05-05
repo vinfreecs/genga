@@ -767,7 +767,6 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 	int idd = blockIdx.x * blockDim.x + threadIdx.x;	
 
 	if(idd < Nencpairs3_d[0]){
-
 		double3 a = {0.0, 0.0, 0.0};
 		int id = Encpairs3_d[idd * NencMax + 1];
 
@@ -815,6 +814,7 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 //not parallel yet
 // ******
 #endif
+//printf("KickS %d %d %d\n", Ne, id, jj);
 							Encpairs_d[Ne].x = id;
 							Encpairs_d[Ne].y = jj;
 						}
