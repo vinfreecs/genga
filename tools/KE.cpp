@@ -214,6 +214,9 @@ int main(int argc, char*argv[]){
 		else if(strcmp(argv[i], "-Coll") == 0){
 			useCollfile = atoi(argv[i + 1]);
 		}
+		else{
+			printf("Error, console argument not valid.\n");
+		}
 	}
 
 	if(useCollfile == 1){

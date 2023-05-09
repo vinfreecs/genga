@@ -224,6 +224,8 @@ Convert output files to barycentric coordinates
 -----------------------------------------------
 Heliocentric output files can be converted into barycentric output files with the :literal:`ConvertHelioToBarry` tool, located in the :literal:`tools` directory.
 
+This tool works only in the output format, FormatT = 0, FormatP = 1. If a different output format is uses, then the conversion tools should be used to convert before and after this step (:ref:`P1T0_to_P0T1` and :ref:`P0T1_to_P1T0`).
+
 Compile with typing:: 
 
         make
@@ -245,12 +247,82 @@ where :literal:`[options]` are the following optional user parameters:
 
 The ConvertHelioToBarry tool generates for each coordinate output file a corresponding barycentric output file, see :ref:`baryFiles`.
  
-Example for FormatT = 0, FormatP = 1 (default)::
+Example::
 
     ./ConvertHelioToBarry -tmin 0 -tmax 1000 -step 10 -in test
 
 This example will generate barycentric output files from timestep 0 to 1000 in output intervals of 10 for a simulation name 'test'.
 
+
+
+
+.. _P0T1_to_P1T0:
+
+Convert_P0T1_to_P1T0
+--------------------
+
+This tool converts GENGA outputs from FormatP = 0 & FormatT = 1, to FormatP = 1 & FormatT = 0.
+
+Compile with typing::
+
+        make
+
+into a terminal.
+
+
+Then run :literal:`Convert_P0T1_to_P1T0` with::
+
+    ./Convert_P0T1_to_P1T0 [options]
+
+where :literal:`[options]` are the following optional user parameters:
+
+- :literal:`-pmin`: starting particle index.
+- :literal:`-pmax`: ending particle index.
+- :literal:`-in`: name of the files
+- :literal:`-dt`: time step in days (default = 6.0 days)
+- :literal:`-t`: Start time of the simulation in years (default = 0) 
+
+
+Example::
+
+    ./Convert_P0T1_to_P1T0 -pim 0 -pmax 1000 -in test -dt 6 -t 0
+
+This example will generate output files containing all particles with indices between 0 and 1000, for a simulation name 'test' and a used time
+step of 6 days and a starting time of the simulation of 0 years.
+
+
+.. _P1T0_to_P0T1:
+
+Convert_P1T0_to_P0T1
+--------------------
+
+This tool converts GENGA outputs from FormatP = 1 & FormatT = 0, to FormatP = 0 & FormatT = 1.
+
+Compile with typing::
+
+        make
+
+into a terminal.
+
+
+Then run :literal:`Convert_P1T0_to_P0T1` with::
+
+    ./Convert_P1T0_to_P0T1 [options]
+
+where :literal:`[options]` are the following optional user parameters:
+
+- :literal:`-tmin`: starting time step.
+- :literal:`-tmax`: ending time step.
+- :literal:`-step`: output interval.
+- :literal:`-in`: name of the files
+
+
+Example::
+
+    ./Convert_P1T0_to_P0T1 -tim 0 -tmax 1000 -step 10 -in test
+
+This example will generate output files containing all particles between the time steps 0 and 1000 with a time step output interval of 10 
+and a simulation name 'test'.
 
 .. _cleanTime:
 

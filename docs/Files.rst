@@ -144,6 +144,8 @@ The structure of the coordinate output files depends on the parameters :literal:
 Here we describe the possible choices:
 
 
+The tools :ref:`P1T0_to_P0T1` and :ref:`P0T1_to_P1T0` can be used to convert output files between different formats.
+
 FormatS = 0, FormatT = 0, FormatP = 1, FormatO = 0: Out<name>_<time step>.dat
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
