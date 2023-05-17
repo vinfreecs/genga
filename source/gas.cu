@@ -62,8 +62,6 @@ __global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_r
 	int ig = blockIdx.x * blockDim.x + threadIdx.x; // r
 	int jg = blockIdx.y * blockDim.y + threadIdx.y; // z
 
-	double h, Sigma, zh, rg, zg;
-
 	double G_alpha = Gas_parameters_c[1];
 	double G_beta =  Gas_parameters_c[2];
 	double G_Sigma10 = Gas_parameters_c[3];
@@ -76,14 +74,10 @@ __global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_r
 //	}
 
 	if(ig < G_Nr_g){
-		rg = rg0 + drg * (ig + 0.5);	//staggered grid
+		double rg = rg0 + drg * (ig + 0.5);	//staggered grid
 
-		if(jg == 0){
-			Gas_rg_d[ig] = rg;
-		}
-
-		h = def_h_1 * rg * pow(rg, G_beta); //beta = 0.25 comes from Temperature profile
-		Sigma = G_Sigma10 * pow(rg, -G_alpha);
+		double h = def_h_1 * rg * pow(rg, G_beta); //beta = 0.25 comes from Temperature profile
+		double Sigma = G_Sigma10 * pow(rg, -G_alpha);
 
 //if(jg == 0) printf("GasDisk %d %g %g %g\n", ig, rg, h, Sigma);	
 //			if(uniform != 1){
@@ -97,11 +91,16 @@ __global__ void GasDisk_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_r
 //				}
 //			}
 		if(jg < def_Gasnz_g){
-			zg = 0.01 * (0.5 + jg) * rg;
-			zh = zg / h;
+			if(jg == 0){
+				Gas_rg_d[ig] = rg;
+//printf("Gas_rg %d %g\n", ig, Gas_rg_d[ig]);
+			}
+
+			double zg = 0.01 * (0.5 + jg) * rg;
+			double zh = zg / h;
 			Gas_zg_d[ig * def_Gasnz_g + jg] = zg;
 			Gas_rho_d[ig * def_Gasnz_g + jg] = facrho * (Sigma / h) * exp(-0.5 * zh * zh);
-//printf("%g %g %g\n", rg, zg, Gas_rho_d[ig * def_Gasnz_g + jg]);
+//printf("Gas_rho %g %g %g\n", rg, zg, Gas_rho_d[ig * def_Gasnz_g + jg]);
 		}
 	}
 }
@@ -221,7 +220,6 @@ __global__ void gasTable_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 
 	volatile double ar, az;
 	double rp, zp;
-	double h;
 	double ellf, elle;
 
 	double G_alpha = Gas_parameters_c[1];
@@ -233,7 +231,7 @@ __global__ void gasTable_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 	if(ip < G_Nr_p){	
 		rp = rg0 + drg * ip;
 
-		h = def_h_1 * rp * pow(rp, G_beta);
+		double h = def_h_1 * rp * pow(rp, G_beta);
 		double Sigma = G_Sigma10 * pow(rp, -G_alpha);
 //		if(uniform != 1){
 //			ro = rp + 0.5 * drg; // radius of the outer cel boundary
@@ -256,6 +254,7 @@ __global__ void gasTable_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 	__syncthreads();
 
 	if(ip < G_Nr_p){
+		rp = rg0 + drg * ip;
 		if(jp < def_Gasnz_p){
 
 			zp = (0.03 * jp) * rp;
@@ -303,7 +302,7 @@ __global__ void gasTable_kernel(double *Gas_rg_d, double *Gas_zg_d, double *Gas_
 			GasAcc_d[ip * def_Gasnz_p + jp].x = ar;
 			GasAcc_d[ip * def_Gasnz_p + jp].y = az;
 			GasAcc_d[ip * def_Gasnz_p + jp].z = zp;
-	//printf("GasAcc %d %d %g %g %g\n", ip, jp, ar, az, zp);
+//	printf("GasAcc %d %d %g %g %g\n", ip, jp, ar, az, zp);
 		}
 	}
 }
@@ -430,7 +429,6 @@ __global__ void GasAcc_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double
 
 
 					double a_r_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].x * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].x * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].x * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].x * dr11;
-
 					double a_z_t0 = GasAcc_d[(ip - 1) * def_Gasnz_p + jp0].y * dr00 + GasAcc_d[(ip - 1) * def_Gasnz_p + jp0 + 1].y * dr01 + GasAcc_d[ip * def_Gasnz_p + jp1].y * dr10 + GasAcc_d[ip * def_Gasnz_p + jp1 + 1].y * dr11;
 					a_r_t0 /= drtotal;
 					a_z_t0 /= drtotal;

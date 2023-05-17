@@ -15,13 +15,13 @@ def kernelToLoop(line, i_id, loop_id, loop_N, i_id2, loop_id2, loop_N2):
 	if(line.find('blockIdx.x') != -1):
 		line = line.replace('blockIdx.x', '0')
 	if(line.find('blockDim.x') != -1):
-		line = line.replace('blockDim.x', '0')
+		line = line.replace('blockDim.x', '1')
 	if(line.find('threadIdx.y') != -1):
 		line = line.replace('threadIdx.y', '0')
 	if(line.find('blockIdx.y') != -1):
 		line = line.replace('blockIdx.y', '0')
 	if(line.find('blockDim.y') != -1):
-		line = line.replace('blockDim.y', '0')
+		line = line.replace('blockDim.y', '1')
 	if(line.find('__global__') != -1):
 		line = line.replace('__global__ ', '')
 
@@ -213,6 +213,8 @@ def DtoH(line):
 		line = line.replace('groupIndex_d', 'groupIndex_h')
 	if(line.find('random_d') != -1):
 		line = line.replace('random_d', 'random_h')
+	if(line.find('EnergySum_d') != -1):
+		line = line.replace('EnergySum_d', 'EnergySum_h')
 
 	if(line.find('morton_d') != -1):
 		line = line.replace('morton_d', 'morton_h')
@@ -413,7 +415,7 @@ for line in Lines:
 	if(line.find('createparticles.h') != -1):
 		line = line.replace('createparticles.h', 'createparticlesCPU.h')
 	if(line.find('bvh.h') != -1):
-		line = '//' + line
+		line = line.replace('bvh.h', 'bvhCPU.h')
 
 	#Event
 	#Stream
@@ -497,6 +499,9 @@ for line in Lines:
 	if(line.find('cudaMemset') != -1):
 		line = line.replace('cudaMemset', 'memset')
 		line = line.replace('_d', '_h')
+
+	if(line.find('cudaFree') != -1):
+		continue 
 
 	#Add loops
 	if(line.find('void initialb_kernel') != -1):
@@ -789,8 +794,6 @@ for line in Lines:
 			i_id22 = ''
 
 	#Remove functions
-	#if(line.find('void removeM_kernel') != -1):
-	#	remove = 1
 
 	if(remove == 1):
 		if(line.startswith('}',0,1)):
@@ -1774,6 +1777,9 @@ for line in Lines:
 	if(line.find('cudaMalloc') != -1):
 		continue 
 
+	if(line.find('cudaFree') != -1):
+		continue 
+
 	#Remove functions
 	if(line.find('void gasEnergyd1_kernel') != -1):
 		remove = 1
@@ -1949,7 +1955,7 @@ for line in Lines:
 
 	if(line.find('void encounter_small_kernel') != -1):
 		loop_id = 'id'
-		loop_N = 'Nencpairs'
+		loop_N = 'Nencpairs2'
 		addLoop = 1
 
 	if(line.find('void setEnc3_kernel') != -1):
@@ -1984,5 +1990,161 @@ for line in Lines:
 
 file1.close()
 file2.close()
+
+################################################
+# bvh.h
+################################################
+
+filename = '../source/bvh.h'
+filename2 = 'bvhCPU.h'
+
+
+file1 = open(filename, 'r')
+file2 = open(filename2, 'w')
+
+Lines = file1.readlines()
+
+for line in Lines:
+
+
+	if(line.find('__device__') != -1):
+		line = line.replace('__device__ ', '')
+
+
+	#Remove functions
+	if(line.find('void sort_kernel') != -1):
+		remove = 1
+
+	if(line.find('void sortmerge_kernel') != -1):
+		remove = 1
+
+	if(line.find('void sortscatter_kernel') != -1):
+		remove = 1
+
+	if(line.find('void sortscatter2_kernel') != -1):
+		remove = 1
+
+	if(remove == 1 and line == '}\n'):
+		remove = 0
+		continue
+
+	if(remove == 1):
+		continue
+	
+	if(line.find('void collisioncheck_kernel') != -1):
+		loop_id = 'idx'
+		loop_N = 'N'
+		loop_id2 = 'idy'
+		loop_N2 = 'N'
+		addLoop = 1
+
+	if(line.find('void sortscatter_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void sortscatter2_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void sortCheck_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void sortCheck2_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void setLeafNode_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void setInternalNode_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void checkNodes_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N - 1'
+		addLoop = 1
+
+	if(line.find('void buildBVH_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(line.find('void traverseBVH_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(addLoop == 1):
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, i_id2, loop_id2, loop_N2)
+		if(line.startswith('}',0,1)):
+			addLoop = 0
+			loop_id = ''
+			loop_id2 = ''
+			loop_N = ''
+			loop_N2 = ''
+			i_id = ''
+			i_id22 = ''
+
+	if(line.find('__syncthreads') != -1):
+		continue 
+
+	if(line.find('__threadfence') != -1):
+		continue 
+
+	if(line.find('template') != -1):
+		continue 
+
+	if(line.find('collisioncheck_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('setLeafNode_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('setInternalNode_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('buildBVH_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('traverseBVH_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('sortCheck2_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('checkNodes_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+
+	line = DtoH(line)
+
+	print(line, file=file2, end='')
+
+file1.close()
+file2.close()
+
 
 

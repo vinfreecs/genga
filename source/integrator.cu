@@ -575,6 +575,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 		er = tuneBS();
 		if(er == 0) return 0;
 	}
+	UseBVH = 2;
 #endif 
 
 	if(Nst == 1) printf("Start integration with %d simulation\n", Nst);
@@ -3506,10 +3507,10 @@ int Data::step_small_cpu(int noColl){
 		if(P.WriteEncounters == 2 && si == 0){
 			Nencpairs2_h[0] = 0;		
 			if(UseBVH == 1){
-//				BVHCall1();
+				BVHCall1();
 			}
 			if(UseBVH == 2){
-//				BVHCall2();
+				BVHCall2();
 			}
 
 			if(Nencpairs2_h[0] > 0){

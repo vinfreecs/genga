@@ -296,7 +296,7 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 // It sets enct, the time of smallest distance. 0 < enct < 1
 __device__ double encounter1(const double4 x4i, const double4 v4i, const double4 x4oldi, const double4 v4oldi, const double4 x4j, const double4 v4j, const double4 x4oldj, const double4 v4oldj, const double rcrit, const double dt, const int i, const int j, double &enct, double &colt, const double MinMass, const int noColl){
 
-//if(E == 1 && i < j ) printf("E1o %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
+//printf("E1o %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", i, j, x4oldi.w, v4oldi.w, x4oldi.x, x4oldi.y, x4oldi.z, x4oldj.w, v4oldj.w, x4oldj.x, x4oldj.y, x4oldj.z);
 	if(i != j && (x4i.w > MinMass || x4j.w > MinMass) && x4i.w >= 0.0 && x4j.w >= 0.0){
 
 		double d0, d1, dd0, dd1;
@@ -429,12 +429,16 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 
 					//find collision in between of time steps	
 					if(d0 >= rcritsq && d1 >= rcritsq){
-						colt = fmin(t1, t2);
+						if(t1 < 0.0) t1 = t2;
+						if(t2 < 0.0) t2 = t1;
+						if(t1 >= 0.0){
+							colt = fmin(t1, t2);
+						}
 					}
 
 
 				}
-//if(i == 12888 && j == 11191) printf("colt  %d %d %.12g %.12g | noColl: %d\n", i, j, coltime, colt, noColl);
+//printf("colt  %d %d %.12g %.12g %.12g | noColl: %d\n", i, j, coltime, colt, enct, noColl);
 			}
 		}
 		return delta;

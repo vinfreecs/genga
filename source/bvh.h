@@ -9,46 +9,50 @@ typedef Node* NodePtr;
 // Date: December 2022
 // Author: Simon Grimm
 // **************************************************
-__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N, int iy){
+__global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, const int N1, const int N, const int iy){
 
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int idy = (blockIdx.y + iy) * blockDim.y + threadIdx.y;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x + N1;
+	int idy = (blockIdx.y + iy) * blockDim.y + threadIdx.y + N1;
 
-	if(idx < N && idy < N && idx >= N1 && idy >= N1){
+	if(idx < N){
+		 if(idy < N){
+			double4 x4i = x4_d[idx];
+			double4 x4j = x4_d[idy];
+			double rcritvi = def_pc * rcritv_d[idx];
+			double rcritvj = def_pc * rcritv_d[idy];
 
-		double4 x4i = x4_d[idx];
-		double4 x4j = x4_d[idy];
-		double rcritvi = def_pc * rcritv_d[idx];
-		double rcritvj = def_pc * rcritv_d[idy];
+			bool overlap = true;
+			if(x4i.x - rcritvi > x4j.x + rcritvj || x4i.x + rcritvi < x4j.x - rcritvj){
+				overlap = false;
+			}
+			if(x4i.y - rcritvi > x4j.y + rcritvj || x4i.y + rcritvi < x4j.y - rcritvj){
+				overlap = false;
+			}
+			if(x4i.z - rcritvi > x4j.z + rcritvj || x4i.z + rcritvi < x4j.z - rcritvj){
+				overlap = false;
+			}
+			if(idx >= idy){
+				overlap = false;
+			}
+			//ingnore encounters within the same particle cloud
+			if(index_d[idx] / WriteEncountersCloudSize_c[0] == index_d[idy] / WriteEncountersCloudSize_c[0]){
+				overlap = false;
+			}
 
-		bool overlap = true;
-		if(x4i.x - rcritvi > x4j.x + rcritvj || x4i.x + rcritvi < x4j.x - rcritvj){
-			overlap = false;
-		}
-		if(x4i.y - rcritvi > x4j.y + rcritvj || x4i.y + rcritvi < x4j.y - rcritvj){
-			overlap = false;
-		}
-		if(x4i.z - rcritvi > x4j.z + rcritvj || x4i.z + rcritvi < x4j.z - rcritvj){
-			overlap = false;
-		}
-		if(idx >= idy){
-			overlap = false;
-		}
-		//ingnore encounters within the same particle cloud
-		if(index_d[idx] / WriteEncountersCloudSize_c[0] == index_d[idy] / WriteEncountersCloudSize_c[0]){
-			overlap = false;
-		}
-
-
-		if(overlap){
-			int ne = atomicAdd(&Nencpairs2_d[0], 1);
-			Encpairs2_d[ne].x = idx;
-			Encpairs2_d[ne].y = idy;
+			if(overlap){
+#if def_CPU == 0
+				int ne = atomicAdd(&Nencpairs2_d[0], 1);
+#else
+				int ne = Nencpairs2_d[0]++;
+#endif
+				Encpairs2_d[ne].x = idx;
+				Encpairs2_d[ne].y = idy;
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x - rcriti, x4i.y - rcriti, x4i.z, x4j.x - rcritj, x4j.y - rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x + rcriti, x4i.y - rcriti, x4i.z, x4j.x + rcritj, x4j.y - rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x - rcriti, x4i.y + rcriti, x4i.z, x4j.x - rcritj, x4j.y + rcritj, x4j.z);
 //printf("collisionB %d %d %.20g %.20g %.20g %.20g %.20g %.20g\n", idx, idy, x4i.x + rcriti, x4i.y + rcriti, x4i.z, x4j.x + rcritj, x4j.y + rcritj, x4j.z);
+			}
 		}
 	}
 }
@@ -57,7 +61,7 @@ __global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *inde
 // This function prints the binary representation of a variable
 // Usefull for testing
 // *****************************************************
-__host__ __device__ void CheckBinary(unsigned int n){
+__device__ void CheckBinary(unsigned int n){
 
 	printf("%015u ", n);
 	for(unsigned int i = 1u << 31; i > 0u; i = i >> 1){
@@ -73,8 +77,8 @@ __host__ __device__ void CheckBinary(unsigned int n){
 // by inserting 2 zeros after each bit.
 // See: https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
 // **************************************************
-__host__ __device__ unsigned int expandBits(unsigned int v)
-{
+__device__ unsigned int expandBits(unsigned int v){
+
 	v = (v * 0x00010001u) & 0xFF0000FFu;    //65537  0000000000000010000000000000001 & 11111111000000000000000011111111
 	v = (v * 0x00000101u) & 0x0F00F00Fu;    //257    0000000000000000000000100000001 & 00001111000000001111000000001111
 	v = (v * 0x00000011u) & 0xC30C30C3u;    //17     0000000000000000000000000010001 & 11000011000011000011000011000011
@@ -87,8 +91,7 @@ __host__ __device__ unsigned int expandBits(unsigned int v)
 // given 3D point located within the unit cube [0,1].
 // See: https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
 // **************************************************
-__device__ unsigned int morton3D(double4 x4i)
-{
+__device__ unsigned int morton3D(double4 x4i){
 	//Normalize the coordinates to the range 0 to 1
 	float xf = (float)((x4i.x + RcutSun_c[0]) / (2.0 * RcutSun_c[0]));
 	float yf = (float)((x4i.y + RcutSun_c[0]) / (2.0 * RcutSun_c[0]));
@@ -197,7 +200,7 @@ __global__ void sort_kernel(double4 *x4_d, unsigned int *morton_d, int2 *sortInd
 // Author: Simon Grimm
 // ************************************************
 template <int BL >
-__global__ void sortmerge_kernel(unsigned int *sortCount_d, int NN){
+__global__ void sortmerge_kernel(unsigned int *sortCount_d, const int NN){
 
 	int itx = threadIdx.x;
 
@@ -288,8 +291,7 @@ __global__ void sortmerge_kernel(unsigned int *sortCount_d, int NN){
 // ************************************************
 __global__ void sortscatter_kernel(unsigned int *morton_d, int2 *sortIndex_d, unsigned int *sortCount_d, unsigned int *sortRank_d, const unsigned int bit, const int N, const int NN){
 
-	int itx = threadIdx.x;
-	int id = blockIdx.x * blockDim.x + itx;
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
 
@@ -308,7 +310,7 @@ __global__ void sortscatter_kernel(unsigned int *morton_d, int2 *sortIndex_d, un
 		}
 
 		unsigned int d = rank + count + countT;
-//if(itx < 20 && blockIdx.x < 2) printf("%d %d %u | %u %u %u\n", blockIdx.x, itx, b, rank, count, countT);
+//if(threadIdx.x < 20 && blockIdx.x < 2) printf("%d %d %u | %u %u %u\n", blockIdx.x, threadIdx.x, b, rank, count, countT);
 
 		if(d < N){
 			sortIndex_d[d].x = sortIndex_d[id].y;
@@ -331,6 +333,7 @@ __global__ void sortscatter_kernel(unsigned int *morton_d, int2 *sortIndex_d, un
 // Author: Simon Grimm
 // ************************************************
 __global__ void sortscatter2_kernel(unsigned int *morton_d, unsigned int *sortRank_d, int2* sortIndex_d, const int N){
+
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
@@ -340,7 +343,55 @@ __global__ void sortscatter2_kernel(unsigned int *morton_d, unsigned int *sortRa
 }
 
 
-__global__ void sortCheck(unsigned int *morton_d, int2 *sortIndex_d, int N){
+// *********************************************
+// partition part for the quick sort algorithm
+// Sortrank can be useda as a temporary copy of morton_d
+// https://beginnersbook.com/2015/02/quicksort-program-in-c/
+// **********************************************
+__host__ void quickSort(unsigned int *morton_d, int2 *sortIndex_d, int first, int last){
+
+	int i, j, pivot;
+	unsigned int temp;
+	int temp2;
+
+	if(first < last){
+		pivot = first;
+		i = first;
+		j = last;
+
+		while(i < j){
+			while(morton_d[i] <= morton_d[pivot] && i < last)
+				i++;
+			while(morton_d[j] > morton_d[pivot])
+				j--;
+			if(i < j){
+				temp = morton_d[i];
+				temp2 = sortIndex_d[i].x;
+				morton_d[i] = morton_d[j];
+				morton_d[j] = temp;
+				sortIndex_d[i].x = sortIndex_d[j].x;
+				sortIndex_d[j].x = temp2;
+			}
+
+		}
+
+
+		temp = morton_d[pivot];
+		temp2 = sortIndex_d[pivot].x;
+		morton_d[pivot] = morton_d[j];
+		morton_d[j] = temp;
+		sortIndex_d[pivot].x = sortIndex_d[j].x;
+		sortIndex_d[j].x = temp2;
+
+
+		quickSort(morton_d, sortIndex_d, first, j-1);
+		quickSort(morton_d, sortIndex_d, j+1, last);
+	}
+
+}
+
+
+__global__ void sortCheck_kernel(unsigned int *morton_d, int2 *sortIndex_d, const int N){
 
 	for(int i = 0; i < N; ++i){
 		int iid = sortIndex_d[i].x;
@@ -350,7 +401,7 @@ __global__ void sortCheck(unsigned int *morton_d, int2 *sortIndex_d, int N){
 	}
 }
 
-__global__ void sortCheck2(unsigned int *morton_d, int N){
+__global__ void sortCheck2_kernel(unsigned int *morton_d, const int N){
 
 	for(int i = 0; i < N; ++i){
 		unsigned int a = morton_d[i];
@@ -361,7 +412,7 @@ __global__ void sortCheck2(unsigned int *morton_d, int N){
 
 
 
-__global__ void setLeafNode(Node *leafNodes_d, int2 *sortIndex_d, double4 *x4_d, double *rcritv_d, int N){
+__global__ void setLeafNode_kernel(Node *leafNodes_d, int2 *sortIndex_d, double4 *x4_d, double *rcritv_d, const int N){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -398,7 +449,8 @@ __global__ void setLeafNode(Node *leafNodes_d, int2 *sortIndex_d, double4 *x4_d,
 //}
 	}
 }
-__global__ void setInternalNode(Node *internalNodes_d, int N){
+
+__global__ void setInternalNode_kernel(Node *internalNodes_d, const int N){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -453,7 +505,8 @@ __device__ int highestBit(unsigned int *morton_d, int i){
 // Date: October 2022
 // Author: Simon Grimm
 // ***********************************************************
-__global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node *internalNodes_d, int N){
+__global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node *internalNodes_d, const int N){
+
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
@@ -475,8 +528,11 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 
 		for(int i = 0; i < N; ++i){
 			if(p >= 0){
+#if def_CPU == 0
 				if(atomicAdd(&(node->counter), 1) == 1){
-
+#else
+				if(node->counter++ == 1){
+#endif
 					rangeL = node->rangeL;
 					rangeR = node->rangeR;
 
@@ -563,7 +619,7 @@ __device__ bool checkOverlap(Node *nodeA, Node *nodeB){
 // The kernel uses a local stack to store the traversal path
 // See https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
 // ***********************************************************
-__global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, int N1, int N){
+__global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int *index_d, int *Nencpairs2_d, int2 *Encpairs2_d, unsigned int N1, const int N){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
@@ -599,7 +655,12 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 
 					//ingnore encounters within the same particle cloud
 					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childL->nodeID] / WriteEncountersCloudSize_c[0]){
+#if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);
+#else
+						int ne = Nencpairs2_d[0]++;
+
+#endif
 						Encpairs2_d[ne].x = leaf->nodeID;
 						Encpairs2_d[ne].y = childL->nodeID;
 					}
@@ -613,7 +674,11 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 				if(leaf->nodeID >= N1 && childR->nodeID >= N1){
 					//ingnore encounters within the same particle cloud
 					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childR->nodeID] / WriteEncountersCloudSize_c[0]){
+#if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);
+#else
+						int ne = Nencpairs2_d[0]++;
+#endif
 						Encpairs2_d[ne].x = leaf->nodeID;
 						Encpairs2_d[ne].y = childR->nodeID;
 					}
@@ -649,7 +714,8 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 
 
 
-__global__ void checkNodes(Node *internalNodes_d, int N){
+__global__ void checkNodes_kernel(Node *internalNodes_d, const int N){
+
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N - 1){
@@ -663,16 +729,23 @@ __global__ void checkNodes(Node *internalNodes_d, int N){
 __host__ void Data::BVHCall1(){
 	int N = N_h[0] + Nsmall_h[0];
 
+#if def_CPU == 0
 	for(int i = 0; i < N; i += 32768){
 		int Ny = min(N - i, 32768);
 		if(Ny > 0){
 			collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, index_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, i);
 		}
 	}
+#else
+	collisioncheck_kernel <<< dim3((N + 255) / 256, Ny, 1), dim3(256, 1, 1)>>> (x4_d, rcritv_d, index_d, Nencpairs2_d, Encpairs2_d, N_h[0], N, 0);
+
+#endif
 }
+
 __host__ void Data::BVHCall2(){
 	int N = N_h[0] + Nsmall_h[0];
 
+#if def_CPU == 0
 	for(unsigned int b = 0; b < 32; b += 4){
 		//printf("******** %u *********\n", b);
 		sort_kernel <256> <<< (N + 255) / 256, 256 >>> (x4_d, morton_d, sortIndex_d, sortCount_d, sortRank_d, b, N);
@@ -682,16 +755,27 @@ __host__ void Data::BVHCall2(){
 		sortmerge_kernel <256> <<< 1, 256 >>> (sortCount_d, NN);
 		sortscatter_kernel <<< (N + 255) / 256, 256 >>> (morton_d, sortIndex_d, sortCount_d, sortRank_d, b, N, NN);
 
-//		sortCheck(morton_h, sortIndex_h, min(N,100));
+//		sortCheck_kernel(morton_h, sortIndex_h, min(N,100));
 	}
 	sortscatter2_kernel <<< (N + 255) / 256, 256 >>> (morton_d, sortRank_d, sortIndex_d, N);
-//	sortCheck2 <<< 1, 1 >>> (morton_d, N);
+#else
+	for(int i = 0; i < N; ++i){
+		sortIndex_d[i].x = i;
+		morton_d[i] = morton3D(x4_d[i]);
+	}
+	//sortCheck2_kernel <<< 1, 1 >>> (morton_d, N);
 
-	setLeafNode <<< (N + 255) / 256, 256 >>> (leafNodes_d, sortIndex_d, x4_d, rcritv_d, N);
-	setInternalNode <<< (N + 255) / 256, 256 >>> (internalNodes_d, N);
+	quickSort(morton_d, sortIndex_d, 0, N-1);
+
+#endif
+
+	//sortCheck2_kernel <<< 1, 1 >>> (morton_d, N);
+
+	setLeafNode_kernel <<< (N + 255) / 256, 256 >>> (leafNodes_d, sortIndex_d, x4_d, rcritv_d, N);
+	setInternalNode_kernel <<< (N + 255) / 256, 256 >>> (internalNodes_d, N);
 
 	buildBVH_kernel <<< (N + 255) / 256, 256 >>> (morton_d, leafNodes_d, internalNodes_d, N);
-//	checkNodes <<< (N + 255) / 256, 256 >>> (internalNodes_d, N);
+	//checkNodes_kernel <<< (N + 255) / 256, 256 >>> (internalNodes_d, N);
 
 	traverseBVH_kernel <<< (N + 255) / 256, 256 >>> (leafNodes_d, internalNodes_d, index_d, Nencpairs2_d, Encpairs2_d, N_h[0], N);
 }
