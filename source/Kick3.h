@@ -45,6 +45,7 @@ __device__ void accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, do
 	}
 }
 
+#if def_CPU == 0
 //**************************************
 //This function computes the terms a = mi/rij^3 * Kij and b = mi/rij.
 //This function also finds the pairs of bodies which are separated less than pc * rcritv^2. The index of those 
@@ -79,17 +80,9 @@ __device__ void acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doubl
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
 			if(rsq < def_pc * rcritv2){	//prechecker
-#if def_CPU == 0
 				int Ni = atomicAdd(NencpairsI, 1);
-#else
-				int Ni = NencpairsI[0]++;
-#endif
 				if(Ni >= NencMax){
-#if def_CPU == 0
 					atomicMax(&EncFlag_d[0], Ni);
-#else
-					EncFlag_d[0] = max(EncFlag_d[0], Ni);
-#endif
 				}
 				else{
 					Encpairs2_d[NencMax * i + Ni].y = j;
@@ -160,18 +153,9 @@ __device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rc
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){
 			if(rsq < def_pcf * rcritv2){	//prechecker
-#if def_CPU == 0
 				int Ni = atomicAdd(NencpairsI, 1);
-#else
-				int Ni = NencpairsI[0]++;
-#endif
 				if(Ni >= NencMax){
-#if def_CPU == 0
 					atomicMax(&EncFlag_d[0], Ni);
-#else
-					EncFlag_d[0] = max(EncFlag_d[0], Ni);
-
-#endif
 				}
 				else{
 					Encpairs2_d[NencMax * i + Ni].y = j;
@@ -222,6 +206,7 @@ __device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rc
 //printf("%d %d %g %g Kick\n", i, j, s, ac.x);
 	}
 }
+#endif
 
 // ******************************************************
 // Version of acc which is called from the recursive symplectic sub step method
@@ -924,7 +909,7 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 }
 
 #if def_CPU == 1
-void kick_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+void kick_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 
 	for(int idx = 0; idx < N; ++idx){
 
@@ -939,7 +924,84 @@ void kick_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, c
 		for(int j = 0; j < N; ++j){
 			double4 x4j = x4_d[j];
 			double rcritvj = rcritv_d[j];
-			acc_d(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI, Encpairs2_d, EncFlag_d, j, idx, NencMax, E); 
+
+			if( idx != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+				double rsq, ir, ir3, s, sb;
+				double3 r3ij;
+				double rcritv, rcritv2;
+		//		double rcrit, rcrit2;
+				double y, yy;
+
+				r3ij.x = x4j.x - x4i.x;
+				r3ij.y = x4j.y - x4i.y;
+				r3ij.z = x4j.z - x4i.z;
+				rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				rcritv = fmax(rcritvi, rcritvj);
+
+		//		rcrit2 = rcrit * rcrit;
+				rcritv2 = rcritv * rcritv;
+				if(E <= 2){	
+					if(rsq < def_pc * rcritv2){	//prechecker
+#if def_CPU == 0
+						int Ni = atomicAdd(NencpairsI, 1);
+#else
+						int Ni = NencpairsI++;
+#endif
+						if(Ni >= NencMax){
+#if def_CPU == 0
+							atomicMax(&EncFlag_d[0], Ni);
+#else
+							EncFlag_d[0] = max(EncFlag_d[0], Ni);
+#endif
+						}
+						else{
+							Encpairs2_d[NencMax * idx + Ni].y = j;
+						}
+//printf("Precheck %d %d %d %d %g %g %g\n", idx, j, Ni, NencMax, rsq, rcritvi, rcritvj);
+					}
+				}
+				if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
+					if(rsq < def_pc * rcritv2 && NencpairsI < NencMax){	//prechecker
+//printf("Precheck %d %d\n", idx, j);
+						Encpairs2_d[NencMax * idx + NencpairsI].y = j;
+						NencpairsI += 1;
+					}
+				}
+				ir = 1.0/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				sb = 0.0;
+
+				if(rsq >= 1.0 * rcritv2){
+					s = x4j.w * ir3;
+					if( rsq >= def_pc * rcritv2) sb = s;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, 1.0, 1.0 / ir, s, rsq);
+				}
+				else{
+					if(rsq <= 0.01 * rcritv2){
+						s = 0.0;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, 0.0, 1.0 / ir, s, rsq);
+
+					}
+					else{
+						y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
+						yy = y * y;
+						s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s, rsq);
+
+					}
+				}
+//printf("acc %d %d %.20e %.20e %20e\n", idx, j, rsq, ir3, x4j.w);
+				a.x += (r3ij.x * s);
+				a.y += (r3ij.y * s);
+				a.z += (r3ij.z * s);
+
+				if(E % 10 != 2){
+					b.x += (r3ij.x * sb);
+					b.y += (r3ij.y * sb);
+					b.z += (r3ij.z * sb);
+				}
+//printf("%d %d %g %g Kick\n", idx, j, s, ac.x);
+			}
 		}
 
 		if(E >= 1){
@@ -973,7 +1035,7 @@ void kick_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, c
 		}
 	}
 }
-void kickf_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+void kickf_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 
 	for(int idx = 0; idx < N; ++idx){
 
@@ -996,7 +1058,86 @@ void kickf_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, 
 			x4j.z = x4_d[j].z;
 			x4j.w = x4_d[j].w;
 			float rcritvj = rcritv_d[j];
-			acc_df(a, b, x4i, x4j, rcritvi, rcritvj, &NencpairsI, Encpairs2_d, EncFlag_d, j, idx, NencMax, E); 
+
+			if( idx != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
+				float rsq, ir, ir3, s, sb;
+				float3 r3ij;
+				float rcritv, rcritv2;
+		//		float rcrit, rcrit2;
+				volatile float y, yy;
+
+				r3ij.x = x4j.x - x4i.x;
+				r3ij.y = x4j.y - x4i.y;
+				r3ij.z = x4j.z - x4i.z;
+
+				rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				rcritv = fmax(rcritvi, rcritvj);
+
+		//		rcrit2 = rcrit * rcrit;
+				rcritv2 = rcritv * rcritv;
+				if(E <= 2){
+					if(rsq < def_pcf * rcritv2){	//prechecker
+#if def_CPU == 0
+						int Ni = atomicAdd(NencpairsI, 1);
+#else
+						int Ni = NencpairsI++;
+#endif
+						if(Ni >= NencMax){
+#if def_CPU == 0
+							atomicMax(&EncFlag_d[0], Ni);
+#else
+							EncFlag_d[0] = max(EncFlag_d[0], Ni);
+
+#endif
+						}
+						else{
+							Encpairs2_d[NencMax * idx + Ni].y = j;
+						}
+//printf("Precheck %d %d %d %d %g %g %g\n", idx, j, Ni, NencMax, rsq, rcritvi, rcritvj);
+					}
+				}
+				if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
+					if(rsq < def_pcf * rcritv2 && NencpairsI < NencMax){	//prechecker
+//printf("Precheck %d %d\n", idx, j);
+						Encpairs2_d[NencMax * idx + NencpairsI].y = j;
+						NencpairsI += 1;
+					}
+				}
+				ir = 1.0f/sqrtf(rsq);
+				ir3 = ir*ir*ir;
+				sb = 0.0f;
+
+				if(rsq >= 1.0f * rcritv2){
+					s = x4j.w * ir3;
+					if( rsq >= def_pcf * rcritv2) sb = s;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, 1.0, 1.0 / ir, s);
+				}
+				else{
+					if(rsq <= 0.01f * rcritv2){
+						s = 0.0f;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, 0, 1.0 / ir, s);
+
+					}
+					else{
+						y = (rsq * ir - 0.1f * rcritv)/(0.9f*rcritv);
+						yy = y * y;
+						s = (ir3 * yy) / (2.0f*yy - 2.0f*y + 1.0f) * x4j.w;
+//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
+
+					}
+				}
+//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
+				a.x += (r3ij.x * s);
+				a.y += (r3ij.y * s);
+				a.z += (r3ij.z * s);
+
+				if(E % 10 != 2){
+					b.x += (r3ij.x * sb);
+					b.y += (r3ij.y * sb);
+					b.z += (r3ij.z * sb);
+				}
+//printf("%d %d %g %g Kick\n", idx, j, s, ac.x);
+			}
 		}
 
 		if(E >= 1){
@@ -1050,7 +1191,7 @@ void kickf_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, 
 //Authors: Simon Grimm
 //April 2019
 //****************************************
-__global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+__global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -1132,7 +1273,7 @@ __global__ void kick16c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	}
 }
 //float Version
-__global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+__global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -1238,7 +1379,7 @@ __global__ void kick16cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 //April 2019
 //
 //****************************************
-__global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+__global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 
@@ -1380,7 +1521,7 @@ __global__ void kick32c_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, do
 	}
 }
 //float Version
-__global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const double t, const int N, const int E){
+__global__ void kick32cf_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
 

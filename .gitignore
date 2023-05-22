@@ -6,6 +6,8 @@ GengaGL/gengaGL
 tools/KE
 tools/CoordinatesTransformation
 tools/ConvertHelioToBarry
+tools/Convert_P0T1_to_P1T0
+tools/Convert_P1T0_to_P0T1
 
 #HIP
 HIP/*.h

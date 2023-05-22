@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.173
+#define def_Version 3.174
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -317,6 +317,7 @@
 		warpSize = 1;
 	}
 */
+/*
 	inline double __dmul_rn_cpu(double x, double y){
 		return (x * y);
 	}
@@ -326,12 +327,14 @@
 	inline double __fma_rn_cpu(double x, double y, double z){
 		return (x * y + z);
 	}
-
+*/
  #endif
 #endif
 
 
 #if def_OldShuffle == 1
+ #ifndef OldShuffle_H
+ #define OldShuffle_H
 //Use this for older CUDA version where shfl_xor is not available in double precision
 __device__ inline
 double __shfld_xor(double x, int k) {
@@ -355,6 +358,7 @@ double __shfld_down(double x, int k) {
 	a.y = __shfl_down(a.y, k);
 	return *reinterpret_cast<double*>(&a);
 }
+ #endif
 #endif
 
 #ifndef STRUCT_H

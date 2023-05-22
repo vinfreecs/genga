@@ -696,22 +696,32 @@ __host__ int Data::readGridae(){
 			return 0;
 		}
 		//Read Total aeGrid
+		int er = 0;
 		for(int i = 0; i < Gridae.Ne; ++i){
 			for(int j = 0; j < Gridae.Na; ++j){
-				fscanf(Gridae.file, "%lld",&GridaecountT_h[i * Gridae.Na + j]);
+				er = fscanf(Gridae.file, "%lld",&GridaecountT_h[i * Gridae.Na + j]);
+				if(er <= 0){
+					return 0;
+				}
 			}
 		}
 		//Skip Temporal aeGrid
 		int skip;
 		for(int i = 0; i < Gridae.Ne; ++i){
 			for(int j = 0; j < Gridae.Na; ++j){
-				fscanf(Gridae.file, "%d",&skip);
+				er = fscanf(Gridae.file, "%d",&skip);
+				if(er <= 0){
+					return 0;
+				}
 			}
 		}
 		//Read Total aiGrid
 		for(int i = 0; i < Gridae.Ni; ++i){
 			for(int j = 0; j < Gridae.Na; ++j){
-				fscanf(Gridae.file, "%lld",&GridaicountT_h[i * Gridae.Na + j]);
+				er = fscanf(Gridae.file, "%lld",&GridaicountT_h[i * Gridae.Na + j]);
+				if(er <= 0){
+					return 0;
+				}
 			}
 		}
 		fclose(Gridae.file);
@@ -767,12 +777,16 @@ __host__ int Data::readMCMC_COV(){
 		return 0;
 	}
 	int ii, jj;
+	int er = 0;
 	for(int i = 0; i < NconstT * MCMC_NCOV; ++i){
 		for(int j = 0; j < N_h[0] * MCMC_NCOV; ++j){
-			fscanf(COVfile, "%d",&ii);
-			fscanf(COVfile, "%d",&jj);
-			fscanf(COVfile, "%lf",&elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
+			er = fscanf(COVfile, "%d",&ii);
+			er = fscanf(COVfile, "%d",&jj);
+			er = fscanf(COVfile, "%lf",&elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
 //printf("MCMCL %d %d %d %g\n", i, i % N_h[0], j, elementsCOV_h[i * N_h[0] * MCMC_NCOV + j]);
+			if(er <= 0){
+				return 0;
+			}
 			int iii = 0;
 			int NM = N_h[0] * MCMC_NCOV;
 			if(NM != 0) iii = i % NM;
@@ -1140,6 +1154,9 @@ __host__ int Data::readic(int st){
 				infile = fopen(GSF[st].inputfilename, "r");
 			}
 		}
+		else{
+			infile = NULL;
+		}
 //		printf("Read file %s %d %d\n", GSF[st].inputfilename, N, Nsmall);
 	}
 	else{
@@ -1205,92 +1222,92 @@ __host__ int Data::readic(int st){
 			for(int f = 0; f < def_Ninformat; ++f){
 				if(GSF[st].informat[f] == 1){
 					//x
-					fscanf (infile, "%lf",&x.x);
+					er = fscanf (infile, "%lf",&x.x);
 					cartCheck += 1;
 				}
 				if (GSF[st].informat[f] == 2){
 					//y
-					fscanf (infile, "%lf",&x.y);
+					er = fscanf (infile, "%lf",&x.y);
 					cartCheck += 2;
 				}
 				if (GSF[st].informat[f] == 3){
 					//z
-					fscanf (infile, "%lf",&x.z);
+					er = fscanf (infile, "%lf",&x.z);
 					cartCheck += 4;
 				}
 				if (GSF[st].informat[f] == 4){
 					//m
-					fscanf (infile, "%lf",&x.w);
+					er = fscanf (infile, "%lf",&x.w);
 				}
 				if (GSF[st].informat[f] == 5){
 					//vx
-					fscanf (infile, "%lf",&v.x);
+					er = fscanf (infile, "%lf",&v.x);
 					cartCheck += 8;
 				}
 				if (GSF[st].informat[f] == 6){
 					//vy
-					fscanf (infile, "%lf",&v.y);
+					er = fscanf (infile, "%lf",&v.y);
 					cartCheck += 16;
 				}
 				if (GSF[st].informat[f] == 7){
 					//vz
-					fscanf (infile, "%lf",&v.z);
+					er = fscanf (infile, "%lf",&v.z);
 					cartCheck += 32;
 				}
 				if (GSF[st].informat[f] == 8){
 					//r
-					fscanf (infile, "%lf",&v.w);
+					er = fscanf (infile, "%lf",&v.w);
 				}
 				if (GSF[st].informat[f] == 9){
 					//default rho
-					fscanf (infile, "%lf",&rho[st]);
+					er = fscanf (infile, "%lf",&rho[st]);
 				}
 				if (GSF[st].informat[f] == 10){
 					//Sx
-					fscanf (infile, "%lf",&spin.x);
+					er = fscanf (infile, "%lf",&spin.x);
 #if def_TTV > 0
 					elementsSpin.y = spin.x;
 #endif
 				}
 				if (GSF[st].informat[f] == 11){
 					//Sy
-					fscanf (infile, "%lf",&spin.y);
+					er = fscanf (infile, "%lf",&spin.y);
 #if def_TTV > 0
 					elementsSpin.y = spin.y;
 #endif
 				}
 				if (GSF[st].informat[f] == 12){
 					//Sz
-					fscanf (infile, "%lf",&spin.z);
+					er = fscanf (infile, "%lf",&spin.z);
 #if def_TTV > 0
 					elementsSpin.y = spin.z;
 #endif
 				}
 				if (GSF[st].informat[f] == 13){
 					//index
-					fscanf (infile, "%d",&index);
+					er = fscanf (infile, "%d",&index);
 				}
 				if (GSF[st].informat[f] == 14){
-					fscanf (infile, "%lf",&skip);
+					er = fscanf (infile, "%lf",&skip);
 				}
-				if (GSF[st].informat[f] == 15) fscanf (infile, "%f",&aelimits.x);	//amin
-				if (GSF[st].informat[f] == 16) fscanf (infile, "%f",&aelimits.y);
-				if (GSF[st].informat[f] == 17) fscanf (infile, "%f",&aelimits.z);
-				if (GSF[st].informat[f] == 18) fscanf (infile, "%f",&aelimits.w);
+				if (GSF[st].informat[f] == 15) er = fscanf (infile, "%f",&aelimits.x);	//amin
+				if (GSF[st].informat[f] == 16) er = fscanf (infile, "%f",&aelimits.y);
+				if (GSF[st].informat[f] == 17) er = fscanf (infile, "%f",&aelimits.z);
+				if (GSF[st].informat[f] == 18) er = fscanf (infile, "%f",&aelimits.w);
 				if (GSF[st].informat[f] == 19){
 					if(ict_h[st] == 0){
-						fscanf (infile, "%lf",&ict_h[st]);
+						er = fscanf (infile, "%lf",&ict_h[st]);
 					}
 					else{
-						fscanf (infile, "%lf",&skip);
+						er = fscanf (infile, "%lf",&skip);
 					}
 				}
-				if (GSF[st].informat[f] == 20) fscanf (infile, "%lf",&love.x);
-				if (GSF[st].informat[f] == 21) fscanf (infile, "%lf",&love.y);
-				if (GSF[st].informat[f] == 22) fscanf (infile, "%lf",&love.z);
+				if (GSF[st].informat[f] == 20) er = fscanf (infile, "%lf",&love.x);
+				if (GSF[st].informat[f] == 21) er = fscanf (infile, "%lf",&love.y);
+				if (GSF[st].informat[f] == 22) er = fscanf (infile, "%lf",&love.z);
 				if (GSF[st].informat[f] == 23){
 					//a
-					fscanf (infile, "%lf",&x.x);
+					er = fscanf (infile, "%lf",&x.x);
 #if def_TTV > 0
 					elementsA.x = x.x;
 #endif
@@ -1299,7 +1316,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 24){
 					//e
-					fscanf (infile, "%lf",&x.y);
+					er = fscanf (infile, "%lf",&x.y);
 #if def_TTV > 0
 					elementsA.y = x.y;
 #endif
@@ -1308,7 +1325,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 25){
 					//inc
-					fscanf (infile, "%lf",&x.z);
+					er = fscanf (infile, "%lf",&x.z);
 					if(P.AngleUnits == 1) x.z = x.z / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsA.z = x.z;
@@ -1318,7 +1335,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 26){
 					//Omega
-					fscanf (infile, "%lf",&v.x);
+					er = fscanf (infile, "%lf",&v.x);
 					if(P.AngleUnits == 1) v.x = v.x / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.x = v.x;
@@ -1328,7 +1345,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 27){
 					//w
-					fscanf (infile, "%lf",&v.y);
+					er = fscanf (infile, "%lf",&v.y);
 					if(P.AngleUnits == 1) v.y = v.y / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.y = v.y;
@@ -1338,7 +1355,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 28){
 					//M
-					fscanf (infile, "%lf",&v.z);
+					er = fscanf (infile, "%lf",&v.z);
 					if(P.AngleUnits == 1) v.z = v.z / 180.0 * M_PI;
 #if def_TTV > 0
 					elementsB.z = v.z;
@@ -1348,7 +1365,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 38){
 					//P
-					fscanf (infile, "%lf",&p);
+					er = fscanf (infile, "%lf",&p);
 #if def_TTV > 0
 					elementsT.z = p;
 					elementsT.w = 0.0;
@@ -1359,7 +1376,7 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 40){
 					//T
-					fscanf (infile, "%lf",&T);
+					er = fscanf (infile, "%lf",&T);
 #if def_TTV > 0
 					elementsT.x = T;
 					elementsT.y = 0.0;
@@ -1370,85 +1387,85 @@ __host__ int Data::readic(int st){
 				}
 				if (GSF[st].informat[f] == 42){
 					//Rcrit
-					fscanf (infile, "%lf",&rcrit);
+					er = fscanf (infile, "%lf",&rcrit);
 				}
 				if (GSF[st].informat[f] == 44){
 					//Ic
-					fscanf (infile, "%lf",&spin.w);
+					er = fscanf (infile, "%lf",&spin.w);
 				}
 				if (GSF[st].informat[f] == 45){
 					//test
-					fscanf (infile, "%lf",&test);
+					er = fscanf (infile, "%lf",&test);
 				}
 				if (GSF[st].informat[f] == 46){
 					//encc
-					fscanf (infile, "%llu",&enccountT);
+					er = fscanf (infile, "%llu",&enccountT);
 				}
 #if def_TTV > 0
 				if (GSF[st].informat[f] == 29){
-					fscanf (infile, "%lf",&elementsL.a);	//aL
+					er = fscanf (infile, "%lf",&elementsL.a);	//aL
 				}
 				if (GSF[st].informat[f] == 30){
-					fscanf (infile, "%lf",&elementsL.e);	//eL
+					er = fscanf (infile, "%lf",&elementsL.e);	//eL
 				}
 				if (GSF[st].informat[f] == 31){
-					fscanf (infile, "%lf",&elementsL.inc);	//incL
+					er = fscanf (infile, "%lf",&elementsL.inc);	//incL
 					if(P.AngleUnits == 1) elementsL.inc = elementsL.inc / 180.0 * M_PI;
 				}
 				if (GSF[st].informat[f] == 32){
-					 fscanf (infile, "%lf",&elementsL.m);	//mL
+					 er = fscanf (infile, "%lf",&elementsL.m);	//mL
 				}
 				if (GSF[st].informat[f] == 33){
-					fscanf (infile, "%lf",&elementsL.O);	//OmegaL
+					er = fscanf (infile, "%lf",&elementsL.O);	//OmegaL
 					if(P.AngleUnits == 1) elementsL.O = elementsL.O / 180.0 * M_PI;
 				}
 				if (GSF[st].informat[f] == 34){
-					fscanf (infile, "%lf",&elementsL.w);	//wL
+					er = fscanf (infile, "%lf",&elementsL.w);	//wL
 					if(P.AngleUnits == 1) elementsL.w = elementsL.w / 180.0 * M_PI;
 				}
 				if (GSF[st].informat[f] == 35){
-					fscanf (infile, "%lf",&elementsL.M);	//ML
+					er = fscanf (infile, "%lf",&elementsL.M);	//ML
 					if(P.AngleUnits == 1) elementsL.M = elementsL.M / 180.0 * M_PI;
 				}
 				if (GSF[st].informat[f] == 36){
-					fscanf (infile, "%lf",&elementsL.r);	//rL
+					er = fscanf (infile, "%lf",&elementsL.r);	//rL
 				}
 				if (GSF[st].informat[f] == 37){
-					fscanf (infile, "%lf",&elementsSA);	//SAT
+					er = fscanf (infile, "%lf",&elementsSA);	//SAT
 				}
 				if (GSF[st].informat[f] == 39){
-					fscanf (infile, "%lf",&elementsL.P);	//PL
+					er = fscanf (infile, "%lf",&elementsL.P);	//PL
 				}
 				if (GSF[st].informat[f] == 41){
-					fscanf (infile, "%lf",&elementsL.T);	//TL
+					er = fscanf (infile, "%lf",&elementsL.T);	//TL
 				}
 				if (GSF[st].informat[f] == 43){
-					fscanf (infile, "%lf",&elementsP.w);	//gw
+					er = fscanf (infile, "%lf",&elementsP.w);	//gw
 				}
 
 #else
-				if (GSF[st].informat[f] == 29) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 30) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 31) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 32) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 33) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 34) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 35) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 36) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 37) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 39) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 41) fscanf (infile, "%lf",&skip);
-				if (GSF[st].informat[f] == 43) fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 29) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 30) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 31) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 32) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 33) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 34) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 35) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 36) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 37) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 39) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 41) er = fscanf (infile, "%lf",&skip);
+				if (GSF[st].informat[f] == 43) er = fscanf (infile, "%lf",&skip);
 #endif
 				if(P.UseMigrationForce > 0){	
-					if (GSF[st].informat[f] == 49) fscanf (infile, "%lf",&migration.x);
-					if (GSF[st].informat[f] == 50) fscanf (infile, "%lf",&migration.y);
-					if (GSF[st].informat[f] == 51) fscanf (infile, "%lf",&migration.z);
+					if (GSF[st].informat[f] == 49) er = fscanf (infile, "%lf",&migration.x);
+					if (GSF[st].informat[f] == 50) er = fscanf (infile, "%lf",&migration.y);
+					if (GSF[st].informat[f] == 51) er = fscanf (infile, "%lf",&migration.z);
 				}
 				else{
-					if (GSF[st].informat[f] == 49) fscanf (infile, "%lf",&skip);
-					if (GSF[st].informat[f] == 50) fscanf (infile, "%lf",&skip);
-					if (GSF[st].informat[f] == 51) fscanf (infile, "%lf",&skip);
+					if (GSF[st].informat[f] == 49) er = fscanf (infile, "%lf",&skip);
+					if (GSF[st].informat[f] == 50) er = fscanf (infile, "%lf",&skip);
+					if (GSF[st].informat[f] == 51) er = fscanf (infile, "%lf",&skip);
 
 				}
 				if (GSF[st].informat[f] == 0){
@@ -1709,6 +1726,9 @@ __host__ int Data::readic(int st){
 			FILE *fragmentsfile;
 			if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
 				fragmentsfile = fopen(GSF[st].fragmentfilename, "r");
+			}
+			else{
+				fragmentsfile = NULL;
 			}
 
 			int iismall = 0;

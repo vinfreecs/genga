@@ -241,7 +241,11 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, const double mu, c
 		double y,dy,y2,y4,A,B;
 
 		double s,c,wp;
-		double f,g,fd,gd;	  // Gauss's f, g, fdot and gdot
+		double f = 0.0;	  // Gauss's f, g, fdot and gdot
+		double g = 0.0;
+		double fd = 0.0;
+		double gd = 0.0;
+
 		double rsq, ir,vsq;
 		double u;		  // r v cos(phi)
 		double ia;		  // semi-major axis

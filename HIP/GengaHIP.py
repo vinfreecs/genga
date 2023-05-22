@@ -66,8 +66,8 @@ for i in range(len(Lines)):
     #if(line.find('define USE_RANDOM') != -1):
     #    line = line.replace('1', '0')
 
-    if(line.find('curand') != -1):
-        line = line.replace('curand', 'hiprand')
+    if(line.find('curand_kernel.h') != -1):
+        line = line.replace('curand_kernel.h', 'hiprand/hiprand_kernel.h')
 
     print(line, file=file2, end='')
 
@@ -129,7 +129,7 @@ for fi in files:
 # *.h
 ########################################
 
-files = ['BSA', 'BSB64M', 'BSB', 'BSBM', 'BSRV', 'BSSingle', 'BSTTV', 'ComEnergy', 'directAcc', 'Encounter3', 
+files = ['BSA', 'BSAM3', 'BSB64M', 'BSB', 'BSBM3', 'BSBM', 'BSRV', 'BSSingle', 'BSTTV', 'ComEnergy', 'directAcc', 'Encounter3', 
         'FG2', 'force', 'forceYarkovskyOld', 'HC', 'Host2', 'Kick3', 'Kick4', 'Orbit2', 'Rcrit', 'Scan',
         'TTVAll', 'TTVStep2', 'createparticles', 'convert', 'bvh']
 

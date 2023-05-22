@@ -273,7 +273,7 @@ __host__ int Data::createReadFile1(){
 				printf("Error: Create Particles mode value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 
@@ -283,7 +283,7 @@ __host__ int Data::createReadFile1(){
 				printf("Error: Maximum number of particles value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			break;
 		}
 	}
@@ -338,7 +338,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: Create Particles mode value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "Maximum number of particles =") == 0){
@@ -348,7 +348,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: Maximum number of particles value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "Creation rate =") == 0){
@@ -357,7 +357,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: Creation rate value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "a =") == 0){
@@ -366,7 +366,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: a value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "da =") == 0){
@@ -375,7 +375,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: da value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "e =") == 0){
@@ -384,7 +384,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: e value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "de =") == 0){
@@ -393,7 +393,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: de value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "inc =") == 0){
@@ -402,7 +402,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: inc value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "dinc =") == 0){
@@ -411,7 +411,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: dinc value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "m =") == 0){
@@ -420,7 +420,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: m value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "r =") == 0){
@@ -429,7 +429,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: r value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "Vmin =") == 0){
@@ -438,7 +438,7 @@ __host__ int Data::createReadFile2(){
 				printf("Error: Vmin value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "Vmax =") == 0){
@@ -447,11 +447,11 @@ __host__ int Data::createReadFile2(){
 				printf("Error: Vmax value not valid!\n");
 				return 0;
 			}
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			continue;
 		}
 		if(strcmp(sp, "List of particle indizes:") == 0){
-			fgets(sp, 3, CreateParticlesfile);
+			if(fgets(sp, 3, CreateParticlesfile) != nullptr)
 			for(int i = 0; i < N_h[0] + Nsmall_h[0]; ++i){	
 				int id;
 				er = fscanf (CreateParticlesfile, "%d", &id);

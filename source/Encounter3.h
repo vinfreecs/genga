@@ -1700,11 +1700,15 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 
 		//count encounter pairs per body
 #if def_CPU == 0
-		int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
-		int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+		//int NI = atomicAdd(&Encpairs3_d[ii * NencMax], 1);
+		//int NJ = atomicAdd(&Encpairs3_d[jj * NencMax], 1);
+		atomicAdd(&Encpairs3_d[ii * NencMax], 1);
+		atomicAdd(&Encpairs3_d[jj * NencMax], 1);
 #else
-		int NI = Encpairs3_d[ii * NencMax]++;
-		int NJ = Encpairs3_d[jj * NencMax]++;
+		//int NI = Encpairs3_d[ii * NencMax]++;
+		//int NJ = Encpairs3_d[jj * NencMax]++;
+		Encpairs3_d[ii * NencMax]++;
+		Encpairs3_d[jj * NencMax]++;
 
 #endif
 //printf("group S %d %d %d %d %d\n", id, ii, jj, NI, NJ);

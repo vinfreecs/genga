@@ -137,16 +137,26 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 			a3.z += F * x4.z * ir;
 		}
 
-		double3 omega3;
-		double3 omegasun3;
-		double Rsun2, Rsun3, Rsun5;
-		double R2, R3, R5;
-		double ir2, ir3, ir5, ir7, ir8;
-		double F1;
-		double P, Psun;
+		double3 omega3 = {0.0, 0.0, 0.0};
+		double3 omegasun3 = {0.0, 0.0, 0.0};
+		double Rsun2 = 0.0;
+		double Rsun3 = 0.0;
+		double Rsun5 = 0.0;
+		double R2 = 0.0;
+		double R3 = 0.0;
+		double R5 = 0.0;
+		double ir2 = 0.0;
+		double ir3 = 0.0;
+		double ir5 = 0.0;
+		double ir7 = 0.0;
+		double ir8 = 0.0;
+		double F1 = 0.0;
+		double P = 0.0;
+		double Psun = 0.0;
 		double3 t2, t3;
 
-		double iIsun, iI;
+		double iIsun = 0.0;
+		double iI = 0.0;
 
 		if((UseTides == 1 || UseRotationalDeformation == 1 || J2s.x != 0.0) && x4.w >= 0.0){
 			Rsun2 = Msun_d[st].y * Msun_d[st].y;
@@ -172,12 +182,6 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 				omega3.x = Spin.x * iI;
 				omega3.y = Spin.y * iI;
 				omega3.z = Spin.z * iI;
-			}
-			else{
-				iI = 0.0;
-				omega3.x = 0.0;
-				omega3.y = 0.0;
-				omega3.z = 0.0;
 			}
 //printf("omegaP %d %g %g %g\n", id, omega3.x * dayUnit, omega3.y * dayUnit, omega3.z * dayUnit);
 
@@ -967,9 +971,19 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 			}
 			double mu = def_ksq * (Msun + x4i.w);
 
-			double a, e, inc, Omega, w, Theta, E;
-			double x, y, z;
-			double vx, vy, vz;
+			double a = 0.0;
+			double e = 0.0;
+			double inc = 0.0;
+			double Omega = 0.0;
+			double w = 0.0;
+			double Theta = 0.0;
+			double E = 0.0;
+			double x = 0.0;
+			double y = 0.0;
+			double z = 0.0;
+			double vx = 0.0;
+			double vy = 0.0;
+			double vz = 0.0;
 			if(doConversion == 1){
 
 				double rsq = x4i.x * x4i.x + x4i.y * x4i.y + x4i.z * x4i.z;
@@ -1122,8 +1136,12 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 			int line1 = line + nbodies;
 			int line2 = line1 + nbodies;
 			int line3 = line2 + nbodies;
-			double time0, time1, time2, time3;
-			double T, M;
+			double time0 = 0.0;
+			double time1 = 0.0;
+			double time2 = 0.0;
+			double time3 = 0.0;
+			double T = 0.0;
+			double M = 0.0;
 			double xx0, xx1, xx2, xx3;
 
 

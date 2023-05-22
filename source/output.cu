@@ -203,15 +203,15 @@ __host__ int Data::firstoutput(int irregular){
 				Energyfile = fopen(GSF[st].Energyfilename, "r");
 				sprintf(Ets, "%.16g", (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25);
 
-				fscanf (Energyfile, "%lf",&Et);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&LI_h[st]);
-				fscanf (Energyfile, "%lf",&U_h[st]);
-				fscanf (Energyfile, "%lf",&Energy0_h[st]);
-				fscanf (Energyfile, "%lf",&LI0_h[st]);
-				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&Et);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&LI_h[st]);
+				er = fscanf (Energyfile, "%lf",&U_h[st]);
+				er = fscanf (Energyfile, "%lf",&Energy0_h[st]);
+				er = fscanf (Energyfile, "%lf",&LI0_h[st]);
+				er = fscanf (Energyfile, "%lf",&skip);
 				er = fscanf (Energyfile, "%lf",&skip);
 	
 				U_h[st] /= def_Kg;
@@ -222,29 +222,29 @@ __host__ int Data::firstoutput(int irregular){
 				Energyfile = fopen(GSF[st].EnergyIrrfilename, "r");
 				sprintf(Ets, "%.16g", (ict_h[st] * 365.25) / 365.25);
 
-				fscanf (Energyfile, "%lf",&Et);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&Energy0_h[st]);
-				fscanf (Energyfile, "%lf",&LI0_h[st]);
-				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&Et);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&Energy0_h[st]);
+				er = fscanf (Energyfile, "%lf",&LI0_h[st]);
+				er = fscanf (Energyfile, "%lf",&skip);
 				er = fscanf (Energyfile, "%lf",&skip);
 			}
 
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 			while(Et * tsign < atof(Ets) * tsign){
-				fscanf (Energyfile, "%lf",&Et);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&LI_h[st]);
-				fscanf (Energyfile, "%lf",&U_h[st]);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
-				fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&Et);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&LI_h[st]);
+				er = fscanf (Energyfile, "%lf",&U_h[st]);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
+				er = fscanf (Energyfile, "%lf",&skip);
 				er = fscanf (Energyfile, "%lf",&skip);
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 	
@@ -277,28 +277,28 @@ __host__ int Data::firstoutput(int irregular){
 				int er = 0;
 				starfile = fopen(GSF[st].starfilename, "r");
 
-				fscanf (Energyfile, "%lf",&Et);
-				fscanf (Energyfile, "%lf",&Msun_h[st].x);
-				fscanf (Energyfile, "%lf",&Msun_h[st].y);
-				fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
-				fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
-				fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
-				fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
-				fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
-				fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
+				er = fscanf (Energyfile, "%lf",&Et);
+				er = fscanf (Energyfile, "%lf",&Msun_h[st].x);
+				er = fscanf (Energyfile, "%lf",&Msun_h[st].y);
+				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
+				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
+				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
+				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
+				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
+				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
 				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
 
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 				while(Et * tsign < atof(Ets) * tsign){
-					fscanf (Energyfile, "%lf",&Et);
-					fscanf (Energyfile, "%lf",&Msun_h[st].x);
-					fscanf (Energyfile, "%lf",&Msun_h[st].y);
-					fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
-					fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
-					fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
-					fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
-					fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
-					fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
+					er = fscanf (Energyfile, "%lf",&Et);
+					er = fscanf (Energyfile, "%lf",&Msun_h[st].x);
+					er = fscanf (Energyfile, "%lf",&Msun_h[st].y);
+					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
+					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
+					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
+					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
+					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
+					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
 					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 					if(Et * tsign >= atof(Ets) * tsign) break;

@@ -257,11 +257,13 @@ def DtoH(line):
 		line = line.replace('n2_d', 'n2_h')
 
 	if(line.find('__dmul_rn') != -1):
-		line = line.replace('__dmul_rn', '__dmul_rn_cpu')
+		line = line.replace('__dmul_rn', '')
+		line = line.replace(',', ' *')
 	if(line.find('__fmul_rn') != -1):
-		line = line.replace('__fmul_rn', '__fmul_rn_cpu')
+		line = line.replace('__fmul_rn', '')
+		line = line.replace(',', ' *')
 	if(line.find('__fma_rn') != -1):
-		line = line.replace('__fma_rn', '__fma_rn_cpu')
+		line = line.replace('__fma_rn', 'fma')
 
 	return line
 
@@ -1086,6 +1088,9 @@ for line in Lines:
 	if(line.find('__device__') != -1):
 		line = line.replace('__device__ ', '')
 
+	if(line.find('volatile') != -1):
+		line = line.replace('volatile ', '')
+
 	if(line.find('__syncthreads') != -1):
 		continue 
 
@@ -1190,6 +1195,9 @@ for line in Lines:
 
 	if(line.find('template') != -1):
 		continue 
+
+	if(line.find('volatile') != -1):
+		line = line.replace('volatile ', '')
 
 	#Add loops
 

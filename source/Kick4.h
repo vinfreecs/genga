@@ -3,6 +3,7 @@
 #include "define.h"
 
 
+#if def_CPU == 0
 //**************************************
 //This function computes the terms a = mi/rij^3 * Kij.
 //This function also finds the pairs of bodies which are separated less than pc * rcritv^2. 
@@ -30,18 +31,10 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
 
-#if def_CPU == 0
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-#else
-			int Ni = Encpairs2_d[i * NencMax].x++;
-#endif
 //printf("enc1 %d %d %d\n", i, j, Ni);
 			if(Ni >= NencMax){
-#if def_CPU == 0
 				atomicMax(&EncFlag_d[0], Ni);
-#else
-				EncFlag_m[0] = max(EncFlag_m[0], Ni);
-#endif
 			}
 			else{
 				Encpairs2_d[i * NencMax + Ni].y = j;
@@ -49,23 +42,15 @@ __device__ void  acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatil
 
 			if(EE == 0){
 				if(i < j && Ni < NencMax){
-#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
-#else
-					int Ne = Nencpairs_d[0]++;
-#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 //printf("Precheck %d %d %d\n", i, j, EE);
 				}
 			}
-			if(EE > 0){
+			else{
 				if(i > j && Ni < NencMax){
-#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
-#else
-					int Ne = Nencpairs_d[0]++;
-#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 //printf("Precheck %d %d %d\n", i, j, EE);
@@ -103,18 +88,10 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 		if(rsq < def_pcf * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
 
-#if def_CPU == 0
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-#else
-			int Ni = Encpairs2_d[i * NencMax].x++;
-#endif
 //printf("enc1 %d %d %d\n", i, j, Ni);
 			if(Ni >= NencMax){
-#if def_CPU == 0
 				atomicMax(&EncFlag_d[0], Ni);
-#else
-				EncFlag_m[0] = max(EncFlag_m[0], Ni);
-#endif
 			}
 			else{
 				Encpairs2_d[i * NencMax + Ni].y = j;
@@ -122,22 +99,14 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 
 			if(EE == 0){
 				if(i < j && Ni < NencMax){
-#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
-#else
-					int Ne = Nencpairs_d[0]++;
-#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 				}
 			}
-			if(EE > 0){
+			else{
 				if(i > j && Ni < NencMax){
-#if def_CPU == 0
 					int Ne = atomicAdd(Nencpairs_d, 1);
-#else
-					int Ne = Nencpairs_d[0]++;
-#endif
 					Encpairs_d[Ne].x = i;
 					Encpairs_d[Ne].y = j;
 				}
@@ -153,7 +122,7 @@ __device__ void  acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile 
 	}
 }
 
-
+#endif
 
 // ********************************************************************************************
 // This kernel sets all close Encounter lists to zero. It also sets the acceleration to zero.
@@ -586,7 +555,7 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 	}
 }
 #else
-void acc4C_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_h, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+void acc4C_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_m, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	for(int i = Nstart; i < N; ++i){
 
@@ -598,7 +567,78 @@ void acc4C_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_
 
 		double3 a = {0.0, 0.0, 0.0};
 		for(int j = N0; j < N1; ++j){
-			acc_e(a, x4i, x4_h[j], rcritvi, rcritv_h[j], Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_h, j, i, NencMax, EE);
+
+			double4 x4j = x4_h[j];
+			double rcritvj = rcritv_h[j];
+
+			if(i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
+				double3 r3ij;
+
+				r3ij.x = x4j.x - x4i.x;
+				r3ij.y = x4j.y - x4i.y;
+				r3ij.z = x4j.z - x4i.z;
+
+				double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+				double rcritv = fmax(rcritvi, rcritvj);
+
+				double ir = 1.0/sqrt(rsq);
+				double ir3 = ir*ir*ir;
+
+				double s = x4j.w * ir3;
+
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
+
+#if def_CPU == 0
+					int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+#else
+					int Ni = Encpairs2_d[i * NencMax].x++;
+#endif
+//printf("enc1 %d %d %d\n", i, j, Ni);
+					if(Ni >= NencMax){
+#if def_CPU == 0
+						atomicMax(&EncFlag_d[0], Ni);
+#else
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+#endif
+					}
+					else{
+						Encpairs2_d[i * NencMax + Ni].y = j;
+					}
+
+					if(EE == 0){
+						if(i < j && Ni < NencMax){
+#if def_CPU == 0
+							int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+							int Ne = Nencpairs_d[0]++;
+#endif
+							Encpairs_d[Ne].x = i;
+							Encpairs_d[Ne].y = j;
+//printf("Precheck %d %d %d\n", i, j, EE);
+						}
+					}
+					else{
+						if(i > j && Ni < NencMax){
+#if def_CPU == 0
+							int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+							int Ne = Nencpairs_d[0]++;
+#endif
+							Encpairs_d[Ne].x = i;
+							Encpairs_d[Ne].y = j;
+//printf("Precheck %d %d %d\n", i, j, EE);
+						}
+					}
+
+					s = 0.0;
+				}
+				else if(rsq == 0.0) s = 0.0;
+
+				a.x += (r3ij.x * s);
+				a.y += (r3ij.y * s);
+				a.z += (r3ij.z * s);
+//if(i == 50) printf("acce %d %d %.20g %.20g %.20g\n", i, j, r3ij.x, s, rsq);
+			}
 		}
 
 		if(EE < 2){
@@ -614,7 +654,7 @@ void acc4C_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_
 	}
 }
 
-void acc4Cf_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_h, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+void acc4Cf_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *Nencpairs_h, int *EncFlag_m, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
 	for(int i = Nstart; i < N; ++i){
 
@@ -638,7 +678,72 @@ void acc4Cf_cpu(double4 *x4_h, double3 *acck_h, double *rcritv_h, int2 *Encpairs
 			x4j.z = float(x4_h[j].z);
 			x4j.w = float(x4_h[j].w);
 			float rcritvj = float(rcritv_h[j]);
-			acc_ef(a, x4i, x4j, rcritvi, rcritvj, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_h, j, i, NencMax, EE);
+
+			if(i != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
+				float3 r3ij;
+
+				r3ij.x = x4j.x - x4i.x;
+				r3ij.y = x4j.y - x4i.y;
+				r3ij.z = x4j.z - x4i.z;
+
+				float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
+				float rcritv = fmaxf(rcritvi, rcritvj);
+
+				float ir = 1.0f/sqrtf(rsq);
+				float ir3 = ir*ir*ir;
+
+				float s = x4j.w * ir3;
+
+				if(rsq < def_pcf * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
+
+#if def_CPU == 0
+					int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
+#else
+					int Ni = Encpairs2_d[i * NencMax].x++;
+#endif
+//printf("enc1 %d %d %d\n", i, j, Ni);
+					if(Ni >= NencMax){
+#if def_CPU == 0
+						atomicMax(&EncFlag_d[0], Ni);
+#else
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+#endif
+					}
+					else{
+						Encpairs2_d[i * NencMax + Ni].y = j;
+					}
+
+					if(EE == 0){
+						if(i < j && Ni < NencMax){
+#if def_CPU == 0
+							int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+							int Ne = Nencpairs_d[0]++;
+#endif
+							Encpairs_d[Ne].x = i;
+							Encpairs_d[Ne].y = j;
+						}
+					}
+					else{
+						if(i > j && Ni < NencMax){
+#if def_CPU == 0
+							int Ne = atomicAdd(Nencpairs_d, 1);
+#else
+							int Ne = Nencpairs_d[0]++;
+#endif
+							Encpairs_d[Ne].x = i;
+							Encpairs_d[Ne].y = j;
+						}
+					}
+
+					s = 0.0f;
+				}
+				else if(rsq == 0.0f) s = 0.0f;
+
+				a.x += (r3ij.x * s);
+				a.y += (r3ij.y * s);
+				a.z += (r3ij.z * s);
+			}
 		}
 
 		if(EE < 2){
