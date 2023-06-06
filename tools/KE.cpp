@@ -236,13 +236,10 @@ int main(int argc, char*argv[]){
 	int NN = 0;
 
 	double3 x, v, spin;
-	double xOld;
 	double m, r, a, e, inc, Omega, w, Theta, E, M;
 	double s;
 	double t = 0.0;
 	int index;
-	int indexOld;
-	double timeOld;
 
 	//FormatT = 1, FormatP = 0
 	if(pmax > 0){
@@ -260,11 +257,10 @@ printf("%s\n", inputfilename);
 			outputfile = fopen(outputfilename, "w");
 
 			for(long long int tt = 0ll; tt < 1e12; ++tt){
-				xOld = x.x;
-				timeOld = t;
-				fscanf (inputfile, "%lf",&t);
+				int er = fscanf (inputfile, "%lf",&t);
+				if(er <= 0) break;
 				fscanf (inputfile, "%d",&index);
-	//printf("%d %g %d\n", i, t, index);
+//printf("%lld %g %d\n", tt, t, index);
 				fscanf (inputfile, "%lf",&m);
 				fscanf (inputfile, "%lf",&r);
 				fscanf (inputfile, "%lf",&x.x);
@@ -284,12 +280,13 @@ printf("%s\n", inputfilename);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
 				fscanf (inputfile, "%lf",&s);
-				if(xOld == x.x && t == timeOld){
-					break;
-				}
+
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
+
 				fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
 			}
+			fclose(inputfile);
+			fclose(outputfile);
 
 
 		}
@@ -329,11 +326,14 @@ printf("%s\n", inputfilename);
 			t = 1.0e8;
 			if(useCollfile == 0){
 				for(int i = 0; i < N; ++i){
-					xOld = x.x;
-					indexOld = index;
-					fscanf (inputfile, "%lf",&t);
+					int er = fscanf (inputfile, "%lf",&t);
+					if(er <= 0){
+						NN = i;
+printf("%d\n", NN);
+						break;
+					}
 					fscanf (inputfile, "%d",&index);
-	//printf("%d %g %d\n", i, t, index);
+//printf("%d %g %d\n", i, t, index);
 					fscanf (inputfile, "%lf",&m);
 					fscanf (inputfile, "%lf",&r);
 					fscanf (inputfile, "%lf",&x.x);
@@ -353,11 +353,7 @@ printf("%s\n", inputfilename);
 					fscanf (inputfile, "%lf",&s);
 					fscanf (inputfile, "%lf",&s);
 					fscanf (inputfile, "%lf",&s);
-					if(xOld == x.x && indexOld == index){
-						NN = i;
-	printf("%d\n", NN);
-						break;
-					}
+
 					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
 					fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
 				}
@@ -365,8 +361,6 @@ printf("%s\n", inputfilename);
 			else{
 				for(int i = 0; i < N; ++i){
 					int er = 0;
-					xOld = x.x;
-					indexOld = index;
 					//planet i
 					fscanf (inputfile, "%lf",&t);
 					fscanf (inputfile, "%d",&index);
