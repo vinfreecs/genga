@@ -115,6 +115,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, const
 #if def_CPU == 0
 					atomicAdd(&Gridaecount_d[ne * GridaeN_c[0] + na], 1); 
 #else
+					#pragma omp atomic
 					Gridaecount_d[ne * GridaeN_c[0] + na]++;
 #endif
 		
@@ -147,6 +148,7 @@ __device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, const
 #if def_CPU == 0
 					atomicAdd(&Gridaicount_d[ni * GridaeN_c[0] + na], 1); 
 #else
+					#pragma omp atomic
 					Gridaicount_d[ni * GridaeN_c[0] + na]++;
 #endif
 				}

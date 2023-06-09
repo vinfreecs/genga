@@ -26,6 +26,7 @@ public:
 	int runtimeVersion;
 	int driverVersion;
 	int WarpSize;
+	int Nomp;				//Number of openMP threads
 
 	int MultiSim;
 	int interrupt;				//signal handling

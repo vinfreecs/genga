@@ -526,6 +526,8 @@ __host__ int Data::step(int noColl){
 		if(er == 0) return 0;
 	}
 	else{
+		//step1_cpu();
+		//er = 1;
 		er = step_cpu(noColl);
 		if(er == 0) return 0;
 	}

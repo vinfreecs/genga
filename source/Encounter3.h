@@ -620,7 +620,9 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 #if def_CPU == 0
 			int Ne = atomicAdd(Nencpairs2_d, 1);
 #else
-			int Ne = Nencpairs2_d[0]++;
+			int Ne;
+			#pragma omp atomic capture
+			Ne = Nencpairs2_d[0]++;
 #endif
 			if(StopAtEncounter > 0){
 				if(enccount == 1){
@@ -657,7 +659,9 @@ __global__ void encounter_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 			atomicAdd(&enccount_d[ii], 1);
 			atomicAdd(&enccount_d[jj], 1);
 #else
+			#pragma omp atomic
 			enccount_d[ii]++;
+			#pragma omp atomic
 			enccount_d[jj]++;
 #endif
 		}
@@ -703,7 +707,9 @@ __global__ void encounter_small_kernel(double4 *x4_d, double4 *v4_d, double4 *xo
 #if def_CPU == 0
 				int ne = atomicAdd(NWriteEnc_d, 1);
 #else
-				int ne = NWriteEnc_d[0]++;
+				int ne;
+				#pragma omp atomic capture
+				ne = NWriteEnc_d[0]++;
 #endif
 				if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
 				if(colt > 1.0) colt = 1.0;
@@ -1707,7 +1713,9 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 #else
 		//int NI = Encpairs3_d[ii * NencMax]++;
 		//int NJ = Encpairs3_d[jj * NencMax]++;
+		#pragma omp atomic
 		Encpairs3_d[ii * NencMax]++;
+		#pragma omp atomic
 		Encpairs3_d[jj * NencMax]++;
 
 #endif
@@ -1721,7 +1729,9 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 #if def_CPU == 0
 			int Ni = atomicAdd(&Encpairs3_d[ii * NencMax + 2], 1);
 #else
-			int Ni = Encpairs3_d[ii * NencMax + 2]++;
+			int Ni;
+			#pragma omp atomic capture
+			Ni = Encpairs3_d[ii * NencMax + 2]++;
 #endif
 			Encpairs3_d[ii * NencMax + Ni + 4] = jj;
 		}
@@ -1730,7 +1740,9 @@ __global__ void groupS2_kernel(int *Nencpairs2_d, int2 *Encpairs2_d, int *Nencpa
 #if def_CPU == 0
 			int Nj = atomicAdd(&Encpairs3_d[jj * NencMax + 2], 1);
 #else
-			int Nj = Encpairs3_d[jj * NencMax + 2]++;
+			int Nj;
+			#pragma omp atomic capture
+			Nj = Encpairs3_d[jj * NencMax + 2]++;
 
 #endif
 			Encpairs3_d[jj * NencMax + Nj + 4] = ii;

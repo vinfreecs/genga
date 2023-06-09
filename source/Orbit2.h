@@ -192,6 +192,7 @@ public:
 	double4 *xold_h;
 	double4 *vold_h;
 	double3 *a_h;
+	double3 *b_h;
 	double4 *x4b_h;
 	double4 *v4b_h;
 	double4 *x4bb_h;
@@ -395,11 +396,16 @@ public:
 #if def_CPU == 1
 	void firstKick_cpu(int);
 	void firstKick_small_cpu(int);
+	void step1_cpu();
 	int step_cpu(int);
 	int step_small_cpu(int);
 	int tuneKickCPU(int);
 	void SEncCPU(double &, int, double, int, int);
-
+	void acc4D_cpu();
+	void acc4Df_cpu();
+	void acc4E_cpu();
+	void acc4C_cpu(const int, const int, const int, const int, const int);
+	void acc4Cf_cpu(const int, const int, const int, const int, const int);
 #endif
 
 

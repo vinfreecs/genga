@@ -1750,13 +1750,30 @@ __host__ int Data::tuneBS(){
 		Rcrit_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
 
 		if(P.UseTestParticles == 0){
+#if def_CPU == 0
 			acc4C_kernel <<< dim3( (((N_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
+#else
+			if(Nomp == 1){
+				acc4E_cpu();
+			}
+			else{
+				acc4D_cpu();
+			}
+#endif
 		}
 		if(P.UseTestParticles == 1){
+#if def_CPU == 0
 			acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+#else
+			acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
+#endif
 		}
 		if(P.UseTestParticles == 2){
+#if def_CPU == 0
 			acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+#else
+			acc4C_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+#endif
 		}
 
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2005,10 +2022,15 @@ void Data::firstKick_cpu(int noColl){
 		comCall(-1);
 	}
 	if(P.KickFloat == 0){
-		kick_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 0);
+		if(Nomp == 1){
+			acc4E_cpu();
+		}
+		else{
+			acc4D_cpu();
+		}
 	}
 	else{
-		kickf_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 0);
+		//acc4Df_cpu();
 	}
 }
 void Data::firstKick_small_cpu(int noColl){
@@ -2033,17 +2055,17 @@ void Data::firstKick_small_cpu(int noColl){
 	}
 
 	if(P.KickFloat == 0){
-		acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		acc4C_cpu(0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 	}
 	else{   
-		acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		acc4Cf_cpu(0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 	}
 	if(P.UseTestParticles == 2){
 		if(P.KickFloat == 0){
-			acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
 		else{   
-			acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
 	}
 
@@ -2253,50 +2275,69 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 	//	Nenc_m[i] = 0;
 	//}
 #else
+
+//omp task
+//omp taskloop
+	#pragma omp parallel
+	{
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[1]; ++idx){ 
 		BSBStep_cpu <2> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 0, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[2]; ++idx){ 
 		BSBStep_cpu <4> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 1, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[3]; ++idx){ 
 		BSBStep_cpu <8> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 2, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[4]; ++idx){ 
 		BSBStep_cpu <16> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 3, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[5]; ++idx){ 
 		BSBStep_cpu <32> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 4, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 
-
 	/*
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[1]; ++idx){ 
 		BSA_cpu < 2 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[2]; ++idx){ 
 		BSA_cpu < 4 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[3]; ++idx){ 
 		BSA_cpu < 8 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[4]; ++idx){ 
 		BSA_cpu < 16 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[5]; ++idx){ 
 		BSA_cpu < 32 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	*/
 
 
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[6]; ++idx){ 
 		BSA_cpu < 64 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[7]; ++idx){ 
 		BSA_cpu < 128 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
+	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[8]; ++idx){ 
 		BSA_cpu < 256 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+	}
+
 	}
 
 	/*
@@ -3259,6 +3300,93 @@ __host__ int Data::KickfirstndevCall(int EE){
 // *************************************************
 // Step CPU
 // *************************************************
+void Data::step1_cpu(){
+
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0], NconstT, P.SLevels, 0);
+
+	double Msun = Msun_h[0].x;
+	double dt05 = dt_h[0] * 0.5;
+	double dt05Msun = dt05 / Msun;
+
+	//Kick  
+	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+	
+
+	for(int si = 0; si < SIn; ++si){
+		
+		//HC
+/*		double3 a = {0.0, 0.0, 0.0};
+
+		//#pragma omp parallel for
+		for(int i = 0; i < N_h[0]; ++i){
+			a.x += x4_h[i].w * v4_h[i].x;
+			a.y += x4_h[i].w * v4_h[i].y;
+			a.z += x4_h[i].w * v4_h[i].z;
+		//printf("HCA %d %d %g %g %g %g\n", id, j, v4.x, v4j.x, mj, a.x);
+		}
+
+		a.x *= dt05Msun;
+		a.y *= dt05Msun;
+		a.z *= dt05Msun;
+
+
+		for(int i = 0; i < N_h[0]; ++i){
+			x4_h[i].x += a.x;
+			x4_h[i].y += a.y;
+			x4_h[i].z += a.z;
+		}
+*/
+		HCCall(Ct[si], 1);
+
+		//FG
+
+		#pragma omp parallel for 
+		for(int i = 0; i < N_h[0]; ++i){
+			unsigned int aecount = 0u;
+			xold_h[i] = x4_h[i];
+			vold_h[i] = v4_h[i];
+			int index = index_h[i];
+			float4 aelimits = aelimits_h[i];
+			//fgcfull(x4_h[i], v4_h[i], dt, mu, P.UseGR);
+			fgfull(x4_h[i], v4_h[i], dt_h[0], def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_h, Gridaicount_h, 0, i, index, P.UseGR);
+			aecount_h[i] += aecount;
+		}
+
+//                fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+
+		//HC
+	/*	a = {0.0, 0.0, 0.0};
+		for(int j = 0; j < N_h[0]; ++j){
+			a.x += x4_h[j].w * v4_h[j].x;
+			a.y += x4_h[j].w * v4_h[j].y;
+			a.z += x4_h[j].w * v4_h[j].z;
+		//printf("HCA %d %d %g %g %g %g\n", id, j, v4.x, v4j.x, mj, a.x);
+		}
+
+		a.x *= dt05Msun;
+		a.y *= dt05Msun;
+		a.z *= dt05Msun;
+
+		for(int i = 0; i < N_h[0]; ++i){
+			x4_h[i].x += a.x;
+			x4_h[i].y += a.y;
+			x4_h[i].z += a.z;
+		}
+	*/
+		HCCall(Ct[si], -1);
+	}
+
+	if(Nomp == 1){
+		acc4E_cpu();
+	}
+	else{
+		acc4D_cpu();
+	}
+	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+
+}
+
+
 int Data::step_cpu(int noColl){
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0], NconstT, P.SLevels, noColl);
 
@@ -3281,19 +3409,21 @@ int Data::step_cpu(int noColl){
 			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
 		}
 		else{
-/*
 			if(P.KickFloat == 0){
-				kick_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 1);
+				if(Nomp == 1){
+					acc4E_cpu();
+				}
+				else{
+					acc4D_cpu();
+				}
 			}
 			else{
-				kickf_cpu(x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 1);
-			}
-*/
-			if(P.KickFloat == 0){
-				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
-			}
-			else{
-				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
+				if(Nomp == 1){
+					//acc4Ef_cpu();
+				}
+				else{
+					//acc4Df_cpu();
+				}
 			}
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
@@ -3376,19 +3506,21 @@ int Data::step_cpu(int noColl){
 		}
 		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
-/*
 			if(P.KickFloat == 0){
-				kick_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 2);
+				if(Nomp == 1){
+					acc4E_cpu();
+				}
+				else{
+					acc4D_cpu();
+				}
 			}
 			else{
-				kickf_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 2);
-			}
-*/	
-			if(P.KickFloat == 0){
-				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
-			}
-			else{
-				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
+				if(Nomp == 1){
+					//acc4Ef_cpu();
+				}
+				else{
+					//acc4Df_cpu();
+				}
 			}
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
@@ -3414,19 +3546,21 @@ int Data::step_cpu(int noColl){
 			}
 		}
 	}
-/*
 	if(P.KickFloat == 0){
-		kick_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 1);
+		if(Nomp == 1){
+			acc4E_cpu();
+		}
+		else{
+			acc4D_cpu();
+		}
 	}
 	else{
-		kickf_cpu (x4_h, v4_h, a_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs_h, Encpairs2_h, EncFlag_m, P.NencMax, N_h[0], 1);
-	}
-*/	
-	if(P.KickFloat == 0){
-		acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
-	}
-	else{
-		acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], 0, N_h[0], P.NencMax, KP, 0);
+		if(Nomp == 1){
+			//acc4Ef_cpu();
+		}
+		else{
+			//acc4Df_cpu();
+		}
 	}
 	if(P.SERIAL_GROUPING == 1){
 		Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
@@ -3487,17 +3621,17 @@ int Data::step_small_cpu(int noColl){
 	else{
 //
 		if(P.KickFloat == 0){
-			acc4C_cpu ( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+			acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 		}
 		else{
-			acc4Cf_cpu ( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP,1);
+			acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 		}
 		if(P.UseTestParticles == 2){
 			if(P.KickFloat == 0){
-				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+				acc4C_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 			}
 			else{
-				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+				acc4Cf_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 			}
 		}
 		if(P.SERIAL_GROUPING == 1){
@@ -3632,18 +3766,18 @@ int Data::step_small_cpu(int noColl){
 		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
-				acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+				acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 
 			}
 			else{
-				acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+				acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 			}
 			if(P.UseTestParticles == 2){
 				if(P.KickFloat == 0){
-					acc4C_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+					acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 				}
 				else{
-					acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+					acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 				}
 			}	
 			if(P.SERIAL_GROUPING == 1){
@@ -3678,17 +3812,17 @@ int Data::step_small_cpu(int noColl){
 		}
 	}
 	if(P.KickFloat == 0){
-		acc4C_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 	}
 	else{
-		acc4Cf_cpu (x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 	}
 	if(P.UseTestParticles == 2){
 		if(P.KickFloat == 0){
-			acc4C_cpu( x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+			acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
 		else{
-			acc4Cf_cpu(x4_h, a_h, rcritv_h, Encpairs_h, Encpairs2_h, Nencpairs_h, EncFlag_m, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP, 2);
+			acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
 	}
 

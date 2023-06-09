@@ -45,7 +45,6 @@ __device__ void accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, do
 	}
 }
 
-#if def_CPU == 0
 //**************************************
 //This function computes the terms a = mi/rij^3 * Kij and b = mi/rij.
 //This function also finds the pairs of bodies which are separated less than pc * rcritv^2. The index of those 
@@ -87,7 +86,7 @@ __device__ void acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doubl
 				else{
 					Encpairs2_d[NencMax * i + Ni].y = j;
 				}
-//printf("Precheck %d %d %d %d %g %g %g\n", i, j, Ni, NencMax, rsq, rcritvi, rcritvj);
+//printf("Precheck acc_d %d %d %d\n", i, j, Ni);
 			}
 		}
 		if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
@@ -104,23 +103,17 @@ __device__ void acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doubl
 		if(rsq >= 1.0 * rcritv2){
 			s = x4j.w * ir3;
 			if( rsq >= def_pc * rcritv2) sb = s;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s, rsq);
 		}
 		else{
 			if(rsq <= 0.01 * rcritv2){
 				s = 0.0;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, 0.0, 1.0 / ir, s, rsq);
-
 			}
 			else{
 				y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
 				yy = y * y;
 				s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s, rsq);
-
 			}
 		}
-//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
 		ac.x += __dmul_rn(r3ij.x, s);
 		ac.y += __dmul_rn(r3ij.y, s);
 		ac.z += __dmul_rn(r3ij.z, s);
@@ -177,23 +170,17 @@ __device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rc
 		if(rsq >= 1.0f * rcritv2){
 			s = x4j.w * ir3;
 			if( rsq >= def_pcf * rcritv2) sb = s;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 1.0, 1.0 / ir, s);
 		}
 		else{
 			if(rsq <= 0.01f * rcritv2){
 				s = 0.0f;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, 0, 1.0 / ir, s);
-
 			}
 			else{
 				y = (rsq * ir - 0.1f * rcritv)/(0.9f*rcritv);
 				yy = y * y;
 				s = (ir3 * yy) / (2.0f*yy - 2.0f*y + 1.0f) * x4j.w;
-//if(i == 0) printf("%d %d %.40g %.40g %.40g Kick\n", i, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
-
 			}
 		}
-//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
 		ac.x += __fmul_rn(r3ij.x, s);
 		ac.y += __fmul_rn(r3ij.y, s);
 		ac.z += __fmul_rn(r3ij.z, s);
@@ -206,7 +193,6 @@ __device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rc
 //printf("%d %d %g %g Kick\n", i, j, s, ac.x);
 	}
 }
-#endif
 
 // ******************************************************
 // Version of acc which is called from the recursive symplectic sub step method
@@ -794,10 +780,9 @@ __global__ void kickS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doub
 #if def_CPU == 0
 							int Ne = atomicAdd(Nencpairs_d, 1);
 #else
-							int Ne = Nencpairs_d[0]++;
-// ******
-//not parallel yet
-// ******
+							int Ne;
+							#pragma omp atomic capture
+							Ne = Nencpairs_d[0]++;
 #endif
 //printf("KickS %d %d %d\n", Ne, id, jj);
 							Encpairs_d[Ne].x = id;
@@ -907,271 +892,6 @@ __global__ void kick32ATTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 //if(id == 25) printf("K %d %.40g %.40g %.40g %.40g %.40g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.z, acck_d[id].z);
 	}
 }
-
-#if def_CPU == 1
-void kick_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
-
-	for(int idx = 0; idx < N; ++idx){
-
-		double4 x4i = x4_d[idx];
-		double rcritvi = rcritv_d[idx];
-
-		double3 a = {0.0, 0.0, 0.0};
-		double3 b = {0.0, 0.0, 0.0};
-
-		int NencpairsI = 0;
-
-		for(int j = 0; j < N; ++j){
-			double4 x4j = x4_d[j];
-			double rcritvj = rcritv_d[j];
-
-			if( idx != j && x4i.w >= 0.0 && x4j.w >= 0.0){
-				double rsq, ir, ir3, s, sb;
-				double3 r3ij;
-				double rcritv, rcritv2;
-		//		double rcrit, rcrit2;
-				double y, yy;
-
-				r3ij.x = x4j.x - x4i.x;
-				r3ij.y = x4j.y - x4i.y;
-				r3ij.z = x4j.z - x4i.z;
-				rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-				rcritv = fmax(rcritvi, rcritvj);
-
-		//		rcrit2 = rcrit * rcrit;
-				rcritv2 = rcritv * rcritv;
-				if(E <= 2){	
-					if(rsq < def_pc * rcritv2){	//prechecker
-#if def_CPU == 0
-						int Ni = atomicAdd(NencpairsI, 1);
-#else
-						int Ni = NencpairsI++;
-#endif
-						if(Ni >= NencMax){
-#if def_CPU == 0
-							atomicMax(&EncFlag_d[0], Ni);
-#else
-							EncFlag_d[0] = max(EncFlag_d[0], Ni);
-#endif
-						}
-						else{
-							Encpairs2_d[NencMax * idx + Ni].y = j;
-						}
-//printf("Precheck %d %d %d %d %g %g %g\n", idx, j, Ni, NencMax, rsq, rcritvi, rcritvj);
-					}
-				}
-				if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
-					if(rsq < def_pc * rcritv2 && NencpairsI < NencMax){	//prechecker
-//printf("Precheck %d %d\n", idx, j);
-						Encpairs2_d[NencMax * idx + NencpairsI].y = j;
-						NencpairsI += 1;
-					}
-				}
-				ir = 1.0/sqrt(rsq);
-				ir3 = ir*ir*ir;
-				sb = 0.0;
-
-				if(rsq >= 1.0 * rcritv2){
-					s = x4j.w * ir3;
-					if( rsq >= def_pc * rcritv2) sb = s;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, 1.0, 1.0 / ir, s, rsq);
-				}
-				else{
-					if(rsq <= 0.01 * rcritv2){
-						s = 0.0;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, 0.0, 1.0 / ir, s, rsq);
-
-					}
-					else{
-						y = (rsq * ir - 0.1 * rcritv)/(0.9*rcritv);
-						yy = y * y;
-						s = (ir3 * yy) / (2.0*yy - 2.0*y + 1.0) * x4j.w;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g %.40g Kick\n", idx, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s, rsq);
-
-					}
-				}
-//printf("acc %d %d %.20e %.20e %20e\n", idx, j, rsq, ir3, x4j.w);
-				a.x += (r3ij.x * s);
-				a.y += (r3ij.y * s);
-				a.z += (r3ij.z * s);
-
-				if(E % 10 != 2){
-					b.x += (r3ij.x * sb);
-					b.y += (r3ij.y * sb);
-					b.z += (r3ij.z * sb);
-				}
-//printf("%d %d %g %g Kick\n", idx, j, s, ac.x);
-			}
-		}
-
-		if(E >= 1){
-			v4_d[idx].x += (a.x * dtksq);
-			v4_d[idx].y += (a.y * dtksq);
-			v4_d[idx].z += (a.z * dtksq);
-//printf("Kick %d %g %g %g %g\n", idx, x4_d[idx].w, __dmul_rn(a.x, dtksq), __dmul_rn(a.y, dtksq), __dmul_rn(a.z, dtksq));
-		}
-		if(E <= 1){
-			acck_d[idx].x = b.x;
-			acck_d[idx].y = b.y;
-			acck_d[idx].z = b.z;
-		}
-		if(E <= 2){
-			Encpairs2_d[NencMax * idx].x = NencpairsI;
-
-			for(int j = 0; j < NencpairsI; ++j){
-				if(j < NencMax){
-					int jj = Encpairs2_d[idx * NencMax + j].y;
-					if(idx < jj){
-						//int Ne = atomicAdd(Nencpairs_d, 1);
-// *********
-// not parallel yet
-// *********
-						int Ne = Nencpairs_d[0]++;
-						Encpairs_d[Ne].x = idx;
-						Encpairs_d[Ne].y = jj;
-					}
-				}
-			}
-		}
-	}
-}
-void kickf_cpu(double4 *x4_d, double4 *v4_d, double3 *acck_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *EncFlag_d, const int NencMax, const int N, const int E){
-
-	for(int idx = 0; idx < N; ++idx){
-
-		float4 x4i;
-		x4i.x = x4_d[idx].x;
-		x4i.y = x4_d[idx].y;
-		x4i.z = x4_d[idx].z;
-		x4i.w = x4_d[idx].w;
-		float rcritvi = rcritv_d[idx];
-
-		float3 a = {0.0f, 0.0f, 0.0f};
-		float3 b = {0.0f, 0.0f, 0.0f};
-
-		int NencpairsI = 0;
-
-		for(int j = 0; j < N; ++j){
-			float4 x4j;
-			x4j.x = x4_d[j].x;
-			x4j.y = x4_d[j].y;
-			x4j.z = x4_d[j].z;
-			x4j.w = x4_d[j].w;
-			float rcritvj = rcritv_d[j];
-
-			if( idx != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
-				float rsq, ir, ir3, s, sb;
-				float3 r3ij;
-				float rcritv, rcritv2;
-		//		float rcrit, rcrit2;
-				volatile float y, yy;
-
-				r3ij.x = x4j.x - x4i.x;
-				r3ij.y = x4j.y - x4i.y;
-				r3ij.z = x4j.z - x4i.z;
-
-				rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-				rcritv = fmax(rcritvi, rcritvj);
-
-		//		rcrit2 = rcrit * rcrit;
-				rcritv2 = rcritv * rcritv;
-				if(E <= 2){
-					if(rsq < def_pcf * rcritv2){	//prechecker
-#if def_CPU == 0
-						int Ni = atomicAdd(NencpairsI, 1);
-#else
-						int Ni = NencpairsI++;
-#endif
-						if(Ni >= NencMax){
-#if def_CPU == 0
-							atomicMax(&EncFlag_d[0], Ni);
-#else
-							EncFlag_d[0] = max(EncFlag_d[0], Ni);
-
-#endif
-						}
-						else{
-							Encpairs2_d[NencMax * idx + Ni].y = j;
-						}
-//printf("Precheck %d %d %d %d %g %g %g\n", idx, j, Ni, NencMax, rsq, rcritvi, rcritvj);
-					}
-				}
-				if(E <= 12 && E >= 10){ //prechecker used for Test Particle Mode
-					if(rsq < def_pcf * rcritv2 && NencpairsI < NencMax){	//prechecker
-//printf("Precheck %d %d\n", idx, j);
-						Encpairs2_d[NencMax * idx + NencpairsI].y = j;
-						NencpairsI += 1;
-					}
-				}
-				ir = 1.0f/sqrtf(rsq);
-				ir3 = ir*ir*ir;
-				sb = 0.0f;
-
-				if(rsq >= 1.0f * rcritv2){
-					s = x4j.w * ir3;
-					if( rsq >= def_pcf * rcritv2) sb = s;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, 1.0, 1.0 / ir, s);
-				}
-				else{
-					if(rsq <= 0.01f * rcritv2){
-						s = 0.0f;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, 0, 1.0 / ir, s);
-
-					}
-					else{
-						y = (rsq * ir - 0.1f * rcritv)/(0.9f*rcritv);
-						yy = y * y;
-						s = (ir3 * yy) / (2.0f*yy - 2.0f*y + 1.0f) * x4j.w;
-//if(idx == 0) printf("%d %d %.40g %.40g %.40g Kick\n", idx, j, yy / (2.0*yy - 2.0*y + 1.0), 1.0/ir, s);
-
-					}
-				}
-//printf("acc %d %d %.20e %.20e %20e\n", i, j, rsq, ir3, x4j.w);
-				a.x += (r3ij.x * s);
-				a.y += (r3ij.y * s);
-				a.z += (r3ij.z * s);
-
-				if(E % 10 != 2){
-					b.x += (r3ij.x * sb);
-					b.y += (r3ij.y * sb);
-					b.z += (r3ij.z * sb);
-				}
-//printf("%d %d %g %g Kick\n", idx, j, s, ac.x);
-			}
-		}
-
-		if(E >= 1){
-			v4_d[idx].x += (a.x * dtksq);
-			v4_d[idx].y += (a.y * dtksq);
-			v4_d[idx].z += (a.z * dtksq);
-//printf("Kick %d %g %g %g %g\n", idx, x4_d[idx].w, __dmul_rn(a.x, dtksq), __dmul_rn(a.y, dtksq), __dmul_rn(a.z, dtksq));
-		}
-		if(E <= 1){
-			acck_d[idx].x = b.x;
-			acck_d[idx].y = b.y;
-			acck_d[idx].z = b.z;
-		}
-		if(E <= 2){
-			Encpairs2_d[NencMax * idx].x = NencpairsI;
-
-			for(int j = 0; j < NencpairsI; ++j){
-				if(j < NencMax){
-					int jj = Encpairs2_d[idx * NencMax + j].y;
-					if(idx < jj){
-						//int Ne = atomicAdd(Nencpairs_d, 1);
-// *********
-// not parallel yet
-// *********
-						int Ne = Nencpairs_d[0]++;
-						Encpairs_d[Ne].x = idx;
-						Encpairs_d[Ne].y = jj;
-					}
-				}
-			}
-		}
-	}
-}
-#endif
 
 // **************************************
 //This kernel performs the second kick of the time step, in the case NB = 16. NB is the next bigger number of N

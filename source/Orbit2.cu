@@ -238,6 +238,7 @@ __host__ int Data::AllocateOrbit(){
 	xold_h = (double4*)malloc(NconstT * sizeof(double4));
 	vold_h = (double4*)malloc(NconstT * sizeof(double4));
 	a_h = (double3*)malloc(NconstT * sizeof(double3));
+	b_h = (double3*)malloc(Nomp * NconstT * sizeof(double3));
 
 
 	x4b_h = (double4*)malloc(NconstT * sizeof(double4));
@@ -2948,6 +2949,7 @@ __host__ int Data::freeOrbit(){
 	free(x4bb_h);
 	free(v4bb_h);
 	free(a_h);
+	free(b_h);
 	free(ab_h);
 	free(indexb_h);
 	free(indexbb_h);

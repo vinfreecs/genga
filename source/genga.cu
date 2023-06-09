@@ -329,9 +329,9 @@ if(ittv % MCMC_NQ == 0){
 		er = D.printRV2();
 		if(er <= 0) return 0;
 	}
-#if MCMC_Q == 2
-if(ittv > 0) TTVstepRefine <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.elementsT_d, D.NT, ittv);
-#endif
+ #if MCMC_Q == 2
+ if(ittv > 0) TTVstepRefine <<< (D.NT + 255) / 256, 256 >>> (D.TransitTime_d, D.TransitTimeObs_d, D.NtransitsT_d, D.NtransitsTObs_d, D.N_d, D.elementsT_d, D.NT, ittv);
+ #endif
 
 	}//end of TTV loop
  #if MCMC_Q == 1

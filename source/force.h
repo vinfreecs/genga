@@ -54,7 +54,8 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 		double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
 		double ir = 1.0 / sqrt(rsq);
 
-		double A, B;
+		double A = 0.0;
+		double B = 0.0;
 
 		if(UseGR == 1 && x4.w >= 0.0){
 			// GR symplectic
@@ -85,7 +86,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 			a3.z += B * (C * v4.z - D * x4.z * ir);
 		}
 
-		double eta;
+		double eta = 0.0;
 		if(UseGR == 2 && x4.w >= 0.0){
 			// GR  see Fabrycky 2010 equation 2
 			//first part of implicit function

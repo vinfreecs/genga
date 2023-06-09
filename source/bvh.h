@@ -43,7 +43,9 @@ __global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *inde
 #if def_CPU == 0
 				int ne = atomicAdd(&Nencpairs2_d[0], 1);
 #else
-				int ne = Nencpairs2_d[0]++;
+				int ne;
+				#pragma omp atomic capture
+				ne = Nencpairs2_d[0]++;
 #endif
 				Encpairs2_d[ne].x = idx;
 				Encpairs2_d[ne].y = idy;
@@ -531,6 +533,7 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 #if def_CPU == 0
 				if(atomicAdd(&(node->counter), 1) == 1){
 #else
+				//not parallel yet
 				if(node->counter++ == 1){
 #endif
 					rangeL = node->rangeL;
@@ -658,7 +661,9 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 #if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);
 #else
-						int ne = Nencpairs2_d[0]++;
+						int ne;
+						#pragma omp atomic capture
+						ne = Nencpairs2_d[0]++;
 
 #endif
 						Encpairs2_d[ne].x = leaf->nodeID;
@@ -677,7 +682,9 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 #if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);
 #else
-						int ne = Nencpairs2_d[0]++;
+						int ne;
+						#pragma omp atomic capture
+						ne = Nencpairs2_d[0]++;
 #endif
 						Encpairs2_d[ne].x = leaf->nodeID;
 						Encpairs2_d[ne].y = childR->nodeID;

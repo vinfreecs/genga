@@ -6,7 +6,7 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 
 
 	int random = 0;
-
+//printf("BSB start %d %d\n", NN, idx);
 	if((noColl == 1 || noColl == -1) && BSstop_h[0] == 3){
 //if(idx == 0)      printf("Stop BSB b\n");
 		return;
@@ -299,8 +299,10 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 
 //if( Encpairs2_h[start + i].x == 0 &&  Encpairs2_h[start + j].x == 1) printf("BSBEE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d %d %d\n", Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, xt_s[i].w, xt_s[j].w, xt_s[i].x, xt_s[i].y, xt_s[i].z, xt_s[j].x, xt_s[j].y, xt_s[j].z, delta, rcrit*rcrit, colt, tt, ff, n);
 							if(delta < rcrit*rcrit){
-								//int Ni = atomicAdd(&Ncol_s[0], 1);
-								int Ni = Ncol_s[0]++;
+								int Ni;
+								#pragma omp atomic capture
+								Ni = Ncol_s[0]++;
+
 								if(Ncol_s[0] >= def_MaxColl) Ni = def_MaxColl - 1;
 //printf("EE1 %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %d\n", Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, xt_s[i].w, xt_s[j].w, xt_s[i].x, xt_s[i].y, xt_s[i].z, xt_s[j].x, xt_s[j].y, xt_s[j].z, delta, rcrit*rcrit, colt, Ni);
 								if(xt_s[i].w >= xt_s[j].w){
@@ -341,8 +343,10 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 										if(index_h[indexi] / WriteEncountersCloudSize_c[0] != index_h[indexj] / WriteEncountersCloudSize_c[0]){
 
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, i, j);
-											//int ne = atomicAdd(NWriteEnc_m, 1);
-											int ne = NWriteEnc_m[0]++;
+											int ne;
+											#pragma omp atomic capture
+											ne = NWriteEnc_m[0]++;
+
 											if(ne >= def_MaxWriteEnc - 1) ne = def_MaxWriteEnc - 1;
 											storeEncounters(xt_s, vt_s, i, j, indexi, indexj, index_h, ne, writeEnc_h, time + (t + dt1) / dayUnit, spin_h);
 										}
@@ -393,8 +397,9 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 							if(xt_s[i].w >= 0 && xt_s[j].w >= 0){
 								int nc = 0;
 								if(noColl == 0 || ((noColl == 1 || noColl == -1) && index_h[Encpairs2_h[start + i].x] == CollTshiftpairs_c[0].x && index_h[Encpairs2_h[start + j].x] == CollTshiftpairs_c[0].y)){
-									//nc = atomicAdd(Ncoll_m, 1);
+									#pragma omp atomic capture
 									nc = Ncoll_m[0]++;
+
 									if(nc >= def_MaxColl) nc = def_MaxColl - 1;
 									if(noColl == 1 || noColl == -1){
 										noColl = 2;
@@ -452,4 +457,5 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 //}
 //printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g\n", i, x4_s[i].x, x4_s[i].y, x4_s[i].z, v4_s[i].x, v4_s[i].y, v4_s[i].z, time + t/dayUnit);
 	}
+//printf("BSB end   %d %d\n", NN, idx);
 }

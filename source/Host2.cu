@@ -80,6 +80,8 @@ __host__ Host::Host(long long Restart){
 	NsmallT = 0;
 	NBNencT = 0;
 	NEnergyT = 0;
+
+	Nomp = 1;
 }
 
 
@@ -2383,6 +2385,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-collTshift") == 0){
 			P.CollTshift = atof(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-Nomp") == 0){
+			Nomp = atoi(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;
@@ -2515,6 +2520,15 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.UseForce >> 2 & 1){
 		P.UseRotationalDeformation = 1;
 	}
+
+	//Nomp is only used on CPUs
+	if(Nomp <= 0) Nomp = 1;
+
+#if def_CPU == 0
+	Nomp = 1;
+#else
+	omp_set_num_threads(Nomp);
+#endif
 
 	//check output format
 	{

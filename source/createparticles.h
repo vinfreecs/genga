@@ -70,7 +70,9 @@ __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 #if def_CPU == 0
 			int nf = atomicAdd(&nFragments_d[0], 1);
 #else
-			int nf = nFragments_d[0]++;
+			int nf;
+			#pragma omp atomic capture
+			nf = nFragments_d[0]++;
 #endif
 
 			if(NN + nf < NT){
@@ -182,7 +184,9 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 #if def_CPU == 0
 				int nf = atomicAdd(&nFragments_d[0], 1);
 #else
-				int nf = nFragments_d[0]++;
+				int nf;
+				#pragma omp atomic capture
+				nf = nFragments_d[0]++;
 #endif
 
 				if(NN + nf < NT){
