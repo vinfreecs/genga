@@ -5,6 +5,7 @@ import shutil
 #manually HC.h
 #manually ComEnergy.h
 #manually BSB.h
+#manually BSA.h
 
 
 def kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2):

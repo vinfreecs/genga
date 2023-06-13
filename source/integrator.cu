@@ -1668,7 +1668,7 @@ __host__ int Data::tuneBVH(int &useBVH){
 	cudaEventElapsedTime(&times, start, stop); //time in microseconds
 
 	printf("\tBVH1:\t time: %.15f s\n", times * 0.001); //time in seconds
-	fprintf(GSF[0].logfile,"\tBVH1:\t time: %.15f s\n", times * 0.001);       //time in seconds
+	fprintf(GSF[0].logfile,"\tBVH1:\t time: %.15f s\n", times * 0.001);	//time in seconds
 	if(times < timesMin){
 		UseBVH = 1;
 	}
@@ -1683,7 +1683,7 @@ __host__ int Data::tuneBVH(int &useBVH){
 	cudaEventElapsedTime(&times, start, stop); //time in microseconds
 
 	printf("\tBVH2:\t time: %.15f s\n", times * 0.001); //time in seconds
-	fprintf(GSF[0].logfile,"\tBVH2:\t time: %.15f s\n", times * 0.001);       //time in seconds
+	fprintf(GSF[0].logfile,"\tBVH2:\t time: %.15f s\n", times * 0.001);	//time in seconds
 	if(times < timesMin){
 		UseBVH = 2;
 	}
@@ -2030,7 +2030,12 @@ void Data::firstKick_cpu(int noColl){
 		}
 	}
 	else{
-		//acc4Df_cpu();
+		if(Nomp == 1){
+			acc4Ef_cpu();
+		}
+		else{
+			acc4Df_cpu();
+		}
 	}
 }
 void Data::firstKick_small_cpu(int noColl){
@@ -2055,16 +2060,17 @@ void Data::firstKick_small_cpu(int noColl){
 	}
 
 	if(P.KickFloat == 0){
-		acc4C_cpu(0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
+		acc4E_cpu();
+		acc4Esmall_cpu();
 	}
-	else{   
+	else{
 		acc4Cf_cpu(0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
 	}
 	if(P.UseTestParticles == 2){
 		if(P.KickFloat == 0){
 			acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
-		else{   
+		else{
 			acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
 		}
 	}
@@ -2215,7 +2221,7 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 
 	if(Nenc_m[1] > 0) BSBStep_kernel <2, 2> <<< Nenc_m[1], 4, 0, BSStream[0] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	
-    	
+
 	if(Nenc_m[2] > 0) BSBStep_kernel <4, 4> <<< Nenc_m[2], 16, 0, BSStream[1] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	if(Nenc_m[3] > 0) BSBStep_kernel <8, 8> <<< Nenc_m[3], 64, 0, BSStream[2] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 	if(Nenc_m[4] > 0) BSBStep_kernel <16, 16> <<< Nenc_m[4], 256, 0, BSStream[3] >>> (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, index_d, BSstop_d, Ncoll_d, Coll_d, time, spin_d, love_d, createFlag_d, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, N, NconstT, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
@@ -3419,10 +3425,10 @@ int Data::step_cpu(int noColl){
 			}
 			else{
 				if(Nomp == 1){
-					//acc4Ef_cpu();
+					acc4Ef_cpu();
 				}
 				else{
-					//acc4Df_cpu();
+					acc4Df_cpu();
 				}
 			}
 			if(P.SERIAL_GROUPING == 1){
@@ -3516,10 +3522,10 @@ int Data::step_cpu(int noColl){
 			}
 			else{
 				if(Nomp == 1){
-					//acc4Ef_cpu();
+					acc4Ef_cpu();
 				}
 				else{
-					//acc4Df_cpu();
+					acc4Df_cpu();
 				}
 			}
 			if(P.SERIAL_GROUPING == 1){
@@ -3556,10 +3562,10 @@ int Data::step_cpu(int noColl){
 	}
 	else{
 		if(Nomp == 1){
-			//acc4Ef_cpu();
+			acc4Ef_cpu();
 		}
 		else{
-			//acc4Df_cpu();
+			acc4Df_cpu();
 		}
 	}
 	if(P.SERIAL_GROUPING == 1){
@@ -3812,7 +3818,8 @@ int Data::step_small_cpu(int noColl){
 		}
 	}
 	if(P.KickFloat == 0){
-		acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
+		acc4E_cpu();
+		acc4Esmall_cpu();
 	}
 	else{
 		acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);

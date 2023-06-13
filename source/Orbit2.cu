@@ -1572,7 +1572,7 @@ __host__ int Data::readic(int st){
 			if(v.w == 0){
 				v.w = cbrt((x.w * 0.75 ) / (M_PI * rho[st] * AU * AU * AU / Solarmass));
 			}
-			MaxIndex = max(MaxIndex, index);
+			MaxIndex = std::max(MaxIndex, index);
 			int NBSN = NBS;
 			if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
 				NBSN += N - ii + iismall; //shift test particles to the end of the arrays
@@ -1691,7 +1691,7 @@ __host__ int Data::readic(int st){
 				aecount = (unsigned int)(aecountf * P.ci);
 				unsigned long long tt = P.tRestart - P.tRestart % P.ci;
 				aecountT = (unsigned long long)(aecountTf * tt);
-				MaxIndex = max(MaxIndex, index);
+				MaxIndex = std::max(MaxIndex, index);
 				int NBSN = NBS;
 				if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
 					NBSN += N - i + iismall; //shift test particles to the end of the arrays
@@ -1804,7 +1804,7 @@ __host__ int Data::readic(int st){
 				aecount = (unsigned int)(aecountf * P.ci);
 				unsigned long long tt = P.tRestart - P.tRestart % P.ci;
 				aecountT = (unsigned long long)(aecountTf * tt);
-				MaxIndex = max(MaxIndex, index);
+				MaxIndex = std::max(MaxIndex, index);
 
 				int NBSN = NBS;
 				if(x.w >= 0.0 && x.w <= P.MinMass && P.UseTestParticles > 0){
@@ -2579,7 +2579,7 @@ __host__ void Data::resize(int N, int &NB, int f){
 	if( N > 131072) NB = 262144;
 
 	if(f == 1){
-		NBmax = max(NBmax, NB);
+		NBmax = std::max(NBmax, NB);
 	}
 }
 

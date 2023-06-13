@@ -31,7 +31,7 @@ __device__ void acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatile
 		if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
 
 			int Ni = atomicAdd(&Encpairs2_d[i * NencMax].x, 1);
-//printf("enc1 %d %d %d\n", i, j, Ni);
+//printf("enc1 %d %d %d %d\n", i, j, Ni, EE);
 			if(Ni >= NencMax){
 				atomicMax(&EncFlag_d[0], Ni);
 			}
@@ -554,7 +554,7 @@ __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, 
 
 // Can be applied only to massive particles
 // Here EE is always 0
-//Serial version
+// Serial version
 void Data::acc4E_cpu(){
 	
 	//if E == 0
@@ -571,7 +571,7 @@ void Data::acc4E_cpu(){
 			
 			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
 				
-//printf("%d %d %d %d %d\n", 0, ii, jj, i, j);
+//printf("%d %d %d\n", i, j);
 				
 				r3ij.x = x4_h[j].x - x4_h[i].x;
 				r3ij.y = x4_h[j].y - x4_h[i].y;
@@ -617,6 +617,173 @@ void Data::acc4E_cpu(){
 				}
 				else if(rsq == 0.0){
 					ir3 = 0.0;
+				}
+				
+				double si = (x4_h[i].w * ir3);
+				double sj = (x4_h[j].w * ir3);
+				
+				a_h[i].x += r3ij.x * sj;
+				a_h[i].y += r3ij.y * sj;
+				a_h[i].z += r3ij.z * sj;
+				
+				a_h[j].x -= r3ij.x * si;
+				a_h[j].y -= r3ij.y * si;
+				a_h[j].z -= r3ij.z * si;
+				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+}
+void Data::acc4Esmall_cpu(){
+	
+	//if E == 0
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		a_h[i] = {0.0, 0.0, 0.0};
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		double ir, ir3;
+		double3 r3ij;
+
+		for(int j = 0; j < N_h[0]; ++j){
+			
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni = Encpairs2_h[i * P.NencMax].x++;
+					int Nj = 0;
+					//int Nj = Encpairs2_h[j * P.NencMax].x++;
+//printf("enc1 small %d %d %d\n", i, j, Ni);
+//printf("enc1 %d %d %d %d\n", i, j, Ni, Nj);
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+
+					//if(Nj >= P.NencMax){
+					//	EncFlag_m[0] = max(EncFlag_m[0], Nj);
+					//}
+					//else{
+					//	Encpairs2_h[j * P.NencMax + Nj].y = i;
+					//}
+					
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// j < i is always true
+						int Ne = Nencpairs_h[0]++;
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck small %d %d %d\n", i, j, Ne);
+					}
+
+					ir3 = 0.0;
+				}
+				else if(rsq == 0.0){
+					ir3 = 0.0;
+				}
+				
+				//double si = (x4_h[i].w * ir3);
+				double sj = (x4_h[j].w * ir3);
+				
+				a_h[i].x += r3ij.x * sj;
+				a_h[i].y += r3ij.y * sj;
+				a_h[i].z += r3ij.z * sj;
+				
+				//a_h[j].x -= r3ij.x * si;
+				//a_h[j].y -= r3ij.y * si;
+				//a_h[j].z -= r3ij.z * si;
+				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+}
+
+//float version
+void Data::acc4Ef_cpu(){
+	
+	//if E == 0
+	for(int i = 0; i < N_h[0]; ++i){
+		a_h[i] = {0.0, 0.0, 0.0};
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	for(int i = 0; i < N_h[0]; ++i){
+		float ir, ir3;
+		float3 r3ij;
+
+		for(int j = i + 1; j < N_h[0]; ++j){
+			
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+//printf("%d %d %d %d %d\n", 0, ii, jj, i, j);
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0f/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni = Encpairs2_h[i * P.NencMax].x++;
+					int Nj = Encpairs2_h[j * P.NencMax].x++;
+//printf("enc1 %d %d %d %d\n", i, j, Ni, Nj);
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+
+					if(Nj >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Nj);
+					}
+					else{
+						Encpairs2_h[j * P.NencMax + Nj].y = i;
+					}
+					
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// i < j is always true
+						int Ne = Nencpairs_h[0]++;
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck %d %d %d\n", i, j, Ne);
+					}
+
+					ir3 = 0.0f;
+				}
+				else if(rsq == 0.0f){
+					ir3 = 0.0f;
 				}
 				
 				double si = (x4_h[i].w * ir3);
@@ -728,6 +895,130 @@ void Data::acc4D_cpu(){
 				
 				double si = (x4_h[i].w * ir3);
 				double sj = (x4_h[j].w * ir3);
+				
+				int ki = k * NconstT + i; 
+				int kj = k * NconstT + j; 
+				
+				b_h[ki].x += r3ij.x * sj;
+				b_h[ki].y += r3ij.y * sj;
+				b_h[ki].z += r3ij.z * sj;
+				
+				b_h[kj].x -= r3ij.x * si;
+				b_h[kj].y -= r3ij.y * si;
+				b_h[kj].z -= r3ij.z * si;
+				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+	
+	for(int i = 0; i < N_h[0]; ++i){
+		double3 a = {0.0, 0.0, 0.0};
+		for(int k = 0; k < Nomp; ++k){
+			a.x += b_h[k * NconstT + i].x;
+			a.y += b_h[k * NconstT + i].y;
+			a.z += b_h[k * NconstT + i].z;
+//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
+			
+		}
+		
+		a_h[i].x = a.x;
+		a_h[i].y = a.y;
+		a_h[i].z = a.z;
+	}
+	
+}
+
+//float version
+void Data::acc4Df_cpu(){
+	
+	for(int i = 0; i < N_h[0]; ++i){
+		for(int k = 0; k < Nomp; ++k){
+			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+		}
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	#pragma omp parallel for
+	for(int ii = 0; ii < N_h[0] / 2; ++ii){
+		float ir, ir3;
+		float3 r3ij;
+
+		int k = omp_get_thread_num();
+		//int k = 0;
+
+		for(int jj = 0; jj < N_h[0]; ++jj){
+	
+			if(ii == (N_h[0] + 1) / 2 - 1 && jj >= N_h[0] / 2) break;
+			
+			int j = jj;
+			int i = ii;
+
+			if(jj <= ii){
+				i = N_h[0] - 2 - ii;
+				j = N_h[0] - 1 - jj;
+			}
+			
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+				//printf("%d %d %d %d %d\n", k, ii, jj, i, j);
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0f/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni, Nj;
+					#pragma omp atomic capture
+					Ni = Encpairs2_h[i * P.NencMax].x++;
+					#pragma omp atomic capture
+					Nj = Encpairs2_h[j * P.NencMax].x++;
+
+//printf("enc1 %d | %d %d %d %d\n", k, i, j, Ni, Nj);
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+	
+					if(Nj >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Nj);
+					}
+					else{
+						Encpairs2_h[j * P.NencMax + Nj].y = i;
+					}
+					
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// i < j is always true
+						int Ne;
+						#pragma omp atomic capture
+						Ne = Nencpairs_h[0]++;
+
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck %d | %d %d %d\n", k, i, j, Ne);
+					}
+					ir3 = 0.0f;
+				}
+				else if(rsq == 0.0f){
+					ir3 = 0.0f;
+				}
+				
+				float si = (x4_h[i].w * ir3);
+				float sj = (x4_h[j].w * ir3);
 				
 				int ki = k * NconstT + i; 
 				int kj = k * NconstT + j; 

@@ -780,7 +780,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					P.deltaT = delta_h[st];
 				}
 				else{
-					P.deltaT = max(P.deltaT, delta_h[st]);
+					P.deltaT = std::max(P.deltaT, delta_h[st]);
 				}
 				continue;
 			}
@@ -2732,6 +2732,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 	}
 	//if Restart == -1, find last printed output
 	int RestartBackup = 0;	//Flag, used to find last output in P.FormatO 1 restarts
+
 	if(P.tRestart == -1){
 		RestartBackup = 1;
 		long long Restart = -1;
@@ -2766,7 +2767,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 					return 0;
 				}
 			}
-		P.tRestart = max(Restart, P.tRestart);
+		P.tRestart =std::max(Restart, P.tRestart);
 		}
 	}
 	if(P.ci != -1 && P.ci != 0){
@@ -2782,7 +2783,6 @@ __host__ int Host::Param(int argc, char*argv[]){
 		sprintf(dat_bin, "%s", "bin");
 	}
 
-	
 	for(int st = 0; st < Nst; ++st){
 		//restart -> inputfilename
 		if(P.tRestart > 0 && P.FormatP == 1){
@@ -2882,8 +2882,14 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 	for(int f = 0; f < def_Ninformat; ++f){
 		int ff = GSF[st].outformat[f];
 		if(P.OutBinary == 0){
-			if(ff == 19)		er = fscanf (infile, "%lf",&time);
-			else if(ff == 13)	er = fscanf (infile, "%d",&index);
+			if(ff == 19){
+				er = fscanf (infile, "%lf",&time);
+				//printf("time %g\n", time);
+			}
+			else if(ff == 13){
+				er = fscanf (infile, "%d",&index);
+				//printf("index %d\n", index);
+			}
 			else if(ff == 4)	er = fscanf (infile, "%lf",&x.w);
 			else if(ff == 8)	er = fscanf (infile, "%lf",&v.w);
 			else if(ff == 1)	er = fscanf (infile, "%lf",&x.x);
@@ -3266,7 +3272,7 @@ __host__ int Host::size(){
 		if( N_h[st] > 65536) NB[st] = 131072;
 		if( N_h[st] > 131072) NB[st] = 262144;
 
-		NBmax = max(NBmax, NB[st]);
+		NBmax = std::max(NBmax, NB[st]);
 //printf("NBmax %d\n", NBmax);
 	
 		NBT[st] = 16;
@@ -3722,7 +3728,7 @@ __host__ int Host::readTransits(){
 	
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x = T; //time
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].y = error; //error
-		NtransitsTObs_h[index] = max(NtransitsTObs_h[index], Epoch);
+		NtransitsTObs_h[index] = std::max(NtransitsTObs_h[index], Epoch);
 //printf("A %d %d %g %g %d %d\n", index, i, T, TOld, dEpoch, Epoch); 
 //printf("read NTobs %d %d | %d %d %.20g\n", index, NtransitsTObs_h[index], Epoch,  index * def_NtransitTimeMax + Epoch + 1, TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x);
 		
