@@ -404,11 +404,11 @@ public:
 	void acc4D_cpu();
 	void acc4Df_cpu();
 	void acc4Dsmall_cpu();
+	void acc4Dfsmall_cpu();
 	void acc4E_cpu();
 	void acc4Ef_cpu();
 	void acc4Esmall_cpu();
-	void acc4C_cpu(const int, const int, const int, const int, const int);
-	void acc4Cf_cpu(const int, const int, const int, const int, const int);
+	void acc4Efsmall_cpu();
 #endif
 
 

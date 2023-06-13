@@ -1765,14 +1765,24 @@ __host__ int Data::tuneBS(){
 #if def_CPU == 0
 			acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 #else
-			acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
+			if(Nomp == 1){
+				acc4Esmall_cpu();
+			}
+			else{
+				acc4Dsmall_cpu();
+			}
 #endif
 		}
 		if(P.UseTestParticles == 2){
 #if def_CPU == 0
 			acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
 #else
-			acc4C_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+			if(Nomp == 1){
+				acc4Esmall_cpu();
+			}
+			else{
+				acc4Dsmall_cpu();
+			}
 #endif
 		}
 
@@ -2060,18 +2070,23 @@ void Data::firstKick_small_cpu(int noColl){
 	}
 
 	if(P.KickFloat == 0){
-		acc4E_cpu();
-		acc4Esmall_cpu();
-	}
-	else{
-		acc4Cf_cpu(0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-	}
-	if(P.UseTestParticles == 2){
-		if(P.KickFloat == 0){
-			acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+		if(Nomp == 1){
+			acc4E_cpu();
+			acc4Esmall_cpu();
 		}
 		else{
-			acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+			acc4D_cpu();
+			acc4Dsmall_cpu();
+		}
+	}
+	else{
+		if(Nomp == 1){
+			acc4Ef_cpu();
+			acc4Efsmall_cpu();
+		}
+		else{
+			acc4Df_cpu();
+			acc4Dfsmall_cpu();
 		}
 	}
 
@@ -3627,17 +3642,23 @@ int Data::step_small_cpu(int noColl){
 	else{
 //
 		if(P.KickFloat == 0){
-			acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-		}
-		else{
-			acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-		}
-		if(P.UseTestParticles == 2){
-			if(P.KickFloat == 0){
-				acc4C_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+			if(Nomp == 1){
+				acc4E_cpu();
+				acc4Esmall_cpu();
 			}
 			else{
-				acc4Cf_cpu (0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+				acc4D_cpu();
+				acc4Dsmall_cpu();
+			}
+		}
+		else{
+			if(Nomp == 1){
+				acc4Ef_cpu();
+				acc4Efsmall_cpu();
+			}
+			else{
+				acc4Df_cpu();
+				acc4Dfsmall_cpu();
 			}
 		}
 		if(P.SERIAL_GROUPING == 1){
@@ -3772,20 +3793,25 @@ int Data::step_small_cpu(int noColl){
 		HCCall(Ct[si], -1);
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
-				acc4C_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-
-			}
-			else{
-				acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-			}
-			if(P.UseTestParticles == 2){
-				if(P.KickFloat == 0){
-					acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+				if(Nomp == 1){
+					acc4E_cpu();
+					acc4Esmall_cpu();
 				}
 				else{
-					acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+					acc4D_cpu();
+					acc4Dsmall_cpu();
 				}
-			}	
+			}
+			else{
+				if(Nomp == 1){
+					acc4Ef_cpu();
+					acc4Efsmall_cpu();
+				}
+				else{
+					acc4Df_cpu();
+					acc4Dfsmall_cpu();
+				}
+			}
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 			}
@@ -3818,18 +3844,23 @@ int Data::step_small_cpu(int noColl){
 		}
 	}
 	if(P.KickFloat == 0){
-		acc4E_cpu();
-		acc4Esmall_cpu();
-	}
-	else{
-		acc4Cf_cpu (0, N_h[0] + Nsmall_h[0], 0, N_h[0], 1);
-	}
-	if(P.UseTestParticles == 2){
-		if(P.KickFloat == 0){
-			acc4C_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+		if(Nomp == 1){
+			acc4E_cpu();
+			acc4Esmall_cpu();
 		}
 		else{
-			acc4Cf_cpu(0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], 2);
+			acc4D_cpu();
+			acc4Dsmall_cpu();
+		}
+	}
+	else{
+		if(Nomp == 1){
+			acc4Ef_cpu();
+			acc4Efsmall_cpu();
+		}
+		else{
+			acc4Df_cpu();
+			acc4Dfsmall_cpu();
 		}
 	}
 

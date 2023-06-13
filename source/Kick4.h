@@ -637,9 +637,11 @@ void Data::acc4E_cpu(){
 		}
 	}
 }
+
+// Is applied only to test particles particles
+// Serial Version
 void Data::acc4Esmall_cpu(){
 	
-	//if E == 0
 	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
 		a_h[i] = {0.0, 0.0, 0.0};
 		Encpairs2_h[i * P.NencMax].x = 0;
@@ -671,9 +673,6 @@ void Data::acc4Esmall_cpu(){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
 					int Nj = 0;
-					//int Nj = Encpairs2_h[j * P.NencMax].x++;
-//printf("enc1 small %d %d %d\n", i, j, Ni);
-//printf("enc1 %d %d %d %d\n", i, j, Ni, Nj);
 					if(Ni >= P.NencMax){
 						EncFlag_m[0] = max(EncFlag_m[0], Ni);
 					}
@@ -681,13 +680,19 @@ void Data::acc4Esmall_cpu(){
 						Encpairs2_h[i * P.NencMax + Ni].y = j;
 					}
 
-					//if(Nj >= P.NencMax){
-					//	EncFlag_m[0] = max(EncFlag_m[0], Nj);
-					//}
-					//else{
-					//	Encpairs2_h[j * P.NencMax + Nj].y = i;
-					//}
-					
+					if(P.UseTestParticles == 2){
+						Nj = Encpairs2_h[j * P.NencMax].x++;
+
+						if(Nj >= P.NencMax){
+							EncFlag_m[0] = max(EncFlag_m[0], Nj);
+						}
+						else{
+							Encpairs2_h[j * P.NencMax + Nj].y = i;
+						}
+					}					
+//printf("enc1 small %d %d %d\n", i, j, Ni);
+//printf("enc1 %d %d %d %d\n", i, j, Ni, Nj);
+
 					if(Ni < P.NencMax && Nj < P.NencMax){
 						// j < i is always true
 						int Ne = Nencpairs_h[0]++;
@@ -702,17 +707,20 @@ void Data::acc4Esmall_cpu(){
 					ir3 = 0.0;
 				}
 				
-				//double si = (x4_h[i].w * ir3);
 				double sj = (x4_h[j].w * ir3);
 				
 				a_h[i].x += r3ij.x * sj;
 				a_h[i].y += r3ij.y * sj;
 				a_h[i].z += r3ij.z * sj;
+	
+				if(P.UseTestParticles == 2){
+					double si = (x4_h[i].w * ir3);
 				
-				//a_h[j].x -= r3ij.x * si;
-				//a_h[j].y -= r3ij.y * si;
-				//a_h[j].z -= r3ij.z * si;
+					a_h[j].x -= r3ij.x * si;
+					a_h[j].y -= r3ij.y * si;
+					a_h[j].z -= r3ij.z * si;
 				
+				}
 //if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
 //if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
 				
@@ -797,6 +805,96 @@ void Data::acc4Ef_cpu(){
 				a_h[j].y -= r3ij.y * si;
 				a_h[j].z -= r3ij.z * si;
 				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+}
+// Is applied only to test particles particles
+// Serial Version
+void Data::acc4Efsmall_cpu(){
+	
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		a_h[i] = {0.0, 0.0, 0.0};
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		float ir, ir3;
+		float3 r3ij;
+
+		for(int j = 0; j < N_h[0]; ++j){
+			
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0f/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni = Encpairs2_h[i * P.NencMax].x++;
+					int Nj = 0;
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+
+					if(P.UseTestParticles == 2){
+						Nj = Encpairs2_h[j * P.NencMax].x++;
+
+						if(Nj >= P.NencMax){
+							EncFlag_m[0] = max(EncFlag_m[0], Nj);
+						}
+						else{
+							Encpairs2_h[j * P.NencMax + Nj].y = i;
+						}
+					}					
+//printf("enc1 small %d %d %d\n", i, j, Ni);
+//printf("enc1 %d %d %d %d\n", i, j, Ni, Nj);
+
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// j < i is always true
+						int Ne = Nencpairs_h[0]++;
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck small %d %d %d\n", i, j, Ne);
+					}
+
+					ir3 = 0.0f;
+				}
+				else if(rsq == 0.0){
+					ir3 = 0.0f;
+				}
+				
+				double sj = (x4_h[j].w * ir3);
+				
+				a_h[i].x += r3ij.x * sj;
+				a_h[i].y += r3ij.y * sj;
+				a_h[i].z += r3ij.z * sj;
+
+				if(P.UseTestParticles == 2){
+					double si = (x4_h[i].w * ir3);
+				
+					a_h[j].x -= r3ij.x * si;
+					a_h[j].y -= r3ij.y * si;
+					a_h[j].z -= r3ij.z * si;
+				
+				}
 //if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
 //if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
 				
@@ -906,6 +1004,128 @@ void Data::acc4D_cpu(){
 				b_h[kj].x -= r3ij.x * si;
 				b_h[kj].y -= r3ij.y * si;
 				b_h[kj].z -= r3ij.z * si;
+				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+	
+	for(int i = 0; i < N_h[0]; ++i){
+		double3 a = {0.0, 0.0, 0.0};
+		for(int k = 0; k < Nomp; ++k){
+			a.x += b_h[k * NconstT + i].x;
+			a.y += b_h[k * NconstT + i].y;
+			a.z += b_h[k * NconstT + i].z;
+//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
+			
+		}
+		
+		a_h[i].x = a.x;
+		a_h[i].y = a.y;
+		a_h[i].z = a.z;
+	}
+	
+}
+
+// Is applied only to test particles
+// parallel version with OpenMP
+void Data::acc4Dsmall_cpu(){
+	
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		for(int k = 0; k < Nomp; ++k){
+			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+		}
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	#pragma omp parallel for
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		double ir, ir3;
+		double3 r3ij;
+
+		int k = omp_get_thread_num();
+		//int k = 0;
+
+		for(int j = 0; j < N_h[0]; ++j){
+	
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+				//printf("%d %d %d %d %d\n", k, ii, jj, i, j);
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni = 0;
+					int Nj = 0;
+					#pragma omp atomic capture
+					Ni = Encpairs2_h[i * P.NencMax].x++;
+
+//printf("enc1 %d | %d %d %d %d\n", k, i, j, Ni, Nj);
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+	
+					if(P.UseTestParticles == 2){
+						#pragma omp atomic capture
+						Nj = Encpairs2_h[j * P.NencMax].x++;
+
+						if(Nj >= P.NencMax){
+							EncFlag_m[0] = max(EncFlag_m[0], Nj);
+						}
+						else{
+							Encpairs2_h[j * P.NencMax + Nj].y = i;
+						}
+					}	
+				
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// i < j is always true
+						int Ne;
+						#pragma omp atomic capture
+						Ne = Nencpairs_h[0]++;
+
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck small %d | %d %d %d\n", k, i, j, Ne);
+					}
+					ir3 = 0.0;
+				}
+				else if(rsq == 0.0){
+					ir3 = 0.0;
+				}
+				
+				double sj = (x4_h[j].w * ir3);
+				
+				int ki = k * NconstT + i; 
+				
+				b_h[ki].x += r3ij.x * sj;
+				b_h[ki].y += r3ij.y * sj;
+				b_h[ki].z += r3ij.z * sj;
+
+				if(P.UseTestParticles == 2){
+					double si = (x4_h[i].w * ir3);
+					int kj = k * NconstT + j; 
+				
+					b_h[kj].x -= r3ij.x * si;
+					b_h[kj].y -= r3ij.y * si;
+					b_h[kj].z -= r3ij.z * si;
+				}
 				
 //if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
 //if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
@@ -1055,192 +1275,126 @@ void Data::acc4Df_cpu(){
 	
 }
 
-void Data::acc4C_cpu(const int Nstart, const int N, const int N0, const int N1, const int EE){
-
-	for(int i = Nstart; i < N; ++i){
-
-		double4 x4i = x4_h[i];
-		double rcritvi = rcritv_h[i];
-		if(EE < 2){
-			Encpairs2_h[i * P.NencMax].x = 0;
+// Is applied only to test particles
+// parallel version with OpenMP
+void Data::acc4Dfsmall_cpu(){
+	
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		for(int k = 0; k < Nomp; ++k){
+			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
 		}
+		Encpairs2_h[i * P.NencMax].x = 0;
+	}
+	
+	#pragma omp parallel for
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+		float ir, ir3;
+		float3 r3ij;
 
+		int k = omp_get_thread_num();
+		//int k = 0;
+
+		for(int j = 0; j < N_h[0]; ++j){
+	
+			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+				
+				//printf("%d %d %d %d %d\n", k, ii, jj, i, j);
+				
+				r3ij.x = x4_h[j].x - x4_h[i].x;
+				r3ij.y = x4_h[j].y - x4_h[i].y;
+				r3ij.z = x4_h[j].z - x4_h[i].z;
+				
+				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
+				
+				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				
+				ir = 1.0f/sqrt(rsq);
+				ir3 = ir*ir*ir;
+				
+				
+//				if(rsq < 3.0 * rcritv * rcritv){
+				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+					
+					int Ni = 0;
+					int Nj = 0;
+					#pragma omp atomic capture
+					Ni = Encpairs2_h[i * P.NencMax].x++;
+
+//printf("enc1 %d | %d %d %d %d\n", k, i, j, Ni, Nj);
+					if(Ni >= P.NencMax){
+						EncFlag_m[0] = max(EncFlag_m[0], Ni);
+					}
+					else{
+						Encpairs2_h[i * P.NencMax + Ni].y = j;
+					}
+	
+					if(P.UseTestParticles == 2){
+						#pragma omp atomic capture
+						Nj = Encpairs2_h[j * P.NencMax].x++;
+
+						if(Nj >= P.NencMax){
+							EncFlag_m[0] = max(EncFlag_m[0], Nj);
+						}
+						else{
+							Encpairs2_h[j * P.NencMax + Nj].y = i;
+						}
+					}	
+				
+					if(Ni < P.NencMax && Nj < P.NencMax){
+						// i < j is always true
+						int Ne;
+						#pragma omp atomic capture
+						Ne = Nencpairs_h[0]++;
+
+						Encpairs_h[Ne].x = i;
+						Encpairs_h[Ne].y = j;
+//printf("Precheck %d | %d %d %d\n", k, i, j, Ne);
+					}
+					ir3 = 0.0f;
+				}
+				else if(rsq == 0.0f){
+					ir3 = 0.0f;
+				}
+				
+				float sj = (x4_h[j].w * ir3);
+				
+				int ki = k * NconstT + i; 
+				
+				b_h[ki].x += r3ij.x * sj;
+				b_h[ki].y += r3ij.y * sj;
+				b_h[ki].z += r3ij.z * sj;
+
+				if(P.UseTestParticles == 2){
+					float si = (x4_h[i].w * ir3);
+					int kj = k * NconstT + j; 
+				
+					b_h[kj].x -= r3ij.x * si;
+					b_h[kj].y -= r3ij.y * si;
+					b_h[kj].z -= r3ij.z * si;
+				}
+				
+//if(i == 10) printf("acci %d %d %g %g\n", i, j, sj * r3ij.x, b_h[k * NconstT + i].x);
+//if(j == 10) printf("accj %d %d %g %g\n", j, i, -si * r3ij.x, b_h[k * NconstT + j].x);
+				
+			}
+		}
+	}
+	
+	for(int i = 0; i < N_h[0]; ++i){
 		double3 a = {0.0, 0.0, 0.0};
-		for(int j = N0; j < N1; ++j){
-
-			double4 x4j = x4_h[j];
-			double rcritvj = rcritv_h[j];
-
-			if(i != j && x4i.w >= 0.0 && x4j.w >= 0.0){
-				double3 r3ij;
-
-				r3ij.x = x4j.x - x4i.x;
-				r3ij.y = x4j.y - x4i.y;
-				r3ij.z = x4j.z - x4i.z;
-
-				double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-				double rcritv = fmax(rcritvi, rcritvj);
-
-				double ir = 1.0/sqrt(rsq);
-				double ir3 = ir*ir*ir;
-
-				double s = x4j.w * ir3;
-
-				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)){
-
-					int Ni;
-					#pragma omp atomic capture
-					Ni = Encpairs2_d[i * P.NencMax].x++;
-//printf("enc1 %d %d %d\n", i, j, Ni);
-					if(Ni >= P.NencMax){
-						EncFlag_m[0] = max(EncFlag_m[0], Ni);
-					}
-					else{
-						Encpairs2_d[i * P.NencMax + Ni].y = j;
-					}
-
-					if(EE == 0){
-						if(i < j && Ni < P.NencMax){
-							int Ne;
-							#pragma omp atomic capture
-							Ne = Nencpairs_d[0]++;
-
-							Encpairs_d[Ne].x = i;
-							Encpairs_d[Ne].y = j;
-//printf("Precheck %d %d %d\n", i, j, EE);
-						}
-					}
-					else{
-						if(i > j && Ni < P.NencMax){
-							int Ne;
-							#pragma omp atomic capture
-							Ne = Nencpairs_d[0]++;
-
-							Encpairs_d[Ne].x = i;
-							Encpairs_d[Ne].y = j;
-//printf("Precheck %d %d %d\n", i, j, EE);
-						}
-					}
-
-					s = 0.0;
-				}
-				else if(rsq == 0.0) s = 0.0;
-
-				a.x += (r3ij.x * s);
-				a.y += (r3ij.y * s);
-				a.z += (r3ij.z * s);
-//if(i == 50) printf("acce %d %d %.20g %.20g %.20g\n", i, j, r3ij.x, s, rsq);
-			}
+		for(int k = 0; k < Nomp; ++k){
+			a.x += b_h[k * NconstT + i].x;
+			a.y += b_h[k * NconstT + i].y;
+			a.z += b_h[k * NconstT + i].z;
+//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
+			
 		}
-
-		if(EE < 2){
-			a_h[i].x = a.x;
-			a_h[i].y = a.y;
-			a_h[i].z = a.z;
-		}
-		if(EE == 2){
-			a_h[i].x += a.x;
-			a_h[i].y += a.y;
-			a_h[i].z += a.z;
-		}
+		
+		a_h[i].x = a.x;
+		a_h[i].y = a.y;
+		a_h[i].z = a.z;
 	}
-}
-
-void Data::acc4Cf_cpu(const int Nstart, const int N, const int N0, const int N1, const int EE){
-
-	for(int i = Nstart; i < N; ++i){
-
-		float4 x4i;
-
-		x4i.x = float(x4_h[i].x);
-		x4i.y = float(x4_h[i].y);
-		x4i.z = float(x4_h[i].z);
-		x4i.w = float(x4_h[i].w);
-		float rcritvi = float(rcritv_h[i]);
-
-		if(EE < 2){
-			Encpairs2_h[i * P.NencMax].x = 0;
-		}
-
-		float3 a = {0.0f, 0.0f, 0.0f};
-		for(int j = N0; j < N1; ++j){
-			float4 x4j;
-			x4j.x = float(x4_h[j].x);
-			x4j.y = float(x4_h[j].y);
-			x4j.z = float(x4_h[j].z);
-			x4j.w = float(x4_h[j].w);
-			float rcritvj = float(rcritv_h[j]);
-
-			if(i != j && x4i.w >= 0.0f && x4j.w >= 0.0f){
-				float3 r3ij;
-
-				r3ij.x = x4j.x - x4i.x;
-				r3ij.y = x4j.y - x4i.y;
-				r3ij.z = x4j.z - x4i.z;
-
-				float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-				float rcritv = fmaxf(rcritvi, rcritvj);
-
-				float ir = 1.0f/sqrtf(rsq);
-				float ir3 = ir*ir*ir;
-
-				float s = x4j.w * ir3;
-
-				if(rsq < def_pcf * rcritv * rcritv && (x4i.w > 0.0f || x4j.w > 0.0f)){
-
-					int Ni;
-					#pragma omp atomic capture
-					Ni = Encpairs2_d[i * P.NencMax].x++;
-//printf("enc1 %d %d %d\n", i, j, Ni);
-					if(Ni >= P.NencMax){
-						EncFlag_m[0] = max(EncFlag_m[0], Ni);
-					}
-					else{
-						Encpairs2_d[i * P.NencMax + Ni].y = j;
-					}
-
-					if(EE == 0){
-						if(i < j && Ni < P.NencMax){
-							int Ne;
-							#pragma omp atomic capture
-							Ne = Nencpairs_d[0]++;
-
-							Encpairs_d[Ne].x = i;
-							Encpairs_d[Ne].y = j;
-						}
-					}
-					else{
-						if(i > j && Ni < P.NencMax){
-							int Ne;
-							#pragma omp atomic capture
-							Ne = Nencpairs_d[0]++;
-
-							Encpairs_d[Ne].x = i;
-							Encpairs_d[Ne].y = j;
-						}
-					}
-
-					s = 0.0f;
-				}
-				else if(rsq == 0.0f) s = 0.0f;
-
-				a.x += (r3ij.x * s);
-				a.y += (r3ij.y * s);
-				a.z += (r3ij.z * s);
-			}
-		}
-
-		if(EE < 2){
-			a_h[i].x = a.x;
-			a_h[i].y = a.y;
-			a_h[i].z = a.z;
-		}
-		if(EE == 2){
-			a_h[i].x += a.x;
-			a_h[i].y += a.y;
-			a_h[i].z += a.z;
-		}
-	}
+	
 }
 #endif
 
