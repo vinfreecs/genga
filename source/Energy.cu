@@ -131,7 +131,9 @@ __global__ void potentialEnergy_kernel(double4 *x4_d, double4 *v4_d, const doubl
 //printf("%d %.20g\n", idx, V);
 			}
 		}
-		else EnergySum_d[idx] = 0.0;
+		else{
+			EnergySum_d[idx] = 0.0;
+		}
 	}
 }
 
@@ -761,6 +763,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
 			V += EnergySum_d[idy + i];
+			EnergySum_d[idy + i] = 0.0;
 			double4 x4 = x4_d[idy + i];
 			double4 v4 = v4_d[idy + i];
 			if(x4.w > 0.0){

@@ -2143,7 +2143,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //Authors: Simon Grimm, Joachim Stadel
 //March 2014
 // ***************************************
-__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *test_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
+__global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *test_d, double *EnergySum_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
 	int NOld;
 	int NsmallOld;
 	int N = N_d[st];
@@ -2230,6 +2230,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 				test_d[Na] = test_d[Nb];
 				test_d[Nb] = -1.0;
+
+				EnergySum_d[Na] += EnergySum_d[Nb];
+				EnergySum_d[Nb] = 0.0;
 
 				for(int i = 0; i < nafn; ++i){
 					nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
@@ -2323,6 +2326,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 					test_d[Na] = test_d[Nb];
 					test_d[Nb] = -1.0;
 
+					EnergySum_d[Na] += EnergySum_d[Nb];
+					EnergySum_d[Nb] = 0.0;
+
 					for(int i = 0; i < nafn; ++i){
 						nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
 						nafy_d[(Na) * nafn + i] = nafy_d[(Nb) * nafn + i];
@@ -2408,6 +2414,9 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 
 				test_d[Na] = test_d[Nb];
 				test_d[Nb] = -1.0;
+
+				EnergySum_d[Na] += EnergySum_d[Nb];
+				EnergySum_d[Nb] = 0.0;
 
 				for(int i = 0; i < nafn; ++i){
 					nafx_d[(Na) * nafn + i] = nafx_d[(Nb) * nafn + i];
@@ -2534,9 +2543,9 @@ __host__ int Data::remove(){
 	NBmax = 0;
 	for(int st = 0; st < Nst; ++st){
 #if USE_NAF == 1
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, test_d, EnergySum_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, naf.x_d, naf.y_d, naf.n);
 #else
-		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, test_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0);
+		remove_kernel <<<1, 1>>> (x4_d, v4_d, a_d, N_d, Nsmall_d, index_d, spin_d, love_d, migration_d, createFlag_d, test_d, EnergySum_d, rcrit_d, rcritv_d, NBS_h[st], st, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, K_d, Kold_d, NB[st], NconstT, P.SLevels, P.UseMigrationForce, P.CreateParticles, NULL, NULL, 0);
 #endif
 		cudaMemcpy(N_h + st, N_d + st, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(Nsmall_h + st, Nsmall_d + st, sizeof(int), cudaMemcpyDeviceToHost);

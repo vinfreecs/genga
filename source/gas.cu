@@ -554,12 +554,9 @@ __global__ void GasAcc_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double
 	
 			if(x4.w > 0.0){
 				U = 0.5 * x4.w * (v2 - v2B);
-				EnergySum_d[id] = U;
+				EnergySum_d[id] += U;
 			}
 
-		}
-		else{
-			EnergySum_d[id] = 0.0;
 		}
 	}
 }
@@ -744,11 +741,8 @@ __global__ void GasAcc2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, doubl
 			v4_d[id] = v4;
 			if(x4.w > 0.0){
 				U = 0.5 * x4.w * (v2 - v2B);
-				EnergySum_d[id] = U;
+				EnergySum_d[id] += U;
 			}
-		}
-		else{
-			EnergySum_d[id] = 0.0;
 		}
 	}
 }

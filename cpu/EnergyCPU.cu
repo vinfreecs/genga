@@ -76,7 +76,9 @@ void potentialEnergy_cpu(double4 *x4_h, double4 *v4_h, const double Msun, double
 			EnergySum_h[idx] = V;
 
 		}
-		else EnergySum_h[idx] = 0.0;
+		else{
+			EnergySum_h[idx] = 0.0;
+		}
 	}
 }
 
@@ -258,6 +260,7 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 
 	for(int i = 0; i < N; ++i){
 		V += EnergySum_h[i];
+		EnergySum_h[i] = 0.0;
 		double4 x4 = x4_h[i];
 		double4 v4 = v4_h[i];
 		if(x4.w > 0.0){

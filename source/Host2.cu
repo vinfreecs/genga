@@ -4275,12 +4275,16 @@ __host__ int Host::freeHost(){
 	free(delta_h);
 	free(NBS_h);
 	free(NsmallS_h);
-	free(setElementsData_h);
-	free(GasData_h);
-
+	if(P.setElements > 0){
+		free(setElementsData_h);
 #if def_CPU == 1
-	free(setElementsLine_h);
+		free(setElementsLine_h);
 #endif
+	}
+	if(P.Usegas == 2){
+		free(GasData_h);
+	}
+
 	
 	cudaFree(n1_d);
 	cudaFree(n2_d);
@@ -4298,9 +4302,13 @@ __host__ int Host::freeHost(){
 	cudaFree(dt_d);
 	cudaFree(delta_d);
 	cudaFree(NBS_d);
-	cudaFree(setElementsData_d);
-	cudaFree(setElementsLine_d);
-	cudaFree(GasData_d);
+	if(P.setElements > 0){
+		cudaFree(setElementsData_d);
+		cudaFree(setElementsLine_d);
+	}
+	if(P.Usegas == 2){
+		cudaFree(GasData_d);
+	}
 	
 	error = cudaGetLastError();
 	if(error != 0){
