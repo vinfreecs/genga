@@ -60,8 +60,13 @@ int main(int argc, char*argv[]){
 
 
 	if(RRestart == 0){
+#if def_CPU == 0
 		printf("Start GENGA\n");
 		fprintf(H.masterfile,"Start GENGA\n");
+#else
+		printf("Start GENGA CPU");
+		fprintf(H.masterfile,"Start GENGA CPU\n");
+#endif
 	}
 	if(RRestart == 1){
 		printf("Restart GENGA\n");
@@ -84,6 +89,11 @@ int main(int argc, char*argv[]){
 		return 0;
 	}
 	printf("Parameters OK\n");
+#if def_CPU == 1
+	printf("Use Nomp = %d cpu threads\n", H.Nomp);
+	fprintf(H.masterfile,"Use Nomp = %d cpu threads\n", H.Nomp);
+#endif
+
 	if(H.P.CreateParticles > 0){
 		er = H.createReadFile1();
 		if(er == 0){

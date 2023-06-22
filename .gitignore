@@ -25,7 +25,6 @@ cpu/Host2CPU.cu
 cpu/Host2CPU.h
 cpu/Kick3CPU.h
 cpu/Kick4CPU.h
-cpu/Makefile
 cpu/Orbit2CPU.cu
 cpu/Orbit2CPU.h
 cpu/RcritCPU.h

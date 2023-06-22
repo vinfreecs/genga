@@ -291,7 +291,10 @@ __host__ int Data::createReadFile1(){
 			break;
 		}
 	}
-	P.Nfragments = max(P.Nfragments, P.CreateParticlesN);
+	//avoid max
+	if(P.CreateParticlesN > P.Nfragments){
+		P.Nfragments = P.CreateParticlesN;
+	}
 
 	printf("NCreate %d %d\n", P.CreateParticlesN, P.Nfragments);
 

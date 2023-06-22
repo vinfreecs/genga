@@ -1,6 +1,7 @@
 import shutil
 #shutil.copyfile('../source/output.cu', filename)
 
+#manually Makefile
 #manually Energy.cu
 #manually HC.h
 #manually ComEnergy.h

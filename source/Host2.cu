@@ -780,7 +780,10 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 					P.deltaT = delta_h[st];
 				}
 				else{
-					P.deltaT = std::max(P.deltaT, delta_h[st]);
+					//avoid max for long long int
+					if(delta_h[st] > P.deltaT){
+						P.deltaT = delta_h[st];
+					}
 				}
 				continue;
 			}
@@ -2767,7 +2770,10 @@ __host__ int Host::Param(int argc, char*argv[]){
 					return 0;
 				}
 			}
-		P.tRestart =std::max(Restart, P.tRestart);
+			//avoid max for long long int
+			if(Restart > P.tRestart){
+				P.tRestart = Restart;
+			}
 		}
 	}
 	if(P.ci != -1 && P.ci != 0){
@@ -3272,7 +3278,10 @@ __host__ int Host::size(){
 		if( N_h[st] > 65536) NB[st] = 131072;
 		if( N_h[st] > 131072) NB[st] = 262144;
 
-		NBmax = std::max(NBmax, NB[st]);
+		//avoid max for long long int
+		if(NB[st] > NBmax){
+			NBmax = NB[st];
+		}
 //printf("NBmax %d\n", NBmax);
 	
 		NBT[st] = 16;
@@ -3376,6 +3385,9 @@ __host__ void Host::Info(){
 			else infofile = GSF[st].logfile;
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", def_Version);
+#if def_CPU == 1
+			fprintf(infofile, "Nomp = %d cpu threads\n", Nomp);
+#endif
 			fprintf(infofile, "Mercurial Branch: %s\n", GIT_BRANCH);
 			fprintf(infofile, "Mercurial Commit: %s\n", GIT_COMMIT);
 			fprintf(infofile, "Build Date: %s\n", BUILD_DATE);
@@ -3728,7 +3740,11 @@ __host__ int Host::readTransits(){
 	
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x = T; //time
 		TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].y = error; //error
-		NtransitsTObs_h[index] = std::max(NtransitsTObs_h[index], Epoch);
+
+		//avoid max
+		if(Epoch > NtransitsTObs_h[index]){
+			NtransitsTObs_h[index] = Epoch;
+		}		
 //printf("A %d %d %g %g %d %d\n", index, i, T, TOld, dEpoch, Epoch); 
 //printf("read NTobs %d %d | %d %d %.20g\n", index, NtransitsTObs_h[index], Epoch,  index * def_NtransitTimeMax + Epoch + 1, TransitTimeObs_h[index * def_NtransitTimeMax + Epoch + 1].x);
 		
