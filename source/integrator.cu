@@ -1766,9 +1766,11 @@ __host__ int Data::tuneBS(){
 			acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 #else
 			if(Nomp == 1){
+				acc4E_cpu();
 				acc4Esmall_cpu();
 			}
 			else{
+				acc4D_cpu();
 				acc4Dsmall_cpu();
 			}
 #endif
@@ -1778,9 +1780,11 @@ __host__ int Data::tuneBS(){
 			acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> (x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
 #else
 			if(Nomp == 1){
+				acc4E_cpu();
 				acc4Esmall_cpu();
 			}
 			else{
+				acc4D_cpu();
 				acc4Dsmall_cpu();
 			}
 #endif
