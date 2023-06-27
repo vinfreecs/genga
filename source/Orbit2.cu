@@ -2893,6 +2893,12 @@ __host__ void Data::stopSimulations(){
 	}
 }
 
+#if def_CPU == 1
+__host__ void Data::ElapsedTime(float *times, timeval tt1, timeval tt2){
+	
+	times[0] = (1000 * tt2.tv_sec + 0.001 * tt2.tv_usec - 1000 * tt1.tv_sec - 0.001 * tt1.tv_usec); //time in milliseconds
+}
+#endif
 
 __host__ int Data::freeOrbit(){
 	

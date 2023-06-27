@@ -273,6 +273,27 @@ def DtoH(line):
 	if(line.find('__fma_rn') != -1):
 		line = line.replace('__fma_rn', 'fma')
 
+	if(line.find('cudaError_t') != -1):
+		line = line.replace('cudaError_t', 'int')
+	if(line.find('cudaEvent_t') != -1):
+		line = line.replace('cudaEvent_t', 'timeval')
+	if(line.find('cudaEventRecord(') != -1):
+		line = line.replace('cudaEventRecord(', 'gettimeofday(&')
+
+
+	if(line.find('cudaGetLastError()') != -1):
+		line = line.replace('cudaGetLastError()', '0')
+	if(line.find('cudaGetErrorString(error)') != -1):
+		line = line.replace('cudaGetErrorString(error)', '"-"')
+	if(line.find('cudaEventCreate') != -1):
+		line = line.replace('cudaEventCreate', '//')
+	if(line.find('cudaEventDestroy') != -1):
+		line = line.replace('cudaEventDestroy', '//')
+	if(line.find('cudaEventSynchronize') != -1):
+		line = line.replace('cudaEventSynchronize', '//')
+	if(line.find('cudaEventElapsedTime') != -1):
+		line = line.replace('cudaEventElapsedTime', 'ElapsedTime')
+
 	return line
 
 
@@ -430,8 +451,6 @@ for line in Lines:
 	if(line.find('bvh.h') != -1):
 		line = line.replace('bvh.h', 'bvhCPU.h')
 
-	#Event
-	#Stream
 
 	#Remove functions
 	if(line.find('int Data::tuneFG') != -1):
@@ -685,6 +704,7 @@ for line in Lines:
 	if(line.find('Host2.h') != -1):
 		line = line.replace('Host2.h', 'Host2CPU.h')
 
+
 	if(line.find('cudaMemcpy') != -1):
 		continue 
 	if(line.find('cudaMalloc') != -1):
@@ -693,6 +713,7 @@ for line in Lines:
 		continue 
 	if(line.find('cudaFree') != -1):
 		continue 
+	line = DtoH(line)
 
 	print(line, file=file2, end='')
 
@@ -723,8 +744,6 @@ for line in Lines:
 
 	if(line.find('curandState') != -1):
 		line = line.replace('curandState', 'int')
-	#cudaEvent
-	#cudaStream_t
 
 	print(line, file=file2, end='')
 

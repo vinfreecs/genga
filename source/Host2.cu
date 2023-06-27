@@ -3360,9 +3360,10 @@ __host__ void Host::Calloc(){
 //**************************************************
 __host__ void Host::Info(){
 	FILE *infofile;
+#if def_CPU == 0
 	cudaDeviceProp devProp;
 	cudaGetDeviceProperties(&devProp, P.dev[0]);
-	
+#endif	
 	for(int st = 0; st < Nst; ++st){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 		if(P.ndev > devCount){
@@ -3394,7 +3395,9 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Build Path: %s\n", BUILD_PATH);
 			fprintf(infofile, "Build System: %s\n", BUILD_SYSTEM);
 			fprintf(infofile, "Build Compute Capability: SM=%s\n", BUILD_SM);
+#if def_CPU == 0
 			fprintf(infofile, "Device Name: %s, Major:%d, Minor:%d\n", devProp.name, devProp.major, devProp.minor);
+#endif
 			fprintf(infofile, "Number of devices: %d\n", P.ndev);					// use only argument in simulation 0
 			for(int j = 0; j < P.ndev; ++j){
 				fprintf(infofile, "Device number %d: %d\n", j, P.dev[j]);			// use only argument in simulation 0

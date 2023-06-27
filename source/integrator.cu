@@ -217,15 +217,16 @@ __global__ void save_kernel(double4 *x4_d, double4 *v4_d, double4 *x4bb_d, doubl
 __host__ int Data::beforeTimeStepLoop1(){
 
 	int er;
+#if def_CPU == 0
 	cudaEventCreate(&KickEvent);	
 	cudaStreamCreateWithFlags(&copyStream, cudaStreamNonBlocking);
-
 	for(int st = 0; st < 12; ++st){
 		cudaStreamCreate(&BSStream[st]);
 	}
 	for(int st = 0; st < 16; ++st){
 		cudaStreamCreate(&hstream[st]);
 	}
+#endif
 
 
 	//Allocate orbit data on Host and Device
@@ -281,13 +282,14 @@ __host__ int Data::beforeTimeStepLoop1(){
 #endif
 
 
+#if def_CPU == 0
 	//Check warp size
 	{
 		cudaDeviceProp devProp;
 		cudaGetDeviceProperties(&devProp, P.dev[0]);
 		WarpSize = devProp.warpSize;
 	}
-
+#endif
 
 	//remove ghost particles and reorder arrays//
 	int NminFlag = remove();
@@ -947,6 +949,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 __host__ int Data::Remaining(){
 
 	int er;
+#if def_CPU == 0
 	cudaEventDestroy(KickEvent);	
 	cudaStreamDestroy(copyStream);	
 	for(int st = 0; st < 12; ++st){
@@ -955,6 +958,7 @@ __host__ int Data::Remaining(){
 	for(int st = 0; st < 16; ++st){
 		cudaStreamDestroy(hstream[st]);
 	}
+#endif
 
 	error = cudaGetLastError();
 	if(error != 0){

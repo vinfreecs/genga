@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.180
+#define def_Version 3.181
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -273,25 +273,11 @@
 #define def_CPU 0
 #if def_CPU == 1
 
+ #include <sys/time.h>
  #ifndef CPU_H
  #define CPU_H
 /*
-	#define cudaError_t int
 
-	int cudaGetLastError(){
-		return 0;
-	}
-	char cudaGetErrorString(int error){
-		return '';
-	}
-
-	struct cudaDeviceProp{
-		char name[256];
-		int major;
-		int minor;
-		int warpSize;
-
-	};
 	struct double3{
 		double x;
 		double y;
@@ -310,23 +296,6 @@
 		float w;
 	};
 
-	void cudaGetDeviceProperties(cudaDeviceProp &devProp, int device){
-		sprintf(devProp.name, "%s", "cpu");
-		devProp.major = 0;
-		devProp.minor = 0;
-		warpSize = 1;
-	}
-*/
-/*
-	inline double __dmul_rn_cpu(double x, double y){
-		return (x * y);
-	}
-	inline float __fmul_rn_cpu(float x, float y){
-		return (x * y);
-	}
-	inline double __fma_rn_cpu(double x, double y, double z){
-		return (x * y + z);
-	}
 */
  #endif
 #endif

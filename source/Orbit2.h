@@ -188,7 +188,17 @@ public:
 	NAF naf;
 #endif
 
+#if def_CPU == 0
+	cudaError_t error;
+	cudaStream_t copyStream;
+	cudaStream_t BSStream[12];
+	cudaStream_t hstream[16];
+	cudaEvent_t KickEvent;
+#endif
+
 #if def_CPU == 1
+	int error;
+
 	double4 *xold_h;
 	double4 *vold_h;
 	double3 *a_h;
@@ -243,12 +253,6 @@ public:
 	Node *internalNodes_h;
 
 #endif
-
-	cudaError_t error;
-	cudaEvent_t KickEvent;
-	cudaStream_t copyStream;
-	cudaStream_t BSStream[12];
-	cudaStream_t hstream[16];
 
 	__host__ Data(long long);
 	__host__ int beforeTimeStepLoop1();
@@ -394,6 +398,7 @@ public:
 	__host__ void BVHCall2();
 
 #if def_CPU == 1
+	void ElapsedTime(float *, timeval, timeval);
 	void firstKick_cpu(int);
 	void firstKick_small_cpu(int);
 	void step1_cpu();
