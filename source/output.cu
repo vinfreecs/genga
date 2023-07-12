@@ -1622,7 +1622,7 @@ __host__ int Data::printCreateparticle(int nf){
 		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
-		int id;
+		int id = -1;
 		for(int in = 0; in < 13; ++in){
 			if(in == 1 || in == 13){
 				if(Nst == 1){

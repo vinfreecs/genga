@@ -922,6 +922,8 @@ void Data::acc4D_cpu(){
 
 		int k = omp_get_thread_num();
 		//int k = 0;
+//int cpuid = sched_getcpu();
+//printf("%d %d\n", k, cpuid);
 
 		for(int jj = 0; jj < N_h[0]; ++jj){
 	

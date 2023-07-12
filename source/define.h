@@ -7,7 +7,7 @@
 #include <math.h>
 
 
-#define def_Version 3.181
+#define def_Version 3.182
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -274,6 +274,8 @@
 #if def_CPU == 1
 
  #include <sys/time.h>
+ #include <sched.h>
+
  #ifndef CPU_H
  #define CPU_H
 /*

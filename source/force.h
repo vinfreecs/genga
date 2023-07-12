@@ -373,12 +373,14 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 
 				if(J2s.x != 0.0){
 					//Additional J2 for secular evolution of planets, See Zderic and Madigan 2020, eq 1 and 2
+					//J2.x is the J2 value
+					//J2.y is the J2 radius value 
 					double D = 0.5 * Msun * J2s.x * J2s.y * J2s.y;
 					volatile double F4 = -3.0 * D * ir5 + 15.0 * D * ir7 * x4.z * x4.z;
 				
 					a3t.x += F4 * x4.x;
 					a3t.y += F4 * x4.y;
-					a3t.z += (F4 * x4.z - 6.0 * D * ir5) * x4.z;
+					a3t.z += (F4 - 6.0 * D * ir5) * x4.z;
 				}
 
 				v4t.x = v4.x + 0.5 * dt * a3t.x;

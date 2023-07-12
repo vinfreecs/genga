@@ -11,7 +11,7 @@ The J2 force can be enabled by setting the :literal:`J2` parameter in the :ref:`
 Parameters for the J2 forces:
 
  - :literal:`J2`
- - :literal:`J2 radius`
+ - :literal:`J2 radius` (mean radius of mass distribution, :math:`R_{mean}`)
 
 
 
@@ -19,15 +19,15 @@ The potential energy of a an additional gravitational multipole expansion is giv
 
 .. math::
 
-    U_i = -\frac{Gm_{\star} m_i}{r} \left[ 1 - J_2 \left( \frac{R_{\text{mean}}}{r} \right)^2 P2(\hat{r} \cdot \hat{\Omega_{\text{system}}}) \right],
+    U_i = -\frac{Gm_{\star} m_i}{r} \left[ 1 - J_2 \left( \frac{R_{\text{mean}}}{r} \right)^2 P_2(\hat{r} \cdot \hat{\Omega}_{\text{system}}) \right],
 
 with the mass of the central star :math:`m_{\star}`, the mass of a particle i :math:`m_i`, the mean radius of the mass distribution 
 :math:`R_{\text{mean}}`, the distance between the body and the star :math:`r`, the rotational angular velocity of the N-body system
-:math:`\Omega_{\text{system}}` and the Legendre polynomial of degree :math:`2`, :math:`P2(x)`. 
+:math:`\Omega_{\text{system}}` and the Legendre polynomial of degree :math:`2`, :math:`P_2(x) = \frac{1}{2} (3x^2 - 1)`. 
 
 The value of :math:`\Omega_{\text{system}}` is assumed to be (0,0,1), corresponding to be spin aligned to the N-body system.
 
-The J2 value corresponds to :cite:p:`ZdericMadigan2020`
+The :math:`J_2` value corresponds to :cite:p:`ZdericMadigan2020`
 
 .. math::
 

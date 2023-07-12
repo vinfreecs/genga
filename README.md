@@ -31,6 +31,7 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
 
  ** News: **
 
+ * Version 3.182: Corrected z-component of J2 force
  * Version 3.178: Corrected internal energy calculation of the gas disk
  * Version 3.159: Encounters between test particles can be reported with 'Report Encounters = 2'
  * Version 3.155: Added gas disk boundaries in param.dat file
