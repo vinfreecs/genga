@@ -5,9 +5,25 @@ Setup
 Requirements
 ------------
 
-GENGA runs on NVIDIA and on AMD GPUs.
+Originally, GENGA was designed to run on NVIDIA GPUs. The current version supports also AMD GPUs, as well as parallel multicore CPU systems by using OpenMP.  
 
-NVIDIA GPUs must have a compute capability of 3.0 or higher. 
+The system requirements are:
+
+* Nvidia GPUs:
+
+  * CUDA toolkit
+  * GPU with compute capability of 3.0 or higher
+
+* AMD GPUs:
+
+  * ROCm and HIP
+  * python3, for translating the CUDA source code to HIP
+
+* multicore CPUs:
+
+  * OpenMP
+  * CUDA toolkit (this is still needed to compile the code, even if no GPUs are used)
+  * python3, for translating the CUDA source code to HIP
 
 
 
@@ -135,6 +151,29 @@ Type::
 to compile GENGA with HIP. 
 
 
+Compile GENGA with OpenMP for multicore CPUs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GENGA provides a tool to translate the source code from CUDA to an OpenMP CPU version.
+The translation tool is located in the cpu directory.
+
+Run::
+
+	python3 port.py
+
+to translate the code. This will copy the translated source code to the cpu directory. 
+
+Type::
+
+	make
+
+to compile GENGA with OpenMP. 
+
+
+On systems with hyperthreading enabled, it can be usefull to select the desired CPU cores to run on. This can be done by typing::
+
+	export OMP_PLACES="{0,1,2,3, ...}"
+
+to the terminal, before running the code, were the numers indicate all the core id's that should be used.
 
 Compile GENGA on Windows
 ^^^^^^^^^^^^^^^^^^^^^^^^

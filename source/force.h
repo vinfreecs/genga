@@ -21,7 +21,9 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 
 	int st = 0;
 	double dt = 0.0;
-
+#if def_CPU == 1
+	#pragma omp parallel for	
+#endif
 	if(id < N + Nstart){
 	
 		int index = index_d[id];

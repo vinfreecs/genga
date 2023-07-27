@@ -915,7 +915,7 @@ void Data::acc4D_cpu(){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for
+	#pragma omp parallel for // proc_bind(close)
 	for(int ii = 0; ii < N_h[0] / 2; ++ii){
 		double ir, ir3;
 		double3 r3ij;
@@ -923,7 +923,7 @@ void Data::acc4D_cpu(){
 		int k = omp_get_thread_num();
 		//int k = 0;
 //int cpuid = sched_getcpu();
-//printf("%d %d\n", k, cpuid);
+//if(ii == 0 || ii == N_h[0] / 2 - 1) printf("acc4D %d %d %d %d\n", ii, k, cpuid, 0);
 
 		for(int jj = 0; jj < N_h[0]; ++jj){
 	
@@ -1042,13 +1042,17 @@ void Data::acc4Dsmall_cpu(){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for
+	#pragma omp parallel for // proc_bind(close)
 	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
 		double ir, ir3;
 		double3 r3ij;
 
 		int k = omp_get_thread_num();
 		//int k = 0;
+
+//int cpuid = sched_getcpu();
+//if(i == N_h[0] || i == N_h[0] + Nsmall_h[0] - 1) printf("acc4Dsmall %d %d %d %d\n", i, k, cpuid, 1);
+
 
 		for(int j = 0; j < N_h[0]; ++j){
 	

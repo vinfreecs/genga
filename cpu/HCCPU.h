@@ -23,7 +23,7 @@ void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, d
 //See Saha & Tremaine 1994
 void convertPseudovToV(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
-
+	#pragma omp parallel for
 	for(int id = 0; id < N; ++id){
 
 		double c2 = def_cm * def_cm;
@@ -51,6 +51,7 @@ void convertPseudovToV(double4 *x4_h, double4 *v4_h, double Msun, int N){
 void convertVToPseidov(double4 *x4_h, double4 *v4_h, int *ErrorFlag_m, double Msun, int N){
 
 	
+	#pragma omp parallel for
 	for(int id = 0; id < N; ++id){
 
 		double mu = def_ksq * (Msun + x4_h[id].w);
