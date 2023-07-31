@@ -4015,6 +4015,13 @@ __host__ int Host::readSetElements(){
 			P.setElementsV = 3;
 			useXYZ = 1;
 		}
+		else if(strcmp(sp, "M") == 0){	
+			Elements[i] = 21;
+			printf("M ");
+			++nelements;
+			P.setElements = 2;
+			useKeplerElements = 1;
+		}
 		else{
 			printf("\n");
 			break;

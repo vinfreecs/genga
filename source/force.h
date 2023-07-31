@@ -956,6 +956,11 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 				doConversion = 1;
 				break;
 			}
+			if(setElements_c[i] == 21){
+				//M
+				doConversion = 1;
+				break;
+			}
 		}
 
 
@@ -983,6 +988,8 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 			double w = 0.0;
 			double Theta = 0.0;
 			double E = 0.0;
+			double M = 0.0;
+			double T = 0.0;
 			double x = 0.0;
 			double y = 0.0;
 			double z = 0.0;
@@ -1118,17 +1125,26 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 					//Eccentric Anomaly
 					E = acos((e + cos(Theta)) / (1.0 + e * cos(Theta)));
 					if(M_PI < Theta && Theta < 2.0 * M_PI) E = 2.0 * M_PI - E;
+
+					//Mean Anomaly
+					M = E - e * sin(E);
+
 				}
 				else if(e > 1.0 + 1.0e-10){
 					//Hyperbolic Anomaly
 					//named still E instead of H or F
 					E = acosh((e + t) / (1.0 + e * t));
 					if(Theta < 0.0) E = - E;
+
+					M = e * sinh(E) - E;
 				}
 				else{
 					//Parabolic Anomaly
 					E = tan(Theta * 0.5);
 					if(E > M_PI) E = E - 2.0 * M_PI;
+
+					M = E + E * E * E / 3.0;
+
 					//use a to store q
 					a = h * h / mu * 0.5;
 				}
@@ -1145,8 +1161,6 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 			double time1 = 0.0;
 			double time2 = 0.0;
 			double time3 = 0.0;
-			double T = 0.0;
-			double M = 0.0;
 			double xx0, xx1, xx2, xx3;
 
 
@@ -1268,6 +1282,9 @@ if(setElements_c[i] == 13){
 					M = T * sqrt(mu / (a * a * a));		//Mean anomaly
 					M = fmod(M, 2.0*M_PI);
 				}
+				if(setElements_c[i] == 21 && EE == 1){
+					M = f;
+				}
 				//do  x y z after conversion from Kepler elements
 				if(setElements_c[i] == 11 && EE == 0){
 					x = f;
@@ -1290,6 +1307,11 @@ if(setElements_c[i] == 13){
 			}
 			for(int i = 0; i < nelements; ++i){
 				if(setElements_c[i] == 10){
+					//T
+					EccentricAnomaly(M, e, E);
+				}
+				if(setElements_c[i] == 21){
+					//M
 					EccentricAnomaly(M, e, E);
 				}
 			}

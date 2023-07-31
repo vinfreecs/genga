@@ -46,7 +46,8 @@ with:
     - i, inclination in radians
     - O, (Omega) longitude of the ascending node in radians
     - w, (omega) argument of periapsis in radians
-    - T, epoch time in days
+    - M, Mean anomaly in radians
+    - T, epoch time in days (Do not use together with M)
     - m, mass in Solar masses
     - r, radius in AU
     - x, X-position in AU (heliocentric)
