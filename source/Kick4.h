@@ -567,26 +567,30 @@ void Data::acc4E_cpu(){
 		double ir, ir3;
 		double3 r3ij;
 
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
+
 		for(int j = i + 1; j < N_h[0]; ++j){
 			
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 //printf("%d %d %d\n", i, j);
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//double rcritv = fmax(rcritvi, rcritv_h[j]);
+				double rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
 					int Nj = Encpairs2_h[j * P.NencMax].x++;
@@ -619,7 +623,7 @@ void Data::acc4E_cpu(){
 					ir3 = 0.0;
 				}
 				
-				double si = (x4_h[i].w * ir3);
+				double si = (x4i.w * ir3);
 				double sj = (x4_h[j].w * ir3);
 				
 				a_h[i].x += r3ij.x * sj;
@@ -638,7 +642,7 @@ void Data::acc4E_cpu(){
 	}
 }
 
-// Is applied only to test particles particles
+// Is applied only to test particles
 // Serial Version
 void Data::acc4Esmall_cpu(){
 	
@@ -651,25 +655,29 @@ void Data::acc4Esmall_cpu(){
 		double ir, ir3;
 		double3 r3ij;
 
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
+
 		for(int j = 0; j < N_h[0]; ++j){
 			
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//double rcritv = fmax(rcritvi, rcritv_h[j]);
+				double rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
 					int Nj = 0;
@@ -714,7 +722,7 @@ void Data::acc4Esmall_cpu(){
 				a_h[i].z += r3ij.z * sj;
 	
 				if(P.UseTestParticles == 2){
-					double si = (x4_h[i].w * ir3);
+					double si = (x4i.w * ir3);
 				
 					a_h[j].x -= r3ij.x * si;
 					a_h[j].y -= r3ij.y * si;
@@ -742,26 +750,30 @@ void Data::acc4Ef_cpu(){
 		float ir, ir3;
 		float3 r3ij;
 
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
+
 		for(int j = i + 1; j < N_h[0]; ++j){
 			
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 //printf("%d %d %d %d %d\n", 0, ii, jj, i, j);
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//float rcritv = fmax(rcritvi, rcritv_h[j]);
+				float rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0f/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
 					int Nj = Encpairs2_h[j * P.NencMax].x++;
@@ -794,7 +806,7 @@ void Data::acc4Ef_cpu(){
 					ir3 = 0.0f;
 				}
 				
-				double si = (x4_h[i].w * ir3);
+				double si = (x4i.w * ir3);
 				double sj = (x4_h[j].w * ir3);
 				
 				a_h[i].x += r3ij.x * sj;
@@ -812,8 +824,9 @@ void Data::acc4Ef_cpu(){
 		}
 	}
 }
-// Is applied only to test particles particles
-// Serial Version
+// Is applied only to test particles
+// Serial version
+// float version
 void Data::acc4Efsmall_cpu(){
 	
 	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
@@ -825,25 +838,29 @@ void Data::acc4Efsmall_cpu(){
 		float ir, ir3;
 		float3 r3ij;
 
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
+
 		for(int j = 0; j < N_h[0]; ++j){
 			
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//float rcritv = fmax(rcritvi, rcritv_h[j]);
+				float rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0f/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
 					int Nj = 0;
@@ -888,7 +905,7 @@ void Data::acc4Efsmall_cpu(){
 				a_h[i].z += r3ij.z * sj;
 
 				if(P.UseTestParticles == 2){
-					double si = (x4_h[i].w * ir3);
+					double si = (x4i.w * ir3);
 				
 					a_h[j].x -= r3ij.x * si;
 					a_h[j].y -= r3ij.y * si;
@@ -905,9 +922,13 @@ void Data::acc4Efsmall_cpu(){
 
 // Can be applied only to massive particles
 // Here EE is always 0
-// paralle version with OpenMP
+// parallel version with OpenMP
 void Data::acc4D_cpu(){
+
+	#pragma omp parallel
+	{
 	
+	#pragma omp for schedule(static)
 	for(int i = 0; i < N_h[0]; ++i){
 		for(int k = 0; k < Nomp; ++k){
 			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
@@ -915,7 +936,7 @@ void Data::acc4D_cpu(){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for // proc_bind(close)
+	#pragma omp for schedule(static)
 	for(int ii = 0; ii < N_h[0] / 2; ++ii){
 		double ir, ir3;
 		double3 r3ij;
@@ -947,7 +968,8 @@ void Data::acc4D_cpu(){
 				
 				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				double rcritv = (rcritv_h[i] > rcritv_h[j]) ? rcritv_h[i] : rcritv_h[j];
 				
 				ir = 1.0/sqrt(rsq);
 				ir3 = ir*ir*ir;
@@ -1014,6 +1036,7 @@ void Data::acc4D_cpu(){
 		}
 	}
 	
+	#pragma omp for schedule(static)
 	for(int i = 0; i < N_h[0]; ++i){
 		double3 a = {0.0, 0.0, 0.0};
 		for(int k = 0; k < Nomp; ++k){
@@ -1028,26 +1051,43 @@ void Data::acc4D_cpu(){
 		a_h[i].y = a.y;
 		a_h[i].z = a.z;
 	}
+	} //end of omp parallel region
 	
 }
 
 // Is applied only to test particles
 // parallel version with OpenMP
 void Data::acc4Dsmall_cpu(){
-	
-	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
-		for(int k = 0; k < Nomp; ++k){
-			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+
+
+	#pragma omp parallel
+	{
+
+	if(P.UseTestParticles == 2){
+		#pragma omp for schedule(static)
+		for(int i = 0; i < N_h[0]; ++i){
+			for(int k = 0; k < Nomp; ++k){
+				b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+			}
 		}
+	}
+
+	#pragma omp for schedule(static)
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for // proc_bind(close)
+	#pragma omp for schedule(static)
 	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
+
 		double ir, ir3;
 		double3 r3ij;
+		double3 a = {0.0, 0.0, 0.0};
 
-		int k = omp_get_thread_num();
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
+
+		//int k = omp_get_thread_num();
 		//int k = 0;
 
 //int cpuid = sched_getcpu();
@@ -1056,24 +1096,25 @@ void Data::acc4Dsmall_cpu(){
 
 		for(int j = 0; j < N_h[0]; ++j){
 	
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 				//printf("%d %d %d %d %d\n", k, ii, jj, i, j);
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				double rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				double rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//double rcritv = fmax(rcritvi, rcritv_h[j]);
+				double rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = 0;
 					int Nj = 0;
@@ -1118,14 +1159,15 @@ void Data::acc4Dsmall_cpu(){
 				
 				double sj = (x4_h[j].w * ir3);
 				
-				int ki = k * NconstT + i; 
-				
-				b_h[ki].x += r3ij.x * sj;
-				b_h[ki].y += r3ij.y * sj;
-				b_h[ki].z += r3ij.z * sj;
+				a.x += r3ij.x * sj;
+				a.y += r3ij.y * sj;
+				a.z += r3ij.z * sj;
 
 				if(P.UseTestParticles == 2){
-					double si = (x4_h[i].w * ir3);
+
+					int k = omp_get_thread_num();
+
+					double si = (x4i.w * ir3);
 					int kj = k * NconstT + j; 
 				
 					b_h[kj].x -= r3ij.x * si;
@@ -1138,28 +1180,41 @@ void Data::acc4Dsmall_cpu(){
 				
 			}
 		}
-	}
-	
-	for(int i = 0; i < N_h[0]; ++i){
-		double3 a = {0.0, 0.0, 0.0};
-		for(int k = 0; k < Nomp; ++k){
-			a.x += b_h[k * NconstT + i].x;
-			a.y += b_h[k * NconstT + i].y;
-			a.z += b_h[k * NconstT + i].z;
-//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
-			
-		}
-		
 		a_h[i].x = a.x;
 		a_h[i].y = a.y;
 		a_h[i].z = a.z;
+
 	}
+
+	if(P.UseTestParticles == 2){	
+		#pragma omp for schedule(static)
+		for(int i = 0; i < N_h[0]; ++i){
+			double3 a = {0.0, 0.0, 0.0};
+			for(int k = 0; k < Nomp; ++k){
+				a.x += b_h[k * NconstT + i].x;
+				a.y += b_h[k * NconstT + i].y;
+				a.z += b_h[k * NconstT + i].z;
+	//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
+				
+			}
+			
+			a_h[i].x = a.x;
+			a_h[i].y = a.y;
+			a_h[i].z = a.z;
+		}
+	}
+	}//end of omp parallel region
 	
 }
 
 //float version
 void Data::acc4Df_cpu(){
+
+
+	#pragma omp parallel
+	{
 	
+	#pragma omp for schedule(static)
 	for(int i = 0; i < N_h[0]; ++i){
 		for(int k = 0; k < Nomp; ++k){
 			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
@@ -1167,7 +1222,7 @@ void Data::acc4Df_cpu(){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for
+	#pragma omp for schedule(static)
 	for(int ii = 0; ii < N_h[0] / 2; ++ii){
 		float ir, ir3;
 		float3 r3ij;
@@ -1197,7 +1252,8 @@ void Data::acc4Df_cpu(){
 				
 				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				float rcritv = (rcritv_h[i] > rcritv_h[j]) ? rcritv_h[i] : rcritv_h[j];
 				
 				ir = 1.0f/sqrt(rsq);
 				ir3 = ir*ir*ir;
@@ -1264,6 +1320,7 @@ void Data::acc4Df_cpu(){
 		}
 	}
 	
+	#pragma omp for schedule(static)
 	for(int i = 0; i < N_h[0]; ++i){
 		double3 a = {0.0, 0.0, 0.0};
 		for(int k = 0; k < Nomp; ++k){
@@ -1278,48 +1335,67 @@ void Data::acc4Df_cpu(){
 		a_h[i].y = a.y;
 		a_h[i].z = a.z;
 	}
+
+	} //end of omp parallel region
 	
 }
 
 // Is applied only to test particles
 // parallel version with OpenMP
+// float version
 void Data::acc4Dfsmall_cpu(){
+
+	#pragma omp parallel
+	{
 	
-	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
-		for(int k = 0; k < Nomp; ++k){
-			b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+	if(P.UseTestParticles == 2){
+		#pragma omp for schedule(static) 
+		for(int i = 0; i < N_h[0]; ++i){
+			for(int k = 0; k < Nomp; ++k){
+				b_h[k * NconstT + i] = {0.0, 0.0, 0.0};
+			}
 		}
+	}
+
+	#pragma omp for schedule(static) 
+	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
 		Encpairs2_h[i * P.NencMax].x = 0;
 	}
 	
-	#pragma omp parallel for
+	#pragma omp for schedule(static) 
 	for(int i = N_h[0]; i < N_h[0] + Nsmall_h[0]; ++i){
 		float ir, ir3;
 		float3 r3ij;
 
-		int k = omp_get_thread_num();
+		//int k = omp_get_thread_num();
 		//int k = 0;
+
+		double3 a = {0.0, 0.0, 0.0};
+
+		double rcritvi = rcritv_h[i];
+		double4 x4i = x4_h[i];
 
 		for(int j = 0; j < N_h[0]; ++j){
 	
-			if(x4_h[i].w >= 0.0 && x4_h[j].w >= 0.0){
+			if(x4i.w >= 0.0 && x4_h[j].w >= 0.0){
 				
 				//printf("%d %d %d %d %d\n", k, ii, jj, i, j);
 				
-				r3ij.x = x4_h[j].x - x4_h[i].x;
-				r3ij.y = x4_h[j].y - x4_h[i].y;
-				r3ij.z = x4_h[j].z - x4_h[i].z;
+				r3ij.x = x4_h[j].x - x4i.x;
+				r3ij.y = x4_h[j].y - x4i.y;
+				r3ij.z = x4_h[j].z - x4i.z;
 				
 				float rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
 				
-				float rcritv = fmax(rcritv_h[i], rcritv_h[j]);
+				//float rcritv = fmax(rcritvi, rcritv_h[j]);
+				float rcritv = (rcritvi > rcritv_h[j]) ? rcritvi : rcritv_h[j];
 				
 				ir = 1.0f/sqrt(rsq);
 				ir3 = ir*ir*ir;
 				
 				
 //				if(rsq < 3.0 * rcritv * rcritv){
-				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
+				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = 0;
 					int Nj = 0;
@@ -1364,14 +1440,15 @@ void Data::acc4Dfsmall_cpu(){
 				
 				float sj = (x4_h[j].w * ir3);
 				
-				int ki = k * NconstT + i; 
-				
-				b_h[ki].x += r3ij.x * sj;
-				b_h[ki].y += r3ij.y * sj;
-				b_h[ki].z += r3ij.z * sj;
+				a.x += r3ij.x * sj;
+				a.y += r3ij.y * sj;
+				a.z += r3ij.z * sj;
 
 				if(P.UseTestParticles == 2){
-					float si = (x4_h[i].w * ir3);
+
+					int k = omp_get_thread_num();
+
+					float si = (x4i.w * ir3);
 					int kj = k * NconstT + j; 
 				
 					b_h[kj].x -= r3ij.x * si;
@@ -1384,23 +1461,30 @@ void Data::acc4Dfsmall_cpu(){
 				
 			}
 		}
-	}
-	
-	for(int i = 0; i < N_h[0]; ++i){
-		double3 a = {0.0, 0.0, 0.0};
-		for(int k = 0; k < Nomp; ++k){
-			a.x += b_h[k * NconstT + i].x;
-			a.y += b_h[k * NconstT + i].y;
-			a.z += b_h[k * NconstT + i].z;
-//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
-			
-		}
-		
 		a_h[i].x = a.x;
 		a_h[i].y = a.y;
 		a_h[i].z = a.z;
 	}
 	
+	if(P.UseTestParticles == 2){
+		#pragma omp for schedule(static)
+		for(int i = 0; i < N_h[0]; ++i){
+			double3 a = {0.0, 0.0, 0.0};
+			for(int k = 0; k < Nomp; ++k){
+				a.x += b_h[k * NconstT + i].x;
+				a.y += b_h[k * NconstT + i].y;
+				a.z += b_h[k * NconstT + i].z;
+	//if(i == 10) printf("%d %g %g\n", k, b_h[k * NconstT + 10].x, a.x);
+				
+			}
+			
+			a_h[i].x = a.x;
+			a_h[i].y = a.y;
+			a_h[i].z = a.z;
+		}
+	}
+
+	} //end omp parallel region	
 }
 #endif
 

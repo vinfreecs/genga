@@ -398,12 +398,14 @@ public:
 	__host__ void BVHCall2();
 
 #if def_CPU == 1
+	void HCCall_1(const double, const int);
 	void ElapsedTime(float *, timeval, timeval);
 	void firstKick_cpu(int);
 	void firstKick_small_cpu(int);
 	void step1_cpu();
 	int step_cpu(int);
 	int step_small_cpu(int);
+	int tuneHC_cpu(int &);
 	int tuneKickCPU(int);
 	void SEncCPU(double &, int, double, int, int);
 	void acc4D_cpu();

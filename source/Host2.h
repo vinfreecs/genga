@@ -73,6 +73,8 @@ public:
 
 
 	//kernel tuning parameters
+	//HC kernel
+	int HCX;
 	//FG kernel
 	int FTX;
 	//Rcrit kernel

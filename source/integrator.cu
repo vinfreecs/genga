@@ -573,6 +573,55 @@ __host__ int Data::beforeTimeStepLoop1(){
 		}
 	}
 #else
+	HCX = 1;
+
+	FILE *tuneFile;
+
+	if(P.doTuning == 0){
+
+		//check if tuneParameters file exists.
+		tuneFile = fopen("tuningParameters.dat", "r");
+		if(tuneFile == NULL){
+			printf("tuningParameters.dat file not available, use default settings\n");
+			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+			fprintf(GSF[0].logfile, "tuningParameters.dat file not available, use default settings\n");
+			fclose(GSF[0].logfile);
+		}
+		else{
+			printf("Read tuningParameters.dat file\n");
+		
+			char sp[16];	
+			int er = 0;
+
+			for(int i = 0; i < 20; ++i){
+				er = fscanf(tuneFile, "%s", sp);
+				if(er <= 0) break;
+
+				if(strcmp(sp, "HCX") == 0){
+					er = fscanf(tuneFile, "%d", &HCX);
+				}
+			}
+
+			fclose(tuneFile);
+
+			printf("HCX %d\n", HCX);
+
+			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+			fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
+			fprintf(GSF[0].logfile, "HCX %d\n", HCX);
+			fclose(GSF[0].logfile);
+	
+		}
+	}
+	else{
+		//Tune omp  parameters
+		er = tuneHC_cpu(HCX);
+		if(er == 0) return 0;
+
+		tuneFile = fopen("tuningParameters.dat", "w");
+		fprintf(tuneFile, "HCX %d\n", HCX);
+		fclose(tuneFile);
+	}
 	if(P.doSLTuning == 1){
 		er = tuneBS();
 		if(er == 0) return 0;
@@ -1130,7 +1179,7 @@ __host__ int Data::tuneFG(int &TX){
 		cudaEventRecord(start, 0);
 		//revert fg operation
 		//launch with si = -1
-		fg_kernel <<< (NN + tx - 1) / tx, tx >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, -1, P.UseGR);
+		fg_kernel <<< (NN + tx - 1) / tx, tx >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, -1, P.UseGR);
 		
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
@@ -1799,7 +1848,7 @@ __host__ int Data::tuneBS(){
 		kick32Ab_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, NN, P.NencMax, 1);
 
 		HCCall(Ct[0], 1);
-		fg_kernel <<< (NN + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR);
+		fg_kernel <<< (NN + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR);
 		cudaDeviceSynchronize();
 
 		printf("    Precheck-pairs:    %d\n", Nencpairs_h[0]);
@@ -2019,6 +2068,63 @@ __host__ int Data::tuneBS2(){
 
 
 #if def_CPU == 1
+__host__ int Data::tuneHC_cpu(int &TX){
+
+	//Call the kernel twice for each value to get better timings
+	//usually the first call can be slower
+	int ttx[4] = {0, 0, 1, 1};
+
+	int bestTX = -1;
+
+	int NN = N_h[0] + Nsmall_h[0];
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("Starting HC kernel parameters tuning\n");
+	fprintf(GSF[0].logfile, "Starting HC kernel parameters tuning\n");
+	for(int i = 0; i < 4; ++i){
+		TX = ttx[i];
+		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, -1);
+		cudaEventRecord(start, 0);
+		for(int t = 0; t < 1000; ++t){
+			
+			if(TX == 0)	HCCall_1(Ct[0], 1);
+			else		HCCall(Ct[0], 1);
+			//include FG tuning here to get more relevant results
+			fg_cpu /* (NN + FTX - 1) / FTX, FTX */ (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, -1, P.UseGR);	
+			if(TX == 0)	HCCall_1(Ct[0], -1);
+			else		HCCall(Ct[0], -1);
+		}
+		cudaEventRecord(stop, 0);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+		printf("tx:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\ttx:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		if(times < timesMin){
+			bestTX = TX;
+		}
+		timesMin = fmin(times, timesMin);
+		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, 1);
+	}
+	if(bestTX == -1){
+		printf("HC kernel tunig failed\n");
+		fprintf(masterfile, "HC kernel tunig failed\n");
+		return 0;
+	}
+	TX = bestTX;
+	printf("Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+}
 void Data::firstKick_cpu(int noColl){
 	//use last time information, the beginning of the time step
 	double time = (P.tRestart + 1) * idt_h[0] + ict_h[0] * 365.25; //in the set Elements kernel, timestep wil be decreased by 1 again
@@ -2785,7 +2891,7 @@ __host__ int Data::PoincareSectionCall(double t){
 		fprintf(masterfile, "Compute Poincare Sections only with the second Order integrator!\n");
 		return 0;
 	}
-	PoincareSection_kernel <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, index_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
+	PoincareSection_kernel <<< (N_h[0] + 255) / 256, 256 >>> (x4_d, v4_d, xold_d, vold_d, Msun_h[0].x, N_h[0], 0, PFlag_d);
 	
 	cudaMemcpy(PFlag_h, PFlag_d, sizeof(int), cudaMemcpyDeviceToHost);
 	if(PFlag_h[0] == 1){
@@ -2889,7 +2995,7 @@ __host__ void Data::SEnc(double &time, int SLevel, double ll, int si, int noColl
 		}
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 // /*if(timeStep % 1000 == 0) */printf("Nencpairs %d\n", Nencpairs_h[0]);
-		fgS_kernel <<< nbf3, ntf3 >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] / ll * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, P.NencMax);
+		fgS_kernel <<< nbf3, ntf3 >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] / ll * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR, Nencpairs3_d + SLevel - 1, Encpairs3_d + (SLevel - 1) * NBNencT, P.NencMax);
 		if(Nencpairs_h[0] > 0){
 			encounter_kernel <<< (Nencpairs_h[0] + 63)/ 64, 64 >>> (x4_d, v4_d, xold_d, vold_d, rcrit_d + SLevel * NconstT, rcritv_d + SLevel * NconstT, dt_h[0] / ll * FGt[si], Nencpairs_h[0], Nencpairs_d, Encpairs_d, Nencpairs2_d, Encpairs2_d, enccount_d, 1, N_h[0] + Nsmall_h[0], time, P.StopAtEncounter, Ncoll_d, P.MinMass);
 			cudaMemcpy(Nencpairs2_h, Nencpairs2_d, sizeof(int), cudaMemcpyDeviceToHost);
@@ -2930,7 +3036,7 @@ int Data::bStep(int noColl){
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
 	kick32C_cpu (x4_h, v4_h, ab_h, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[0]);
 	HCCall(Ct[0], 1);
-	fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[0], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, 0, P.UseGR);
+	fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[0], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, 0, P.UseGR);
 
 	if(P.SLevels > 1){
 		if(Nencpairs2_h[0] > 0){
@@ -2954,7 +3060,7 @@ __host__ int Data::bStep(int noColl){
 	Rcrit_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
 	kick32C_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, ab_d, N_h[0] + Nsmall_h[0], dt_h[0] * Kt[0]);
 	HCCall(Ct[0], 1);
-	fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[0], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 0, P.UseGR);
+	fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[0], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 0, P.UseGR);
 	cudaDeviceSynchronize();
 
 	if(P.SLevels > 1){
@@ -3374,14 +3480,13 @@ void Data::step1_cpu(){
 			unsigned int aecount = 0u;
 			xold_h[i] = x4_h[i];
 			vold_h[i] = v4_h[i];
-			int index = index_h[i];
 			float4 aelimits = aelimits_h[i];
 			//fgcfull(x4_h[i], v4_h[i], dt, mu, P.UseGR);
-			fgfull(x4_h[i], v4_h[i], dt_h[0], def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_h, Gridaicount_h, 0, i, index, P.UseGR);
+			fgfull(x4_h[i], v4_h[i], dt_h[0], def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_h, Gridaicount_h, 0, i, P.UseGR);
 			aecount_h[i] += aecount;
 		}
 
-//                fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+//		fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
 
 		//HC
 	/*	a = {0.0, 0.0, 0.0};
@@ -3483,8 +3588,10 @@ int Data::step_cpu(int noColl){
 	EjectionFlag2 = 0;
 
 	for(int si = 0; si < SIn; ++si){
-		HCCall(Ct[si], 1);
-		fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+		if(HCX == 0)	HCCall_1(Ct[si], 1);
+		else		HCCall(Ct[si], 1);
+
+		fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
 
 		if(Nenc_m[0] > 0){
 			for(int i = 0; i < def_GMax; ++i){
@@ -3533,7 +3640,10 @@ int Data::step_cpu(int noColl){
 			int enc = writeEncCall();
 			if(enc == 0) return 0;
 		}
-		HCCall(Ct[si], -1);
+
+		if(HCX == 0)	HCCall_1(Ct[si], -1);
+		else		HCCall(Ct[si], -1);
+
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
 				if(Nomp == 1){
@@ -3706,9 +3816,10 @@ int Data::step_small_cpu(int noColl){
 
 	for(int si = 0; si < SIn; ++si){
 
-		HCCall(Ct[si], 1);
+		if(HCX == 0)	HCCall_1(Ct[si], 1);
+		else		HCCall(Ct[si], 1);
 
-		fg_cpu (x4_h, v4_h, xold_h, vold_h, index_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
+		fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
 
 		if(P.WriteEncounters == 2 && si == 0){
 			Nencpairs2_h[0] = 0;		
@@ -3798,7 +3909,9 @@ int Data::step_small_cpu(int noColl){
 			}
 		}
 
-		HCCall(Ct[si], -1);
+		if(HCX == 0)	HCCall_1(Ct[si], -1);
+		else		HCCall(Ct[si], -1);
+
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
 				if(Nomp == 1){
@@ -3933,8 +4046,8 @@ __host__ int Data::step_1kernel(int noColl){
 
 	for(int si = 0; si < SIn; ++si){
 		HCCall(Ct[si], 1);
-		//HCfg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
-		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		//HCfg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
 
 		if(Nenc_m[0] > 0){
@@ -4096,8 +4209,8 @@ __host__ int Data::step_16(int noColl){
 
 	for(int si = 0; si < SIn; ++si){
 		HCCall(Ct[si], 1);
-		//HCfg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
-		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		//HCfg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
 
 		if(Nenc_m[0] > 0){
@@ -4326,7 +4439,7 @@ __host__ int Data::step_largeN(int noColl){
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HCCall(Ct[si], 1);
-		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
 
 		if(Nenc_m[0] > 0){
@@ -4599,7 +4712,7 @@ __host__ int Data::step_small(int noColl){
 
 		HCCall(Ct[si], 1);
 		
-		fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, index_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		cudaStreamSynchronize(copyStream);
 
 		if(P.WriteEncounters == 2 && si == 0){

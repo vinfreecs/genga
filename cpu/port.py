@@ -41,7 +41,7 @@ def kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2):
 
 	if(omp == 1):
 		tab = line.split('i')[0]
-		i_for = '#pragma omp parallel for\n' + tab + i_for
+		i_for = '#pragma omp parallel for schedule(static)\n' + tab + i_for
 
 
 	if(line.find(i_if) != -1):
@@ -1025,6 +1025,9 @@ for line in Lines:
 	if(line.find('__syncthreads') != -1):
 		continue 
 
+	if(line.find('volatile') != -1):
+		line = line.replace('volatile ', '')
+
 	#Add loops
 	if(line.find('void PoincareSection_kernel') != -1):
 		loop_id = 'id'
@@ -1368,6 +1371,7 @@ for line in Lines:
 		loop_id = 'id'
 		loop_N = 'N'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void RcritS_kernel') != -1):
 		loop_id = 'idd'

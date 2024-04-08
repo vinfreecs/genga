@@ -3,7 +3,7 @@
 //This function is needed for the pseudovelocity conversion
 //It is the right hand side of equation 32 from Saha & Tremaine 1994
 //vv is pseudovelocity
-void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, double vvz, volatile double &fx, volatile double &fy, volatile double &fz){
+void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, double vvz, double &fx, double &fy, double &fz){
 
 	double c2 = def_cm * def_cm;
 
@@ -23,7 +23,7 @@ void FPseudoV(double mu, double x, double y, double z, double vvx, double vvy, d
 //See Saha & Tremaine 1994
 void convertPseudovToV(double4 *x4_h, double4 *v4_h, double Msun, int N){
 
-	#pragma omp parallel for
+	#pragma omp parallel for schedule(static)
 	for(int id = 0; id < N; ++id){
 
 		double c2 = def_cm * def_cm;
@@ -51,7 +51,7 @@ void convertPseudovToV(double4 *x4_h, double4 *v4_h, double Msun, int N){
 void convertVToPseidov(double4 *x4_h, double4 *v4_h, int *ErrorFlag_m, double Msun, int N){
 
 	
-	#pragma omp parallel for
+	#pragma omp parallel for schedule(static)
 	for(int id = 0; id < N; ++id){
 
 		double mu = def_ksq * (Msun + x4_h[id].w);
@@ -75,19 +75,18 @@ void convertVToPseidov(double4 *x4_h, double4 *v4_h, int *ErrorFlag_m, double Ms
 		double vvy1 = vvy0 * 0.01;
 		double vvz1 = vvz0 * 0.01;
 
-		volatile double fx0;
-		volatile double fy0;
-		volatile double fz0;
+		double fx0;
+		double fy0;
+		double fz0;
 
 		FPseudoV(mu, xi, yi, zi, vvx0, vvy0, vvz0, fx0, fy0, fz0);
 		fx0 -= vxi;
 		fy0 -= vyi;
 		fz0 -= vzi;
 
-		volatile double fx1;
-		volatile double fy1;
-		volatile double fz1;
-		//without volatile, f*1 is not updated and the loop does not terminate
+		double fx1;
+		double fy1;
+		double fz1;
 
 		FPseudoV(mu, xi, yi, zi, vvx1, vvy1, vvz1, fx1, fy1, fz1);
 		fx1 -= vxi;
@@ -153,6 +152,62 @@ void convertVToPseidov(double4 *x4_h, double4 *v4_h, int *ErrorFlag_m, double Ms
 
 //First call f = 1;
 //Second call f = -1;
+//serial version
+void Data::HCCall_1(const double Ct, const int f){
+
+	int N = N_h[0] + Nsmall_h[0];
+
+	if(P.UseGR == 1 && f == 1){
+		convertVToPseidov(x4_h, v4_h, ErrorFlag_m, Msun_h[0].x, N);
+	}
+	//HC
+
+	double dt = dt_h[0] * Ct;
+	double dtiMsun = dt / Msun_h[0].x;
+
+	double ax = 0.0;
+	double ay = 0.0;
+	double az = 0.0;
+
+	for(int i = 0; i < N; ++i){
+		double m = x4_h[i].w;
+		if(m > 0.0){
+			ax += m * v4_h[i].x;
+			ay += m * v4_h[i].y;
+			az += m * v4_h[i].z;
+//printf("%d %d %.20g | %.20g\n", i, k, ax, v4_h[i].x * m );
+		}
+	}
+	ax *= dtiMsun;
+	ay *= dtiMsun;
+	az *= dtiMsun;
+//printf("%.20g %.20g %.20g | %.20g %.20g %.20g\n", ax, ay, az, v4_h[0].x, v4_h[0].y, v4_h[0].z);
+
+	for(int i = 0; i < N; ++i){
+		x4_h[i].x += ax;
+		x4_h[i].y += ay;
+		x4_h[i].z += az;
+	}
+	if(P.UseGR == 1){
+		double c2 = def_cm * def_cm;
+		for(int i = 0; i < N; ++i){
+			double vsq = v4_h[i].x * v4_h[i].x + v4_h[i].y * v4_h[i].y + v4_h[i].z * v4_h[i].z;
+			double vcdt = 2.0 * vsq / c2 * dt;
+			x4_h[i].x -= (v4_h[i].x * vcdt);
+			x4_h[i].y -= (v4_h[i].y * vcdt);
+			x4_h[i].z -= (v4_h[i].z * vcdt);
+		}
+	}
+
+
+	if(P.UseGR == 1 && f == -1){
+		convertPseudovToV(x4_h, v4_h, Msun_h[0].x, N);
+	}
+
+}
+//First call f = 1;
+//Second call f = -1;
+//parallel version
 void Data::HCCall(const double Ct, const int f){
 
 	int N = N_h[0] + Nsmall_h[0];
@@ -165,30 +220,46 @@ void Data::HCCall(const double Ct, const int f){
 	double dt = dt_h[0] * Ct;
 	double dtiMsun = dt / Msun_h[0].x;
 
-	double3 a = {0.0, 0.0, 0.0};
+	double ax[Nomp];
+	double ay[Nomp];
+	double az[Nomp];
 
-
+	for(int k = 0; k < Nomp; ++k){
+		ax[k] = 0.0;
+		ay[k] = 0.0;
+		az[k] = 0.0;
+	}
+	#pragma omp parallel for schedule(static) if(HCX > 0)
 	for(int i = 0; i < N; ++i){
 		double m = x4_h[i].w;
 		if(m > 0.0){
-			a.x += m * v4_h[i].x;
-			a.y += m * v4_h[i].y;
-			a.z += m * v4_h[i].z;
+			int k = omp_get_thread_num();
+			ax[k] += m * v4_h[i].x;
+			ay[k] += m * v4_h[i].y;
+			az[k] += m * v4_h[i].z;
+//printf("%d %d %.20g | %.20g\n", i, k, ax[k], v4_h[i].x * m );
 		}
 	}
+	for(int k = 1; k < Nomp; ++k){
+		ax[0] += ax[k];
+		ay[0] += ay[k];
+		az[0] += az[k];
 
-	a.x *= dtiMsun;
-	a.y *= dtiMsun;
-	a.z *= dtiMsun;
-
-	for(int i = 0; i < N; ++i){
-		x4_h[i].x += a.x;
-		x4_h[i].y += a.y;
-		x4_h[i].z += a.z;
 	}
+	ax[0] *= dtiMsun;
+	ay[0] *= dtiMsun;
+	az[0] *= dtiMsun;
+//printf("%.20g %.20g %.20g | %.20g %.20g %.20g\n", ax[0], ay[0], az[0], v4_h[0].x, v4_h[0].y, v4_h[0].z);
 
+	#pragma omp parallel for schedule(static) if(HCX > 0)
+	for(int i = 0; i < N; ++i){
+		x4_h[i].x += ax[0];
+		x4_h[i].y += ay[0];
+		x4_h[i].z += az[0];
+	}
 	if(P.UseGR == 1){
 		double c2 = def_cm * def_cm;
+		#pragma omp parallel for schedule(static) if(HCX > 0)
 		for(int i = 0; i < N; ++i){
 			double vsq = v4_h[i].x * v4_h[i].x + v4_h[i].y * v4_h[i].y + v4_h[i].z * v4_h[i].z;
 			double vcdt = 2.0 * vsq / c2 * dt;

@@ -12,15 +12,15 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 	
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	double4 x4i;
-	double4 v4i;
-	
-	double rcrit, rcritv;
-	double rsq, vsq, r, v;
 	
 	if(id == 0) time_d[0] = time;
 	
 	if(id < N){
+		double4 x4i;
+		double4 v4i;
+		
+		double rcrit, rcritv;
+		double rsq, vsq, r, v;
 		
 		if(StopAtCollision_c[0] != 0 || CollTshift_c[0] != 1.0){
 			//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);
@@ -104,15 +104,15 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 	
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	double4 x4i;
-	double4 v4i;
-	
-	double rcrit, rcritv;
-	double rsq, vsq, r, v;
 	
 	if(id == 0) time_d[0] = time;
 	
 	if(id < N){
+		double4 x4i;
+		double4 v4i;
+		
+		double rcrit, rcritv;
+		double rsq, vsq, r, v;
 		
 		if(StopAtCollision_c[0] != 0 || CollTshift_c[0] != 1.0){
 			//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);

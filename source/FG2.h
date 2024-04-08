@@ -68,7 +68,7 @@ __host__ void Data::constantCopySC(double *S_h, double *C_h){
 //July 2016
 //
 //***************************************/
-__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, const double mu, const double Msun, const float4 aelimits, unsigned int &aecount, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int id, const int index, const int UseGR){
+__device__ __noinline__ void fgfull(double4 &x4i, double4 &v4i, double dt, const double mu, const double Msun, const float4 aelimits, unsigned int &aecount, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int id, const int UseGR){
 
 	if(x4i.w >= 0.0){
 
@@ -354,11 +354,9 @@ __device__ void fastfg(double4 &x4i, double4 &v4i, double dt, const double mu, c
 //March 2014
 //
 // ******************************************
-__global__ void PoincareSection_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, const double Msun, const int N, const int si, int *PFlag_d){
+__global__ void PoincareSection_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double Msun, const int N, const int si, int *PFlag_d){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
-
-
 
 	if(id < N){
 		if(si == 0){
@@ -370,11 +368,10 @@ __global__ void PoincareSection_kernel(double4 *x4_d, double4 *v4_d, double4 *xo
 			double4 x4i = x4_d[id];
 			double4 x4oldi = xold_d[id];
 			double4 v4oldi = vold_d[id];
-			int index = index_d[id];
 			if(x4oldi.y < 0.0 && x4i.y >= 0.0 && x4i.x > 0.0){
 				PFlag_d[0] = 1;
 				double dtt = -x4oldi.y / v4oldi.y;
-				fgfull(x4oldi, v4oldi, dtt, def_ksq * Msun, Msun, aelimits, aecount, &Gridaecount, &Gridaicount, si, id, index, 0);
+				fgfull(x4oldi, v4oldi, dtt, def_ksq * Msun, Msun, aelimits, aecount, &Gridaecount, &Gridaicount, si, id, 0);
 	//			printf("%g %g %g\n", x4oldi.x, x4oldi.y, v4oldi.x);
 				xold_d[id] = x4oldi;
 				vold_d[id] = v4oldi;
@@ -393,7 +390,7 @@ __global__ void PoincareSection_kernel(double4 *x4_d, double4 *v4_d, double4 *xo
 //July 2016
 //
 // *****************************************
-__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, const double dt, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
+__global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double dt, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -403,11 +400,10 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 		double4 v4i = v4_d[id];
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-		int index = index_d[id];
-//if(id < 10) printf("FGA %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, (x4_d[id].x * v4_d[id].x) + (x4_d[id].y * v4_d[id].y));
+//if(id < 10) printf("FGA %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, (x4_d[id].x * v4_d[id].x) + (x4_d[id].y * v4_d[id].y));
 		float4 aelimits = aelimits_d[id];
 		//fastfg(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, si, id, UseGR);
-		fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseGR);
+		fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
 		//BSSinglestep(x4i, v4i, Msun, dt, id); //GR not included here
 		__syncthreads();
 		if(si >= 0){
@@ -415,14 +411,14 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
 		}
-//if(id < 10)  printf("FGB %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, (x4_d[id].x * v4_d[id].x) + (x4_d[id].y * v4_d[id].y));
+//if(id < 10)  printf("FGB %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, (x4_d[id].x * v4_d[id].x) + (x4_d[id].y * v4_d[id].y));
 		if(si == 0){
 			aecount_d[id] += aecount;
 		}
 	}
 }
 
-__global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, const double dt, const double dtC, const double dtCiMsun, const double Msun, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
+__global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double dt, const double dtC, const double dtCiMsun, const double Msun, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -478,11 +474,10 @@ __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doubl
 		unsigned int aecount = 0u;
 		xold_d[id] = x4i;
 		vold_d[id] = v4i;
-		int index = index_d[id];
-// printf("FGA %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+// printf("FGA %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 		float4 aelimits = aelimits_d[id];
 		//fastfg(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, si, id, UseGR);
-		fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseGR);
+		fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
 		//BSSinglestep(x4i, v4i, Msun, dt, id); //GR not included here
 		__syncthreads();
 		if(si >= 0){
@@ -490,7 +485,7 @@ __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doubl
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
 		}
-// printf("FGB %d %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, index_d[id], x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
+// printf("FGB %d %g %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", id, x4_d[id].w, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 		if(si == 0){
 			aecount_d[id] += aecount;
 		}
@@ -505,7 +500,7 @@ __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, doubl
 // Author: Simon Grimm
 // January 2019
 // ********************************************************
-__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, int *index_d, const double dt, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax){
+__global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double dt, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, int *Nencpairs3_d, int *Encpairs3_d, const int NencMax){
 
 	int idd = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -517,11 +512,10 @@ __global__ void fgS_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 			double4 v4i = v4_d[id];
 			xold_d[id] = x4i;
 			vold_d[id] = v4i;
-			int index = index_d[id];
 //printf("FGA %d %d %.20e %.20e %.20e %.20e %.20e %.20e e %.20e\n", idd, id, x4_d[id].x, x4_d[id].y, x4_d[id].z, v4_d[id].x, v4_d[id].y, v4_d[id].z, x4_d[id].x * v4_d[id].x + x4_d[id].y * v4_d[id].y);
 			float4 aelimits = aelimits_d[id];
 			//fastfg(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, si, id, UseGR);
-			fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseGR);
+			fgfull(x4i, v4i, dt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
 			//BSSinglestep(x4i, v4i, Msun, dt, id); //GR not included here
 			__syncthreads();
 			x4_d[id] = x4i;
@@ -562,9 +556,8 @@ __global__ void fgM_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double
 		double Msun = Msun_d[st].x;
 		double dt = dt_d[st];
 		float4 aelimits = aelimits_d[id];
-		int index = index_d[id];
 		//fastfg(x4i, v4i, dt * FGt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, si, id, UseGR);
-		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, index, UseGR);
+		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
 		//BSSinglestep(x4i, v4i, Msun, dt * FGt, id); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;
@@ -597,8 +590,7 @@ __global__ void fgMSimple_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, 
 		double Msun = Msun_d[st].x;
 		double dt = dt_d[st];
 		float4 aelimits = {0.0f, 0.0f, 0.0f, 0.0f};
-		int index = index_d[id];
-		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, Msun, aelimits, aecount, NULL, NULL, si, id, index, UseGR);
+		fgfull(x4i, v4i, dt * FGt, def_ksq * Msun, Msun, aelimits, aecount, NULL, NULL, si, id, UseGR);
 		//BSSinglestep(x4i, v4i, Msun, dt * FGt, id); //GR not included here
 		__syncthreads();
 		x4_d[id] = x4i;

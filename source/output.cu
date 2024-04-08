@@ -277,29 +277,29 @@ __host__ int Data::firstoutput(int irregular){
 				int er = 0;
 				starfile = fopen(GSF[st].starfilename, "r");
 
-				er = fscanf (Energyfile, "%lf",&Et);
-				er = fscanf (Energyfile, "%lf",&Msun_h[st].x);
-				er = fscanf (Energyfile, "%lf",&Msun_h[st].y);
-				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
-				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
-				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
-				er = fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
-				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
-				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
-				er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
+				er = fscanf (starfile, "%lf",&Et);
+				er = fscanf (starfile, "%lf",&Msun_h[st].x);
+				er = fscanf (starfile, "%lf",&Msun_h[st].y);
+				er = fscanf (starfile, "%lf",&Spinsun_h[st].x);
+				er = fscanf (starfile, "%lf",&Spinsun_h[st].y);
+				er = fscanf (starfile, "%lf",&Spinsun_h[st].z);
+				er = fscanf (starfile, "%lf",&Spinsun_h[st].w);
+				er = fscanf (starfile, "%lf",&Lovesun_h[st].x);
+				er = fscanf (starfile, "%lf",&Lovesun_h[st].y);
+				er = fscanf (starfile, "%lf",&Lovesun_h[st].z);
 
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 				while(Et * tsign < atof(Ets) * tsign){
-					er = fscanf (Energyfile, "%lf",&Et);
-					er = fscanf (Energyfile, "%lf",&Msun_h[st].x);
-					er = fscanf (Energyfile, "%lf",&Msun_h[st].y);
-					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].x);
-					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].y);
-					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].z);
-					er = fscanf (Energyfile, "%lf",&Spinsun_h[st].w);
-					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].x);
-					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].y);
-					er = fscanf (Energyfile, "%lf",&Lovesun_h[st].z);
+					er = fscanf (starfile, "%lf",&Et);
+					er = fscanf (starfile, "%lf",&Msun_h[st].x);
+					er = fscanf (starfile, "%lf",&Msun_h[st].y);
+					er = fscanf (starfile, "%lf",&Spinsun_h[st].x);
+					er = fscanf (starfile, "%lf",&Spinsun_h[st].y);
+					er = fscanf (starfile, "%lf",&Spinsun_h[st].z);
+					er = fscanf (starfile, "%lf",&Spinsun_h[st].w);
+					er = fscanf (starfile, "%lf",&Lovesun_h[st].x);
+					er = fscanf (starfile, "%lf",&Lovesun_h[st].y);
+					er = fscanf (starfile, "%lf",&Lovesun_h[st].z);
 //printf("%.20g %.20g %d %d\n", Et, atof(Ets), tsign, er);
 					if(Et * tsign >= atof(Ets) * tsign) break;
 
