@@ -485,7 +485,8 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 							if(WriteEncounters_c[0] > 0 && noColl == 0){
 								double writeRadius = 0.0;
 								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[ii].w, vt_s[jj + l].w);
+								double rmax = (vt_s[ii].w > vt_s[jj + l].w) ? vt_s[ii].w : vt_s[j + lj].w;
+								writeRadius = WriteEncountersRadius_c[0] * rmax;
 								if(delta < writeRadius * writeRadius){
 //printf("Write Enc %g %g %g %g %g %d %d\n", (t + dt1) / dayUnit, writeRadius, sqrt(delta), enct, colt, ii, jj+l);
 
@@ -530,7 +531,7 @@ __global__ void BSBMStep64_kernel(curandState *random_d, double4 *x4_d, double4 
 //printf("dR %d %d %.20g %.20g %.20g\n", i, j, d, R, dR); 
 							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 								//bodies are already overlapping
-								Coltime = fmin(Coltime_s[c], Coltime);
+								Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
 							}
 
 						}

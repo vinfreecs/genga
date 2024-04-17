@@ -65,8 +65,8 @@ if(m == 0.0) m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in
 
 	double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z); 	//angular velocity in 1 / day * 0.017
 	double cgamma = (h3.x * omega3.x + h3.y * omega3.y + h3.z * omega3.z) / (h * omega);	//h X omega = |h|*|omega|*cos(gamma)  
-	cgamma = fmax(cgamma, -1.0);
-	cgamma = fmin(cgamma, 1.0);
+	cgamma = (cgamma > -1.0) ? cgamma : -1.0; 
+	cgamma = (cgamma < 1.0) ? cgamma : 1.0; 
 	
 	omega *= 2.0 * M_PI * dayUnit / (24.0 * 3600.0); 						//in 1 / s
 #if PVERSION == 1
@@ -208,8 +208,8 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 
 	double omega = sqrt(omega3.x * omega3.x + omega3.y * omega3.y + omega3.z * omega3.z); 	//angular velocity in 1 / day * 0.017
 	double cgamma = (h3.x * omega3.x + h3.y * omega3.y + h3.z * omega3.z) / (h * omega);	//h X omega = |h|*|omega|*cos(gamma)  
-	cgamma = fmax(cgamma, -1.0);
-	cgamma = fmin(cgamma, 1.0);
+	cgamma = (cgamma > -1.0) ? cgamma : -1.0; 
+	cgamma = (cgamma < 1.0) ? cgamma : 1.0; 
 
 	double sgamma2 = 1.0 - cgamma * cgamma;	//sin^2 + cos^2 = 1.0
 	

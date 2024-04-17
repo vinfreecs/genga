@@ -73,7 +73,7 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
-			rcrit = fmax(rcrit, writeRadius);
+			rcrit = (rcrit > writeRadius) ? rcrit : writeRadius;
 		}
 		
 		if(StopAtEncounter_c[0] > 0){
@@ -82,12 +82,12 @@ __global__ void Rcritb_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 		}
 
 		double rc2 = n2 * fabs(dt) * v;
-		rcritv = fmax(rcrit, rc2);
+		rcritv = (rcrit > rc2) ? rcrit : rc2;
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
 		if(rc2 > rcrit){
-			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+			rcritv_d[id] = (rcritv_d[id] > rcritv) ? rcritv_d[id] : rcritv;
 		}
 		else{
 			rcritv_d[id] = rcritv;
@@ -163,7 +163,7 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
-			rcrit = fmax(rcrit, writeRadius);
+			rcrit = (rcrit > writeRadius) ? rcrit : writeRadius;
 		}
 		
 		if(StopAtEncounter_c[0] > 0){
@@ -172,12 +172,12 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 		}
 		
 		double rc2 = n2 * fabs(dt) * v;
-		rcritv = fmax(rcrit, rc2);
+		rcritv = (rcrit > rc2) ? rcrit : rc2;
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planets
 		if(rc2 > rcrit){
-			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+			rcritv_d[id] = (rcritv_d[id] > rcritv) ? rcritv_d[id] : rcritv;
 		}
 		else{
 			rcritv_d[id] = rcritv;
@@ -249,7 +249,7 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
-			rcrit = fmax(rcrit, writeRadius);
+			rcrit = (rcrit > writeRadius) ? rcrit : writeRadius;
 		}
 		
 		if(StopAtEncounter_c[0] > 0){
@@ -258,12 +258,12 @@ __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, do
 		}
 		
 		double rc2 = n2 * fabs(dt) * v;
-		rcritv = fmax(rcrit, rc2);
+		rcritv = (rcrit > rc2) ? rcrit : rc2;
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
 		if(rc2 > rcrit){
-			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+			rcritv_d[id] = (rcritv_d[id] > rcritv) ? rcritv_d[id] : rcritv;
 		}
 		else{
 			rcritv_d[id] = rcritv;
@@ -312,13 +312,13 @@ __global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 			
 			rcrit = n1 * r * cbrt(x4i.w * iMsun3);
 #if def_SLn1 == 1
-			rcrit = fmax(rcrit, 3.0 * v4i.w);
+			rcrit = (rcrit > 3.0 * v4i.w) ? rcrit : 3.0 * v4i.w;
 #endif
 			double rc2 = n2 * fabs(dt) * v;
-			rcritv = fmax(rcrit, rc2);
+			rcritv = (rcrit > rc2) ? rcrit : rc2;
 			
 			if(rc2 > rcrit){
-				rcritv_d[id + SLevel * NconstT] = fmax(rcritv, rcritv_d[id + SLevel * NconstT]);
+				rcritv_d[id + SLevel * NconstT] = (rcritv_d[id + SLevel * NconstT] > rcritv) ? rcritv_d[id + SLevel * NconstT] : rcritv;
 			}
 			else{
 				rcritv_d[id + SLevel * NconstT] = rcritv;
@@ -411,7 +411,7 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		if(WriteEncounters_c[0] > 0){
 			//in scales of planetary Radius
 			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
-			rcrit = fmax(rcrit, writeRadius);
+			rcrit = (rcrit > writeRadius) ? rcrit : writeRadius;
 		}
 		
 		if(StopAtEncounter_c[0] > 0){
@@ -420,12 +420,12 @@ __global__ void RcritM_kernel(double4 * __restrict__ x4_d, double4 * __restrict_
 		}
 		
 		double rc2 = n2 * fabs(dt) * v;
-		rcritv = fmax(rcrit, rc2);
+		rcritv = (rcrit > rc2) ? rcrit : rc2;
 		
 		rcrit_d[id] = rcrit;
 		//the following prevents from too large critical radii for highly eccentric massive planetes
 		if(rc2 > rcrit){
-			rcritv_d[id] = fmax(rcritv, rcritv_d[id]);
+			rcritv_d[id] = (rcritv_d[id] > rcritv) ? rcritv_d[id] : rcritv;
 		}
 		else{
 			rcritv_d[id] = rcritv;

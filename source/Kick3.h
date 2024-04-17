@@ -17,7 +17,8 @@ __device__ void accA(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, do
 		r3ij.z = x4j.z - x4i.z;
 
 		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-		rcritv = fmax(rcritvi, rcritvj);
+		//rcritv = fmax(rcritvi, rcritvj);
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 		rcritv2 = rcritv * rcritv;
 
 		ir = 1.0/sqrt(rsq);
@@ -73,7 +74,8 @@ __device__ void acc_d(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doubl
 		r3ij.y = x4j.y - x4i.y;
 		r3ij.z = x4j.z - x4i.z;
 		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-		rcritv = fmax(rcritvi, rcritvj);
+		//rcritv = fmax(rcritvi, rcritvj);
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
@@ -140,7 +142,8 @@ __device__ void acc_df(float3 &ac, float3 &b, float4 &x4i, float4 &x4j, float rc
 		r3ij.z = x4j.z - x4i.z;
 
 		rsq = (r3ij.x*r3ij.x) + (r3ij.y*r3ij.y) + (r3ij.z*r3ij.z);
-		rcritv = fmax(rcritvi, rcritvj);
+		//rcritv = fmax(rcritvi, rcritvj);
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 //		rcrit2 = rcrit * rcrit;
 		rcritv2 = rcritv * rcritv;
@@ -226,7 +229,8 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, in
 			rcritvi = rcritv_d[i + NconstT * l];
 			rcritvj = rcritv_d[j + NconstT * l];
 
-			rcritv = fmax(rcritvi, rcritvj);
+			//rcritv = fmax(rcritvi, rcritvj);
+			rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 			rcritv2 = rcritv * rcritv;
 
 			if(rsq < 1.0 * rcritv2){
@@ -250,7 +254,8 @@ __device__ void accS(double4 x4i, double4 x4j, double3 &ac, double *rcritv_d, in
 			rcritvi = rcritv_d[i + NconstT * SLevel];
 			rcritvj = rcritv_d[j + NconstT * SLevel];
 
-			rcritv = fmax(rcritvi, rcritvj);
+			//rcritv = fmax(rcritvi, rcritvj);
+			rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 			rcritv2 = rcritv * rcritv;
 
@@ -313,7 +318,8 @@ __device__ void accG3(double3 &ac, double3 &b, double4 &x4i, double4 &x4j, doubl
 
 		double B = x4i.w * x4j.w * ir;
 
-		rcritv = fmax(rcritvi, rcritvj);
+		//rcritv = fmax(rcritvi, rcritvj);
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 		rcritv2 = rcritv * rcritv;
 		if(E <= 2){	
@@ -1478,7 +1484,8 @@ __global__ void KickM2_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 	for(volatile int j = Nmax - 1; j > 0; --j){
 		__syncthreads();
 		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w >= 0.0 && x4_s[idy + j].w >= 0.0){
-			rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
+			//rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
+			rcritv = (rcritv_s[idy] > rcritv_s[idy + j] ) ? rcritv_s[idy] : rcritv_s[idy + j];
 			rcritv2 = rcritv * rcritv;
 			rx = x4_s[idy + j].x - x4_s[idy].x;
 			ry = x4_s[idy + j].y - x4_s[idy].y;
@@ -1727,7 +1734,8 @@ __global__ void KickM2TTV_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, 
 	for(volatile int j = Nmax - 1; j > 0; --j){
 		__syncthreads();
 		if((st_s[idy] - st_s[idy + j]) == 0 && x4_s[idy].w >= 0.0 && x4_s[idy + j].w >= 0.0){
-			rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
+			//rcritv = fmax(rcritv_s[idy], rcritv_s[idy + j]);
+			rcritv = (rcritv_s[idy] > rcritv_s[idy + j] ) ? rcritv_s[idy] : rcritv_s[idy + j];
 			rcritv2 = rcritv * rcritv;
 			rx = x4_s[idy + j].x - x4_s[idy].x;
 			ry = x4_s[idy + j].y - x4_s[idy].y;
@@ -1859,7 +1867,8 @@ __global__ void KickM3_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, dou
 				if(NBS + idy + i != id && x4i.w >= 0.0 && x4j.w >= 0.0){
 					double rcritvj = rcritv_d[NBS + idy + i];
 
-					double rcritv = fmax(rcritvi, rcritvj);
+					//double rcritv = fmax(rcritvi, rcritvj);
+					double rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 					double rcritv2 = rcritv * rcritv;
 					double rx = x4j.x - x4i.x;
 					double ry = x4j.y - x4i.y;

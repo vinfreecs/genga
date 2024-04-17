@@ -24,8 +24,6 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	double3 dx[8]; 
 	double3 dv[8];
 
-	double errorx;
-	double errorv;
 	double3 scalex;
 	double3 scalev;
 
@@ -37,6 +35,7 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 	double dt2;
 	double dt22;
 	double error = 10.0;
+	double error1 = 10.0;
 	volatile int f;
 	double t = 0.0;
 
@@ -166,17 +165,21 @@ __device__ void BSSinglestep(double4 &x4, double4 &v4, const double Msun, const 
 				if(n > 3){  
 
 
-					error = 0.0;
-					errorx = dx[0].x * dx[0].x * scalex.x;
-					errorv = dv[0].x * dv[0].x * scalev.x;
+					error = dx[0].x * dx[0].x * scalex.x;
+					error1 = dx[0].y * dx[0].y * scalex.y;
+					error = (error > error1) ? error : error1;
 
-					errorx = fmax(errorx, dx[0].y * dx[0].y * scalex.y);
-					errorx = fmax(errorx, dx[0].z * dx[0].z * scalex.z);
+					error1 = dx[0].z * dx[0].z * scalex.z;
+					error = (error > error1) ? error : error1;
 
-					errorv = fmax(errorv, dv[0].y * dv[0].y * scalev.y);
-					errorv = fmax(errorv, dv[0].z * dv[0].z * scalev.z);
+					error1 = dv[0].x * dv[0].x * scalev.x;
+					error = (error > error1) ? error : error1;
+	
+					error1 = dv[0].y * dv[0].y * scalev.y;
+					error = (error > error1) ? error : error1;
 
-					error = fmax(errorx, errorv);	
+					error1 = dv[0].z * dv[0].z * scalev.z;
+					error = (error > error1) ? error : error1;
 
 					if(error <= def_tol * def_tol || sgnt * dt1 < def_dtmin){
 

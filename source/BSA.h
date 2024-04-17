@@ -583,7 +583,8 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
 							//in scales of planetary Radius
-							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[idy].w, vt_s[j].w);
+							double rmax = (vt_s[idy].w > vt_s[j].w) ? vt_s[idy].w : vt_s[j].w;
+							writeRadius = WriteEncountersRadius_c[0] * rmax;
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
@@ -627,7 +628,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 //printf("dRA %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
 							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 							//bodies are already overlapping
-								Coltime = fmin(Coltime_s[c], Coltime);
+								Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
 							}
 
 
@@ -1159,7 +1160,8 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 							if(WriteEncounters_c[0] > 0 && noColl == 0){
 								double writeRadius = 0.0;
 								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
+								double rmax = (vt_d[idi].w > vt_d[j].w) ? vt_d[idi].w : vt_d[j].w;
+								writeRadius = WriteEncountersRadius_c[0] * rmax;
 								if(delta < writeRadius * writeRadius){
 
 									if(enct > 0.0 && enct < 1.0){
@@ -1205,7 +1207,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 //printf("dR512 %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
 							if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 								//bodies are already overlapping
-								Coltime = fmin(Coltime_s[c], Coltime);
+								Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
 							}
 
 						}
@@ -1636,7 +1638,8 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 						if(WriteEncounters_c[0] > 0 && noColl == 0){
 							double writeRadius = 0.0;
 							//in scales of planetary Radius
-							writeRadius = WriteEncountersRadius_c[0] * fmax(vt_d[idi].w, vt_d[j].w);
+							double rmax = (vt_d[idi].w > vt_d[j].w) ? vt_d[idi].w : vt_d[j].w;
+							writeRadius = WriteEncountersRadius_c[0] * rmax;
 							if(delta < writeRadius * writeRadius){
 
 								if(enct > 0.0 && enct < 1.0){
@@ -1684,7 +1687,7 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 //printf("dRm %d %d %.20g %.20g %.20g | noColl %d\n", i, j, d, R, dR, noColl);
 			if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 				//bodies are already overlapping
-				Coltime = fmin(Coltime_s[c], Coltime);
+				Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
 			}
 		}
 		Coltime_d[0] = Coltime;

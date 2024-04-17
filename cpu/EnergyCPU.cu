@@ -294,21 +294,24 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 	Tsun *= def_Kg;
 	Energy_h[0] = V;
 	Energy_h[1] = T + Tsun;
-	Energy_h[2] = LI_h[st] * def_Kg;
+	Energy_h[2] = LI_h[st] * dayUnit;
 	Energy_h[3] = U_h[st] * def_Kg;
 	Energy_h[4] = T + V + (U_h[st] * def_Kg) + Tsun;
-	Energy_h[5] = (Ltot + LI_h[st]) * def_Kg;
+	Energy_h[5] = (Ltot + LI_h[st]) * dayUnit;
 
 	if(EE == 0){
 
 		Energy0_h[st] = T + V + (U_h[st] * def_Kg) + Tsun;
-		LI0_h[st] = (Ltot + LI_h[st]) * def_Kg;
-		Energy_h[7] = 0.0;
+		LI0_h[st] = (Ltot + LI_h[st]) * dayUnit;
 		Energy_h[6] = 0.0;
+		Energy_h[7] = 0.0;
 	}
 	if(EE == 1){
-		Energy_h[6] = ((Ltot + LI_h[st]) * def_Kg - LI0_h[st]) / LI0_h[st]; 
+		Energy_h[6] = ((Ltot + LI_h[st]) * dayUnit - LI0_h[st]) / LI0_h[st]; 
+//printf("L %.20g %.20g %.20g %.20g %.20g\n", Energy_h[6], Ltot, LI_h[st], LI0_h[st], (Ltot + LI_h[st]) * dayUnit);
 		Energy_h[7] = ((T + V + (U_h[st] * def_Kg) + Tsun) - Energy0_h[st]) / Energy0_h[st];
+//printf("E %.20g %.20g %.20g %.20g %.20g | %.20g\n", T, V, Energy0_h[st], ((T + V + (U_h[st] * def_Kg) + Tsun) - Energy0_h[st]), (T + V + (U_h[st] * def_Kg) + Tsun), Energy_h[7]);
+
 	}
 }
 

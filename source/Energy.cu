@@ -895,17 +895,18 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 		Energy_d[3] = U_d[st] * def_Kg;
 		Energy_d[4] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
 		Energy_d[5] = (Ltot + LI_d[st]) * dayUnit;
-
 		if(EE == 0){
 
 			Energy0_d[st] = T + V + __dmul_rn(U_d[st], def_Kg) + Tsun;
 			LI0_d[st] = (Ltot + LI_d[st]) * dayUnit;
-			Energy_d[7] = 0.0;
 			Energy_d[6] = 0.0;
+			Energy_d[7] = 0.0;
 		}
 		if(EE == 1){
 			Energy_d[6] = ((Ltot + LI_d[st]) * dayUnit - LI0_d[st]) / LI0_d[st]; 
+//printf("L %.20g %.20g %.20g %.20g\n", Energy_d[6], Ltot, LI_d[st], LI0_d[st]);
 			Energy_d[7] = ((T + V + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]) / Energy0_d[st];
+//printf("E %.20g %.20g %.20g %.20g %.20g | %.20g \n", T, V, Energy0_d[st], ((T + V + __dmul_rn(U_d[st], def_Kg) + Tsun) - Energy0_d[st]), (T + V + __dmul_rn(U_d[st], def_Kg) + Tsun), Energy_d[7]);
 		}
 	}
 }

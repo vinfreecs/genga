@@ -2089,9 +2089,9 @@ __host__ int Data::tuneHC_cpu(int &TX){
 	fprintf(GSF[0].logfile, "Starting HC kernel parameters tuning\n");
 	for(int i = 0; i < 4; ++i){
 		TX = ttx[i];
-		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, -1);
+		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, 1);
 		cudaEventRecord(start, 0);
-		for(int t = 0; t < 1000; ++t){
+		for(int t = 0; t < 100; ++t){
 			
 			if(TX == 0)	HCCall_1(Ct[0], 1);
 			else		HCCall(Ct[0], 1);
@@ -2110,7 +2110,7 @@ __host__ int Data::tuneHC_cpu(int &TX){
 			bestTX = TX;
 		}
 		timesMin = fmin(times, timesMin);
-		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, 1);
+		save_cpu (x4_h, v4_h, x4bb_h, v4bb_h, spin_h, spinbb_h, rcrit_h, rcritv_h, rcritbb_h, rcritvbb_h, index_h, indexbb_h, NN, NconstT, P.SLevels, -1);
 	}
 	if(bestTX == -1){
 		printf("HC kernel tunig failed\n");

@@ -253,18 +253,21 @@ void BSA_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, doubl
 				
 					}
 
-					double errorx = (dx_s[i][0].x * dx_s[i][0].x) * scalex_s[i].x;
-					double errorv = (dv_s[i][0].x * dv_s[i][0].x) * scalev_s[i].x;
+					double error = (dx_s[i][0].x * dx_s[i][0].x) * scalex_s[i].x;
+					double error1 = (dx_s[i][0].y * dx_s[i][0].y) * scalex_s[i].y;
+					error = (error > error1) ? error : error1;
 
-					errorx = fmax(errorx, (dx_s[i][0].y * dx_s[i][0].y) * scalex_s[i].y);
-					errorv = fmax(errorv, (dv_s[i][0].y * dv_s[i][0].y) * scalev_s[i].y);
+					error1 = (dx_s[i][0].z * dx_s[i][0].z) * scalex_s[i].z;
+					error = (error > error1) ? error : error1;
 
-					errorx = fmax(errorx, (dx_s[i][0].z * dx_s[i][0].z) * scalex_s[i].z);
-					errorv = fmax(errorv, (dv_s[i][0].z * dv_s[i][0].z) * scalev_s[i].z);
+					error1 = (dv_s[i][0].x * dv_s[i][0].x) * scalev_s[i].x;
+					error = (error > error1) ? error : error1;
 
-					error = fmax(error, errorx);
-					error = fmax(error, errorv);
+					error1 = (dv_s[i][0].y * dv_s[i][0].y) * scalev_s[i].y;
+					error = (error > error1) ? error : error1;
 
+					error1 = (dv_s[i][0].z * dv_s[i][0].z) * scalev_s[i].z;
+					error = (error > error1) ? error : error1;
 				}
 				Ncol_s[0] = 0;
 				Coltime_s[0] = 10.0;
@@ -356,7 +359,8 @@ void BSA_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, doubl
 							if(WriteEncounters_c[0] > 0 && noColl == 0){
 								double writeRadius = 0.0;
 								//in scales of planetary Radius
-								writeRadius = WriteEncountersRadius_c[0] * fmax(vt_s[i].w, vt_s[j].w);
+								double rmax = (vt_s[i].w > vt_s[j].w) ? vt_s[i].w : vt_s[j].w;
+								writeRadius = WriteEncountersRadius_c[0] * rmax;
 								if(delta < writeRadius * writeRadius){
 
 									if(enct > 0.0 && enct < 1.0){
@@ -400,7 +404,7 @@ void BSA_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, doubl
 //printf("dRA %d %d %.20g %.20g %.20g\n", i, j, d, R, dR);
 						if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 						//bodies are already overlapping
-							Coltime = fmin(Coltime_s[c], Coltime);
+							Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
 						}
 
 
@@ -645,11 +649,21 @@ void BSError_cpu(double4 *x4_h, double4 *v4_h, double4 *xp_h, double4 *vp_h, dou
 				dv_h[(j - 1) * NT + idi].z = dvj.z;
 			}
 			double error = dxj.x * dxj.x * scalex.x;
-			error = fmax(error, dxj.y * dxj.y * scalex.y);
-			error = fmax(error, dxj.z * dxj.z * scalex.z);
-			error = fmax(error, dvj.x * dvj.x * scalev.x);
-			error = fmax(error, dvj.y * dvj.y * scalev.y);
-			error = fmax(error, dvj.z * dvj.z * scalev.z);
+			double error1 = dxj.y * dxj.y * scalex.y;
+			error = (error > error1) ? error : error1;
+
+			error1 = dxj.z * dxj.z * scalex.z;
+			error = (error > error1) ? error : error1;
+
+			error1 = dvj.x * dvj.x * scalev.x;
+			error = (error > error1) ? error : error1;
+
+			error1 = dvj.y * dvj.y * scalev.y;
+			error = (error > error1) ? error : error1;
+
+			error1 = dvj.z * dvj.z * scalev.z;
+			error = (error > error1) ? error : error1;
+
 //if(idi == 1) printf("dx %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, dxj.x, dxj.y, dxj.z, dvj.x, dvj.y, dvj.z, n);
 //if(idi == 1) printf("scale %d %d %.20g %.20g %.20g %.20g %.20g %.20g %d\n", idx, idi, scalex.x, scalex.y, scalex.z, scalev.x, scalev.y, scalev.z, n);
 			if(error >= def_tol * def_tol){
@@ -800,7 +814,8 @@ void BSUpdate_cpu(int *random_h, double4 *xold_h, double4 *vold_h, double4 *x4_h
 					if(WriteEncounters_c[0] > 0 && noColl == 0){
 						double writeRadius = 0.0;
 						//in scales of planetary Radius
-						writeRadius = WriteEncountersRadius_c[0] * fmax(vt_h[idi].w, vt_h[j].w);
+						double rmax = (vt_h[idi].w > vt_h[j].w) ? vt_h[idi].w : vt_h[j].w;
+						writeRadius = WriteEncountersRadius_c[0] * rmax;
 						if(delta < writeRadius * writeRadius){
 
 							if(enct > 0.0 && enct < 1.0){
@@ -846,7 +861,8 @@ void BSUpdate_cpu(int *random_h, double4 *xold_h, double4 *vold_h, double4 *x4_h
 //printf("dRm %d %d %.20g %.20g %.20g | noColl %d\n", i, j, d, R, dR, noColl);
 		if(dR > fabs(CollisionPrecision_c[0]) && d != 0.0){
 			//bodies are already overlapping
-			Coltime = fmin(Coltime_s[c], Coltime);
+			Coltime = (Coltime_s[c] < Coltime) ? Coltime_s[c] : Coltime;
+
 		}
 	}
 	Coltime_h[0] = Coltime;

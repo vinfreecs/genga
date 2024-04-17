@@ -57,8 +57,9 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 		double rcritv;
 		double f;
 	
-		rcrit = fmax(rcriti, rcritj);
-		rcritv = fmax(rcritvi, rcritvj);
+		rcrit = (rcriti > rcritj ) ? rcriti : rcritj;
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
+
 		f = def_cef;
 
 		r1.x = x4j.x - x4i.x;
@@ -133,11 +134,11 @@ __device__ int encounter(const double4 x4i, const double4 v4i, const double4 x4o
 		}
 		else delta2 = 100.0;
 
-		delta = fmin(delta1,delta2);
+		delta = (delta1 < delta2) ? delta1 : delta2;
 		if(delta < 0) delta = 0.0;
 		
-		delta = fmin(delta, d1);
-		delta = fmin(delta, d0);
+		delta = (delta < d1) ? delta : d1;
+		delta = (delta < d0) ? delta : d0;
 //printf("EE %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %g %g %g\n", i, j, time, x4i.w, x4j.w, x4i.x, x4i.y, x4i.z, x4j.x, x4j.y, x4j.z, delta, rcritv*rcritv, d0, d1, delta1, delta2, t1, t2);
 
 		if(delta < f * rcritv*rcritv){
@@ -173,8 +174,9 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 		double rcritv;
 		double f;
 	
-		rcrit = fmax(rcriti, rcritj);
-		rcritv = fmax(rcritvi, rcritvj);
+		rcrit = (rcriti > rcritj ) ? rcriti : rcritj;
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
+
 		f = def_cef;
 
 		r1.x = x4j.x - x4i.x;
@@ -247,11 +249,11 @@ __device__ int encounterb(const double4 x4i, const double4 v4i, const double4 x4
 		}
 		else delta2 = 100.0;
 
-		delta = fmin(delta1,delta2);
+		delta = (delta1 < delta2) ? delta1 : delta2;
 		if(delta < 0) delta = 0.0;
 		
-		delta = fmin(delta, d1);
-		delta = fmin(delta, d0);
+		delta = (delta < d1) ? delta : d1;
+		delta = (delta < d0) ? delta : d0;
 
 //printf("d %d %d %.20g %.20g\n", i, j, delta, rcritv);
 	
@@ -367,7 +369,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 			double tt1 = 1.0-t1;
 			double tt12 = tt1*tt1;
 			double delta1 = tt12*(1.0 + 2.0*t1)*d0 + t12*(3.0 - 2.0*t1)*d1 + t1*tt12*dt*dd0 - t12*tt1*dt*dd1;
-			delta = fmin(delta, delta1);
+			delta = (delta < delta1) ? delta : delta1;
 			enct = t1;
 		}
 		if(0 <= t2 && t2 <= 1){
@@ -375,13 +377,13 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 			double tt2 = 1.0-t2;
 			double tt22 = tt2*tt2;
 			double delta2 = tt22*(1.0 + 2.0*t2)*d0 + t22*(3.0 - 2.0*t2)*d1 + t2*tt22*dt*dd0 - t22*tt2*dt*dd1;
-			delta = fmin(delta, delta2);
+			delta = (delta < delta2) ? delta : delta2;
 			enct = t2;
 		}
 		if(delta < 0) delta = 0.0;
 	
-		delta = fmin(delta, d1);
-		delta = fmin(delta, d0);
+		delta = (delta < d1) ? delta : d1;
+		delta = (delta < d0) ? delta : d0;
 
 //if(enct >= 0.0 && enct <= 1.0) printf("dt %d %d %g %g %g %g %g\n", i, j, sqrt(delta), enct, t1, t2, rcrit);
 		double rcritsq = rcrit * rcrit;
@@ -403,7 +405,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 		
 					//find collision in between of time steps	
 					if(d0 >= rcritsq && d1 >= rcritsq){
-						colt = fmin(t1, t2);
+						colt = (t1 < t2) ? t1 : t2;
 					}
 
 					if(d0 < 0.95 * rcritsq && d1 < 0.95 * rcritsq){
@@ -432,7 +434,7 @@ __device__ double encounter1(const double4 x4i, const double4 v4i, const double4
 						if(t1 < 0.0) t1 = t2;
 						if(t2 < 0.0) t2 = t1;
 						if(t1 >= 0.0){
-							colt = fmin(t1, t2);
+							colt = (t1 < t2) ? t1 : t2;
 						}
 					}
 
@@ -697,7 +699,8 @@ __global__ void encounter_small_kernel(double4 *x4_d, double4 *v4_d, double4 *xo
 		double delta = 1000.0;
 		double enct = 100.0;
 		double colt = 100.0;
-		double rcrit = WriteEncountersRadius_c[0] * fmax(v4_d[ii].w, v4_d[jj].w); //writeradius
+		double rmax = (v4_d[ii].w > v4_d[jj].w) ? v4_d[ii].w : v4_d[jj].w;
+		double rcrit = WriteEncountersRadius_c[0] * rmax; //writeradius
 
 		delta = encounter1(x4_d[ii], v4_d[ii], xold_d[ii], vold_d[ii], x4_d[jj], v4_d[jj], xold_d[jj], vold_d[jj], rcrit, dt, ii, jj, enct, colt, 0.0, 0);
 

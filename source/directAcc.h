@@ -38,7 +38,8 @@ __device__ void accEnc(double4 x4i, double4 x4j, double3 &ac, volatile double *r
 
 			double rcritvi = rcritv_[i + l * NN];
 			double rcritvj = rcritv_[j + l * NN];
-			rcritv = fmax(rcritvi, rcritvj);
+			//rcritv = fmax(rcritvi, rcritvj);
+			rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 			rcritv2 = rcritv * rcritv;
 
@@ -335,10 +336,12 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	v4[i].z = (v4[i].z * x4[i].w + v4[j].z * x4[j].w) / mtot;
 
 	for(int l = 0; l < SLevels; ++l){
-		rcritv[i + l * NN] = fmax(rcritv[i + l * NN], rcritv[j + l * NN]);
+		//rcritv[i + l * NN] = fmax(rcritv[i + l * NN], rcritv[j + l * NN]);
+		rcritv[i + l * NN] = (rcritv[i + l * NN] > rcritv[j + l * NN] ) ? rcritv[i + l * NN] : rcritv[j + l * NN];
 		rcritv[j + l * NN] = 0.0;
 	
-		rcrit_d[indexi + l * NconstT] = fmax(rcrit_d[indexi + l * NconstT], rcrit_d[indexj + l * NconstT]);
+		//rcrit_d[indexi + l * NconstT] = fmax(rcrit_d[indexi + l * NconstT], rcrit_d[indexj + l * NconstT]);
+		rcrit_d[indexi + l * NconstT] = (rcrit_d[indexi + l * NconstT] > rcrit_d[indexj + l * NconstT] ) ? rcrit_d[indexi + l * NconstT] : rcrit_d[indexj + l * NconstT];
 		rcrit_d[indexj + l * NconstT] = 0.0;
 	}
 

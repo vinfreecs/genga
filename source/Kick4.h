@@ -21,7 +21,8 @@ __device__ void acc_e(volatile double3 &ac, double4 &x4i, double4 &x4j, volatile
 		r3ij.z = x4j.z - x4i.z;
 
 		double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-		double rcritv = fmax(rcritvi, rcritvj);
+		//double rcritv = fmax(rcritvi, rcritvj);
+		double rcritv = (rcritvi > rcritvj) ? rcritvi : rcritvj;
 
 		double ir = 1.0/sqrt(rsq);
 		double ir3 = ir*ir*ir;
@@ -78,7 +79,8 @@ __device__ void acc_ef(volatile float3 &ac, float4 &x4i, float4 &x4j, volatile f
 		r3ij.z = x4j.z - x4i.z;
 
 		float rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-		float rcritv = fmaxf(rcritvi, rcritvj);
+		//float rcritv = fmaxf(rcritvi, rcritvj);
+		float rcritv = (rcritvi > rcritvj) ? rcritvi : rcritvj;
 
 		float ir = 1.0f/sqrtf(rsq);
 		float ir3 = ir*ir*ir;
@@ -1506,7 +1508,8 @@ __device__  void forceij(double4 x4i, double4 x4j, double4 &fi, double4 &fj, int
 
 	double rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
 
-	double rcritv = fmax(fi.w, fj.w);
+	//double rcritv = fmax(fi.w, fj.w);
+	double rcritv = (fi.w > fj.w ) ? fi.w : fj.w;
 	bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 	//Encpairsb_d[NconstT * i + j] = cl; 
 	
@@ -1541,7 +1544,8 @@ __device__ void accc(double3 &ac, double4 &x4i, double4 &x4j, double rcritvi, do
 		r3ij.z = x4j.z - x4i.z;
 
 		rsq = r3ij.x*r3ij.x + r3ij.y*r3ij.y + r3ij.z*r3ij.z;
-		rcritv = fmax(rcritvi, rcritvj);
+		//rcritv = fmax(rcritvi, rcritvj);
+		rcritv = (rcritvi > rcritvj ) ? rcritvi : rcritvj;
 
 		bool cl = (rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4j.w > 0.0)) ? true : false;
 		//Encpairsb_d[NconstT * i + j] = cl;
