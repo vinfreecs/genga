@@ -2391,6 +2391,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-Nomp") == 0){
 			Nomp = atoi(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-GR") == 0){
+			P.UseGR = atoi(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;

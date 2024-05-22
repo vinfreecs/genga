@@ -228,8 +228,10 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 						dv_s[i][j-1].y = (t1 * dv_s[i][j].y) - (t2 * dv_s[i][j-1].y);
 						dv_s[i][j-1].z = (t1 * dv_s[i][j].z) - (t2 * dv_s[i][j-1].z);
 					}
-					double error = (dx_s[i][0].x * dx_s[i][0].x) * scalex_s[i].x;
-					double error1 = (dx_s[i][0].y * dx_s[i][0].y) * scalex_s[i].y;
+					double error1 = (dx_s[i][0].x * dx_s[i][0].x) * scalex_s[i].x;
+					error = (error > error1) ? error : error1;
+
+					error1 = (dx_s[i][0].y * dx_s[i][0].y) * scalex_s[i].y;
 					error = (error > error1) ? error : error1;
 
 					error1 = (dx_s[i][0].z * dx_s[i][0].z) * scalex_s[i].z;

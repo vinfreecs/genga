@@ -767,7 +767,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 			double4 x4 = x4_d[idy + i];
 			double4 v4 = v4_d[idy + i];
 			if(x4.w > 0.0){
-				T += 0.5 * x4.w * (v4.x * v4.x +  v4.y * v4.y + v4.z * v4.z);
+				T += 0.5 * x4.w * (v4.x * v4.x + v4.y * v4.y + v4.z * v4.z);
 			}
 			//convert to barycentric positions
 			double3 x4h;

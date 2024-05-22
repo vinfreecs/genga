@@ -29,6 +29,7 @@ The console arguments have the highest priority and are overwriting the argument
 - -sls <i>: Symplectic recursion sub steps
 - -collPrec <f>: Collision Precision
 - -collTshift <f>: Collision Time Shift
+- -GR <i>: Use GR
 
 Here i means an integer, f a floating point value, and s a string.
 

@@ -1889,10 +1889,10 @@ __host__ int Data::tuneBS(){
 #else
 					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
 #endif
+				
+					cudaDeviceSynchronize();
+					BSCall(0, time_h[0], noColl, 1.0);
 				}
-				cudaDeviceSynchronize();
-
-				BSCall(0, time_h[0], noColl, 1.0);
 			}
 
 			cudaEventRecord(stop, 0);
@@ -2012,10 +2012,10 @@ __host__ int Data::tuneBS2(){
 		else{
 			if(Nencpairs2_h[0] > 0){
 				groupCall();
+			
+				cudaDeviceSynchronize();
+				BSCall(0, time_h[0], noColl, 1.0);
 			}
-			cudaDeviceSynchronize();
-
-			BSCall(0, time_h[0], noColl, 1.0);
 		}
 
 		cudaEventRecord(stop, 0);
@@ -3618,8 +3618,8 @@ int Data::step_cpu(int noColl){
 //printf("Nencpairs2 %d\n", Nencpairs2_h[0]);
 				if(Nencpairs2_h[0] > 0){
 					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
+					BSCall(si, time_h[0], noColl, 1.0);
 				}
-				BSCall(si, time_h[0], noColl, 1.0);
 			}
 		}
 
@@ -3816,8 +3816,12 @@ int Data::step_small_cpu(int noColl){
 
 	for(int si = 0; si < SIn; ++si){
 
-		if(HCX == 0)	HCCall_1(Ct[si], 1);
-		else		HCCall(Ct[si], 1);
+		if(HCX == 0){
+			HCCall_1(Ct[si], 1);
+		}
+		else{
+			HCCall(Ct[si], 1);
+		}
 
 		fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
 
@@ -3862,8 +3866,8 @@ int Data::step_small_cpu(int noColl){
 //printf("Nencpairs2 %d\n", Nencpairs2_h[0]);
 				if(Nencpairs2_h[0] > 0){
 					group_cpu (Nenc_m, Nencpairs2_h, Encpairs2_h, Encpairs_h, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0], P.SERIAL_GROUPING);
+					BSCall(si, time_h[0], noColl, 1.0);
 				}
-				BSCall(si, time_h[0], noColl, 1.0);
 			}
 		}
 
@@ -3909,8 +3913,12 @@ int Data::step_small_cpu(int noColl){
 			}
 		}
 
-		if(HCX == 0)	HCCall_1(Ct[si], -1);
-		else		HCCall(Ct[si], -1);
+		if(HCX == 0){
+			HCCall_1(Ct[si], -1);
+		}
+		else{
+			HCCall(Ct[si], -1);
+		}
 
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
@@ -4081,10 +4089,10 @@ __host__ int Data::step_1kernel(int noColl){
 					else{
 						group_kernel < 32, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 					}
+				
+					cudaDeviceSynchronize();
+					BSCall(si, time_h[0], noColl, 1.0);
 				}
-				cudaDeviceSynchronize();
-				BSCall(si, time_h[0], noColl, 1.0);
-
 			}
 		}
 		if(Ncoll_m[0] > 0){
@@ -4248,10 +4256,9 @@ __host__ int Data::step_16(int noColl){
 						group_kernel < 64, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 					}
 
+					cudaDeviceSynchronize();
+					BSCall(si, time_h[0], noColl, 1.0);
 				}
-				cudaDeviceSynchronize();
-				BSCall(si, time_h[0], noColl, 1.0);
-
 			}
 		}
 		if(StopAtEncounterFlag2 == 1){
@@ -4480,9 +4487,9 @@ __host__ int Data::step_largeN(int noColl){
 					else{
 						group_kernel < 1, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0], N_h[0], P.SERIAL_GROUPING);
 					}
+					cudaDeviceSynchronize();
+					BSCall(si, time_h[0], noColl, 1.0);
 				}
-				cudaDeviceSynchronize();
-				BSCall(si, time_h[0], noColl, 1.0);
 			}
 		}
 		if(StopAtEncounterFlag2 == 1){
@@ -4763,9 +4770,9 @@ __host__ int Data::step_small(int noColl){
 					else{
 						group_kernel < 512, 512 > <<< 1, 512 >>> (Nenc_d, Nencpairs2_d, Encpairs2_d, Encpairs_d, P.NencMax, N_h[0] + Nsmall_h[0], N_h[0] + Nsmall_h[0], P.SERIAL_GROUPING);
 					}
-				}	
-				cudaDeviceSynchronize();
-				BSCall(si, time_h[0], noColl, 1.0);
+					cudaDeviceSynchronize();
+					BSCall(si, time_h[0], noColl, 1.0);
+				}
 			}
 		}
 		if(StopAtEncounterFlag2 == 1){
