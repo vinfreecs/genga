@@ -236,7 +236,7 @@ void EjectionEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double Ms
 }
 
 //no paralell cpu version, could be done later with reduction
-void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *EnergySum_h, double *Energy_h, double Msun, double *U_h, double *LI_h, double *Energy0_h, double *LI0_h, int st, int N, int EE){
+void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *EnergySum_h, double *Energy_h, double Msun, double4 *Spinsun_h, double *U_h, double *LI_h, double *Energy0_h, double *LI0_h, int st, int N, int EE){
 
 	 double T = 0.0;
 	 double V = 0.0;
@@ -274,8 +274,8 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 		L.x += x4.w * (x4h.y * v4.z - x4h.z * v4.y) + spin_h[i].x;
 		L.y += x4.w * (x4h.z * v4.x - x4h.x * v4.z) + spin_h[i].y;
 		L.z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_h[i].z;
+//printf("L %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", i, L.x, L.y, L.z, spin_h[i].x, spin_h[i].y, spin_h[i].z);
 	}
-//printf("L %d %.20g %.20g %.20g\n", i, L.x, L.y, L.z);
 	E = V + T;
 
 	double Tsun = 0.5 / Msun * (p.x*p.x + p.y*p.y + p.z*p.z);  
@@ -288,6 +288,14 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 //printf("Lsum+ %d %.20g %.20g %.20g\n", 0, L.x, L.y, L.z);
 	double Ltot = sqrt(L.x * L.x + L.y * L.y + L.z * L.z);
 //printf("Ltot %.20g %.20g %.20g\n", Ltot, LI_h[0], Ltot + LI_h[0]);
+
+
+	double4 Spinsun4 = Spinsun_h[st];
+	double Spinsun = sqrt(Spinsun4.x * Spinsun4.x + Spinsun4.y * Spinsun4.y + Spinsun4.z * Spinsun4.z);
+//printf("Spinsun %.20g\n", Spinsun);
+	Ltot += Spinsun;
+//printf("Ltot %.20g\n", Ltot);
+
 	V *= def_Kg;
 	T *= def_Kg;
 	E *= def_Kg;
@@ -329,7 +337,7 @@ __host__ void Data::EnergyCall(int st, int E){
 
 
 	potentialEnergy_cpu  (x4_h + NBS, v4_h + NBS, Msun_h[st].x, EnergySum_h + NBS, NN);
-	kineticEnergy_cpu  (x4_h + NBS, v4_h + NBS, spin_h + NBS, EnergySum_h + NBS, Energy_h + NE, Msun_h[st].x, U_h, LI_h, Energy0_h, LI0_h, st, NN, E);
+	kineticEnergy_cpu  (x4_h + NBS, v4_h + NBS, spin_h + NBS, EnergySum_h + NBS, Energy_h + NE, Msun_h[st].x, Spinsun_h, U_h, LI_h, Energy0_h, LI0_h, st, NN, E);
 }
 // *************************************
 //This function calls the EjectionEnergy kernels

@@ -778,7 +778,7 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 			L.y += x4.w * (x4h.z * v4.x - x4h.x * v4.z) + spin_d[idy + i].y;
 			L.z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_d[idy + i].z;
 //printf("VTa  %d %.20g %.20g\n", idy, V, T);
-//printf("L %d %.20g %.20g %.20g\n", idy, L.x, L.y, L.z);
+//printf("L %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", idy, L.x, L.y, L.z, spin_d[i].x, spin_d[i].y, spin_d[i].z);
 		}
 	}
 	E = V + T;
@@ -882,8 +882,9 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 
 		double4 Spinsun4 = Spinsun_d[st];
 		double Spinsun = sqrt(Spinsun4.x * Spinsun4.x + Spinsun4.y * Spinsun4.y + Spinsun4.z * Spinsun4.z);
-//printf("Spinsun %g\n", Spinsun);
+//printf("Spinsun %.20g\n", Spinsun);
 		Ltot += Spinsun;
+//printf("Ltot %.20g\n", Ltot);
 
 		V *= def_Kg;
 		T *= def_Kg;
@@ -930,7 +931,6 @@ __host__ void Data::EnergyCall(int st, int E){
 //This function calls the EjectionEnergy kernels
 //
 //Authors: Simon Grimm
-//April 2016
 // *************************************
 __host__ void Data::EjectionEnergyCall(int st, int i){
 

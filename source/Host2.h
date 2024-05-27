@@ -84,6 +84,7 @@ public:
 	int KTX;
 	int KTY;
 	int UseAcc;
+	int UseAccCPUomp;
 	//kick TP 2
 	int KP2;
 	int KTX2;

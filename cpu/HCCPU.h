@@ -152,7 +152,7 @@ void convertVToPseidov(double4 *x4_h, double4 *v4_h, int *ErrorFlag_m, double Ms
 
 //First call f = 1;
 //Second call f = -1;
-//serial version
+//serial version, HCX = 0
 void Data::HCCall_1(const double Ct, const int f){
 
 	int N = N_h[0] + Nsmall_h[0];
@@ -207,7 +207,7 @@ void Data::HCCall_1(const double Ct, const int f){
 }
 //First call f = 1;
 //Second call f = -1;
-//parallel version
+//parallel version, HCX == 1
 void Data::HCCall(const double Ct, const int f){
 
 	int N = N_h[0] + Nsmall_h[0];
@@ -220,46 +220,46 @@ void Data::HCCall(const double Ct, const int f){
 	double dt = dt_h[0] * Ct;
 	double dtiMsun = dt / Msun_h[0].x;
 
-	double ax[Nomp];
-	double ay[Nomp];
-	double az[Nomp];
-
 	for(int k = 0; k < Nomp; ++k){
-		ax[k] = 0.0;
-		ay[k] = 0.0;
-		az[k] = 0.0;
+		b_h[k].x = 0.0;
+		b_h[k].y = 0.0;
+		b_h[k].z = 0.0;
 	}
-	#pragma omp parallel for schedule(static) if(HCX > 0)
+	#pragma omp parallel for schedule(static)
 	for(int i = 0; i < N; ++i){
 		double m = x4_h[i].w;
 		if(m > 0.0){
 			int k = omp_get_thread_num();
-			ax[k] += m * v4_h[i].x;
-			ay[k] += m * v4_h[i].y;
-			az[k] += m * v4_h[i].z;
-//printf("%d %d %.20g | %.20g\n", i, k, ax[k], v4_h[i].x * m );
+			b_h[k].x += m * v4_h[i].x;
+			b_h[k].y += m * v4_h[i].y;
+			b_h[k].z += m * v4_h[i].z;
+//printf("%d %d %.20g | %.20g\n", i, k, b_h[k].x, v4_h[i].x * m );
 		}
+
 	}
 	for(int k = 1; k < Nomp; ++k){
-		ax[0] += ax[k];
-		ay[0] += ay[k];
-		az[0] += az[k];
+		b_h[0].x += b_h[k].x;
+		b_h[0].y += b_h[k].y;
+		b_h[0].z += b_h[k].z;
 
 	}
-	ax[0] *= dtiMsun;
-	ay[0] *= dtiMsun;
-	az[0] *= dtiMsun;
-//printf("%.20g %.20g %.20g | %.20g %.20g %.20g\n", ax[0], ay[0], az[0], v4_h[0].x, v4_h[0].y, v4_h[0].z);
+	b_h[0].x *= dtiMsun;
+	b_h[0].y *= dtiMsun;
+	b_h[0].z *= dtiMsun;
+//printf("%.20g %.20g %.20g | %.20g %.20g %.20g\n", b_h[0].x, b_h[0].y, b_h[0].z, v4_h[0].x, v4_h[0].y, v4_h[0].z);
 
-	#pragma omp parallel for schedule(static) if(HCX > 0)
+	#pragma omp parallel for schedule(static)
 	for(int i = 0; i < N; ++i){
-		x4_h[i].x += ax[0];
-		x4_h[i].y += ay[0];
-		x4_h[i].z += az[0];
+		x4_h[i].x += b_h[0].x;
+		x4_h[i].y += b_h[0].y;
+		x4_h[i].z += b_h[0].z;
 	}
+
+
+
 	if(P.UseGR == 1){
 		double c2 = def_cm * def_cm;
-		#pragma omp parallel for schedule(static) if(HCX > 0)
+		#pragma omp parallel for schedule(static)
 		for(int i = 0; i < N; ++i){
 			double vsq = v4_h[i].x * v4_h[i].x + v4_h[i].y * v4_h[i].y + v4_h[i].z * v4_h[i].z;
 			double vcdt = 2.0 * vsq / c2 * dt;

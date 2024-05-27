@@ -406,7 +406,7 @@ public:
 	int step_cpu(int);
 	int step_small_cpu(int);
 	int tuneHC_cpu(int &);
-	int tuneKickCPU(int);
+	int tuneAcc_cpu(int &);
 	void SEncCPU(double &, int, double, int, int);
 	void acc4D_cpu();
 	void acc4Df_cpu();

@@ -17,16 +17,16 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
+#if def_CPU == 0
 	double3 T3sun = {0.0, 0.0, 0.0};
-
-	int st = 0;
-	double dt = 0.0;
-#if def_CPU == 1
-	#pragma omp parallel for	
+#else
+	#pragma omp parallel for schedule(static)
 #endif
 	if(id < N + Nstart){
 	
 		int index = index_d[id];
+
+		int st = 0;
 		if(Nst > 1) st = index / def_MaxIndex;	//st is the sub simulation index
 
 		double4 x4 = x4_d[id];
@@ -36,7 +36,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star and the moment of inertia
 		double3 Lovesun = Lovesun_d[st];		//This is the Love number, fluid Love numer and time lag
 		double2 J2s = J2_d[st];			//This is the J2 value for additional gravitational harmonics forces and the mean radius
-		dt = dt_d[st] * Kt;			//This is the time step to do
+		double dt = dt_d[st] * Kt;			//This is the time step to do
 //		double time = time_d[st] / 365.25;		//This is the time in years
 
 		double3 a3;
@@ -176,7 +176,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 			omegasun3.x = Spinsun.x * iIsun;
 			omegasun3.y = Spinsun.y * iIsun;
 			omegasun3.z = Spinsun.z * iIsun;
-//printf("omegaS %d %g %g %g\n", id, Spinsun.z, 1.0 / omegasun3.z / dayUnit, 1.0/iIsun, omegasun3.z * dayUnit);
+//printf("omegaS %d %g %g %g\n", id, omegasun3.x, omegasun3.y, omegasun3.z);
 
 			//compute rotation vector from spin vector
 			if(x4.w > 0.0){
@@ -304,21 +304,23 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 					double fdx = (P * t2.x - P * v4t.x) * x4.w;
 					double fdy = (P * t2.y - P * v4t.y) * x4.w;
 					double fdz = (P * t2.z - P * v4t.z) * x4.w;
-//printf("P %d %d %g %g %g %g %g\n", id, k, P, t2.x, v4t.x, x4.x, mred);
+//printf("fd %d %d %g %g %g %g\n", id, k, fdx, fdy, fdz, T3.x);
 
 					T3t.x += -mred * ( x4.y * fdz - x4.z * fdy);
 					T3t.y += -mred * (-x4.x * fdz + x4.z * fdx);
 					T3t.z += -mred * ( x4.x * fdy - x4.y * fdx);
+//printf("T3t %d %d %g %g %g %g\n", id, k, T3t.x, T3t.y, T3t.z, mred);
 
 					fdx = (Psun * t3.x - Psun * v4t.x) * x4.w;
 					fdy = (Psun * t3.y - Psun * v4t.y) * x4.w;
 					fdz = (Psun * t3.z - Psun * v4t.z) * x4.w;
+//printf("fdsun %d %d %g %g %g %g\n", id, k, fdx, fdy, fdz, T3sunt.x);
 
 					T3sunt.x += -mred * ( x4.y * fdz - x4.z * fdy);
 					T3sunt.y += -mred * (-x4.x * fdz + x4.z * fdx);
 					T3sunt.z += -mred * ( x4.x * fdy - x4.y * fdx);
 
-//printf("T %d %d %g %g %g | %g %g %g\n", id, k, T3t.x, T3t.y, T3t.z, T3sunt.x, T3sunt.y, T3sunt.z);
+//printf("T3sunt %d %d %g %g %g %g\n", id, k, T3sunt.x, T3sunt.y, T3sunt.z, mred);
 				}
 				if((UseRotationalDeformation == 1) && x4.w > 0.0){
 					//Rotational Force see Bolmont et al 2015 equation 15
@@ -441,11 +443,16 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 			T3.y += T3t.y;
 			T3.z += T3t.z;
 
+#if def_CPU == 0
 			T3sun.x += T3sunt.x;
 			T3sun.y += T3sunt.y;
 			T3sun.z += T3sunt.z;
+#else
+			vold_d[id].x = T3sunt.x * dt;
+			vold_d[id].y = T3sunt.y * dt;
+			vold_d[id].z = T3sunt.z * dt;
+#endif
 		}
-
 		//apply the Kick
 		v4.x += a3.x * dt;
 		v4.y += a3.y * dt;
@@ -460,17 +467,19 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 // printf("Force %d %g %g %g %g\n", id, x4.w, v4.x, v4.y, v4.z);
 		if(si == 1){
 			v4_d[id] = v4;
+//printf("spin %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", id, spin_d[id].x, spin_d[id].y, spin_d[id].z, Spin.x, Spin.y, Spin.z);
 			spin_d[id] = Spin;
 		}
-	}
+	}//end if id
 
 	__syncthreads();
 
 	//Sum up all torques of the star
 	if(UseTides > 0 || UseRotationalDeformation > 0){
-//printf("A %d %d %g %g %g\n", id, 0, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt);
+//printf("A %d %d %g %g %g\n", id, 0, T3sun.x, T3sun.y, T3sun.z);
 #if def_CPU == 0
 		if(Nst == 1){
+			double dt = dt_d[0] * Kt;
 			for(int i = 1; i < warpSize; i*=2){
  #if def_OldShuffle == 0
 				T3sun.x += __shfl_xor_sync(0xffffffff, T3sun.x, i, warpSize);
@@ -484,7 +493,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 //printf("A1 %d %d %g %g %g\n", id, i, T3sun.x, T3sun.y, T3sun.z);
 			}
 			__syncthreads();
-//printf("A1 %d %g %g %g\n", id, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt);
+//printf("A1 %d %g %g %g\n", id, T3sun.x, T3sun.y, T3sun.z);
 
 			if(blockDim.x > warpSize){
 				//reduce across warps
@@ -532,14 +541,16 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 
 
 			if(N <= blockDim.x && id == 0){
-				if(si == 0) printf("B %d %.20g %.20g %.20g\n", id, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt);
+//				if(si == 0) printf("B %d %.20g %.20g %.20g\n", id, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt);
 				if(si == 1){
-					Spinsun_d[st].x += T3sun.x * dt;
-					Spinsun_d[st].y += T3sun.y * dt;
-					Spinsun_d[st].z += T3sun.z * dt;
+					Spinsun_d[0].x += T3sun.x * dt;
+					Spinsun_d[0].y += T3sun.y * dt;
+					Spinsun_d[0].z += T3sun.z * dt;
+//printf("Kick %.20g %.20g %.20g | %.20g %.20g %.20g\n", Spinsun_d[0].x, Spinsun_d[0].y, Spinsun_d[0].z, T3sun.x * dt, T3sun.y * dt, T3sun.z * dt); 
 				}
 			}
 			else if(threadIdx.x == 0){
+				//store T3sun in vold and sum up in the next kernel
 				vold_d[blockIdx.x].x = T3sun.x * dt;
 				vold_d[blockIdx.x].y = T3sun.y * dt;
 				vold_d[blockIdx.x].z = T3sun.z * dt;
@@ -547,15 +558,25 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 
 		}
 		else if(id < N + Nstart){ //Nst > 1
+			//store T3sun in vold and sum up in the next kernel
+			int index = index_d[id];
+			int st = index / def_MaxIndex;	//st is the sub simulation index
+			double dt = dt_d[st] * Kt;
+
 			vold_d[id].x = T3sun.x * dt;
 			vold_d[id].y = T3sun.y * dt;
 			vold_d[id].z = T3sun.z * dt;
 		}
-#else
+#else	//def_CPU == 1
 		if(si == 1){
-			Spinsun_d[st].x += T3sun.x * dt;
-			Spinsun_d[st].y += T3sun.y * dt;
-			Spinsun_d[st].z += T3sun.z * dt;
+			for(int id = 0; id < N + Nstart; ++id){
+				if(x4_d[id].w >= 0.0){
+					Spinsun_d[0].x += vold_d[id].x;
+					Spinsun_d[0].y += vold_d[id].y;
+					Spinsun_d[0].z += vold_d[id].z;
+				}
+			}
+//printf("Kick %.20g %.20g %.20g\n", Spinsun_d[0].x, Spinsun_d[0].y, Spinsun_d[0].z); 
 		}
 		
 #endif

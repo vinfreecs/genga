@@ -1200,9 +1200,9 @@ void Data::acc4Dsmall_cpu(){
 				
 			}
 			
-			a_h[i].x = a.x;
-			a_h[i].y = a.y;
-			a_h[i].z = a.z;
+			a_h[i].x += a.x;
+			a_h[i].y += a.y;
+			a_h[i].z += a.z;
 		}
 	}
 	}//end of omp parallel region
@@ -1480,9 +1480,9 @@ void Data::acc4Dfsmall_cpu(){
 				
 			}
 			
-			a_h[i].x = a.x;
-			a_h[i].y = a.y;
-			a_h[i].z = a.z;
+			a_h[i].x += a.x;
+			a_h[i].y += a.y;
+			a_h[i].z += a.z;
 		}
 	}
 

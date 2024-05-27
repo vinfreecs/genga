@@ -572,8 +572,9 @@ __host__ int Data::beforeTimeStepLoop1(){
 			fclose(tuneFile);
 		}
 	}
-#else
+#else //def_CPU == 1
 	HCX = 1;
+	UseAccCPUomp = 1;
 
 	FILE *tuneFile;
 
@@ -600,15 +601,20 @@ __host__ int Data::beforeTimeStepLoop1(){
 				if(strcmp(sp, "HCX") == 0){
 					er = fscanf(tuneFile, "%d", &HCX);
 				}
+				if(strcmp(sp, "UseAccCPUomp") == 0){
+					er = fscanf(tuneFile, "%d", &UseAccCPUomp);
+				}
 			}
 
 			fclose(tuneFile);
 
 			printf("HCX %d\n", HCX);
+			printf("UseAccCPUomp %d\n", UseAccCPUomp);
 
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
 			fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
 			fprintf(GSF[0].logfile, "HCX %d\n", HCX);
+			fprintf(GSF[0].logfile, "UseAccCPUomp %d\n", UseAccCPUomp);
 			fclose(GSF[0].logfile);
 	
 		}
@@ -617,9 +623,12 @@ __host__ int Data::beforeTimeStepLoop1(){
 		//Tune omp  parameters
 		er = tuneHC_cpu(HCX);
 		if(er == 0) return 0;
+		er = tuneAcc_cpu(UseAccCPUomp);
+		if(er == 0) return 0;
 
 		tuneFile = fopen("tuningParameters.dat", "w");
 		fprintf(tuneFile, "HCX %d\n", HCX);
+		fprintf(tuneFile, "UseAccCPUomp %d\n", UseAccCPUomp);
 		fclose(tuneFile);
 	}
 	if(P.doSLTuning == 1){
@@ -2093,19 +2102,27 @@ __host__ int Data::tuneHC_cpu(int &TX){
 		cudaEventRecord(start, 0);
 		for(int t = 0; t < 100; ++t){
 			
-			if(TX == 0)	HCCall_1(Ct[0], 1);
-			else		HCCall(Ct[0], 1);
+			if(TX == 0){
+				HCCall_1(Ct[0], 1);
+			}
+			else{
+				HCCall(Ct[0], 1);
+			}
 			//include FG tuning here to get more relevant results
-			fg_cpu /* (NN + FTX - 1) / FTX, FTX */ (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, -1, P.UseGR);	
-			if(TX == 0)	HCCall_1(Ct[0], -1);
-			else		HCCall(Ct[0], -1);
+			fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, -1, P.UseGR);	
+			if(TX == 0){
+				HCCall_1(Ct[0], -1);
+			}
+			else{
+				HCCall(Ct[0], -1);
+			}
 		}
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in microseconds
 
-		printf("tx:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
-		fprintf(GSF[0].logfile,"\ttx:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		printf("HCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\tHCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			bestTX = TX;
 		}
@@ -2118,8 +2135,94 @@ __host__ int Data::tuneHC_cpu(int &TX){
 		return 0;
 	}
 	TX = bestTX;
-	printf("Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
-	fprintf(GSF[0].logfile, "Best parameters: tx:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	printf("Best parameters: HCX:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: HCX:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	fclose(GSF[0].logfile);
+	return 1;
+}
+__host__ int Data::tuneAcc_cpu(int &TX){
+
+	//Call the kernel twice for each value to get better timings
+	//usually the first call can be slower
+	int ttx[4] = {0, 0, 1, 1};
+
+	if(N_h[0] > 2000){
+		//dont do tuning for large simulations
+		TX = 1;
+		return 1;
+	}
+
+
+	int bestTX = -1;
+	int f = 0; //flag for comparison
+
+	int NN = N_h[0] + Nsmall_h[0];
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	float times;
+	float timesMin = 1000000.0f;
+
+	GSF[0].logfile = fopen(GSF[0].logfilename, "a");
+	printf("Starting Kick kernel parameters tuning\n");
+	fprintf(GSF[0].logfile, "Starting Kick kernel parameters tuning\n");
+
+	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, 0);
+
+	for(int i = 0; i < 4; ++i){
+
+		TX = ttx[i];
+		cudaEventRecord(start, 0);
+		for(int t = 0; t < 100; ++t){
+			EncpairsZeroC_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, N_h[0] + Nsmall_h[0]);
+			//include FG tuning here to get more relevant results
+			fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, -1, P.UseGR);	
+			if(TX == 0){
+				if(P.KickFloat == 0){
+					acc4E_cpu();
+				}
+				else{
+					acc4Ef_cpu();
+				}
+			}
+			else{
+				if(P.KickFloat == 0){
+					acc4D_cpu();;
+				}
+				else{
+					acc4Df_cpu();;
+				}
+			}
+		}
+		cudaEventRecord(stop, 0);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+
+		printf("UseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		fprintf(GSF[0].logfile,"\tUseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		if(times < timesMin){
+			bestTX = TX;
+		}
+		timesMin = fmin(times, timesMin);
+		//check if different tunig parameters give the same result
+		compare_a_kernel <<< (NN + 255) / 256, 256 >>> (a_d, ab_d, P.KickFloat, NN, f);
+		if(f == 0) f = 1;
+	}
+	if(bestTX == -1){
+		printf("Kick kernel tunig failed\n");
+		fprintf(masterfile, "Kick kernel tunig failed\n");
+		return 0;
+	}
+	TX = bestTX;
+	printf("Best parameters: UseAccCPUomp:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+	fprintf(GSF[0].logfile, "Best parameters: UseAccCPUomp:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
+
+	//Set again the Encpairs arrays to zero
+	EncpairsZeroC_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, N_h[0] + Nsmall_h[0]);
+
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 	fclose(GSF[0].logfile);
@@ -2146,7 +2249,7 @@ void Data::firstKick_cpu(int noColl){
 		comCall(-1);
 	}
 	if(P.KickFloat == 0){
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4E_cpu();
 		}
 		else{
@@ -2154,7 +2257,7 @@ void Data::firstKick_cpu(int noColl){
 		}
 	}
 	else{
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4Ef_cpu();
 		}
 		else{
@@ -2184,22 +2287,30 @@ void Data::firstKick_small_cpu(int noColl){
 	}
 
 	if(P.KickFloat == 0){
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4E_cpu();
-			acc4Esmall_cpu();
 		}
 		else{
 			acc4D_cpu();
+		}
+		if(Nomp == 1){
+			acc4Esmall_cpu();
+		}
+		else{
 			acc4Dsmall_cpu();
 		}
 	}
 	else{
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4Ef_cpu();
-			acc4Efsmall_cpu();
 		}
 		else{
 			acc4Df_cpu();
+		}
+		if(Nomp == 1){
+			acc4Efsmall_cpu();
+		}
+		else{
 			acc4Dfsmall_cpu();
 		}
 	}
@@ -3510,7 +3621,7 @@ void Data::step1_cpu(){
 		HCCall(Ct[si], -1);
 	}
 
-	if(Nomp == 1){
+	if(UseAccCPUomp == 0){
 		acc4E_cpu();
 	}
 	else{
@@ -3544,7 +3655,7 @@ int Data::step_cpu(int noColl){
 		}
 		else{
 			if(P.KickFloat == 0){
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4E_cpu();
 				}
 				else{
@@ -3552,7 +3663,7 @@ int Data::step_cpu(int noColl){
 				}
 			}
 			else{
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4Ef_cpu();
 				}
 				else{
@@ -3588,8 +3699,12 @@ int Data::step_cpu(int noColl){
 	EjectionFlag2 = 0;
 
 	for(int si = 0; si < SIn; ++si){
-		if(HCX == 0)	HCCall_1(Ct[si], 1);
-		else		HCCall(Ct[si], 1);
+		if(HCX == 0){
+			HCCall_1(Ct[si], 1);
+		}
+		else{
+			HCCall(Ct[si], 1);
+		}
 
 		fg_cpu (x4_h, v4_h, xold_h, vold_h, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_h, aecount_h, Gridaecount_h, Gridaicount_h, si, P.UseGR);
 
@@ -3641,12 +3756,16 @@ int Data::step_cpu(int noColl){
 			if(enc == 0) return 0;
 		}
 
-		if(HCX == 0)	HCCall_1(Ct[si], -1);
-		else		HCCall(Ct[si], -1);
+		if(HCX == 0){
+			HCCall_1(Ct[si], -1);
+		}
+		else{
+			HCCall(Ct[si], -1);
+		}
 
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4E_cpu();
 				}
 				else{
@@ -3654,7 +3773,7 @@ int Data::step_cpu(int noColl){
 				}
 			}
 			else{
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4Ef_cpu();
 				}
 				else{
@@ -3686,7 +3805,7 @@ int Data::step_cpu(int noColl){
 		}
 	}
 	if(P.KickFloat == 0){
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4E_cpu();
 		}
 		else{
@@ -3694,7 +3813,7 @@ int Data::step_cpu(int noColl){
 		}
 	}
 	else{
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4Ef_cpu();
 		}
 		else{
@@ -3760,22 +3879,30 @@ int Data::step_small_cpu(int noColl){
 	else{
 //
 		if(P.KickFloat == 0){
-			if(Nomp == 1){
+			if(UseAccCPUomp == 0){
 				acc4E_cpu();
-				acc4Esmall_cpu();
 			}
 			else{
 				acc4D_cpu();
+			}
+			if(Nomp == 1){
+				acc4Esmall_cpu();
+			}
+			else{
 				acc4Dsmall_cpu();
 			}
 		}
 		else{
-			if(Nomp == 1){
+			if(UseAccCPUomp == 0){
 				acc4Ef_cpu();
-				acc4Efsmall_cpu();
 			}
 			else{
 				acc4Df_cpu();
+			}
+			if(Nomp == 1){
+				acc4Efsmall_cpu();
+			}
+			else{
 				acc4Dfsmall_cpu();
 			}
 		}
@@ -3922,22 +4049,30 @@ int Data::step_small_cpu(int noColl){
 
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4E_cpu();
-					acc4Esmall_cpu();
 				}
 				else{
 					acc4D_cpu();
+				}
+				if(Nomp == 1){
+					acc4Esmall_cpu();
+				}
+				else{
 					acc4Dsmall_cpu();
 				}
 			}
 			else{
-				if(Nomp == 1){
+				if(UseAccCPUomp == 0){
 					acc4Ef_cpu();
-					acc4Efsmall_cpu();
 				}
 				else{
 					acc4Df_cpu();
+				}
+				if(Nomp == 1){
+					acc4Efsmall_cpu();
+				}
+				else{
 					acc4Dfsmall_cpu();
 				}
 			}
@@ -3973,22 +4108,30 @@ int Data::step_small_cpu(int noColl){
 		}
 	}
 	if(P.KickFloat == 0){
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4E_cpu();
-			acc4Esmall_cpu();
 		}
 		else{
 			acc4D_cpu();
+		}
+		if(Nomp == 1){
+			acc4Esmall_cpu();
+		}
+		else{
 			acc4Dsmall_cpu();
 		}
 	}
 	else{
-		if(Nomp == 1){
+		if(UseAccCPUomp == 0){
 			acc4Ef_cpu();
-			acc4Efsmall_cpu();
 		}
 		else{
 			acc4Df_cpu();
+		}
+		if(Nomp == 1){
+			acc4Efsmall_cpu();
+		}
+		else{
 			acc4Dfsmall_cpu();
 		}
 	}

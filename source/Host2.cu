@@ -2534,15 +2534,6 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	Nomp = 1;
 #else
 	omp_set_num_threads(Nomp);
-	printf("Nomp: %d, omp_get_num: %d\n", Nomp, omp_get_num_threads());
-
-	#pragma omp parallel for
-	for(int i = 0; i < Nomp; ++i){
-		int k = omp_get_thread_num();
-		int cpuid = sched_getcpu();
-		printf("used cpus: %d, thread_id: %d, cpu_id: %d\n", i, k, cpuid);
-	}
- 
 #endif
 
 	//check output format
@@ -3399,7 +3390,19 @@ __host__ void Host::Info(){
 			fprintf(infofile, "\n ******** Simulation path %s ********\n\n", GSF[st].path);
 			fprintf(infofile, "Genga Version: %g\n", def_Version);
 #if def_CPU == 1
-			fprintf(infofile, "Nomp = %d cpu threads\n", Nomp);
+			fprintf(infofile, "Use CPU version\n");
+			#pragma omp parallel
+			{
+				#pragma omp single
+				fprintf(infofile, "Nomp: %d, omp_get_num: %d\n", Nomp, omp_get_num_threads());
+
+				#pragma omp for
+				for(int i = 0; i < Nomp; ++i){
+					int k = omp_get_thread_num();
+					int cpuid = sched_getcpu();
+					fprintf(infofile, "used cpus: %d, thread_id: %d, cpu_id: %d\n", i, k, cpuid);
+				}
+			}
 #endif
 			fprintf(infofile, "Mercurial Branch: %s\n", GIT_BRANCH);
 			fprintf(infofile, "Mercurial Commit: %s\n", GIT_COMMIT);

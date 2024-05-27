@@ -654,6 +654,10 @@ for line in Lines:
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
 
+	if(line.find('compare_a_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
 	line = DtoH(line)
 
 	line = memorycopy(line)
@@ -1160,7 +1164,7 @@ for line in Lines:
 	if(line.find('void kick32Ab_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N'
-		#omp = 1
+		omp = 1
 		addLoop = 1
 
 	if(line.find('void kickS_kernel') != -1):
