@@ -2240,13 +2240,23 @@ void Data::firstKick_cpu(int noColl){
 
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time, EjectionFlag_m, N_h[0], NconstT, P.SLevels, noColl);
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 	}
 	if(P.setElementsV > 0){
 		setElements_cpu (x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
 	}
 	if(P.setElementsV == 2){
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 	if(P.KickFloat == 0){
 		if(UseAccCPUomp == 0){
@@ -2277,13 +2287,23 @@ void Data::firstKick_small_cpu(int noColl){
 
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time, EjectionFlag_m, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl);
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 	}
 	if(P.setElementsV > 0){
 		setElements_cpu (x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
 	}
 	if(P.setElementsV == 2){
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 
 	if(P.KickFloat == 0){
@@ -3637,13 +3657,23 @@ int Data::step_cpu(int noColl){
 
 	//use last time step information for setElements function, the beginning of the time step
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 	}
 	if(P.setElementsV > 0){
 		setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
 	}
 	if(P.setElementsV == 2){
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 
 	if(P.SERIAL_GROUPING == 1){
@@ -3678,7 +3708,12 @@ int Data::step_cpu(int noColl){
 		}
 	}
 	if(ForceFlag > 0 || P.setElements > 1){
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 		if(P.setElements > 1){
 			setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 1);
 		}
@@ -3694,7 +3729,12 @@ int Data::step_cpu(int noColl){
 		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 	EjectionFlag2 = 0;
 
@@ -3786,7 +3826,12 @@ int Data::step_cpu(int noColl){
 			kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
 
 			if(ForceFlag > 0){
-				comCall(1);
+				if(HCX == 0){
+					comCall_1(1);
+				}
+				else{
+					comCall(1);
+				}
 				if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[si]);
 				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 					force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[si], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -3800,7 +3845,12 @@ int Data::step_cpu(int noColl){
 				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
 				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0], Nst, 0);
 				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
-				comCall(-1);
+				if(HCX == 0){
+					comCall_1(-1);
+				}
+				else{
+					comCall(-1);
+				}
 			}
 		}
 	}
@@ -3826,7 +3876,12 @@ int Data::step_cpu(int noColl){
 	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
 
 	if(ForceFlag > 0){
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 		if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[SIn - 1]);
 		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
 			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -3839,7 +3894,12 @@ int Data::step_cpu(int noColl){
 		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();
@@ -3861,13 +3921,23 @@ int Data::step_small_cpu(int noColl){
 
 	//use last time step information for setElements function, the beginning of the time step
 	if(P.setElementsV == 2){ // convert barycentric velocities to heliocentric
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 	}
 	if(P.setElementsV > 0){
 		setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 0);
 	}
 	if(P.setElementsV == 2){
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 
 	if(P.SERIAL_GROUPING == 1){
@@ -3914,7 +3984,12 @@ int Data::step_small_cpu(int noColl){
 	}
 //
 	if(ForceFlag > 0 || P.setElements > 1){
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 		if(P.setElements > 1){
 			setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 1);
 		}
@@ -3937,7 +4012,12 @@ int Data::step_small_cpu(int noColl){
 		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 	EjectionFlag2 = 0;
 
@@ -4082,7 +4162,12 @@ int Data::step_small_cpu(int noColl){
 			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
 
 			if(ForceFlag > 0){
-				comCall(1);
+				if(HCX == 0){
+					comCall_1(1);
+				}
+				else{
+					comCall(1);
+				}
 				if(P.Usegas == 1){
 					GasAccCall(time_h, dt_h, Kt[si]);
 					GasAccCall_small(time_h, dt_h, Kt[si]);
@@ -4103,7 +4188,12 @@ int Data::step_small_cpu(int noColl){
 				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				comCall(-1);
+				if(HCX == 0){
+					comCall_1(-1);
+				}
+				else{
+					comCall(-1);
+				}
 			}
 		}
 	}
@@ -4143,7 +4233,12 @@ int Data::step_small_cpu(int noColl){
 
 	
 	if(ForceFlag > 0){
-		comCall(1);
+		if(HCX == 0){
+			comCall_1(1);
+		}
+		else{
+			comCall(1);
+		}
 		if(P.Usegas == 1){
 			GasAccCall(time_h, dt_h, Kt[SIn - 1]);
 			GasAccCall_small(time_h, dt_h, Kt[SIn - 1]);
@@ -4163,7 +4258,12 @@ int Data::step_small_cpu(int noColl){
 		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		comCall(-1);
+		if(HCX == 0){
+			comCall_1(-1);
+		}
+		else{
+			comCall(-1);
+		}
 	}
 	if(EjectionFlag_m[0] > 0){
 		int Ej = EjectionCall();

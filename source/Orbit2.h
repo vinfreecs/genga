@@ -399,6 +399,7 @@ public:
 
 #if def_CPU == 1
 	void HCCall_1(const double, const int);
+	void comCall_1(const int);
 	void ElapsedTime(float *, timeval, timeval);
 	void firstKick_cpu(int);
 	void firstKick_small_cpu(int);
