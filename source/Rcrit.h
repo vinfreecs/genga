@@ -312,6 +312,7 @@ __global__ void RcritS_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ 
 			
 			rcrit = n1 * r * cbrt(x4i.w * iMsun3);
 #if def_SLn1 == 1
+			//if the n1 term is also refined at substeps, then make sure the critical radius is a least 3 planetary radii large
 			rcrit = (rcrit > 3.0 * v4i.w) ? rcrit : 3.0 * v4i.w;
 #endif
 			double rc2 = n2 * fabs(dt) * v;

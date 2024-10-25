@@ -1538,8 +1538,8 @@ __host__ int Data::printFragments(int nf){
 
 	if(nf > P.Nfragments){
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-		fprintf(GSF[st].logfile, "Error: More particles created than Nfragments: %d %d\n", nf, P.Nfragments);
-		printf("Error: Error: More particles created than Nfragments: %d %d\n", nf, P.Nfragments);
+		fprintf(GSF[st].logfile, "Error: More particles created than Nfragments. Number of created particles =  %d. Value of Nfragments = %d. Please increase the value of Nfragments and continue the integration.\n", nf, P.Nfragments);
+		printf("Error: More particles created than Nfragments. Number of created particles =  %d. Value of Nfragments = %d. Please increase the value of Nfragments and continue the integration.\n", nf, P.Nfragments);
 		fclose(GSF[st].logfile);
 
 		return 0;

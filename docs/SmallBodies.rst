@@ -22,14 +22,25 @@ In the next two sections, we describe our model for collisional break-up events 
 
 | Since the fragmentaion routine creates additional debris particles, the initial memory arrays need to be increased,
   to be able to store these additional particles.
-| That can be done with the :literal:`nFragments`: option in the :ref:`param.dat<ParamFile>` file.
+| That can be done with the :literal:`Nfragments`: option in the :ref:`param.dat<ParamFile>` file.
+
+
+The maximum number of particles in a simulation is the number of initial particles and test particles plus the value set in :literal:`Nfragments`.
+
+.. math::
+
+        N_{Maximum} = N{(Initial bodies)} + N{(Initial test particles)} + Nfragments
+
+If the maximum number of allowed particles is reached, then no more new particles are created until some other particles are removed from the simulation by
+a collision or ejection event.   
+
 
 The following parameters are relevant for the small body collision model  and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Use Small Collisions`, enable small bodies collisions model.
 - :literal:`Asteroid rho`: density of the body in kg/m^3.
 - :literal:`Asteroid V`: Asteroid collisional velocity V, in m/s.
-- :literal:`nFragments`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
+- :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
 - :literal:`Asteroid minimal fragment radius`, in m, :math:`R_m` value. (default = 0.01 m).
 - :literal:`Asteroid fragment remove radius`, in m, :math:`R_{del}` value. (default = 0.01 m).
 

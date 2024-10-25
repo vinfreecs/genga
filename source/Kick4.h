@@ -591,7 +591,7 @@ void Data::acc4E_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
@@ -678,7 +678,7 @@ void Data::acc4Esmall_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
@@ -774,7 +774,7 @@ void Data::acc4Ef_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
@@ -861,7 +861,7 @@ void Data::acc4Efsmall_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = Encpairs2_h[i * P.NencMax].x++;
@@ -977,7 +977,7 @@ void Data::acc4D_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni, Nj;
@@ -1115,7 +1115,7 @@ void Data::acc4Dsmall_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = 0;
@@ -1261,7 +1261,7 @@ void Data::acc4Df_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4_h[i].w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni, Nj;
@@ -1396,7 +1396,7 @@ void Data::acc4Dfsmall_cpu(){
 				ir3 = ir*ir*ir;
 				
 				
-//				if(rsq < 3.0 * rcritv * rcritv){
+//				if(rsq < def_pc * rcritv * rcritv){
 				if(rsq < def_pc * rcritv * rcritv && (x4i.w > 0.0 || x4_h[j].w > 0.0)){
 					
 					int Ni = 0;

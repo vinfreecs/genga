@@ -1,5 +1,5 @@
 OS = $(shell uname)
-SM=35
+SM=60
 ARCH = -arch sm_$(SM)
 path = ../source/
 source = gengaGL.cu $(path)Host2.cu $(path)Orbit2.cu $(path)Energy.cu $(path)output.cu $(path)integrator.cu $(path)gas.cu

@@ -1,7 +1,7 @@
 .. _CreateParticles:
 
-Particles Creation Model (under construction
-============================================
+Particles Creation Model
+========================
 
 This model allows the creation of test particles during a running simulation. The model can be enabled with the :literal:`Create Particles file name` parameter 
 in the :ref:`param.dat<ParamFile>` file. If a file name is specified here, then the model is activated.
@@ -9,13 +9,19 @@ in the :ref:`param.dat<ParamFile>` file. If a file name is specified here, then 
 | It is only available for test particles.
 | All particle creation events are reported in the Fragments file :ref:`FragmentsFile`.
 
-If the maximum number of allowed test particles is reached, then no new particles are created until some other particles are removed from the simulation by
+The maximum number of particles in a simulation is the number of initial particles and test particles plus the value set in :literal:`Nfragments`.
+
+.. math::
+
+	N_{Maximum} = N{(Initial bodies)} + N{(Initial test particles)} + Nfragments
+
+If the maximum number of allowed particles is reached, then no more new particles are created until some other particles are removed from the simulation by
 a collision or ejection event. 
 
 The following parameters are relevant for the particle creation model and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Create Particles file name`, enable small bodies collisions model.
-- :literal:`nFragments`, Number of allowed particles to be created.
+- :literal:`Nfragments`,  Number of additional memory size for debris particles, in particle numbers, (default 0).
 
 
 The first line in the 'Create Particles file' contains the particle creation mode:

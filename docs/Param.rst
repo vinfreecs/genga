@@ -397,6 +397,9 @@ Non-Newtonian forces
   | See :ref:`Yarkovsky`
   | default = 2.65 :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}`
 
+Statistical small body collisions
+----------------------------------
+
 - | :literal:`Use Small Collisions`: Flag to enable model for small bodies collision model 
   | See :ref:`SmallBodies`
   
@@ -404,6 +407,12 @@ Non-Newtonian forces
    - 1: enable rotation reset model and fragmentation model for test particles.
    - 2: enable only rotation reset model for test particles.
    - 3: enable only fragmentation model for test particles.
+
+- | :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default 0).
+  | See :ref:`SmallBodies` or :ref:`CreateParticles`
+
+Create particles during integration
+-----------------------------------
 
 - | :literal:`Create Particles file name`: file name for the  particle creation model.
   | See :ref:`CreateParticles`
@@ -422,6 +431,9 @@ Non-Newtonian forces
 - | :literal:`Asteroid fragment remove radius`, in m , used for small bodies collision model
   | See :ref:`SmallBodies`
   | default = 0.01 m
+
+- | :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default 0).
+  | See :ref:`SmallBodies` or :ref:`CreateParticles`
 
 
 Options for encounters
