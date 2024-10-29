@@ -2894,9 +2894,17 @@ __host__ void Data::stopSimulations(){
 }
 
 #if def_CPU == 1
-__host__ void Data::ElapsedTime(float *times, timeval tt1, timeval tt2){
+//times must be a pointer to match the cuda version of cudaEventElapsedTime 
+//__host__ void Data::ElapsedTime(float *times, timeval tt1, timeval tt2){
+__host__ void Data::ElapsedTime(float *times, std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point stop){
 	
-	times[0] = (1000 * tt2.tv_sec + 0.001 * tt2.tv_usec - 1000 * tt1.tv_sec - 0.001 * tt1.tv_usec); //time in milliseconds
+	//times[0] = (1000 * tt2.tv_sec + 0.001 * tt2.tv_usec - 1000 * tt1.tv_sec - 0.001 * tt1.tv_usec); //time in milliseconds
+	times[0] = (std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()) * 0.001;
+}
+
+//f is needed to mach cudaEventRecord(start, 0);
+__host__ void Data::EventRecord(std::chrono::steady_clock::time_point &start, int f){
+	start = std::chrono::steady_clock::now();
 }
 #endif
 

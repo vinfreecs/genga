@@ -1192,7 +1192,7 @@ __host__ int Data::tuneFG(int &TX){
 		
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 		error = cudaGetLastError();
 		if(error == 7){
 			//skip choices with too many resources requested
@@ -1249,7 +1249,7 @@ __host__ int Data::tuneRcrit(int &TX){
 		Rcrit_kernel <<< (NN + tx - 1) / tx, tx >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 		error = cudaGetLastError();
 		if(error != 0){
 			fprintf(masterfile, "Rcrit Tune error = %d = %s\n",error, cudaGetErrorString(error));
@@ -1309,7 +1309,7 @@ __host__ int Data::tuneForce(int &TX){
 
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 		error = cudaGetLastError();
 		if(error == 701){
 			//skip choices with too many resources requested
@@ -1416,7 +1416,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			}
 			cudaEventRecord(stop, 0);
 			cudaEventSynchronize(stop);
-			cudaEventElapsedTime(&times, start, stop); //time in microseconds
+			cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 			printf("kick16c time: %.15f s\n", times * 0.001);	//time in seconds
 			fprintf(GSF[0].logfile, "kick16c time: %.15f s\n", times * 0.001);	//time in seconds
 			kickTime = times;
@@ -1434,7 +1434,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 			}
 			cudaEventRecord(stop, 0);
 			cudaEventSynchronize(stop);
-			cudaEventElapsedTime(&times, start, stop); //time in microseconds
+			cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 			printf("kick32c time: %.15f s\n", times * 0.001);	//time in seconds
 			fprintf(GSF[0].logfile, "kick32c time: %.15f s\n", times * 0.001);	//time in seconds
 			kickTime = times;
@@ -1468,7 +1468,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 
 				cudaEventRecord(stop, 0);
 				cudaEventSynchronize(stop);
-				cudaEventElapsedTime(&times, start, stop); //time in microseconds
+				cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 				error = cudaGetLastError();
 				if(error == 7 || error == 701){
 					//skip choices with too many resources requested
@@ -1530,7 +1530,7 @@ __host__ int Data::tuneKick(int EE, int &PP, int &TX, int &TY){
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&times, start, stop); //time in microseconds
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 	printf("Total acc4C + kick32Ab time: %.15f s\n", times * 0.001);	//time in seconds
 	fprintf(GSF[0].logfile, "Total acc4C + kick32Ab time: %.15f s\n", times * 0.001);	//time in seconds
 	accTime = times;
@@ -1614,7 +1614,7 @@ __host__ int Data::tuneKickM3(int &KTM3){
 
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 		printf("KTM3:%d   \ttime: %.15f s\n", tM3, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"KTM3:%d   \ttime: %.15f s\n", tM3, times * 0.001);	//time in seconds
@@ -1679,7 +1679,7 @@ __host__ int Data::tuneHCM3(int &HCTM3){
 
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 		printf("HCTM3:%d   \ttime: %.15f s\n", hcM3, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"HCTM3:%d   \ttime: %.15f s\n", hcM3, times * 0.001);	//time in seconds
@@ -1727,7 +1727,7 @@ __host__ int Data::tuneBVH(int &useBVH){
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&times, start, stop); //time in microseconds
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 	printf("\tBVH1:\t time: %.15f s\n", times * 0.001); //time in seconds
 	fprintf(GSF[0].logfile,"\tBVH1:\t time: %.15f s\n", times * 0.001);	//time in seconds
@@ -1742,7 +1742,7 @@ __host__ int Data::tuneBVH(int &useBVH){
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&times, start, stop); //time in microseconds
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 	printf("\tBVH2:\t time: %.15f s\n", times * 0.001); //time in seconds
 	fprintf(GSF[0].logfile,"\tBVH2:\t time: %.15f s\n", times * 0.001);	//time in seconds
@@ -1924,7 +1924,7 @@ __host__ int Data::tuneBS(){
 
 
 			cudaEventSynchronize(stop);
-			cudaEventElapsedTime(&times, start, stop); //time in microseconds
+			cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 			printf("Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
 			fprintf(GSF[0].logfile, "Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
 			if(times < timesMin){
@@ -2047,7 +2047,7 @@ __host__ int Data::tuneBS2(){
 
 
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 		printf("Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile, "Close-encounter time: Symplectic levels: %d, Symplectic sub steps: %d,  %.15f s\n", P.SLevels, P.SLSteps, times * 0.001);	//time in seconds
 		if(times < timesMin){
@@ -2119,7 +2119,7 @@ __host__ int Data::tuneHC_cpu(int &TX){
 		}
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 		printf("HCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"\tHCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
@@ -2199,7 +2199,7 @@ __host__ int Data::tuneAcc_cpu(int &TX){
 		}
 		cudaEventRecord(stop, 0);
 		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&times, start, stop); //time in microseconds
+		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
 		printf("UseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"\tUseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds

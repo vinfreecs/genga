@@ -276,9 +276,9 @@ def DtoH(line):
 	if(line.find('cudaError_t') != -1):
 		line = line.replace('cudaError_t', 'int')
 	if(line.find('cudaEvent_t') != -1):
-		line = line.replace('cudaEvent_t', 'timeval')
-	if(line.find('cudaEventRecord(') != -1):
-		line = line.replace('cudaEventRecord(', 'gettimeofday(&')
+		line = line.replace('cudaEvent_t', 'std::chrono::steady_clock::time_point')
+	if(line.find('cudaEventRecord') != -1):
+		line = line.replace('cudaEventRecord', 'EventRecord')
 
 
 	if(line.find('cudaGetLastError()') != -1):

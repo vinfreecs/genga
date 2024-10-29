@@ -400,7 +400,8 @@ public:
 #if def_CPU == 1
 	void HCCall_1(const double, const int);
 	void comCall_1(const int);
-	void ElapsedTime(float *, timeval, timeval);
+	void ElapsedTime(float *, std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point);
+	void EventRecord(std::chrono::steady_clock::time_point &, int);
 	void firstKick_cpu(int);
 	void firstKick_small_cpu(int);
 	void step1_cpu();
