@@ -408,7 +408,7 @@ public:
 	int step_cpu(int);
 	int step_small_cpu(int);
 	int tuneHC_cpu(int &);
-	int tuneAcc_cpu(int &);
+	int tuneAcc_cpu(int &, int &);
 	void SEncCPU(double &, int, double, int, int);
 	void acc4D_cpu();
 	void acc4Df_cpu();
@@ -418,6 +418,8 @@ public:
 	void acc4Ef_cpu();
 	void acc4Esmall_cpu();
 	void acc4Efsmall_cpu();
+	void kick32Ab_cpu(const double, const int, const int);
+	void kick32Ab1_cpu(const double, const int, const int);
 #endif
 
 

@@ -704,10 +704,107 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 			}
 
 		}
-///*if(id == 50)*/ printf("K %d %.40g %.40g %.40g %.20g %.20g %.20g %.20g\n", id, v4_d[id].x, v4_d[id].y, v4_d[id].z, a.x, a.y, acck_d[id].x, acck_d[id].y);
 	}
 }
 
+#if def_CPU == 1
+//Serial Version
+void Data::kick32Ab1_cpu(const double dtksq, const int N, const int EE){
+
+	for(int id = 0; id < N; ++id){
+		double3 a = {0.0, 0.0, 0.0};
+		double4 x4i = x4_h[id];
+		if(x4i.w >= 0.0){
+			if(Nencpairs_h[0] > 0){
+				int NI = Encpairs2_h[id * P.NencMax].x;
+				NI = min(NI, P.NencMax);
+//if(NI > 0) printf("NI %d %d\n", id, NI);
+				double rcritvi = rcritv_h[id];
+				for(int i = 0; i < NI; ++i){
+					int jj = Encpairs2_h[id * P.NencMax + i].y;
+					double4 x4j = x4_h[jj];
+//printf("AI %d %d %d %.40g %.40g %.40g %.20g %.20g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_h[id].z, x4j.x, x4j.w, a.z);
+					double rcritvj = rcritv_h[jj];
+					accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+				}
+			
+				double3 aa;
+				aa.x = a.x + a_h[id].x;
+				aa.y = a.y + a_h[id].y;
+				aa.z = a.z + a_h[id].z;
+
+				if(EE >= 1){
+					v4_h[id].x += (aa.x * dtksq);
+					v4_h[id].y += (aa.y * dtksq);
+					v4_h[id].z += (aa.z * dtksq);
+				}
+				ab_h[id] = aa;
+			}
+			else{
+			
+				double3 a = a_h[id];
+				if(EE >= 1){
+					v4_h[id].x += (a.x * dtksq);
+					v4_h[id].y += (a.y * dtksq);
+					v4_h[id].z += (a.z * dtksq);
+				}
+//printf("KickB %d %.16e %.16e %.16e %.16e %.16e %.16e\n", id, a_h[id].x, a_h[id].y, a_h[id].z, v4_h[id].x * dayUnit, v4_h[id].y * dayUnit, v4_h[id].z * dayUnit);
+				ab_h[id] = a;
+			}
+
+		}
+	}
+}
+//parallel version
+void Data::kick32Ab_cpu(const double dtksq, const int N, const int EE){
+
+	#pragma omp parallel for schedule(static)
+	for(int id = 0; id < N; ++id){
+		double3 a = {0.0, 0.0, 0.0};
+		double4 x4i = x4_h[id];
+		if(x4i.w >= 0.0){
+			if(Nencpairs_h[0] > 0){
+				int NI = Encpairs2_h[id * P.NencMax].x;
+				NI = min(NI, P.NencMax);
+//if(NI > 0) printf("NI %d %d\n", id, NI);
+				double rcritvi = rcritv_h[id];
+				for(int i = 0; i < NI; ++i){
+					int jj = Encpairs2_h[id * P.NencMax + i].y;
+					double4 x4j = x4_h[jj];
+//printf("AI %d %d %d %.40g %.40g %.40g %.20g %.20g %.40g\n", id, jj, NI, x4i.x, x4j.x, v4_h[id].z, x4j.x, x4j.w, a.z);
+					double rcritvj = rcritv_h[jj];
+					accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+				}
+			
+				double3 aa;
+				aa.x = a.x + a_h[id].x;
+				aa.y = a.y + a_h[id].y;
+				aa.z = a.z + a_h[id].z;
+
+				if(EE >= 1){
+					v4_h[id].x += (aa.x * dtksq);
+					v4_h[id].y += (aa.y * dtksq);
+					v4_h[id].z += (aa.z * dtksq);
+				}
+				ab_h[id] = aa;
+			}
+			else{
+			
+				double3 a = a_h[id];
+				if(EE >= 1){
+					v4_h[id].x += (a.x * dtksq);
+					v4_h[id].y += (a.y * dtksq);
+					v4_h[id].z += (a.z * dtksq);
+				}
+//printf("KickB %d %.16e %.16e %.16e %.16e %.16e %.16e\n", id, a_h[id].x, a_h[id].y, a_h[id].z, v4_h[id].x * dayUnit, v4_h[id].y * dayUnit, v4_h[id].z * dayUnit);
+				ab_h[id] = a;
+			}
+
+		}
+	}
+}
+
+#endif
 // *****************************************************
 // This kernel collects the Encpairs2 information from multiple GPUs into the main array.
 //

@@ -7,7 +7,7 @@
 #include <math.h>
 #include <chrono>
 
-#define def_Version 3.190
+#define def_Version 3.191
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -334,6 +334,7 @@ double __shfld_down(double x, int k) {
 
 #ifndef STRUCT_H
 #define STRUCT_H
+
 
 __constant__ double Rcut_c[1];
 __constant__ double RcutSun_c[1];

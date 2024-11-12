@@ -9,7 +9,7 @@ import shutil
 #manually BSA.h
 
 
-def kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2):
+def kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if):
 	if(line.find('_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 	if(line.find('threadIdx.x') != -1):
@@ -41,7 +41,7 @@ def kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2):
 
 	if(omp == 1):
 		tab = line.split('i')[0]
-		i_for = '#pragma omp parallel for schedule(static)\n' + tab + i_for
+		i_for = '#pragma omp parallel for schedule(static)'+ omp_if + '\n' + tab + i_for
 
 
 	if(line.find(i_if) != -1):
@@ -322,6 +322,7 @@ i_id2 = ''
 loop_id2 = ''
 loop_N2 = ''
 omp = 0
+omp_if = ''
 remove = 0
 
 ################################################
@@ -557,7 +558,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -567,6 +568,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 	if(line.find('initialb_kernel') != -1):
@@ -820,7 +822,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -830,6 +832,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	#Remove functions
 
@@ -917,7 +920,7 @@ for line in Lines:
 
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -927,6 +930,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	if(line.find('CoordinateToBuffer_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
@@ -1051,7 +1055,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1061,6 +1065,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 	line = DtoH(line)
@@ -1122,6 +1127,8 @@ for line in Lines:
 		remove = 1
 	if(line.find('void KickM3_kernel') != -1):
 		remove = 1
+	if(line.find('void kick32Ab_kernel') != -1):
+		remove = 1
 
 	if(remove == 1):
 		if(line.startswith('}',0,1)):
@@ -1161,12 +1168,6 @@ for line in Lines:
 		loop_N = 'Nencpairs3_d[0]'
 		addLoop = 1
 
-	if(line.find('void kick32Ab_kernel') != -1):
-		loop_id = 'id'
-		loop_N = 'N'
-		omp = 1
-		addLoop = 1
-
 	if(line.find('void kickS_kernel') != -1):
 		loop_id = 'idd'
 		loop_N = 'Nencpairs3_d[0]'
@@ -1174,7 +1175,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1184,6 +1185,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 	line = DtoH(line)
@@ -1271,7 +1273,7 @@ for line in Lines:
 
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1281,6 +1283,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 	line = DtoH(line)
@@ -1383,7 +1386,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1393,6 +1396,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 		
@@ -1561,7 +1565,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1571,6 +1575,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 		
@@ -1642,7 +1647,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1652,6 +1657,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 
 		
@@ -1732,7 +1738,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1742,6 +1748,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	if(line.find('cudaDeviceSynchronize') != -1):
 		continue 
@@ -1859,7 +1866,7 @@ for line in Lines:
 
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -1869,6 +1876,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	if(line.find('cudaDeviceSynchronize') != -1):
 		continue 
@@ -1994,7 +2002,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -2004,6 +2012,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	if(line.find('__syncthreads') != -1):
 		continue 
@@ -2110,7 +2119,7 @@ for line in Lines:
 		addLoop = 1
 
 	if(addLoop == 1):
-		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2)
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
 		if(line.startswith('}',0,1)):
 			addLoop = 0
 			loop_id = ''
@@ -2120,6 +2129,7 @@ for line in Lines:
 			i_id = ''
 			i_id22 = ''
 			omp = 0
+			omp_if = ''
 
 	if(line.find('__syncthreads') != -1):
 		continue 

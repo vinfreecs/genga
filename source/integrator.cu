@@ -37,6 +37,7 @@ double *Ct;		//time factor for HC Kick steps
 double *FGt;		//time factor for Drift steps
 double *Kt;		//time factor for Kick steps
 
+
 int EjectionFlag2 = 0;
 int StopAtEncounterFlag2 = 0;
 
@@ -575,6 +576,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 #else //def_CPU == 1
 	HCX = 1;
 	UseAccCPUomp = 1;
+	UseK32CPUomp = 1;
 
 	FILE *tuneFile;
 
@@ -604,17 +606,22 @@ __host__ int Data::beforeTimeStepLoop1(){
 				if(strcmp(sp, "UseAccCPUomp") == 0){
 					er = fscanf(tuneFile, "%d", &UseAccCPUomp);
 				}
+				if(strcmp(sp, "UseK32CPUomp") == 0){
+					er = fscanf(tuneFile, "%d", &UseK32CPUomp);
+				}
 			}
 
 			fclose(tuneFile);
 
 			printf("HCX %d\n", HCX);
 			printf("UseAccCPUomp %d\n", UseAccCPUomp);
+			printf("UseK32CPUomp %d\n", UseK32CPUomp);
 
 			GSF[0].logfile = fopen(GSF[0].logfilename, "a");
 			fprintf(GSF[0].logfile, "Read tuningParameters.dat file\n");
 			fprintf(GSF[0].logfile, "HCX %d\n", HCX);
 			fprintf(GSF[0].logfile, "UseAccCPUomp %d\n", UseAccCPUomp);
+			fprintf(GSF[0].logfile, "UseK32CPUomp %d\n", UseK32CPUomp);
 			fclose(GSF[0].logfile);
 	
 		}
@@ -623,12 +630,13 @@ __host__ int Data::beforeTimeStepLoop1(){
 		//Tune omp  parameters
 		er = tuneHC_cpu(HCX);
 		if(er == 0) return 0;
-		er = tuneAcc_cpu(UseAccCPUomp);
+		er = tuneAcc_cpu(UseAccCPUomp, UseK32CPUomp);
 		if(er == 0) return 0;
 
 		tuneFile = fopen("tuningParameters.dat", "w");
 		fprintf(tuneFile, "HCX %d\n", HCX);
 		fprintf(tuneFile, "UseAccCPUomp %d\n", UseAccCPUomp);
+		fprintf(tuneFile, "UseK32CPUomp %d\n", UseK32CPUomp);
 		fclose(tuneFile);
 	}
 	if(P.doSLTuning == 1){
@@ -1809,7 +1817,7 @@ __host__ int Data::tuneBS(){
 		save_kernel <<< (NN + 127) / 128, 128 >>> (x4_d, v4_d, x4bb_d, v4bb_d, spin_d, spinbb_d, rcrit_d, rcritv_d, rcritbb_d, rcritvbb_d, index_d, indexbb_d, NN, NconstT, P.SLevels, -1);
 
 
-		Rcrit_kernel <<< (NN + 255) / 256, 256 >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
+		Rcrit_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, NN, NconstT, P.SLevels, 0);
 
 		if(P.UseTestParticles == 0){
 #if def_CPU == 0
@@ -1854,8 +1862,17 @@ __host__ int Data::tuneBS(){
 
 		cudaMemcpy(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost);
 
+#if def_CPU == 0
 		kick32Ab_kernel <<< (NN + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, NN, P.NencMax, 1);
+#else
+		if(UseK32CPUomp == 0){ 
+			kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 1);
+		}
+		else{
+			kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 1);
+		}
 
+#endif
 		HCCall(Ct[0], 1);
 		fg_kernel <<< (NN + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[0], Msun_h[0].x, NN, aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, 1, P.UseGR);
 		cudaDeviceSynchronize();
@@ -2121,7 +2138,7 @@ __host__ int Data::tuneHC_cpu(int &TX){
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
-		printf("HCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		printf("\tHCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"\tHCX:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			bestTX = TX;
@@ -2142,7 +2159,7 @@ __host__ int Data::tuneHC_cpu(int &TX){
 	fclose(GSF[0].logfile);
 	return 1;
 }
-__host__ int Data::tuneAcc_cpu(int &TX){
+__host__ int Data::tuneAcc_cpu(int &TX, int &K32){
 
 	//Call the kernel twice for each value to get better timings
 	//usually the first call can be slower
@@ -2201,7 +2218,7 @@ __host__ int Data::tuneAcc_cpu(int &TX){
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&times, start, stop); //time in milliseconds
 
-		printf("UseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
+		printf("\tUseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		fprintf(GSF[0].logfile,"\tUseAccCPUomp:%d    \ttime: %.15f s\n", TX, times * 0.001);	//time in seconds
 		if(times < timesMin){
 			bestTX = TX;
@@ -2220,6 +2237,72 @@ __host__ int Data::tuneAcc_cpu(int &TX){
 	printf("Best parameters: UseAccCPUomp:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
 	fprintf(GSF[0].logfile, "Best parameters: UseAccCPUomp:%d\t time: %.15f s\n", TX, timesMin * 0.001);	//time in seconds
 
+
+//Add tuneKick23_AB
+	printf("Starting Kick32Ab kernel parameters tuning\n");
+	fprintf(GSF[0].logfile, "Starting Kick32Ab kernel parameters tuning\n");
+
+
+	K32 = 0;
+	cudaEventRecord(start, 0);
+	for(int t = 0; t < 100; ++t){
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 0);
+	}
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
+	fprintf(GSF[0].logfile,"\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	printf("\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	float t0 = times;
+
+
+	K32 = 1;
+	cudaEventRecord(start, 0);
+	for(int t = 0; t < 100; ++t){
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 0);
+	}
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
+	fprintf(GSF[0].logfile,"\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	printf("\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	float t1 = times;
+
+	K32 = 0;
+	cudaEventRecord(start, 0);
+	for(int t = 0; t < 100; ++t){
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 0);
+	}
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
+	fprintf(GSF[0].logfile,"\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	printf("\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	t0 = (times < t0) ? times : t0;
+
+
+	K32 = 1;
+	cudaEventRecord(start, 0);
+	for(int t = 0; t < 100; ++t){
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, NN, 0);
+	}
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&times, start, stop); //time in milliseconds
+	fprintf(GSF[0].logfile,"\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	printf("\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, times * 0.001);	//time in seconds
+	t1 = (times < t1) ? times : t1;
+
+	float tBest = t0;
+	K32 = 0;
+
+	if(t1 < t0){
+		tBest = t1;
+		K32 = 1;
+	}
+	fprintf(GSF[0].logfile,"Best Parameters\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, tBest * 0.001);	//time in seconds
+	printf("Best Parameters\tUseK32CPUomp:%d    \ttime: %.15f s\n", K32, tBest * 0.001);	//time in seconds
+	
 	//Set again the Encpairs arrays to zero
 	EncpairsZeroC_kernel <<< (N_h[0] + Nsmall_h[0] + 255) / 256, 256 >>> (Encpairs2_d, a_d, Nencpairs_d, Nencpairs2_d, P.NencMax, N_h[0] + Nsmall_h[0]);
 
@@ -3574,9 +3657,13 @@ void Data::step1_cpu(){
 	double dt05 = dt_h[0] * 0.5;
 	double dt05Msun = dt05 / Msun;
 
-	//Kick  
-	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
-	
+	//Kick
+	if(UseK32CPUomp == 0){ 
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
+	else{
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
 
 	for(int si = 0; si < SIn; ++si){
 		
@@ -3647,7 +3734,12 @@ void Data::step1_cpu(){
 	else{
 		acc4D_cpu();
 	}
-	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+	if(UseK32CPUomp == 0){ 
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
+	else{
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
 
 }
 
@@ -3681,7 +3773,12 @@ int Data::step_cpu(int noColl){
 	}
 	if(doTransits == 0){
 		if(EjectionFlag2 == 0){
-			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+			if(UseK32CPUomp == 0){ 
+				kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+			}
+			else{
+				kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+			}
 		}
 		else{
 			if(P.KickFloat == 0){
@@ -3703,8 +3800,12 @@ int Data::step_cpu(int noColl){
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
 			}
-			kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
-
+			if(UseK32CPUomp == 0){ 
+				kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+			}
+			else{
+				kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+			}
 		}
 	}
 	if(ForceFlag > 0 || P.setElements > 1){
@@ -3823,8 +3924,12 @@ int Data::step_cpu(int noColl){
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
 			}
-			kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
-
+			if(UseK32CPUomp == 0){ 
+				kick32Ab1_cpu (dt_h[0] * Kt[si] * def_ksq, N_h[0], 1);
+			}
+			else{
+				kick32Ab_cpu (dt_h[0] * Kt[si] * def_ksq, N_h[0], 1);
+			}	
 			if(ForceFlag > 0){
 				if(HCX == 0){
 					comCall_1(1);
@@ -3873,7 +3978,12 @@ int Data::step_cpu(int noColl){
 	if(P.SERIAL_GROUPING == 1){
 		Sortb_cpu (Encpairs2_h, 0, N_h[0], P.NencMax);
 	}
-	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0], P.NencMax, 1);
+	if(UseK32CPUomp == 0){ 
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
+	else{
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0], 1);
+	}
 
 	if(ForceFlag > 0){
 		if(HCX == 0){
@@ -3944,7 +4054,12 @@ int Data::step_small_cpu(int noColl){
 		Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 	}
 	if(EjectionFlag2 == 0){
-		kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+		if(UseK32CPUomp == 0){ 
+			kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+		}
+		else{
+			kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+		}
 	}
 	else{
 //
@@ -3979,7 +4094,13 @@ int Data::step_small_cpu(int noColl){
 		if(P.SERIAL_GROUPING == 1){
 			Sortb_cpu (Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 		}
-		kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+		if(UseK32CPUomp == 0){ 
+			kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+		}
+		else{
+			kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+		}
+
 
 	}
 //
@@ -4159,7 +4280,12 @@ int Data::step_small_cpu(int noColl){
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_cpu(Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 			}
-			kick32Ab_cpu(x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[si] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+			if(UseK32CPUomp == 0){ 
+				kick32Ab1_cpu (dt_h[0] * Kt[si] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+			}
+			else{
+				kick32Ab_cpu (dt_h[0] * Kt[si] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+			}
 
 			if(ForceFlag > 0){
 				if(HCX == 0){
@@ -4229,7 +4355,12 @@ int Data::step_small_cpu(int noColl){
 	if(P.SERIAL_GROUPING == 1){
 		Sortb_cpu (Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 	}
-	kick32Ab_cpu (x4_h, v4_h, a_h, ab_h, rcritv_h, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_h, Encpairs2_h, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+	if(UseK32CPUomp == 0){ 
+		kick32Ab1_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+	}
+	else{
+		kick32Ab_cpu (dt_h[0] * Kt[SIn - 1] * def_ksq, N_h[0] + Nsmall_h[0], 1);
+	}
 
 	
 	if(ForceFlag > 0){

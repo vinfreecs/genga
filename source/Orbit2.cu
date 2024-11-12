@@ -2898,8 +2898,11 @@ __host__ void Data::stopSimulations(){
 //__host__ void Data::ElapsedTime(float *times, timeval tt1, timeval tt2){
 __host__ void Data::ElapsedTime(float *times, std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point stop){
 	
-	//times[0] = (1000 * tt2.tv_sec + 0.001 * tt2.tv_usec - 1000 * tt1.tv_sec - 0.001 * tt1.tv_usec); //time in milliseconds
-	times[0] = (std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()) * 0.001;
+	int tmilli = (std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+	//int tmicro = (std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count());
+	int tnano = (std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count());
+
+	times[0] = tmilli + (tnano % 1000000) * 0.000001;
 }
 
 //f is needed to mach cudaEventRecord(start, 0);
