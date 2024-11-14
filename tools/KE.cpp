@@ -3,6 +3,11 @@
 #include <string.h>
 #include <math.h>
 
+
+//default values
+#define def_Ninformat 55                //number of entries in informat array
+#define def_OutputFileFormat "<< t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax aec aecT encc test >>"
+
 struct double3{
         double x;
         double y;
@@ -174,6 +179,35 @@ void aei(double3 x4i, double3 v4i, double mu, double &a, double &e, double &inc,
 	}
 }
 
+
+
+int assignInformat(char *ff, char fileFormat[][5], int &format){
+	int check = 0;  
+
+	for(int i = 0; i < def_Ninformat; ++i){
+		if(strcmp(ff, fileFormat[i]) == 0){
+			format = i;
+			check = 1;
+		}               
+	}                       
+
+	if(check == 0){
+		if(strcmp(ff, ">>") == 0){
+			return 2;
+		}               
+		else if(strcmp(ff, "<<") == 0){
+		}       
+		else {  
+			printf("Error: Input or output format not valid! Maybe the spaces in << ... >> have been forgotten\n");
+			return 1;
+		}
+
+	}                       
+	return 0;
+}    
+
+
+
 int main(int argc, char*argv[]){
 
 	long long int kmin = 0;
@@ -188,6 +222,221 @@ int main(int argc, char*argv[]){
 	int useCollfile = 0;		//reads Collisionfile and transforms into aei
 	double Msun = 1.0;
 
+
+
+	int outformat[def_Ninformat];
+	char fileFormat[def_Ninformat][5];
+
+	for(int i = 0; i < def_Ninformat; ++i){
+		sprintf(fileFormat[i], "%s", "_");
+	}
+	//parameters must be less than 5 characters long
+	sprintf(fileFormat[ 1], "%s", "x");
+	sprintf(fileFormat[ 2], "%s", "y");
+	sprintf(fileFormat[ 3], "%s", "z");
+	sprintf(fileFormat[ 4], "%s", "m");
+	sprintf(fileFormat[ 5], "%s", "vx");
+	sprintf(fileFormat[ 6], "%s", "vy");
+	sprintf(fileFormat[ 7], "%s", "vz");
+	sprintf(fileFormat[ 8], "%s", "r");
+	sprintf(fileFormat[ 9], "%s", "rho"); 
+	sprintf(fileFormat[10], "%s", "Sx");
+	sprintf(fileFormat[11], "%s", "Sy");
+	sprintf(fileFormat[12], "%s", "Sz");
+	sprintf(fileFormat[13], "%s", "i");
+	sprintf(fileFormat[14], "%s", "-");
+	sprintf(fileFormat[15], "%s", "amin");  //aelimits
+	sprintf(fileFormat[16], "%s", "amax");
+	sprintf(fileFormat[17], "%s", "emin");
+	sprintf(fileFormat[18], "%s", "emax");
+	sprintf(fileFormat[19], "%s", "t"); 
+	sprintf(fileFormat[20], "%s", "k2");
+	sprintf(fileFormat[21], "%s", "k2f");
+	sprintf(fileFormat[22], "%s", "tau");
+	sprintf(fileFormat[23], "%s", "a");
+	sprintf(fileFormat[24], "%s", "e");
+	sprintf(fileFormat[25], "%s", "inc");
+	sprintf(fileFormat[26], "%s", "O");
+	sprintf(fileFormat[27], "%s", "w");
+	sprintf(fileFormat[28], "%s", "M");
+	sprintf(fileFormat[29], "%s", "aL");
+	sprintf(fileFormat[30], "%s", "eL");
+	sprintf(fileFormat[31], "%s", "incL");
+	sprintf(fileFormat[32], "%s", "mL");
+	sprintf(fileFormat[33], "%s", "OL");
+	sprintf(fileFormat[34], "%s", "wL");
+	sprintf(fileFormat[35], "%s", "ML");
+	sprintf(fileFormat[36], "%s", "rL");
+	sprintf(fileFormat[37], "%s", "saT");
+	sprintf(fileFormat[38], "%s", "P");
+	sprintf(fileFormat[39], "%s", "PL");
+	sprintf(fileFormat[40], "%s", "T");
+	sprintf(fileFormat[41], "%s", "TL");
+	sprintf(fileFormat[42], "%s", "Rc");    //Rcrit
+	sprintf(fileFormat[43], "%s", "gw");    //gamma w
+	sprintf(fileFormat[44], "%s", "Ic");    //Moment of Inertia
+	sprintf(fileFormat[45], "%s", "test");
+	sprintf(fileFormat[46], "%s", "encc");  //enccountT
+	sprintf(fileFormat[47], "%s", "aec");   //aecount
+	sprintf(fileFormat[48], "%s", "aecT");  //aecountT
+	sprintf(fileFormat[49], "%s", "mig");   //artificial migration time scale
+	sprintf(fileFormat[50], "%s", "mige");  //artificial migration time scale e
+	sprintf(fileFormat[51], "%s", "migi");  //artifitial migration time scale i
+
+
+
+	char oformat[def_Ninformat * 5];
+	sprintf(oformat, def_OutputFileFormat); 
+
+	for(int i = 0; i < def_Ninformat; ++i){
+		outformat[i] = 0;
+	}
+
+	int pos = 0;
+	for(int f = -1; f < def_Ninformat; ++f){
+		char ff[5];
+		int n = 0;
+		int er = sscanf(oformat + pos, "%s%n", ff, &n);
+		if(er <= 0) break;
+
+		pos += n;
+
+		er = assignInformat(ff, fileFormat, outformat[f]);
+		if(er == 2) break;
+
+	}
+
+	//for(int f = 0; f < def_Ninformat; ++f){
+	//	printf("%d %d\n", f, outformat[f]);
+	//}
+
+
+	//-------------------------------------------
+	//Read paramKE.dat file
+	//-------------------------------------------
+	FILE *paramfile;
+	paramfile = fopen("paramKE.dat", "r");
+
+
+
+	char sp[160];           
+	int er;                 
+	char *str;      //Needed for return value of fgest, otherwise a compiler warning is generated
+
+
+
+	if(paramfile == NULL){
+		printf("****************************************************************\n");
+		printf("Warning, paramKE.dat file does not exist, use default parameters\n");
+		printf("****************************************************************\n");
+	}
+	else{       
+		for(int j = 0; j < 1000; ++j){ //loop around all lines in the paramKE.dat file
+			int c;
+			for(int i = 0; i < 50; ++i){
+				c = fgetc(paramfile);
+				if(c == EOF){
+					break; 
+				}
+				sp[i] = char(c);
+				if(c == '=' || c == ':'){
+					sp[i + 1] = '\0';
+					break;
+				}
+			}               
+			if(c == EOF) break;
+			if(strcmp(sp, "Output name =") == 0){
+				er = fscanf (paramfile, "%s", X);
+				if(er <= 0){
+					printf("Error: Output name is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "step =") == 0){
+				er = fscanf (paramfile, "%lld", &step);
+				if(er <= 0){
+					printf("Error: step value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "tmin =") == 0){
+				er = fscanf (paramfile, "%lld", &kmin);
+				if(er <= 0){
+					printf("Error: tmin value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "tmax =") == 0){
+				er = fscanf (paramfile, "%lld", &kmax);
+				if(er <= 0){
+					printf("Error: tmax value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "pmin =") == 0){
+				er = fscanf (paramfile, "%d", &pmin);
+				if(er <= 0){
+					printf("Error: pmin value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "pmax =") == 0){
+				er = fscanf (paramfile, "%d", &pmax);
+				if(er <= 0){
+					printf("Error: pmax value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "Central Mass =") == 0){
+				er = fscanf (paramfile, "%lf", &Msun);
+				if(er <= 0){
+					printf("Error: Central Mass value is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			}
+			else if(strcmp(sp, "Output file Format:") == 0){
+				for(int i = 0; i < def_Ninformat; ++i){
+					outformat[i] = 0;
+				}
+				//Read output file Format
+				int f;
+				for(f = -1; f < def_Ninformat; ++f){
+					er = fscanf (paramfile, "%s", sp);
+
+
+					int er2 = assignInformat(sp, fileFormat, outformat[f]);
+					if(er2 == 2) break;
+					if(er2 == 1) return 0;
+
+				}       
+				if(er <= 0){ 
+					printf("Error: Output file format is not valid!\n");
+					return 0;
+				}
+				str = fgets(sp, 3, paramfile);
+			} 
+			else{
+				printf("Error: paramKE.dat file is not valid! %s\n", sp);
+				return 0;
+			}
+		}
+		fclose(paramfile);
+	}
+
+	//-------------------------------------------
+
+
+
+	//-------------------------------------------
+	//Read console arguments
+	//-------------------------------------------
 	for(int i = 1; i < argc; i += 2){
 
 		if(strcmp(argv[i], "-tmin") == 0){
@@ -218,6 +467,7 @@ int main(int argc, char*argv[]){
 			printf("Error, console argument not valid.\n");
 		}
 	}
+	//-------------------------------------------
 
 	if(useCollfile == 1){
 		kmin = 0;
@@ -225,17 +475,25 @@ int main(int argc, char*argv[]){
 		step = 1;
 	}
 
+	printf("Name: %s\n", X);
+	printf("Msun: %g\n", Msun);
 	if(pmax > 0){
-		printf("pmin: %d, pmax: %d, Name: %s, Msun: %lf\n", pmin, pmax, X, Msun);
+		printf("pmin: %d, pmax: %d\n", pmin, pmax);
 	}
 	else{
-		printf("tmin: %lld, tmax: %lld, step: %lld, Name: %s, Msun: %lf\n", kmin, kmax, step, X, Msun);
+		printf("tmin: %lld, tmax: %lld, step: %lld\n", kmin, kmax, step);
 	}
+
+
+	//for(int f = 0; f < def_Ninformat; ++f){
+	//	printf("%d %d\n", f, outformat[f]);
+	//}
+
 
 	int N = 500000;
 	int NN = 0;
 
-	double3 x, v, spin;
+	double3 x, v;
 	double m, r, a, e, inc, Omega, w, Theta, E, M;
 	double s;
 	double t = 0.0;
@@ -257,29 +515,59 @@ printf("%s\n", inputfilename);
 			outputfile = fopen(outputfilename, "w");
 
 			for(long long int tt = 0ll; tt < 1e12; ++tt){
-				int er = fscanf (inputfile, "%lf",&t);
-				if(er <= 0) break;
-				fscanf (inputfile, "%d",&index);
-//printf("%lld %g %d\n", tt, t, index);
-				fscanf (inputfile, "%lf",&m);
-				fscanf (inputfile, "%lf",&r);
-				fscanf (inputfile, "%lf",&x.x);
-				fscanf (inputfile, "%lf",&x.y);
-				fscanf (inputfile, "%lf",&x.z);
-				fscanf (inputfile, "%lf",&v.x);
-				fscanf (inputfile, "%lf",&v.y);
-				fscanf (inputfile, "%lf",&v.z);
-				fscanf (inputfile, "%lf",&spin.x);
-				fscanf (inputfile, "%lf",&spin.y);
-				fscanf (inputfile, "%lf",&spin.z);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
-				fscanf (inputfile, "%lf",&s);
+				for(int f = 0; f < def_Ninformat; ++f){
+					if(outformat[f] == 0){
+						break;
+					}
+					else if(outformat[f] == 19){
+						er = fscanf (inputfile, "%lf",&t);
+					}
+					else if(outformat[f] == 13){
+						er = fscanf (inputfile, "%d",&index);
+					}
+					else if(outformat[f] == 4){
+						er = fscanf (inputfile, "%lf",&m);
+					}
+					else if(outformat[f] == 8){
+						er = fscanf (inputfile, "%lf",&r);
+					}
+					else if(outformat[f] == 1){
+						er = fscanf (inputfile, "%lf",&x.x);
+					}
+					else if(outformat[f] == 2){
+						er = fscanf (inputfile, "%lf",&x.y);
+					}
+					else if(outformat[f] == 3){
+						er = fscanf (inputfile, "%lf",&x.z);
+					}
+					else if(outformat[f] == 5){
+						er = fscanf (inputfile, "%lf",&v.x);
+					}
+					else if(outformat[f] == 6){
+						er = fscanf (inputfile, "%lf",&v.y);
+					}
+					else if(outformat[f] == 7){
+						er = fscanf (inputfile, "%lf",&v.z);
+					}
+					else{
+						er = fscanf (inputfile, "%lf",&s);
+					}
+					if(f != 0 && er <= 0){
+						printf("Error, file format does not match paramKE.dat file or default values\n");
+						return 0;
+
+					}
+
+					if(f == 0 && er <= 0){
+printf("T = %lld\n", tt);
+						break;
+
+					}
+				}
+				if(er <= 0){
+					break;
+
+				}
 
 				aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
 
@@ -324,36 +612,63 @@ printf("%s\n", inputfilename);
 			index = -1;
 			x.x = 1.0e300;
 			t = 1.0e8;
+			int er;
 			if(useCollfile == 0){
 				for(int i = 0; i < N; ++i){
-					int er = fscanf (inputfile, "%lf",&t);
-					if(er <= 0){
-						NN = i;
-printf("%d\n", NN);
-						break;
-					}
-					fscanf (inputfile, "%d",&index);
-//printf("%d %g %d\n", i, t, index);
-					fscanf (inputfile, "%lf",&m);
-					fscanf (inputfile, "%lf",&r);
-					fscanf (inputfile, "%lf",&x.x);
-					fscanf (inputfile, "%lf",&x.y);
-					fscanf (inputfile, "%lf",&x.z);
-					fscanf (inputfile, "%lf",&v.x);
-					fscanf (inputfile, "%lf",&v.y);
-					fscanf (inputfile, "%lf",&v.z);
-					fscanf (inputfile, "%lf",&spin.x);
-					fscanf (inputfile, "%lf",&spin.y);
-					fscanf (inputfile, "%lf",&spin.z);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
-					fscanf (inputfile, "%lf",&s);
+					for(int f = 0; f < def_Ninformat; ++f){
+						if(outformat[f] == 0){
+							break;
+						}
+						else if(outformat[f] == 19){
+							er = fscanf (inputfile, "%lf",&t);
+						}
+						else if(outformat[f] == 13){
+							er = fscanf (inputfile, "%d",&index);
+						}
+						else if(outformat[f] == 4){
+							er = fscanf (inputfile, "%lf",&m);
+						}
+						else if(outformat[f] == 8){
+							er = fscanf (inputfile, "%lf",&r);
+						}
+						else if(outformat[f] == 1){
+							er = fscanf (inputfile, "%lf",&x.x);
+						}
+						else if(outformat[f] == 2){
+							er = fscanf (inputfile, "%lf",&x.y);
+						}
+						else if(outformat[f] == 3){
+							er = fscanf (inputfile, "%lf",&x.z);
+						}
+						else if(outformat[f] == 5){
+							er = fscanf (inputfile, "%lf",&v.x);
+						}
+						else if(outformat[f] == 6){
+							er = fscanf (inputfile, "%lf",&v.y);
+						}
+						else if(outformat[f] == 7){
+							er = fscanf (inputfile, "%lf",&v.z);
+						}
+						else{
+							er = fscanf (inputfile, "%lf",&s);
+						}
+						if(f != 0 && er <= 0){
+							printf("Error, file format does not match paramKE.dat file or default values\n");
+							return 0;
 
+						}
+
+						if(f == 0 && er <= 0){
+							NN = i;
+printf("N = %d\n", NN);
+							break;
+
+						}
+					}
+					if(er <= 0){
+						break;
+
+					}
 					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
 					fprintf(outputfile,"%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %g %g\n", t, index, a, e, inc, Omega, w, Theta, E, M, m, r);
 				}
@@ -372,12 +687,12 @@ printf("%d\n", NN);
 					fscanf (inputfile, "%lf",&v.x);
 					fscanf (inputfile, "%lf",&v.y);
 					fscanf (inputfile, "%lf",&v.z);
-					fscanf (inputfile, "%lf",&spin.x);
-					fscanf (inputfile, "%lf",&spin.y);
-					er = fscanf (inputfile, "%lf",&spin.z);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					er = fscanf (inputfile, "%lf",&s);
 					if(er < 0){
 						NN = i;
-	printf("%d\n", NN);
+printf("%d\n", NN);
 						break;
 					}
 					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);
@@ -393,12 +708,12 @@ printf("%d\n", NN);
 					fscanf (inputfile, "%lf",&v.x);
 					fscanf (inputfile, "%lf",&v.y);
 					fscanf (inputfile, "%lf",&v.z);
-					fscanf (inputfile, "%lf",&spin.x);
-					fscanf (inputfile, "%lf",&spin.y);
-					er = fscanf (inputfile, "%lf",&spin.z);
+					fscanf (inputfile, "%lf",&s);
+					fscanf (inputfile, "%lf",&s);
+					er = fscanf (inputfile, "%lf",&s);
 					if(er < 0){
 						NN = i;
-	printf("%d\n", NN);
+printf("%d\n", NN);
 						break;
 					}
 					aei(x, v, Msun + m, a, e, inc, Omega, w, Theta, E, M);

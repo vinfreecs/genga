@@ -1,0 +1,8 @@
+Output name = test
+tmin = 0
+tmax = 100000
+step = 100
+pmin = 0
+pmax = 0
+Output file Format: << t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax aec aecT encc - >>
+Central Mass = 1.0

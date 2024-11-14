@@ -192,9 +192,7 @@ __host__ int Host::DeviceInfo(){
 
 
 
-//E =  1: input
-//E = -1: output
-__host__ int Host::assignInformat(char *ff, int &format, int E){
+__host__ int Host::assignInformat(char *ff, int &format){
 	int cartesian = 0;
 	int keplerian = 0;
 	int check = 0;
@@ -451,7 +449,7 @@ __host__ void Host::Halloc(){
 
 			pos += n;
 
-			er = assignInformat(ff, GSF[st].informat[f], 1);
+			er = assignInformat(ff, GSF[st].informat[f]);
 			if(er == 2) break;
 
 		}
@@ -470,7 +468,7 @@ __host__ void Host::Halloc(){
 
 			pos += n;
 
-			er = assignInformat(ff, GSF[st].outformat[f], -1);
+			er = assignInformat(ff, GSF[st].outformat[f]);
 			if(er == 2) break;
 
 		}
@@ -964,7 +962,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%s", sp);
 	
 
-				int er2 = assignInformat(sp, GSF[st].informat[f], 1);
+				int er2 = assignInformat(sp, GSF[st].informat[f]);
 				if(er2 == 2) break;
 				if(er2 == 1) return 0;
 
@@ -986,7 +984,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%s", sp);
 	
 
-				int er2 = assignInformat(sp, GSF[st].outformat[f], -1);
+				int er2 = assignInformat(sp, GSF[st].outformat[f]);
 				if(er2 == 2) break;
 				if(er2 == 1) return 0;
 

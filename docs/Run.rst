@@ -203,6 +203,20 @@ where :literal:`[options]` are the following optional user parameters:
 - :literal:`-in`: name of the files
 - :literal:`-Msun`: Solar Mass (default = 1.0 :math:`M_\odot`)
 
+
+Alternative to the console optoins, a parameter file called :literal:`paramKE.dat` can be used. This file contains the following arguments:
+
+- :literal:`Output name`: name of the files
+- :literal:`-tmin`: starting time step, (used for FormatT = 0, FormatP = 1).
+- :literal:`-tmax`: ending time step ,(used for FormatT = 0, FormatP = 1).
+- :literal:`-step`: output interval, (used for FormatT = 0, FormatP = 1).
+- :literal:`-pmin`: starting particle index, (used for FormatT = 1, FormatP = 0).
+- :literal:`-pmax`: ending particle index, (used for FormatT = 1, FormatP = 0).
+- :literal:`-Central Mass`: Solar Mass (default = 1.0 :math:`M_\odot`)
+- :literal:`Output file Format:` This must correspond the the entry of the GENGA :literal:`param.dat` file.
+
+
+
 The KE tool generates for each coordinate output file a corresponding Kepler-Elements file, see :ref:`aeiFiles`.
  
 Example for FormatT = 0, FormatP = 1 (default)::
