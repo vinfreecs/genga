@@ -761,7 +761,7 @@ __host__ int Data::EnergyOutput(int irregular){
 		fprintf(Energyfile,"%.16g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g\n", time_h[st]/365.25, N_h[st] + Nsmall_h[st], Energy_h[0 + NE], Energy_h[1 + NE], Energy_h[2 + NE], Energy_h[3 + NE], Energy_h[4 + NE], Energy_h[5 + NE], Energy_h[6 + NE], Energy_h[7 + NE]);
 		fclose(Energyfile);
 
-		if(irregular == 0 || interrupt == 1){
+		if(irregular == 0 || interrupt > 0){
 			GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 			cudaMemcpy(Nencpairs2_h + st + 1, Nencpairs2_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
 			cudaMemcpy(Nencpairs_h + st + 1, Nencpairs_d + st + 1, sizeof(int), cudaMemcpyDeviceToHost);
@@ -936,7 +936,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 							if(P.ci == -1) scale = (long long)(delta_h[st]);
 						}
 						sprintf(GSF[st].outputfilename,"%sOut%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, timeStep / scale, dat_bin);
-						if(P.FormatO == 1 && interrupt == 1){
+						if(P.FormatO == 1 && interrupt > 0){
 							sprintf(GSF[st].outputfilename,"%sOutbackup%s_%.20lld.%s", GSF[st].path, GSF[st].X, timeStep, dat_bin);
 						}
 					}
@@ -985,7 +985,7 @@ __host__ void Data::CoordinateOutput(int irregular){
 							if(P.ci == -1) scale = (long long)(delta_h[st]);
 						}
 						sprintf(GSF[st].outputfilename, "%s../Out%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, timeStep / scale, dat_bin);
-						if(P.FormatO == 1 && interrupt == 1){
+						if(P.FormatO == 1 && interrupt > 0){
 							sprintf(GSF[st].outputfilename, "%s../Outbackup%s_%.20lld.%s", GSF[st].path, GSF[st].X, timeStep, dat_bin);
 						}
 					}

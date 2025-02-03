@@ -826,7 +826,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 
 	//Print Energy and log information//
 	int CallEnergy = 0;
-	if(interrupt == 1) CallEnergy = 1;
+	if(interrupt > 0) CallEnergy = 1;
 	if(P.ei != 0 && timeStep == P.deltaT) CallEnergy = 1;
 	if(P.ci != 0 && timeStep == P.deltaT) CallEnergy = 1;
 	if(P.ci > 0 && timeStep % P.ci == 0) CallEnergy = 1;
@@ -857,11 +857,11 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 //test_kernel <<< 1, 16 >>> (x4_d, v4_d, index_d);
 	
 	//Print Output//
-	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt == 1 || (P.ci != 0 && timeStep == P.deltaT)){
+	if((P.ci > 0 && ((timeStep - 1) % P.ci >= P.ci - P.nci)) || interrupt > 0 || (P.ci != 0 && timeStep == P.deltaT)){
 		if(P.Buffer == 1){
 			CoordinateOutput(0);
 		}
-		else if(bufferCount + 1 >= P.Buffer || interrupt == 1){
+		else if(bufferCount + 1 >= P.Buffer || interrupt > 0){
 			//write out buffer
 			timestepBuffer[bufferCount] = timeStep;
 			for(int st = 0; st < Nst; ++st){
@@ -897,7 +897,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	}
 	
 	//print irregular outputs
-	if(interrupt == 1 && P.Buffer > 1){
+	if(interrupt > 0 && P.Buffer > 1){
 		//write out buffer
 		CoordinateOutputBuffer(1);
 	}
@@ -979,8 +979,8 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 #endif
 	// print time information //
 	// this should be the last thing to print, because it is used to restart at the last possible timestep
-	if((P.ci > 0 && timeStep % P.ci == 0) || interrupt == 1){
-		if(bufferCount >= P.Buffer || P.Buffer == 1 || interrupt == 1){
+	if((P.ci > 0 && timeStep % P.ci == 0) || interrupt > 0){
+		if(bufferCount >= P.Buffer || P.Buffer == 1 || interrupt > 0){
 			er = printTime(0);
 			if(er == 0) return 0;
 			fflush(masterfile);
@@ -992,6 +992,18 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 		fprintf(masterfile, "GENGA is terminated by SIGINT signal at time step %lld\n", timeStep);
 		cudaDeviceSynchronize();
 		return 0;
+	}
+
+
+	if(interrupt == 2){
+		stopSimulations();
+		if(Nst == 0){
+			return 0;
+		}
+		else{
+			interrupt = 0;
+		}
+
 	}
 	
 	error = cudaGetLastError();
@@ -3071,7 +3083,8 @@ __host__ int Data::EjectionCall(){
 
 __host__ int Data::StopAtEncounterCall(){
 #if def_TTV == 0
-	
+	interrupt = 2;
+		
 	if(Nst == 1){
 		n1_h[0] = -1;
 		
@@ -3079,13 +3092,7 @@ __host__ int Data::StopAtEncounterCall(){
 	else{
 		cudaMemcpy(n1_h, n1_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
 	}
-	if(P.ci != 0){
-		CoordinateOutput(3);
-	}
-	stopSimulations();
-	if(Nst == 0){
-		return 0;
-	}
+	
 #endif
 	return 1;
 }

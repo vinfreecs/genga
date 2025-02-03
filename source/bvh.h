@@ -347,7 +347,7 @@ __global__ void sortscatter2_kernel(unsigned int *morton_d, unsigned int *sortRa
 
 // *********************************************
 // partition part for the quick sort algorithm
-// Sortrank can be useda as a temporary copy of morton_d
+// Sortrank can be used as a temporary copy of morton_d
 // https://beginnersbook.com/2015/02/quicksort-program-in-c/
 // **********************************************
 __host__ void quickSort(unsigned int *morton_d, int2 *sortIndex_d, int first, int last){
