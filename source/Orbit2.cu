@@ -2700,6 +2700,7 @@ __global__ void remove4M_kernel(int2 *Encpairs_d, int2 *Encpairs2_d, const int N
 // or if the simulation has ended.
 // it rearanges the memory
 __host__ void Data::stopSimulations(){
+
 	NT = 0;
 	NsmallT = 0;
 	NEnergyT = 0;
@@ -2765,18 +2766,18 @@ __host__ void Data::stopSimulations(){
 		else if(N_h[st] < Nmin[st].x){
 			if(P.StopAtEncounter > 0 && n1_h[st] < 0){
 				if(Nst > 1){
-					printf("In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
-					fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped\n", GSF[st].path);
+					printf("In Simulation %s: Close Encounter occurred, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
+					fprintf(masterfile,"In Simulation %s: Close Encounter occurred, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
 					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
+					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped at time step %lld\n", timeStep);
 					fclose(GSF[st].logfile);
 					s = 1;
 				}
 				else{
-					printf("Close Encounter occurred, simulation stopped\n");
-					fprintf(masterfile,"Close Encounter occurred, simulation stopped\n");
+					printf("Close Encounter occurred, simulation stopped at time step %lld\n", timeStep);
+					fprintf(masterfile,"Close Encounter occurred, simulation stopped at time step %lld\n", timeStep);
 					GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped\n");
+					fprintf(GSF[st].logfile,"Close Encounter occurred, simulation stopped at time step %lld\n", timeStep);
 					fclose(GSF[st].logfile);
 					s = 1;
 				}
@@ -2784,34 +2785,34 @@ __host__ void Data::stopSimulations(){
 			else{
 				if(Nst > 1){
 					if(Nsmall_h[st] < Nmin[st].y){
-						printf("In Simulation %s: Number of test particles smaller than NminTP, simulation stopped\n", GSF[st].path);
-						fprintf(masterfile,"In Simulation %s: Number of test particles smaller than NminTP, simulation stopped\n", GSF[st].path);
+						printf("In Simulation %s: Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
+						fprintf(masterfile,"In Simulation %s: Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
 						GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-						fprintf(GSF[st].logfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						fprintf(GSF[st].logfile,"Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
 						fclose(GSF[st].logfile);
 					}
 					else{
-						printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
-						fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped\n", GSF[st].path);
+						printf("In Simulation %s: Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
+						fprintf(masterfile,"In Simulation %s: Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", GSF[st].path, timeStep);
 						GSF[st].logfile = fopen(GSF[st].logfilename, "a");
-						fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						fprintf(GSF[st].logfile,"Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
 						fclose(GSF[st].logfile);
 					}
 					s = 1;
 				}
 				else{
 					if(Nsmall_h[st] < Nmin[st].y){
-						printf("Number of test particles smaller than NminTP, simulation stopped\n");
-						fprintf(masterfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						printf("Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
+						fprintf(masterfile,"Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
 						GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-						fprintf(GSF[0].logfile,"Number of test particles smaller than NminTP, simulation stopped\n");
+						fprintf(GSF[0].logfile,"Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
 						fclose(GSF[0].logfile);
 					}
 					else{
-						printf("Number of bodies smaller than Nmin, simulation stopped\n");
-						fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						printf("Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
+						fprintf(masterfile,"Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
 						GSF[0].logfile = fopen(GSF[0].logfilename, "a");
-						fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped\n");
+						fprintf(GSF[0].logfile,"Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
 						fclose(GSF[0].logfile);
 					}
 					s = 1;

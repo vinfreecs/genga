@@ -785,6 +785,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	if(er == 0){
 		return 0;
 	}
+
 	if(doTransits == 0 && timeStep == P.tRestart + 1){
 		if(P.ei == 0 || (P.ei != 0 && timeStep % P.ei != 0)){
 			firstInfoB();
@@ -798,8 +799,8 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	}
 
 	if(ErrorFlag_m[0] > 0){
-		printf("Error detected, GENGA stopped\n");
-		fprintf(masterfile, "Error detected, GENGA stopped\n");
+		printf("Error detected, GENGA stopped at time step %lld\n", timeStep);
+		fprintf(masterfile, "Error detected, GENGA stopped at time step %lld\n", timeStep);
 		return 0;
 	}
 
@@ -895,7 +896,7 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 		}
 #endif
 	}
-	
+
 	//print irregular outputs
 	if(interrupt > 0 && P.Buffer > 1){
 		//write out buffer
@@ -1004,6 +1005,15 @@ __host__ int Data::timeStepLoop(int interrupted, int ittv){
 			interrupt = 0;
 		}
 
+	}
+	if(interrupt == 3){
+		stopSimulations();
+		if(Nst == 0){
+			return 0;
+		}
+		else{
+			interrupt = 0;
+		}
 	}
 	
 	error = cudaGetLastError();
@@ -2765,14 +2775,37 @@ __host__ int Data::RemoveCall(){
 #if def_TTV == 0
 	int NminFlag = remove();
 	if(NminFlag == 1){
-		fprintf(masterfile, "Number of bodies smaller than Nmin, simulation stopped\n");
-		printf("Number of bodies smaller than Nmin, simulation stopped\n");
-		return 0;
+		fprintf(masterfile, "Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
+		printf("Number of bodies smaller than Nmin, simulation stopped at time step %lld\n", timeStep);
+
+		interrupt = 3;
+			
+		if(Nst == 1){
+			n1_h[0] = -1;
+			
+		}
+		else{
+			cudaMemcpy(n1_h, n1_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
+		}
+		
+		return 1;
+
 	}
 	if(NminFlag == 2){
-		fprintf(masterfile, "Number of test particles smaller than NminTP, simulation stopped\n");
-		printf("Number of test particles smaller than NminTP, simulation stopped\n");
-		return 0;
+		fprintf(masterfile, "Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
+		printf("Number of test particles smaller than NminTP, simulation stopped at time step %lld\n", timeStep);
+
+		interrupt = 3;
+			
+		if(Nst == 1){
+			n1_h[0] = -1;
+			
+		}
+		else{
+			cudaMemcpy(n1_h, n1_d, Nst * sizeof(double), cudaMemcpyDeviceToHost);
+		}
+		
+		return 1;
 	}
 	CollisionFlag = 0;
 #endif
@@ -2782,8 +2815,8 @@ __host__ int Data::RemoveCall(){
 __host__ int Data::CollisionCall(int noColl){
 #if def_TTV == 0
 	if(Ncoll_m[0] > def_MaxColl){
-		fprintf(masterfile, "Error: More Collisions than def_MaxColl, simulation stopped\n");
-		printf("Error: More Collisions than def_MaxColl, simulation stopped\n");
+		fprintf(masterfile, "Error: More Collisions than def_MaxColl, simulation stopped at time step %lld\n", timeStep);
+		printf("Error: More Collisions than def_MaxColl, simulation stopped at time step %lld\n", timeStep);
 		return 0;
 	}
 	int stopAtCollision = 0;
@@ -2898,6 +2931,7 @@ printf("save -1\n");
 	}
 	else{
 		Ncoll_m[0] = 0;
+
 		return 1;
 	}
 #else
@@ -2911,8 +2945,8 @@ __host__ int Data::CollisionMCall(int noColl){
 	
 	
 	if(Ncoll_m[0] > def_MaxColl){
-		fprintf(masterfile, "Error: More Collisions than def_MaxColl, simulation stopped\n");
-		printf("Error: More Collisions than def_MaxColl, simulation stopped\n");
+		fprintf(masterfile, "Error: More Collisions than def_MaxColl, simulation stopped at time step %lld\n", timeStep);
+		printf("Error: More Collisions than def_MaxColl, simulation stopped at time step %lld\n", timeStep);
 		return 0;
 	}
 	int stopAtCollision = 0;
@@ -3033,7 +3067,7 @@ printf("save -1\n");
 
 		int NminFlag = remove();
 		if(NminFlag > 0){
-			stopSimulations();
+			StopFlag_m[0] = 1;
 		}
 		Ncoll_m[0] = 0;
 
@@ -3042,7 +3076,7 @@ printf("save -1\n");
 
 		int NminFlag = remove();
 		if(NminFlag > 0){
-			stopSimulations();
+			StopFlag_m[0] = 1;
 		}
 		Ncoll_m[0] = 0;
 	}
@@ -3083,6 +3117,8 @@ __host__ int Data::EjectionCall(){
 
 __host__ int Data::StopAtEncounterCall(){
 #if def_TTV == 0
+	StopFlag_m[0] = 1;
+
 	interrupt = 2;
 		
 	if(Nst == 1){
@@ -3895,7 +3931,7 @@ int Data::step_cpu(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000)  == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -4231,7 +4267,7 @@ int Data::step_small_cpu(int noColl){
 				if(er == 0) return 0;
 			}
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -4480,7 +4516,7 @@ __host__ int Data::step_1kernel(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000)  == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -4651,7 +4687,7 @@ __host__ int Data::step_16(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -4882,7 +4918,7 @@ __host__ int Data::step_largeN(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -5181,7 +5217,7 @@ __host__ int Data::step_small(int noColl){
 				if(er == 0) return 0;
 			}
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -5431,7 +5467,7 @@ __host__ int Data::step_M(int noColl){
 			int col = CollisionMCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}
@@ -5497,7 +5533,12 @@ __host__ int Data::step_M(int noColl){
 	
 	if(StopFlag_m[0] == 1){
 		if(P.ci != 0){
-			CoordinateOutput(3);
+			if(P.Buffer == 1){
+				CoordinateOutput(3);
+			}
+			else{
+				CoordinateOutputBuffer(3);
+			}
 			EnergyOutput(3);
 			printTime(3);
 		}
@@ -5505,6 +5546,9 @@ __host__ int Data::step_M(int noColl){
 		
 		stopSimulations();
 		StopFlag_m[0] = 0;
+		if(Nst == 0){
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -5595,7 +5639,7 @@ __host__ int Data::step_M3(int noColl){
 			int col = CollisionMCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(CollisionFlag == 1 && P.ei > 0 && timeStep % P.ei == 0){
+		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
 			int rem = RemoveCall();
 			if( rem == 0) return 0;
 		}

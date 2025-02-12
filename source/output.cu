@@ -843,7 +843,7 @@ __global__ void CoordinateToBuffer_kernel(double4 *x4_d, double4 *v4_d, int *ind
 
 __host__ void Data::CoordinateToBuffer(int bufferCount, int irregular, double dTau){
 	if(NT + NsmallT > 0){
-		if(irregular == 0){
+		if(irregular == 0 || irregular == 3){
 			CoordinateToBuffer_kernel <<< (NT + NsmallT + 511) / 512, 512 >>> (x4_d, v4_d, index_d, spin_d, love_d, migration_d, rcrit_d, aelimits_d, aecount_d, aecountT_d, enccountT_d, test_d, coordinateBuffer_d, time_d, idt_d, Nst, NT, NsmallT, NconstT, bufferCount, dTau, P.UseMigrationForce);
 		}
 		else{
@@ -1036,7 +1036,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 
 	double *buffer_h;
 
-	if(irregular == 0){
+	if(irregular == 0 || irregular == 3){
 		cudaMemcpy(coordinateBuffer_h, coordinateBuffer_d, P.Buffer * def_BufferSize * NconstT * sizeof(double), cudaMemcpyDeviceToHost);
 		buffer_h = coordinateBuffer_h;
 	}
@@ -1094,25 +1094,24 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			int NBS = NBS_h[st];
 
 //printf("Print Output Buffer %d %d %g\n", irregular, st, n1_h[st]);
-		if(Nst > 1){
-			int s = 0;
+			if(Nst > 1){
+				int s = 0;
 
-			if(irregular < 3) s = 1;	
-			if(N_h[st] < Nmin[st].x) s = 1;
-			if(Nsmall_h[st] < Nmin[st].y) s = 1;
-			if(n1_h[st] < 0) s = 1;
-			if(timeStep >= delta_h[st]) s = 1;
-			//print only simulations which must be stopped by StopAtEncounter
-			//or when the simulation reached the end
-			if(s == 0){
-				continue;
-			}			
-		}
-
+				if(irregular < 3) s = 1;	
+				if(N_h[st] < Nmin[st].x) s = 1;
+				if(Nsmall_h[st] < Nmin[st].y) s = 1;
+				if(n1_h[st] < 0) s = 1;
+				if(timeStep >= delta_h[st]) s = 1;
+				//print only simulations which must be stopped by StopAtEncounter
+				//or when the simulation reached the end
+				if(s == 0){
+					continue;
+				}			
+			}
 			if(P.FormatP == 1){
 				if(Nst == 1 || P.FormatS == 0){
 					if(P.FormatT == 0){
-						if(irregular == 0){
+						if(irregular == 0 || irregular == 3){
 							sprintf(GSF[st].outputfilename,"%sOut%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf], dat_bin);
 						}
 						else{
@@ -1126,7 +1125,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 						}
 					}
 					if(P.FormatT == 1){
-						if(irregular == 0){
+						if(irregular == 0 || irregular == 3){
 							sprintf(GSF[st].outputfilename,"%sOut%s.%s", GSF[st].path, GSF[st].X, dat_bin);
 						}
 						else{
@@ -1142,7 +1141,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 				}
 				else{
 					if(P.FormatT == 0){
-						if(irregular == 0){
+						if(irregular == 0 || irregular == 3){
 							sprintf(GSF[st].outputfilename, "%s../Out%s_%.*lld.%s", GSF[st].path, GSF[st].X, def_NFileNameDigits, timestepBuffer[bf], dat_bin);
 						}
 						else{
@@ -1158,7 +1157,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 						}
 					}
 					if(P.FormatT == 1){
-						if(irregular == 0){
+						if(irregular == 0 || irregular == 3){
 							sprintf(GSF[st].outputfilename, "%s../Out%s.%s", GSF[st].path, GSF[st].X, dat_bin);
 						}
 						else{
@@ -1175,7 +1174,7 @@ __host__ void Data::CoordinateOutputBuffer(int irregular){
 			}
 	
 			double time;
-			if(irregular == 0){
+			if(irregular == 0 || irregular == 3){
 				time = timestepBuffer[bf] * idt_h[st] + ict_h[st] * 365.25;
 				int N = NBuffer[Nst * bf + st].x;		
 				int Nsmall = NBuffer[Nst * bf + st].y;
@@ -1410,7 +1409,7 @@ __host__ void Data::printLastTime(int irregular){
 		else{
 			fprintf(timefile, "\n\n%lld %.20g\n", timeStep, times * 0.001);
 		}
-		if(st == 0) printf("Execution time: \n\n%g\n", times * 0.001);
+		if(Nst == 1 && st == 0) printf("Execution time: \n\n%g\n", times * 0.001);
 		fclose(timefile);
 	}
 }
@@ -1451,12 +1450,12 @@ __host__ int Data::printCollisions(){
 			else fprintf(collisionfile, "%.20g ", Coll_h[nc * def_NColl + in]);
 		}
 		if(Nst == 1){
-			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]));
-			printf("Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]));
+			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]), timeStep);
+			printf("Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]), timeStep);
 		}
 		else{
-			fprintf(logfile, "Collision between body %d and %d\n", (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex);
-			printf("In Simulation %s: Collision between body %d and %d\n", GSF[st].path, (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex);
+			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex, timeStep);
+			printf("In Simulation %s: Collision between body %d and %d at time step %lld\n", GSF[st].path, (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex, timeStep);
 		}
 	
 		if(Coll_h[nc * def_NColl + 2] >= P.StopMinMass && Coll_h[nc * def_NColl + 14] >= P.StopMinMass){
@@ -1472,7 +1471,7 @@ __host__ int Data::printCollisions(){
 
 //This function prints details of the Collisions
 __host__ void Data::printCollisionsTshift(){
-  
+ 
 	FILE *collisionfile;
 	for(int nc = Ncoll_m[0] / 2; nc < Ncoll_m[0]; ++nc){
 		int st;
