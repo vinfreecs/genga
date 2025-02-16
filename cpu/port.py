@@ -1528,41 +1528,49 @@ for line in Lines:
 		loop_id = 'id'
 		loop_N = 'nbodies'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void rotation_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'Nsmall + N'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void fragment_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'Nsmall + N'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void CallYarkovsky2_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void PoyntingRobertsonEffect_averaged_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void PoyntingRobertsonEffect2_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void artificialMigration_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(line.find('void artificialMigration2_kernel') != -1):
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(addLoop == 1):
 		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
@@ -1645,6 +1653,7 @@ for line in Lines:
 		loop_id = 'id'
 		loop_N = 'N + Nstart'
 		addLoop = 1
+		omp = 1
 
 	if(addLoop == 1):
 		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
