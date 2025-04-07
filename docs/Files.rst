@@ -69,7 +69,7 @@ The number of digits in the output file names can be changed with the :literal:`
 Output File Format
 ^^^^^^^^^^^^^^^^^^
 | The values of the output files depend on the :literal:`Output file Format`, set in the :ref:`param.dat<ParamFile>` file.
-| Possible options are:
+| Possible options are: (default = t i m r x y z vx vy vz Sx Sy Sz amin amax emin emax aec aecT encc test)
 
 - t: time, in years.
 - i: index of the body.
