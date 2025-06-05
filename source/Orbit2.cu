@@ -1328,6 +1328,8 @@ __host__ int Data::readic(int st){
 					//inc
 					er = fscanf (infile, "%lf",&x.z);
 					if(P.AngleUnits == 1) x.z = x.z / 180.0 * M_PI;
+					x.z = fmod(x.z, 2.0 * M_PI);
+					if(x.z < 0.0) x.z += 2.0 * M_PI;
 #if def_TTV > 0
 					elementsA.z = x.z;
 #endif
@@ -1338,6 +1340,8 @@ __host__ int Data::readic(int st){
 					//Omega
 					er = fscanf (infile, "%lf",&v.x);
 					if(P.AngleUnits == 1) v.x = v.x / 180.0 * M_PI;
+					v.x = fmod(v.x, 2.0 * M_PI);
+					if(v.x < 0.0) v.x += 2.0 * M_PI;
 #if def_TTV > 0
 					elementsB.x = v.x;
 #endif
@@ -1348,6 +1352,8 @@ __host__ int Data::readic(int st){
 					//w
 					er = fscanf (infile, "%lf",&v.y);
 					if(P.AngleUnits == 1) v.y = v.y / 180.0 * M_PI;
+					v.y = fmod(v.y, 2.0 * M_PI);
+					if(v.y < 0.0) v.y += 2.0 * M_PI;
 #if def_TTV > 0
 					elementsB.y = v.y;
 #endif
@@ -1358,6 +1364,8 @@ __host__ int Data::readic(int st){
 					//M
 					er = fscanf (infile, "%lf",&v.z);
 					if(P.AngleUnits == 1) v.z = v.z / 180.0 * M_PI;
+					v.z = fmod(v.z, 2.0 * M_PI);
+					if(v.z < 0.0) v.z += 2.0 * M_PI;
 #if def_TTV > 0
 					elementsB.z = v.z;
 #endif
@@ -1870,6 +1878,7 @@ __host__ int Data::readic(int st){
 
 // *************************************
 //This function converts Keplerian Elements into Cartesian Coordinates
+//David Vallado, Fundamentals of Atrodynamics and Applications
 __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 
 	double a = x.x;
@@ -1885,10 +1894,15 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	double E;
 	if(e < 1.0 - 1.0e-10){	
 		//Eccentric Anomaly
-		E = M + e * 0.5;
+		if((-M_PI < M && M < 0.0) || M > M_PI){
+			E = M - e;
+		}
+		else{
+			E = M + e;
+		}
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
-			E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
+		for(int j = 0; j < 128; ++j){
+			E = E + (M - E + e * sin(E)) / (1.0 - e * cos(E));
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;
 		}
@@ -1896,9 +1910,27 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 	else if(e > 1.0 + 1.0e-10){
 		//hyperbolic
 		//E is assumed to be the hyperbolic eccentricity 
-		E = M;
+		if(e < 1.6){
+			if((-M_PI < M && M < 0.0) || M > M_PI){
+				E = M - e;
+			}
+			else{
+				E = M + e;
+			}
+		}
+		else{
+			int s = 1;
+			if(M < 0.0) s = -1;
+			if(abs(M) > M_PI){
+				E = M - s * e;
+			}
+			else{
+				E = M  / (e - 1.0);
+			}
+		}
+
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
+		for(int j = 0; j < 128; ++j){
 			E = E + (E - e * sinh(E) + M) / (e * cosh(E) - 1.0);
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;
@@ -1913,7 +1945,7 @@ __host__ void Data::KepToCart(double4 &x, double4 &v, double Msun){
 		//double s = M_PI * 0.5 - atan(1.5 * M);
 		E = M;
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
+		for(int j = 0; j < 128; ++j){
 			E = E - (E + E * E * E / 3.0 - M) / (1.0 + E * E);
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;

@@ -7,7 +7,7 @@
 #include <math.h>
 #include <chrono>
 
-#define def_Version 3.193
+#define def_Version 3.194
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 

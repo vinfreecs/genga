@@ -3,15 +3,20 @@
 
 #include "define.h"
 
-
+//David Vallado, Fundamentals of Atrodynamics and Applications
 __device__ void EccentricAnomaly(double M, double e, double &E){
 
 	if(e < 1.0 - 1.0e-10){	
 		//Eccentric Anomaly
-		E = M + e * 0.5;
+		if((-M_PI < M && M < 0.0) || M > M_PI){
+			E = M - e;
+		}
+		else{
+			E = M + e;
+		}
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
-			E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
+		for(int j = 0; j < 128; ++j){
+			E = E + (M - E + e * sin(E)) / (1.0 - e * cos(E));
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;
 		}
@@ -19,9 +24,26 @@ __device__ void EccentricAnomaly(double M, double e, double &E){
 	else if(e > 1.0 + 1.0e-10){
 		//hyperbolic
 		//E is assumed to be the hyperbolic eccentricity 
-		E = M;
+		if(e < 1.6){
+			if((-M_PI < M && M < 0.0) || M > M_PI){
+				E = M - e;
+			}
+			else{
+				E = M + e;
+			}
+		}
+		else{
+			int s = 1;
+			if(M < 0.0) s = -1;
+			if(abs(M) > M_PI){
+				E = M - s * e;
+			}
+			else{
+				E = M  / (e - 1.0);
+			}
+		}
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
+		for(int j = 0; j < 128; ++j){
 			E = E + (E - e * sinh(E) + M) / (e * cosh(E) - 1.0);
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;
@@ -36,7 +58,7 @@ __device__ void EccentricAnomaly(double M, double e, double &E){
 		//double s = M_PI * 0.5 - atan(1.5 * M);
 		E = M;
 		double Eold = E;
-		for(int j = 0; j < 32; ++j){
+		for(int j = 0; j < 128; ++j){
 			E = E - (E + E * E * E / 3.0 - M) / (1.0 + E * E);
 			if(fabs(E - Eold) < 1.0e-15) break;
 			Eold = E;
@@ -63,43 +85,8 @@ __device__ void KepToCart_M(double4 &x, double4 &v, double Msun){
 	double mu = def_ksq * (Msun + x.w);
 
 	double E;
-	if(e < 1.0 - 1.0e-10){	
-		//Eccentric Anomaly
-		E = M + e * 0.5;
-		double Eold = E;
-		for(int j = 0; j < 32; ++j){
-			E = E - (E - e * sin(E) - M) / (1.0 - e * cos(E));
-			if(fabs(E - Eold) < 1.0e-15) break;
-			Eold = E;
-		}
-	}
-	else if(e > 1.0 + 1.0e-10){
-		//hyperbolic
-		//E is assumed to be the hyperbolic eccentricity 
-		E = M;
-		double Eold = E;
-		for(int j = 0; j < 32; ++j){
-			E = E + (E - e * sinh(E) + M) / (e * cosh(E) - 1.0);
-			if(fabs(E - Eold) < 1.0e-15) break;
-			Eold = E;
-		}
 
-	}
-	else{
-		//parabolic, solve Barkers equation 
-		// M = D + D^3 / 3, 
-		// use cot(s) = 1.5 * M  -> s = pi / 2 - atan(1.5 * M)
-
-		//double s = M_PI * 0.5 - atan(1.5 * M);
-		E = M;
-		double Eold = E;
-		for(int j = 0; j < 32; ++j){
-			E = E - (E + E * E * E / 3.0 - M) / (1.0 + E * E);
-			if(fabs(E - Eold) < 1.0e-15) break;
-			Eold = E;
-		}
-
-	}
+	EccentricAnomaly(M, e, E);
 
 
 	double cw = cos(w);
