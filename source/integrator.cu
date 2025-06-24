@@ -1,4 +1,12 @@
+
 #include "Orbit2.h"
+
+#if def_CPU == 1
+ #if USE_RANDOM == 1
+std::uniform_real_distribution<double> random_uniform(0.0,1.0);
+ #endif
+#endif
+
 #include "Rcrit.h"
 #include "Kick3.h"
 #include "HC.h"
@@ -2653,60 +2661,60 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 	{
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[1]; ++idx){ 
-		BSBStep_cpu <2> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 0, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSBStep_cpu <2> (generator, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 0, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[2]; ++idx){ 
-		BSBStep_cpu <4> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 1, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSBStep_cpu <4> (generator, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 1, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[3]; ++idx){ 
-		BSBStep_cpu <8> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 2, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSBStep_cpu <8> (generator, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 2, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[4]; ++idx){ 
-		BSBStep_cpu <16> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 3, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSBStep_cpu <16> (generator, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 3, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[5]; ++idx){ 
-		BSBStep_cpu <32> (random_h, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 4, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSBStep_cpu <32> (generator, x4_h, v4_h, xold_h, vold_h, rcrit_h, rcritv_h, Encpairs2_h, dt, Msun_h[0].x, U_h, 4, index_h, BSstop_h, Ncoll_m, Coll_h, time, spin_h, love_h, createFlag_h, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, N, NconstT, NWriteEnc_m, writeEnc_h, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 
 	/*
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[1]; ++idx){ 
-		BSA_cpu < 2 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 2 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 0, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[2]; ++idx){ 
-		BSA_cpu < 4 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 4 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 1, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[3]; ++idx){ 
-		BSA_cpu < 8 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 8 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 2, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[4]; ++idx){ 
-		BSA_cpu < 16 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 16 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 3, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[5]; ++idx){ 
-		BSA_cpu < 32 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 32 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 4, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	*/
 
 
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[6]; ++idx){ 
-		BSA_cpu < 64 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 64 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 5, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[7]; ++idx){ 
-		BSA_cpu < 128 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 128 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 6, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 	#pragma omp for nowait
 	for(int idx = 0; idx < Nenc_m[8]; ++idx){ 
-		BSA_cpu < 256 > (random_d, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+		BSA_cpu < 256 > (generator, x4_d, v4_d, xold_d, vold_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, dt, Msun_h[0].x, U_d, 7, N, NconstT, P.NencMax, BSstop_d, Ncoll_d, Coll_d, time, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, P.UseGR, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 	}
 
 	}

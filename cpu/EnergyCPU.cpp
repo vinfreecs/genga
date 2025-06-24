@@ -1,7 +1,7 @@
 #include "Orbit2CPU.h"
 
 //copy of ../source/Energy.cu
-//replace __device__ with __host__
+//remove __device__ 
 //remove __inline__
 //new kernels 
 //replace _d with _h
@@ -329,7 +329,7 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 //Authors: Simon Grimm
 //August 2016
 // *************************************
-__host__ void Data::EnergyCall(int st, int E){
+void Data::EnergyCall(int st, int E){
 
 	int NBS = NBS_h[st];
 	int NE = NEnergy[st];
@@ -345,7 +345,7 @@ __host__ void Data::EnergyCall(int st, int E){
 //Authors: Simon Grimm
 //April 2016
 // *************************************
-__host__ void Data::EjectionEnergyCall(int st, int i){
+void Data::EjectionEnergyCall(int st, int i){
 
 	int NBS = NBS_h[st];
 	int NN = N_h[st] + Nsmall_h[st];

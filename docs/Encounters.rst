@@ -20,7 +20,7 @@ This section describes the options or reporting encounter events. It is not rela
 Report Encounters
 -----------------
 An encounter event is defined as the moment when the distance between two bodies has reached a minimum. Typically an encounter event happens only once per orbit.
-Further, only encounter events are considered whith
+Further, only encounter events are considered with
 
 
 .. math::
@@ -63,7 +63,7 @@ If the cloud size is equal to 1, then all encounters between all particles are r
 Stop at Encounter
 -----------------
 
-When this options is enabled, then simulations are stoppen when a close encounter occur with 
+When this options is enabled, then simulations are stopped when a close encounter occur with 
 
 .. math::
  

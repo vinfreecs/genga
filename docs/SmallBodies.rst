@@ -20,7 +20,7 @@ In the next two sections, we describe our model for collisional break-up events 
 
 | All events of rotation reset or fragmentation are reported in the Fragments file :ref:`FragmentsFile`.
 
-| Since the fragmentaion routine creates additional debris particles, the initial memory arrays need to be increased,
+| Since the fragmentation routine creates additional debris particles, the initial memory arrays need to be increased,
   to be able to store these additional particles.
 | That can be done with the :literal:`Nfragments`: option in the :ref:`param.dat<ParamFile>` file.
 

@@ -27,13 +27,13 @@ This file contains general information about the used parameters and hardware.
 
 At the beginning, the file lists all used parameters, the version number and driver information.
 
-After the parameters, the file lists the timinigs of the kernel tuning routine (see :ref:`tuning`).
+After the parameters, the file lists the timings of the kernel tuning routine (see :ref:`tuning`).
 
 At each energy output interval the file gives information of the number of close encounter.
 
 - Precheck-pairs: number of close encounter candidates found from the prechecker (see :ref:`precheck`).
 - CE: total number of detected close encounter pairs (see :ref:`precheck`). 
-- groups: number of sepparate close encounter groups; followed by the number of close encounter groups of size 2,4,8,16,32,64,128,256,512,1024,2048 ...
+- groups: number of separate close encounter groups; followed by the number of close encounter groups of size 2,4,8,16,32,64,128,256,512,1024,2048 ...
 
 
 If an error occurs during the simulation, then in this File is written the last coordinates-Output and an information about the error.
@@ -93,13 +93,13 @@ Output File Format
 - | emax: maximal value of eccentricity range for aecount (See :ref:`aeLimits`).
   | Optional.
 - | k2: potential Love number of degree 2, dimensionless.
-  | (needed when given as initial contions)
+  | (needed when given as initial conditions)
 - | k2f: fluid Love number of degree 2, dimensionless.
-  | (needed when given as initial contions)
+  | (needed when given as initial conditions)
 - | tau: time lag in day / 0.0172020989 (See :ref:`Units`).
-  | (needed when given as initial contions)
+  | (needed when given as initial conditions)
 - | Ic: moment of inertia, dimensionless (See :ref:`Units`).
-  | (needed when given as initial contions)
+  | (needed when given as initial conditions)
 - | aec: aecount is the number of time steps since the last coordinate output time in which the particles semi major axis and eccentricity where in the aecount box limits (see :ref:`aeLimits`).
   | Optional.
 - | aecT, aecountT is the integrated value of all previous aecount values.
@@ -258,7 +258,7 @@ Barycentric output Files: OutBary<name>.dat
 
 The barycentric coordinate output files can be generated with the :ref:`ConvertHelioToBarry<HelioToBary>` tool.
 
-The files contain the same information as the orgiginal heliocentric coordinate output files, but they
+The files contain the same information as the original heliocentric coordinate output files, but they
 contain at the beginning an additional particles, representing the barycentrum, with an index of -1.
 
 
@@ -306,7 +306,7 @@ This file contains the execution time spent for the corresponding Coordinate Out
 The first column indicates the time step. This last entry in the file is used for the automated restart (restart timestep = -1).
 
 
-When the code was interrupted in between of two output intervals, then the time file contains additional lines with the divided times in it. The the code was interrupted many times due to e.g. limited wall times, the time files
+When the code was interrupted in between of two output intervals, then the time file contains additional lines with the divided times in it. If the code was interrupted many times due to e.g. limited wall times, the time files
 can get hard to read.
 
 The tool :literal:`cleanTime.py` in the :literal:`tools` directory can be used to clean the time files and
@@ -446,7 +446,7 @@ the 'event' indicates the following:
 
 
 Each newly created fragment gets a new, increasing, index number.
-This file permits to recronstruct the collision and fragmentation history of every particle.
+This file permits to reconstruct the collision and fragmentation history of every particle.
 
 
 .. _aeCountFile:

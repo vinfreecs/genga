@@ -204,7 +204,7 @@ where :literal:`[options]` are the following optional user parameters:
 - :literal:`-Msun`: Solar Mass (default = 1.0 :math:`M_\odot`)
 
 
-Alternative to the console optoins, a parameter file called :literal:`paramKE.dat` can be used. This file contains the following arguments:
+Alternative to the console options, a parameter file called :literal:`paramKE.dat` can be used. This file contains the following arguments:
 
 - :literal:`Output name`: name of the files
 - :literal:`-tmin`: starting time step, (used for FormatT = 0, FormatP = 1).
@@ -213,7 +213,7 @@ Alternative to the console optoins, a parameter file called :literal:`paramKE.da
 - :literal:`-pmin`: starting particle index, (used for FormatT = 1, FormatP = 0).
 - :literal:`-pmax`: ending particle index, (used for FormatT = 1, FormatP = 0).
 - :literal:`-Central Mass`: Solar Mass (default = 1.0 :math:`M_\odot`)
-- :literal:`Output file Format:` This must correspond the the entry of the GENGA :literal:`param.dat` file.
+- :literal:`Output file Format:` This must correspond to the entry of the GENGA :literal:`param.dat` file.
 
 
 
@@ -345,7 +345,7 @@ Cleaning the time files
 
 The time file contains the time in seconds, GENGA needed to reach the next coordinate interval. When the
 code was interrupted in between of two output intervals, then the time file contains additional lines with
-the divided times in it. The the code was interrupted many times due to e.g. limited wall times, the time files
+the divided times in it. If the code was interrupted many times due to e.g. limited wall times, the time files
 can get hard to read. 
 
 The tool :literal:`cleanTime.py` in the :literal:`tools` directory can be used to clean the time files and
@@ -365,7 +365,7 @@ The tool will create a new file :literal:`timeClean<name>.dat` with the cleaned 
 Irregular output times
 ----------------------
 When output data is needed on an irregular interval, then the :literal:`Coordinates output interval` and :literal:`Energy output interval`
-parameters are not useful. Insted a calendar file with the desired output times can be provided. The name of this file must be set in the
+parameters are not useful. Instead a calendar file with the desired output times can be provided. The name of this file must be set in the
 :literal:`Irregular output calendar` parameter in the :ref:`param.dat<ParamFile>` file.
 
 The file must contain line by line the times of the desired outputs in units of years. At each irregular output time,

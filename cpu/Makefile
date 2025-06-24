@@ -7,11 +7,10 @@ BUILD_SYSTEM := "`uname -a`"
 BUILD_PATH := "`pwd`"
 BUILD_DATA = -DGIT_BRANCH=\"$(GIT_BRANCH)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\" -DBUILD_DATE=\"$(BUILD_DATE)\" -DBUILD_SYSTEM=\"$(BUILD_SYSTEM)\" -DBUILD_PATH=\"$(BUILD_PATH)\"
 
-source = gengaCPU.cu Host2CPU.cu Orbit2CPU.cu EnergyCPU.cu outputCPU.cu integratorCPU.cu gasCPU.cu
+source = gengaCPU.cpp Host2CPU.cpp Orbit2CPU.cpp EnergyCPU.cpp outputCPU.cpp integratorCPU.cpp gasCPU.cpp
 
 headers = define.h Host2CPU.h Orbit2CPU.h FG2CPU.h BSSingleCPU.h Encounter3CPU.h Kick3CPU.h Kick4CPU.h HCCPU.h BSBCPU.h BSACPU.h ComEnergyCPU.h directAccCPU.h forceCPU.h forceYarkovskyOldCPU.h ScanCPU.h RcritCPU.h convertCPU.h createparticlesCPU.h bvhCPU.h 
 
 gengaCPU: $(source) $(headers)
 	# with gprof
-	#nvcc -Xcompiler=-fopenmp --compiler-options -Wall -O3 -pg -o gengaCPU $(source) $(BUILD_DATA)
-	nvcc -Xcompiler=-fopenmp --compiler-options -Wall -O3 -o gengaCPU $(source) $(BUILD_DATA)
+	g++ -fopenmp -Wall -O3 -g -o gengaCPU $(source) $(BUILD_DATA)

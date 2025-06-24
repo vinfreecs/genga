@@ -8,4 +8,4 @@ Note that this works only using the second order integrator, and not for test pa
 An example of the surface of section  of 32 planetesimals can be found [here](https://www.youtube.com/watch?v=a_4cjXVDEAw).
 Also note that by enabling this option, the integration speed is reduced.
 
-The coordinares of the Poincare surface of section are reported in the :ref:`PoincareFile`.
+The coordinates of the Poincare surface of section are reported in the :ref:`PoincareFile`.

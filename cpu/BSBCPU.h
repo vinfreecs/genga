@@ -2,10 +2,9 @@
 #include "Encounter3CPU.h"
 
 template< int NN>
-void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
-	int random = 0;
 //printf("BSB start %d %d\n", NN, idx);
 	if((noColl == 1 || noColl == -1) && BSstop_h[0] == 3){
 //if(idx == 0)      printf("Stop BSB b\n");
@@ -414,7 +413,7 @@ void BSBStep_cpu(int *random_h, double4 *x4_h, double4 *v4_h, double4 *xold_h, d
 									}
 								}
 //printf("cTime coll BSB %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt /dayUnit, time + (t + dt1) / dayUnit, index_h[Encpairs2_h[start + i].x], index_h[Encpairs2_h[start + j].x], nc);
-								collide(random, xt_s, vt_s, i, j, Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, Msun, U_h, test, index_h, nc, Coll_h, time + (t + dt1) / dayUnit, spin_h, love_h, createFlag_h, rcritv_s, rcrit_h, NN, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
+								collide(generator, xt_s, vt_s, i, j, Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, Msun, U_h, test, index_h, nc, Coll_h, time + (t + dt1) / dayUnit, spin_h, love_h, createFlag_h, rcritv_s, rcrit_h, NN, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
 							}
 						}
 

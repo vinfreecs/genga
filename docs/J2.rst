@@ -15,7 +15,7 @@ Parameters for the J2 forces:
 
 
 
-The potential energy of a an additional gravitational multipole expansion is given in :cite:p:`ZdericMadigan2020`, Equation 1, as 
+The potential energy of an additional gravitational multipole expansion is given in :cite:p:`ZdericMadigan2020`, Equation 1, as 
 
 .. math::
 

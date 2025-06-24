@@ -286,7 +286,8 @@ __host__ int Data::AllocateOrbit(){
 	BSAstop_h = (int*)malloc(sizeof(int));
 
   #if USE_RANDOM == 1
-	srand48(time(NULL));
+	generator.seed(time(NULL));
+
 	random_h = (curandState*)malloc(NconstT * sizeof(curandState));
   #else
 	random_h = NULL;

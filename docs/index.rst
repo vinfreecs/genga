@@ -2,8 +2,8 @@ GENGA documentation
 ===================
 
 | Author: Simon L. Grimm
-| Center for Space and Habitability (CSH)
-| University of Bern, Switzerland
+| Department of Astrophysics
+| University of Zürich, Switzerland
 
 
 GENGA is available at https://bitbucket.org/sigrimm/genga

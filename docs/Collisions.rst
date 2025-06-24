@@ -70,7 +70,7 @@ two particles.
 
    R_{\rm new} = \left( R_i^3 + R_j^3 \right)^{1/3}
 
-The index of the nex body is calculated according to the rules:
+The index of the next body is calculated according to the rules:
 
  - The index of the more massive body.
  - If both bodies have an equal mass, then take the smaller index of the bodies :math:`i` and :math:`j`

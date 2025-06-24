@@ -69,8 +69,8 @@ Main parameters
   | affects inc, O, w and M.
 
 - | :literal:`Use output binary files`, text or binary file format for coordinate output files.
-  | - 0 (default): Use text files for coordinare output files.
-  | - 1: Use binary files for coordinare output files.
+  | - 0 (default): Use text files for coordinate output files.
+  | - 1: Use binary files for coordinate output files.
   | See :ref:`OutFile`
 
 - | :literal:`Default rho`, value for the densities when no value (no rho and no r) is given in :literal:`Input file Format`:
@@ -149,7 +149,7 @@ Integrator options
 
 - | :literal:`Symplectic recursion levels`, number of symplectic levels in the hybrid symplectic integration method (default = self tuned).
 
-    - -1: Use self tuning routine at integration start, to find the fastest option between leves, 1, 2 or 3.
+    - -1: Use self tuning routine at integration start, to find the fastest option between levels, 1, 2 or 3.
     - > 0: Use this number of symplectic recursion levels.
 
   | See :ref:`SLevels`.
@@ -466,7 +466,7 @@ Options for encounters
   | See :ref:`StopAtEncounter`. 
 
   - 0: nothing happens.
-  - | 1: Simulations are stoppen when the separation between two bodies is less than :literal:`Stop at Encounter Radius` times
+  - | 1: Simulations are stopped when the separation between two bodies is less than :literal:`Stop at Encounter Radius` times
        the Hill radius.
 
 - | :literal:`Stop at Encounter Radius`, used for :literal:`Stop at Encounter`, (default = 1.0).
@@ -496,7 +496,7 @@ Options for collisions
   -  1: stop simulation at the first collision time.
 
 - | :literal:`Stop Minimum Mass`, used in :ref:`StopAtCollision`, (default :math:`0.0`)
-  | Simulations are only stoppen when **both** bodies have a mass larger than this value.
+  | Simulations are only stopped when **both** bodies have a mass larger than this value.
 
 - | :literal:`Collision Model`, can be used to implement a different collision model
   | The default (0) is used for a perfect merger collision.

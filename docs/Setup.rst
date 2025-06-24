@@ -21,8 +21,8 @@ The system requirements are:
 
 * multicore CPUs:
 
+  * g++ compiler
   * OpenMP
-  * CUDA toolkit (this is still needed to compile the code, even if no GPUs are used)
   * python3, for translating the CUDA source code to HIP
 
 
@@ -173,7 +173,7 @@ On systems with hyperthreading enabled, it can be usefull to select the desired 
 
 	export OMP_PLACES="{0,1,2,3, ...}"
 
-to the terminal, before running the code, were the numers indicate all the core id's that should be used.
+to the terminal, before running the code, were the numbers indicate all the core id's that should be used.
 
 Compile GENGA on Windows
 ^^^^^^^^^^^^^^^^^^^^^^^^

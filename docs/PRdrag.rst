@@ -10,7 +10,7 @@ and is available in the schemes (we recommend scheme 1):
 - | Velocity kick :math:`\mathbf{a_{PR}}`
   | set :literal:`Use Poynting-Robertson = 1` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_3a` and :eq:`eq_3b`
-- | Orbital averaged change in sami-major axis and eccentricity :math:`\frac{da}{dt}`, :math:`\frac{de}{dt}`
+- | Orbital averaged change in semi-major axis and eccentricity :math:`\frac{da}{dt}`, :math:`\frac{de}{dt}`
   | set :literal:`Use Poynting-Robertson = 2` in the :ref:`param.dat<ParamFile>` file.
   | See Equation :eq:`eq_4`
 	

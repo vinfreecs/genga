@@ -6,8 +6,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <chrono>
+#include <cstring>
 
-#define def_Version 3.194
+#define def_Version 3.195
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -278,8 +279,22 @@
 
  #ifndef CPU_H
  #define CPU_H
-/*
 
+
+	struct int2{
+		int x;
+		int y;
+	};
+	struct int4{
+		int x;
+		int y;
+		int z;
+		int w;
+	};
+	struct double2{
+		double x;
+		double y;
+	};
 	struct double3{
 		double x;
 		double y;
@@ -291,6 +306,11 @@
 		double z;
 		double w;
 	};
+	struct float3{
+		float x;
+		float y;
+		float z;
+	};
 	struct float4{
 		float x;
 		float y;
@@ -298,7 +318,7 @@
 		float w;
 	};
 
-*/
+
  #endif
 #endif
 

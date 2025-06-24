@@ -31,6 +31,7 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
 
  ** News: **
 
+ * Version 3.195: CPU version without CUDA
  * Version 3.182: Corrected z-component of J2 force
  * Version 3.178: Corrected internal energy calculation of the gas disk
  * Version 3.159: Encounters between test particles can be reported with 'Report Encounters = 2'
@@ -66,12 +67,12 @@ The same notebook is also included in this repository here: GengaTutorial.ipynb 
  * Version 3.56: The test particle mode supports semi massive particles
  * Version 3.48: The multi simulation mode can stop simulation at close encounters when 'StopAtEncounter' in the 'define.dat' file is set to 1
  * Version 3.45: The maximum close encounter group size is increased up to 1048576. It can be increased further by changing the 'def_GMax' parameter in the 'define.dat' file. 
- * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximu number of close encounters for each body.  
+ * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximum number of close encounters for each body.  
  * Version 3.21: Close Encounters can be reported to a separate file
  * Version 3.17: A calendar file can be used to generate irregular coordinate outputs.
- * Verions 3.15: The multi simulation mode can now have individual time step sizes and an individual number of integration steps for each sub-simulation.
+ * Version 3.15: The multi simulation mode can now have individual time step sizes and an individual number of integration steps for each sub-simulation.
  * Version 3.14: The coordinate outputs can now be buffered on the GPU. This increases the performance when lots of consecutive outputs are written. Use the 'Coordinate output buffer' argument to set the buffer size. Energy outputs within a buffer size are skipped.
- * Verion 3.12: The gas disk can now be started from the 'param.dat' file
+ * Version 3.12: The gas disk can now be started from the 'param.dat' file
  * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.h' file. The aeGrid contains now also a semi-major axis versus inclination grid.
  * Version 3.10: The Rcut and RcutSun parameters are moved to the param.dat file and are called now outer- and inner truncation radius. 
  * Version 3.10: The FormatP, FormatT and FormatS parameters are moved to the param.dat file.

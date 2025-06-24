@@ -25,7 +25,7 @@ and is available in the schemes (we recommend scheme 1):
 - :literal:`Asteroid A`: Bond albedo
 - :literal:`Asteroid K`: Thermal conductivity in :math:`\text{W} \, \text{m}^{-1} \text{K}^{-1}`
 
-Note that the calculation of the Yarkovsky effect uses the :literal:`Asteroid rho` value for the calculation of the thermal intertia
+Note that the calculation of the Yarkovsky effect uses the :literal:`Asteroid rho` value for the calculation of the thermal inertia
 :math:`\Gamma` and not the individual particle densities.
 
 

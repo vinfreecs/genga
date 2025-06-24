@@ -5,7 +5,7 @@ GENGA is using a hybrid symplectic integrator :cite:p:`Chambers99`.
 
 The hybrid symplectic method uses a smooth changeover function to transfer the calculation of close encounters from the symplectic to a direct N-body
 integrator like the Bulirsch-Stoer method or something similar. This transition must be applied smoothly enough to prevent from too large energy errors.
-Therefore a critical radius must be defined to set a threshold between the close encounter phase andt he normal integration phase, and it must be chosen
+Therefore a critical radius must be defined to set a threshold between the close encounter phase and the normal integration phase, and it must be chosen
 large enough to ensure a smooth transition.
 
 
@@ -111,7 +111,7 @@ Close Encounters Pairs
 ----------------------
 
 The :literal:`Maximum encounter pairs` parameter in the :ref:`param.dat<ParamFile>` file, sets the amount of memory that is allocated to store close
-encounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error massa is
+encounter pairs of each body. When a body has more close encounters that specified here, then the simulation is stopped and an error message is
 written. Setting a larger value of :literal:`Maximum encounter pairs` increases the memory usage of the code. 
 
 

@@ -199,6 +199,10 @@ public:
 #if def_CPU == 1
 	int error;
 
+ #if USE_RANDOM == 1
+	default_random_engine generator;
+ #endif
+
 	double4 *xold_h;
 	double4 *vold_h;
 	double3 *a_h;

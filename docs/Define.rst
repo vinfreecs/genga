@@ -38,7 +38,7 @@ Memory options
   | When a collision happens, then the details of the collisions are stored in an internal buffer on the
     GPU. After the time, this buffer is transferred to the CPU and the information written into the 
     collision file. The size of this buffer is specified by :literal:`def_MaxColl`. When more collisions
-    occur in the same time step, then the integration is stoppen and an error message written. 
+    occur in the same time step, then the integration is stopped and an error message written. 
   | Increasing this number also increases the total amount of needed memory.
   | (default = 120)
 
@@ -64,7 +64,7 @@ Other
   | (default = 3.0f)
   | See :ref:`precheck` and :ref:`KickFloat`.
 
-- | :literal:`def_cef`: Factor in close encounter detector, pairs with :math:`r_{ij}^2 < \text{cef} \, r_\text{crit}^2` are considered as close encounter paris.
+- | :literal:`def_cef`: Factor in close encounter detector, pairs with :math:`r_{ij}^2 < \text{cef} \, r_\text{crit}^2` are considered as close encounter pairs.
   | (default = 1.0)
   | See :ref:`precheck`.
 
@@ -82,7 +82,7 @@ Other
 
 Physical constants
 ------------------
-The following physical constants are used by GENGA and can be changed in this section of the the :literal:`define.h` file:
+The following physical constants are used by GENGA and can be changed in this section of the :literal:`define.h` file:
 
 
 - | :literal:`def_ksq = 1.0`

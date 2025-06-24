@@ -40,7 +40,7 @@ The dimensions and resolutions of the grid can be specified by the following use
 The a-e and a-i grid consist both of two parts, the first grid counts the number of particles per cell
 since the last coordinate output time, and the second grid counts the overall number since the beginning
 of the simulations.
-At each coordinate output time, alsoe the a-e and a-i grid data is transferred to the CPU und written
+At each coordinate output time, also the a-e and a-i grid data is transferred to the CPU and written
 to the files :ref:`aeCountFile`.
 
 When using the multi simulation mode, then all simulations contribute to the same grid.

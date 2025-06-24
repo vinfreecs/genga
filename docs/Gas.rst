@@ -113,5 +113,5 @@ with:
 
  - time in years.
  - r the distance from the cell to the star in AU.
- - Sigma, the surface desity at the cell location r,in in g/:math:`\text{cm}^3`.
+ - Sigma, the surface density at the cell location r,in in g/:math:`\text{cm}^3`.
  - h, the gas disk scale height at the cell location r, in AU.  

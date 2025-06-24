@@ -338,6 +338,8 @@ file2 = open(filename2, 'w')
 
 Lines = file1.readlines()
 
+print('using namespace std;', file=file2);
+
 for line in Lines:
 
 	if(line.find('__constant__') != -1):
@@ -346,6 +348,9 @@ for line in Lines:
 
 	if(line.find('def_CPU 0') != -1):
 		line = line.replace('def_CPU 0', 'def_CPU 1')
+
+	if(line.find('curand_kernel') != -1):
+		line = line.replace('curand_kernel.h', 'random')
 
 	if(line.find('math.h') != -1):
 		print("#include <omp.h>", file=file2)
@@ -360,7 +365,7 @@ file2.close()
 ################################################
 
 filename = '../source/genga.cu'
-filename2 = 'gengaCPU.cu'
+filename2 = 'gengaCPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -403,7 +408,7 @@ file2.close()
 ################################################
 
 filename = '../source/integrator.cu'
-filename2 = 'integratorCPU.cu'
+filename2 = 'integratorCPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -685,6 +690,8 @@ file2 = open(filename2, 'w')
 Lines = file1.readlines()
 
 for line in Lines:
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 
 	print(line, file=file2, end='')
 
@@ -697,7 +704,7 @@ file2.close()
 ################################################
 
 filename = '../source/Host2.cu'
-filename2 = 'Host2CPU.cu'
+filename2 = 'Host2CPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -710,6 +717,8 @@ for line in Lines:
 	if(line.find('Host2.h') != -1):
 		line = line.replace('Host2.h', 'Host2CPU.h')
 
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 
 	if(line.find('cudaMemcpy') != -1):
 		continue 
@@ -762,7 +771,7 @@ file2.close()
 ################################################
 
 filename = '../source/Orbit2.cu'
-filename2 = 'Orbit2CPU.cu'
+filename2 = 'Orbit2CPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -888,7 +897,7 @@ file2.close()
 ################################################
 
 filename = '../source/output.cu'
-filename2 = 'outputCPU.cu'
+filename2 = 'outputCPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -911,6 +920,9 @@ for line in Lines:
 		line = line.replace('cudaMemset', 'memset')
 		line = line.replace('_d', '_h')
 
+
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 
 	#Add loops
 	if(line.find('void CoordinateToBuffer_kernel') != -1):
@@ -1029,6 +1041,9 @@ for line in Lines:
 
 	if(line.find('__device__') != -1):
 		line = line.replace('__device__ ', '')
+
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 
 	if(line.find('__syncthreads') != -1):
 		continue 
@@ -1445,8 +1460,13 @@ for line in Lines:
 	if(line.find('__device__') != -1):
 		line = line.replace('__device__ ', '')
 
-	if(line.find('curandState') != -1):
-		line = line.replace('curandState', 'int')
+	#random
+	if(line.find('curandState &random') != -1):
+		line = line.replace('curandState &random', 'default_random_engine &generator')
+
+
+	if(line.find('curand_uniform(&random)') != -1):
+		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
 
 	line = DtoH(line)
 	print(line, file=file2, end='')
@@ -1517,6 +1537,9 @@ for line in Lines:
 
 	if(remove == 1):
 		continue
+
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 
 	#Add loops
 	if(line.find('void force_kernel') != -1):
@@ -1604,23 +1627,28 @@ for line in Lines:
 	if(line.find('template <') != -1):
 		continue
 
-	if(line.find('curandState') != -1):
-		line = line.replace('curandState', 'int')
+	#random
+	if(line.find('curandState *random_d') != -1):
+		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+
+	if(line.find('random_d[id]') != -1):
+		line = ''
 
 	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'drand48()')
+		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
 
 
 	if(line.find('fragment_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
+		line = line.replace('random_d', 'generator')
 
 	if(line.find('rotation_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
-	
+		line = line.replace('random_d', 'generator')
 
 	line = DtoH(line)
 	
@@ -1691,7 +1719,7 @@ for line in Lines:
 		line = line.replace('curandState', 'int')
 
 	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'drand48()')
+		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
 
 
 	if(line.find('fragment_kernel') != -1):
@@ -1762,21 +1790,27 @@ for line in Lines:
 	if(line.find('cudaDeviceSynchronize') != -1):
 		continue 
 
-	if(line.find('curandState') != -1):
-		line = line.replace('curandState', 'int')
+	#random
+	if(line.find('curandState *random_d') != -1):
+		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+
+	if(line.find('random_d[id]') != -1):
+		line = ''
 
 	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'drand48()')
+		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
 
 	if(line.find('create1_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
+		line = line.replace('random_d', 'generator')
 
 	if(line.find('create2_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
+		line = line.replace('random_d', 'generator')
 
 	line = DtoH(line)
 	line = memorycopy(line)
@@ -1792,7 +1826,7 @@ file2.close()
 ################################################
 
 filename = '../source/gas.cu'
-filename2 = 'gasCPU.cu'
+filename2 = 'gasCPU.cpp'
 
 
 file1 = open(filename, 'r')
@@ -2074,6 +2108,9 @@ for line in Lines:
 
 	if(remove == 1):
 		continue
+
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
 	
 	if(line.find('void collisioncheck_kernel') != -1):
 		loop_id = 'idx'
