@@ -21,6 +21,16 @@ When GENGA is started again in the same directory, then all files are overwritte
 To prevent GENGA from overwriting data, the lock.file option can be used (See :ref:`IgnoreLockFile`).
 
 
+CPU version
+^^^^^^^^^^^
+
+When the CPU version of GENGA is used (See :ref:`gengaCPU`) then GENGA can be started with::
+
+    ./gengaCPU [options]
+
+A relevant option for multicore CPU runs is :literal:`-Nomp`, where the number of CPU cores can be set. 
+
+
 .. _Restart:
 
 Restarting GENGA to continue simulations

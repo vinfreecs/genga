@@ -190,7 +190,7 @@ Memory options
 - | :literal:`Maximum encounter pairs` arrays size to store close encounter pairs for each body (default = 512).
   | See :ref:`Close_Encounters`
 
-- | :literal:`Nframents`: Number of additional memory size for debris particles, in particle numbers, (default = 0). 
+- | :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default = 0). 
   | See :ref:`SmallBodies`
 
 

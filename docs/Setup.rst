@@ -151,6 +151,8 @@ Type::
 to compile GENGA with HIP. 
 
 
+.. _gengaCPU:
+
 Compile GENGA with OpenMP for multicore CPUs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 GENGA provides a tool to translate the source code from CUDA to an OpenMP CPU version.

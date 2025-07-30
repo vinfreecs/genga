@@ -30,6 +30,7 @@ The console arguments have the highest priority and are overwriting the argument
 - -collPrec <f>: Collision Precision
 - -collTshift <f>: Collision Time Shift
 - -GR <i>: Use GR
+- -Nomp <i>: Number of parallel CPU cores to use. Only available in CPU version of GENGA
 
 Here i means an integer, f a floating point value, and s a string.
 
