@@ -3705,8 +3705,8 @@ void Data::step1_cpu(){
 	Rcrit_cpu (x4_h, v4_h, x4b_h, v4b_h, spin_h, spinb_h, 1.0 / (3.0 * Msun_h[0].x), rcrit_h, rcritb_h, rcritv_h, rcritvb_h, index_h, indexb_h, dt_h[0], n1_h[0], n2_h[0], time_h, time_h[0], EjectionFlag_m, N_h[0], NconstT, P.SLevels, 0);
 
 	double Msun = Msun_h[0].x;
-	double dt05 = dt_h[0] * 0.5;
-	double dt05Msun = dt05 / Msun;
+	//double dt05 = dt_h[0] * 0.5;
+	//double dt05Msun = dt05 / Msun;
 
 	//Kick
 	if(UseK32CPUomp == 0){ 

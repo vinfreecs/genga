@@ -2926,7 +2926,7 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 			else if(ff == 51)	er = fscanf (infile, "%lf",&migration.z);
 		}
 		else{
-			if(f == 19)		er = fread(&time, sizeof(double), 1, infile);
+			if(ff == 19)		er = fread(&time, sizeof(double), 1, infile);
 			else if(ff == 13)	er = fread(&index, sizeof(int), 1, infile);
 			else if(ff == 4)	er = fread(&x.w, sizeof(double), 1, infile);
 			else if(ff == 8)	er = fread(&v.w, sizeof(double), 1, infile);
