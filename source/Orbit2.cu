@@ -655,9 +655,9 @@ __host__ int Data::GridaeAlloc(){
 	constantCopy();
 
 	error = cudaGetLastError();
-	fprintf(masterfile,"GrideaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
+	fprintf(masterfile,"GridaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
-		printf("GrideaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("GridaeAlloc error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 
@@ -757,9 +757,9 @@ __host__ int Data::copyGridae(){
 	}
 	cudaMemset(Gridaicount_d, 0, sizeof(int)*GridNai);
 	error = cudaGetLastError();
-	fprintf(masterfile,"Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
 	if(error != 0){
-		printf("Grideae copy error = %d = %s\n",error, cudaGetErrorString(error));
+		fprintf(masterfile,"Gridae copy error = %d = %s\n",error, cudaGetErrorString(error));
+		printf("Gridae copy error = %d = %s\n",error, cudaGetErrorString(error));
 		return 0;
 	}
 

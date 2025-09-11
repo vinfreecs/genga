@@ -125,12 +125,12 @@ int main(int argc, char*argv[]){
 	H.Tsizes();
 
 	Data D = H;
+	D.Nstart = 0;
 
 	er = D.beforeTimeStepLoop1();
 	if(er == 0) return 0;
 
 	int ittv = 0;
-	D.Nstart = 0;
 
 #if def_RV > 0
 	cudaMemset(D.NRVT_d, 0, D.Nst * sizeof(int2));
