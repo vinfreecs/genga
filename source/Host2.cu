@@ -3078,6 +3078,12 @@ __host__ int Host::icSize(int st){
 			break;
 		}
 
+		if(Nst > 1 && index >= def_MaxIndex){
+			printf("Error, index is larger than def_MaxIndex: %d %d\n", index, def_MaxIndex);
+			return 0;
+		}
+
+
 		if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))) break;
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
@@ -3487,6 +3493,7 @@ __host__ void Host::Info(){
 			fprintf(infofile, "MaxColl: %d\n", def_MaxColl);
 			fprintf(infofile, "pc: %g\n", def_pc);
 			fprintf(infofile, "cef: %g\n", def_cef);
+			fprintf(infofile, "MaxIndex: %d\n", def_MaxIndex);
 			fprintf(infofile, "Number of bodies: %d\n", N_h[st]);
 			fprintf(infofile, "Number of test particles: %d\n", Nsmall_h[st]);
 			fprintf(infofile, "Minimal number of bodies: %d\n", Nmin[st].x);
