@@ -3064,6 +3064,9 @@ __host__ int Host::icSize(int st){
 				if(GSF[st].informat[f] == 4){
 					er = fscanf (infile, "%lf",&x.w);
 				}
+				else if(GSF[0].informat[f] == 13){
+					er = fscanf(infile, "%d", &index);
+				}
 				else if(GSF[0].informat[f] > 0){
 					er = fscanf(infile, "%s", t);
 				}
