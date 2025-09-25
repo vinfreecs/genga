@@ -3082,8 +3082,10 @@ __host__ int Host::icSize(int st){
 		}
 
 		if(Nst > 1 && index >= def_MaxIndex){
-			printf("Error, index is larger than def_MaxIndex: %d %d\n", index, def_MaxIndex);
-			return 0;
+			if(P.tRestart == 0){
+				printf("Error, index is larger than def_MaxIndex: %d %d\n", index, def_MaxIndex);
+				return 0;
+			}
 		}
 
 

@@ -31,6 +31,9 @@ When the CPU version of GENGA is used (See :ref:`gengaCPU`) then GENGA can be st
 A relevant option for multicore CPU runs is :literal:`-Nomp`, where the number of CPU cores can be set. 
 
 
+Note that the CPU version of GENGA does not support the Multisimulation mode. In this case every sub-simulation should
+just be run as an independent full simulation.
+
 .. _Restart:
 
 Restarting GENGA to continue simulations

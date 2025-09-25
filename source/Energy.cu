@@ -647,7 +647,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 
 	double T = 0.0;
 	double V = 0.0;
-	double E = 0.0;
 	double3 p, s, L;
 
 	p.x = 0.0;
@@ -665,10 +664,9 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 	extern __shared__ double TE_s[];
 	double *T_s = TE_s;				//size: warpSize
 	double *V_s = (double*)&T_s[warpSize];		//size: warpSize
-	double *E_s = (double*)&V_s[warpSize];		//size: warpSize
-	double3 *p_s = (double3*)&E_s[warpSize];	//size: warpSize
-	double3 *s_s = (double3*)&p_s[warpSize];	//size: warpSize
-	double3 *L_s = (double3*)&s_s[warpSize];	//size: warpSize
+	double3 *p_s = (double3*)&V_s[warpSize];	//size: 3 * warpSize
+	double3 *s_s = (double3*)&p_s[warpSize];	//size: 3 * warpSize
+	double3 *L_s = (double3*)&s_s[warpSize];	//size: 3 * warpSize
 
 	for(int i = 0; i < N; i += blockDim.x){
 		if(idy + i < N){
@@ -781,21 +779,18 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 //printf("L %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", idy, L.x, L.y, L.z, spin_d[i].x, spin_d[i].y, spin_d[i].z);
 		}
 	}
-	E = V + T;
 	__syncthreads();
 
 	for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
 		T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
 		V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
-		E += __shfl_xor_sync(0xffffffff, E, i, warpSize);
 		L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
 		L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
 		L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
 #else
 		T += __shfld_xor(T, i);
 		V += __shfld_xor(V, i);
-		E += __shfld_xor(E, i);
 		L.x += __shfld_xor(L.x, i);
 		L.y += __shfld_xor(L.y, i);
 		L.z += __shfld_xor(L.z, i);
@@ -810,7 +805,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 		if(warp == 0){
 			T_s[threadIdx.x] = 0.0;
 			V_s[threadIdx.x] = 0.0;
-			E_s[threadIdx.x] = 0.0;
 			L_s[threadIdx.x].x = 0.0;
 			L_s[threadIdx.x].y = 0.0;
 			L_s[threadIdx.x].z = 0.0;
@@ -820,7 +814,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 		if(lane == 0){
 			T_s[warp] = T;
 			V_s[warp] = V;
-			E_s[warp] = E;
 			L_s[warp] = L;
 		}
 
@@ -829,21 +822,18 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 		if(warp == 0){
 			T = T_s[threadIdx.x];
 			V = V_s[threadIdx.x];
-			E = E_s[threadIdx.x];
 			L = L_s[threadIdx.x];
 //printf("VEc %d %d %.20g %d %d\n", 0, idy, V, int(blockDim.x), warpSize);
 			for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
 				T += __shfl_xor_sync(0xffffffff, T, i, warpSize);
 				V += __shfl_xor_sync(0xffffffff, V, i, warpSize);
-				E += __shfl_xor_sync(0xffffffff, E, i, warpSize);
 				L.x += __shfl_xor_sync(0xffffffff, L.x, i, warpSize);
 				L.y += __shfl_xor_sync(0xffffffff, L.y, i, warpSize);
 				L.z += __shfl_xor_sync(0xffffffff, L.z, i, warpSize);
 #else
 				T += __shfld_xor(T, i);
 				V += __shfld_xor(V, i);
-				E += __shfld_xor(E, i);
 				L.x += __shfld_xor(L.x, i);
 				L.y += __shfld_xor(L.y, i);
 				L.z += __shfld_xor(L.z, i);
@@ -853,7 +843,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 			if(lane == 0){
 				T_s[0] = T;
 				V_s[0] = V;
-				E_s[0] = E;
 				L_s[0] = L;
 			}
 		}
@@ -861,7 +850,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 
 		T = T_s[0];
 		V = V_s[0];
-		E = E_s[0];
 		L = L_s[0];
 //printf("VEe %d %.20g\n", idy, V);
 	}
@@ -888,7 +876,6 @@ __global__ void kineticEnergy_kernel(double4 *x4_d, double4 *v4_d, double4 *spin
 
 		V *= def_Kg;
 		T *= def_Kg;
-		E *= def_Kg;
 		Tsun *= def_Kg;
 		Energy_d[0] = V;
 		Energy_d[1] = T + Tsun;
@@ -925,7 +912,7 @@ __host__ void Data::EnergyCall(int st, int E){
 	int NN = N_h[st] + Nsmall_h[st];
 
 	potentialEnergy_kernel  <<< NN, min(NB[st], 512), WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS , v4_d + NBS, Msun_h[st].x, EnergySum_d + NBS, st, NN);
-	kineticEnergy_kernel <<< 1, min(NBT[st], 512), 12 * WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS, v4_d + NBS, spin_d + NBS, EnergySum_d + NBS, Energy_d + NE, Msun_h[st].x, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, NN, E);
+	kineticEnergy_kernel <<< 1, min(NBT[st], 512), 11 * WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS, v4_d + NBS, spin_d + NBS, EnergySum_d + NBS, Energy_d + NE, Msun_h[st].x, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, NN, E);
 }
 // *************************************
 //This function calls the EjectionEnergy kernels

@@ -240,7 +240,6 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 
 	 double T = 0.0;
 	 double V = 0.0;
-	 double E = 0.0;
 	 double3 p = {0.0, 0.0, 0.0};
 	 double3 s = {0.0, 0.0, 0.0};
 	 double3 L = {0.0, 0.0, 0.0};
@@ -276,7 +275,6 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 		L.z += x4.w * (x4h.x * v4.y - x4h.y * v4.x) + spin_h[i].z;
 //printf("L %d %.20g %.20g %.20g | %.20g %.20g %.20g\n", i, L.x, L.y, L.z, spin_h[i].x, spin_h[i].y, spin_h[i].z);
 	}
-	E = V + T;
 
 	double Tsun = 0.5 / Msun * (p.x*p.x + p.y*p.y + p.z*p.z);  
 	//Lsun
@@ -298,7 +296,6 @@ void kineticEnergy_cpu(double4 *x4_h, double4 *v4_h, double4 *spin_h, double *En
 
 	V *= def_Kg;
 	T *= def_Kg;
-	E *= def_Kg;
 	Tsun *= def_Kg;
 	Energy_h[0] = V;
 	Energy_h[1] = T + Tsun;

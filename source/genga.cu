@@ -58,14 +58,29 @@ int main(int argc, char*argv[]){
 		return 0;
 	}
 
+	//determine the number of simulations
+	int Nst = H.NSimulations(argc, argv);
+	if(Nst == 0) return 0;
 
 	if(RRestart == 0){
 #if def_CPU == 0
 		printf("Start GENGA\n");
 		fprintf(H.masterfile,"Start GENGA\n");
+
+		if(Nst > 1){
+			printf("Use Multi Simulation Mode\n");
+			fprintf(H.masterfile,"Use Multi Simulation Mode\n");
+		}
 #else
-		printf("Start GENGA CPU");
+		printf("Start GENGA CPU\n");
 		fprintf(H.masterfile,"Start GENGA CPU\n");
+
+		if(Nst > 1){
+			printf("Error, Multi Simulation Mode not supported in CPU Version\n");
+			fprintf(H.masterfile,"Error, Multi Simulation Mode not supported in CPU Version\n");
+			return 0;
+		}
+
 #endif
 	}
 	if(RRestart == 1){
@@ -74,9 +89,6 @@ int main(int argc, char*argv[]){
 		fprintf(H.masterfile,"Restart GENGA\n");
 	}
 
-	//determine the number of simulations
-	int Nst = H.NSimulations(argc, argv);
-	if(Nst == 0) return 0;
 
 
 	//Allocate memory for parameters on the host:

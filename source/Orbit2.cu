@@ -260,9 +260,7 @@ __host__ int Data::AllocateOrbit(){
 
 	vcom_h = (double3*)malloc(Nst * sizeof(double3));
 	EnergySum_h = (double*)malloc(NconstT * sizeof(double));
-	Encpairs_h = (int2*)malloc(NBNencT * sizeof(int2));
-	Encpairs2_h = (int2*)malloc(NBNencT * sizeof(int2));
-	Encpairs3_h = (int*)malloc(NBNencT * P.SLevels * sizeof(int));
+
 	scan_h = (int2*)malloc(NconstT * sizeof(int2));
 
 	if(Nst > 1){
@@ -271,6 +269,18 @@ __host__ int Data::AllocateOrbit(){
 	else{
 		groupIndex_h = NULL;
 	}
+
+	Encpairs_h = (int2*)malloc(NBNencT * sizeof(int2));
+	Encpairs2_h = (int2*)malloc(NBNencT * sizeof(int2));
+	Encpairs3_h = (int*)malloc(NBNencT * P.SLevels * sizeof(int));
+
+	//Check if malloc was successful
+	if(Encpairs3_h == NULL){
+		fprintf(masterfile,"malloc error\n");
+		printf("malloc error\n");
+		return 0;
+	}
+
 
 	xt_h = (double4*)malloc(NconstT * sizeof(double4));
 	vt_h = (double4*)malloc(NconstT * sizeof(double4));
@@ -284,6 +294,14 @@ __host__ int Data::AllocateOrbit(){
 	Coltime_h = (double*)malloc(sizeof(double));
 	BSstop_h = (int*)malloc(sizeof(int));
 	BSAstop_h = (int*)malloc(sizeof(int));
+
+
+	//Check if malloc was successful
+	if(BSAstop_h == NULL){
+		fprintf(masterfile,"malloc error\n");
+		printf("malloc error\n");
+		return 0;
+	}
 
   #if USE_RANDOM == 1
 	generator.seed(time(NULL));
