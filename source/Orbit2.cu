@@ -1721,7 +1721,13 @@ __host__ int Data::readic(int st){
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
 				aecount = (unsigned int)(aecountf * P.ci);
-				unsigned long long tt = P.tRestart - P.tRestart % P.ci;
+				unsigned long long tt;
+				if(P.ci != 0){
+					tt = P.tRestart - P.tRestart % P.ci;
+				}
+				else{
+					tt = 1.0;
+				}
 				aecountT = (unsigned long long)(aecountTf * tt);
 
 				//avoid max for long long int

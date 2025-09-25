@@ -2888,6 +2888,7 @@ __host__ int Host::readOutLine(double &time, int &index, double4 &x, double4 &v,
 	int er = 0;
 	for(int f = 0; f < def_Ninformat; ++f){
 		int ff = GSF[st].outformat[f];
+
 		if(P.OutBinary == 0){
 			if(ff == 19){
 				er = fscanf (infile, "%lf",&time);
@@ -3227,7 +3228,6 @@ __host__ int Host::icSize(int st){
 	}
 	
 	
-	
 	if(P.UseTestParticles == 0){
 		NN += Nsmall_h[st];
 		Nsmall_h[st] = 0;
@@ -3249,6 +3249,11 @@ __host__ int Host::icSize(int st){
 	if(Nst > 1 && NN > 128){
 		fprintf(masterfile,"Error in Simulation %s: More particles than 128: %d\n", GSF[st].path, NN);
 		printf("Error in Simulation %s: More particles than 128: %d\n", GSF[st].path, NN);
+		return 0;
+	}
+	if(Nst > 1 && NN > def_MaxIndex){
+		fprintf(masterfile,"Error in Simulation %s: More particles than def_MaxIndex: %d %d\n", GSF[st].path, NN, def_MaxIndex);
+		printf("Error in Simulation %s: More particles than def_MaxIndex: %d %d\n", GSF[st].path, NN, def_MaxIndex);
 		return 0;
 	}
 	if(N_h[st] + Nsmall_h[st] == 0){
