@@ -84,9 +84,9 @@ int main(int argc, char*argv[]){
 #endif
 	}
 	if(RRestart == 1){
-		printf("Restart GENGA\n");
+		printf("Restart GENGA at timestep %lld\n", Restart);
 		fprintf(H.masterfile,"\n \n **************************************** \n \n");
-		fprintf(H.masterfile,"Restart GENGA\n");
+		fprintf(H.masterfile,"Restart GENGA at timestep %lld\n", Restart);
 	}
 
 
@@ -126,6 +126,7 @@ int main(int argc, char*argv[]){
 	}
 	printf("Size OK\n");
 
+
 	cudaSetDevice(H.P.dev[0]);
 	cudaDeviceSynchronize();
 
@@ -138,6 +139,10 @@ int main(int argc, char*argv[]){
 
 	Data D = H;
 	D.Nstart = 0;
+
+	if(RRestart == 1){
+		D.timeStep = Restart;
+	}
 
 	er = D.beforeTimeStepLoop1();
 	if(er == 0) return 0;

@@ -1177,7 +1177,7 @@ __host__ int Data::readic(int st){
 		else{
 			infile = NULL;
 		}
-//		printf("Read file %s %d %d\n", GSF[st].inputfilename, N, Nsmall);
+//		printf("Read file %d %s %d %d %lld\n", st, GSF[st].inputfilename, N, Nsmall, Restartline);
 	}
 	else{
 		if(st == 0){
@@ -1689,35 +1689,52 @@ __host__ int Data::readic(int st){
 		if(P.FormatP == 1){
 
 			//skip previous time steps
-			if(P.FormatT == 0){
-				readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+			if(Nst == 1 || P.FormatS == 0){
+				if(P.FormatT == 0){
+					readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T0 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
-			}
-			if(P.FormatT == 1){
-				readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
-				while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
-					if(time == Et) break;
-					int er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+				}
+				if(P.FormatT == 1){
+					readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+					while((time < Et && idt_h[st] > 0) || (time > Et && idt_h[st] < 0)){
+						if(time == Et) break;
+						int er = readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("T1 %d %d %g %g | %d %g %g\n", st, 0, time, Et, index, x.w, x.x);
-					if(er <= 0){
-						break;
+						if(er <= 0){
+							break;
+						}
 					}
 				}
 			}
-
-
-			//skip previous simulation data
-			if(P.FormatS == 1){
-				for(int i = 0; i < NBS; ++i){
-					readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+			else{
+				if(P.FormatT == 1){
+					for(int i = 0; i <= Restartline; ++i){
+						readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 //printf("S %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
+
+					}
+					for(int i = 0; i < NBS; ++i){
+						readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+//printf("S1 %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
+
+					}
 				}
+				else{
+					for(int i = 0; i < NBS; ++i){
+						readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
+//printf("S2 %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
+
+					}
+
+
+				}
+				readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
 			}
 
 			int iismall = 0;
 			for(int i = 0; i < N + Nsmall; ++i){
 				if(i > 0) readOutLine(time, index, x, v, spin, love, migration, aelimits, aecountf, aecountTf, enccountT, rcrit, test, infile, st);
-//printf("r %d %d %g %g | %d %g %g\n", st, i, time, Et, index, x.w, x.x);
+//printf("r %d %d %g %g | %d %g %g\n", st, ii + NBS, time, Et, index, x.w, x.x);
 
 				if(P.FormatS == 0) index += def_MaxIndex * st;
 				aecount = (unsigned int)(aecountf * P.ci);
@@ -2810,7 +2827,7 @@ __host__ void Data::stopSimulations(){
 
 	for(int st = 0; st < Nst; ++st){
 
-//printf("stop simulations  %d %d %d %d Nst %d Ntot %d\n", st, N_h[st], Nmin[st].x, Nmin[st].y, Nst, NT);
+//printf("stop simulations  st: %d %d %d %d Nst %d Ntot %d timeStep: %lld, delta: %lld\n", st, N_h[st], Nmin[st].x, Nmin[st].y, Nst, NT, timeStep, delta_h[st]);
 		int s = 0;
 		if(timeStep >= delta_h[st]){
 			printf("In Simulation %s: Reached the end, simulation stopped\n", GSF[st].path);

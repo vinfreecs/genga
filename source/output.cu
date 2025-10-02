@@ -393,7 +393,6 @@ __host__ void Data::printOutput(double4 *x4_h, double4 *v4_h, double4 *v4Helio_h
 
 		aecountT_h[j] += aecount_h[j];
 		enccountT_h[j] += enccount_h[j];
-
 		if(x4_h[j].w >= 0.0){
 			if(P.OutBinary == 0){
 				//fprintf(outputfile,"%.16g %d %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.40g %.8g %.8g %.8g %.8g %.8g %.8g %lld %.40g \n", time, index, x4_h[j].w, v4Helio_h[j].w, x4_h[j].x, x4_h[j].y, x4_h[j].z, v4Helio_h[j].x, v4Helio_h[j].y, v4Helio_h[j].z, spin_h[j].x, spin_h[j].y, spin_h[j].z, aelimits_h[j].x, aelimits_h[j].y, aelimits_h[j].z, aelimits_h[j].w, (double)(aecount_h[j])/ci, (double)(aecountT_h[j])/timeStep, enccountT_h[j], test_h[j]);
@@ -746,7 +745,7 @@ __host__ int Data::EnergyOutput(int irregular){
 			}			
 		}
 //printf("Print Energy2 | irregular: %d st: %d n1: %g\n", irregular, st, n1_h[st]);
-
+//printf("Energyfilename %d %s\n", st, GSF[st].Energyfilename);
 		if(irregular == 0 || irregular == 3){
 			Energyfile = fopen(GSF[st].Energyfilename, "a");
 		}
@@ -1017,6 +1016,8 @@ __host__ void Data::CoordinateOutput(int irregular){
 				}
 			}
 		}
+//printf("Outputfile %d %s\n", st, GSF[st].path);
+
 		//if(irregular < 3 || timeStep == delta_h[st] || irregular == 4){
 			printOutput(x4_h + NBS, v4_h + NBS, v4Helio_h + NBS, index_h + NBS, test_h + NBS, time_h[st]/365.25, timeStep, N_h[st], GSF[st].outputfile, Msun_h[st].x, spin_h + NBS, love_h + NBS, migration_h + NBS, rcrit_h + NBS, Nsmall_h[st], Nst, aelimits_h + NBS, aecount_h + NBS, enccount_h + NBS, aecountT_h + NBS, enccountT_h + NBS, P.ci, irregular);
 

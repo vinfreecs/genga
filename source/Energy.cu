@@ -911,7 +911,9 @@ __host__ void Data::EnergyCall(int st, int E){
 	int NE = NEnergy[st];
 	int NN = N_h[st] + Nsmall_h[st];
 
-	potentialEnergy_kernel  <<< NN, min(NB[st], 512), WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS , v4_d + NBS, Msun_h[st].x, EnergySum_d + NBS, st, NN);
+	if(NN > 0){
+		potentialEnergy_kernel  <<< NN, min(NB[st], 512), WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS , v4_d + NBS, Msun_h[st].x, EnergySum_d + NBS, st, NN);
+	}
 	kineticEnergy_kernel <<< 1, min(NBT[st], 512), 11 * WarpSize * sizeof(double), hstream[st%16] >>> (x4_d + NBS, v4_d + NBS, spin_d + NBS, EnergySum_d + NBS, Energy_d + NE, Msun_h[st].x, Spinsun_d, U_d, LI_d, Energy0_d, LI0_d, st, NN, E);
 }
 // *************************************

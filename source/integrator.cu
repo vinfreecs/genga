@@ -303,7 +303,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 	//remove ghost particles and reorder arrays//
 	int NminFlag = remove();
 	//remove stopped simulations//
-	if(NminFlag > 0){
+	if(NminFlag > 0 || P.tRestart > 0){
 		stopSimulations();
 		NminFlag = 0;
 		if(Nst == 0)  return 0;

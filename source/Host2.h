@@ -30,6 +30,7 @@ public:
 
 	int MultiSim;
 	int interrupt;				//signal handling
+	long long Restartline;
 
 	int *NB;				//number of bodies increased to integer block size
 	int *NBT;				//number of bodies + number of test particles, increased to integer block size
@@ -157,7 +158,7 @@ public:
 
 private:
 	__host__ int readparam(FILE *, int , int , char*argv[]);
-	__host__ int icSize(int);
+	__host__ int icSize(int, int &, long long &);
 	__host__ int icict(int);
 };
 #endif

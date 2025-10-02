@@ -3001,9 +3001,63 @@ __host__ int Host::icict(int st){
 //Authors: Simon Grimm
 //July 2022
 // *********************************************
-__host__ int Host::icSize(int st){
+__host__ int Host::icSize(int st, int &stcount, long long  &startline){
 
-//printf("Determine the size of the file %s\n", GSF[st].inputfilename);
+//printf("Determine the size of the file %s %s %d %d\n", GSF[st].path, GSF[st].inputfilename, st, stcount);
+
+	FILE *infile;
+
+	if(P.OutBinary > 0 && P.tRestart > 0){
+		infile = fopen(GSF[st].inputfilename, "rb");
+	}
+	else{
+		infile = fopen(GSF[st].inputfilename, "r");
+	}
+
+
+
+	if(Nst > 1 && P.FormatS == 1){
+		FILE *timeFile;
+		timeFile = fopen(GSF[st].timefilename, "r");
+
+		if(timeFile == NULL){
+			fprintf(masterfile,"Error in Simulation %s: Time file not found %s\n", GSF[st].path, GSF[st].timefilename);
+			printf("Error in Simulation %s: Time file not found %s\n", GSF[st].path, GSF[st].timefilename);
+			return 0;
+		}
+		//Read the time file and check if the restart time is found. 
+		long long ts;
+		double skip;
+		int er;
+
+		for(int i = 0; i < 1e12; ++i){
+			er = fscanf (timeFile, "%lld %lf", &ts, &skip);
+
+
+			if(er <= 0){
+				break;
+			}
+//printf("%d %lld %g\n", er, ts, skip);
+
+			if(ts == P.tRestart){
+				break;
+			}
+
+
+		}
+		if(ts < P.tRestart){
+			fprintf(masterfile,"Skip Simulation %s: Input data not found %s\n", GSF[st].path, GSF[st].inputfilename);
+			printf("Skip Simulation %s: Input data not found %s\n", GSF[st].path, GSF[st].inputfilename);
+			N_h[st] = 0;
+			Nsmall_h[st] = 0;
+			return 1;
+		}
+
+
+
+		fclose(timeFile);
+
+	}
 	
 	//Determine the simulation start time
 	double time, test, rcrit;
@@ -3035,14 +3089,8 @@ __host__ int Host::icSize(int st){
 	else{
 		Et = (P.tRestart * idt_h[st] + ict_h[st] * 365.25) / 365.25;
 	}
+//printf("Et %d %d %.20g\n", st, stcount, Et);
 
-	FILE *infile;
-	if(P.OutBinary > 0 && P.tRestart > 0){
-		infile = fopen(GSF[st].inputfilename, "rb");
-	}
-	else{
-		infile = fopen(GSF[st].inputfilename, "r");
-	}
 	if(infile == NULL){
 		if(Nst == 1){
 			fprintf(masterfile,"Error in Simulation %s: Input file not found %s\n", GSF[st].path, GSF[st].inputfilename);
@@ -3057,7 +3105,8 @@ __host__ int Host::icSize(int st){
 			return 1;
 		}
 	}
-	for(int i = 0; i < 1000000000; ++i){
+	int flag = 0;
+	for(int i = 0; i < 100000000000; ++i){
 
 			
 		if(P.tRestart == 0 || P.FormatP == 0){
@@ -3081,7 +3130,6 @@ __host__ int Host::icSize(int st){
 			er1 = 0;
 			break;
 		}
-
 		if(Nst > 1 && index >= def_MaxIndex){
 			if(P.tRestart == 0){
 				printf("Error, index is larger than def_MaxIndex: %d %d\n", index, def_MaxIndex);
@@ -3089,8 +3137,16 @@ __host__ int Host::icSize(int st){
 			}
 		}
 
+		if(P.tRestart > 0 && i < startline){
+			continue;
+		}
 
-		if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))) break;
+
+		if(P.tRestart > 0 && index / def_MaxIndex == stcount){
+			if(P.FormatT == 1 && ((time > Et && idt_h[st] > 0.0) || (time < Et && idt_h[st] < 0.0))){
+				break;
+			}
+		}
 		//if reading was succesfull, check if particles belong to the desired time 
 		if(er1 == 1){
 			if(P.FormatP == 1){ // All particles in one time file
@@ -3100,10 +3156,18 @@ __host__ int Host::icSize(int st){
 						else ++Nsmall_h[st];
 					}
 				}
-				else if(index / def_MaxIndex == st){
-					if(Et == time){
-						if(x.w > P.MinMass) ++NN;
-						else ++Nsmall_h[st];
+				else{
+
+					 if(index / def_MaxIndex == stcount){
+						if(Et == time){
+							flag = 1;
+							if(x.w > P.MinMass) ++NN;
+							else ++Nsmall_h[st];
+							startline = i;
+						}
+					}
+					if(flag == 1 && index / def_MaxIndex != stcount){
+						break;
 					}
 				}
 			}
@@ -3117,8 +3181,10 @@ __host__ int Host::icSize(int st){
 		}
 		else break;
 	}
+
 	fclose(infile);
-//	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d %s\n", st, time, NN, Nsmall_h[st], GSF[st].inputfilename);
+
+//	printf("icSize A: st: %d, time: %.20g, N: %d, Nsmall: %d %s %s\n", st, time, NN, Nsmall_h[st], GSF[st].path, GSF[st].inputfilename);
 	
 	if(P.FormatP == 0 && P.tRestart > 0){//Restart FormatP == 0 data
 		int NNN = 0;
@@ -3257,10 +3323,21 @@ __host__ int Host::icSize(int st){
 		return 0;
 	}
 	if(N_h[st] + Nsmall_h[st] == 0){
-		fprintf(masterfile,"Error in Simulation %s: No particles found\n", GSF[st].path);
-		printf("Error in Simulation %s: No particles found\n", GSF[st].path);
-		return 0;
+		if(Nst == 1){
+			fprintf(masterfile,"Error in Simulation %s: No particles found\n", GSF[st].path);
+			printf("Error in Simulation %s: No particles found\n", GSF[st].path);
+			return 0;
+		}
+		else{
+			fprintf(masterfile,"Skip Simulation %s: Input data not found %s\n", GSF[st].path, GSF[st].inputfilename);
+			printf("Skip Simulation %s: Input data not found %s\n", GSF[st].path, GSF[st].inputfilename);
+			N_h[st] = 0;
+			Nsmall_h[st] = 0;
+			return 1;
+		}
 	}
+
+	++stcount;
 
 //	printf("icSize B: st: %d, N: %d, Nsmall: %d\n", st, N_h[st], Nsmall_h[st]);	
 	return 1;
@@ -3273,10 +3350,17 @@ __host__ int Host::icSize(int st){
 // ***********************************************3
 __host__ int Host::size(){
 	NBmax = 0;
+	int stcount = 0;
+	long long startline = 0;
+	Restartline = 0;
 	for(int st = 0; st < Nst; ++st){
 		//Determine the size of the simulations
-		int er = icSize(st);
-		
+		int er = icSize(st, stcount, startline);
+		if(Restartline == 0){
+			Restartline = startline - N_h[st] - Nsmall_h[st];
+		}		
+
+
 		if(er == 0) return 0;
 		
 		NB[st] = 16;
