@@ -289,6 +289,14 @@ with
 - LRelativ: (LTotal_t - LTotal_0)/LTotal_0, dimensionless
 - ERelativ: (ETotal_t - ETotal_0)/ETotal_0, dimensionless
 
+
+The tool :literal:`cleanEnergy.py` in the :literal:`tools` directory can be used to clean the Energy files from
+restarting data.
+
+See :ref:`cleanEnergy`.
+
+
+
 .. _IrrEnergyFile:
 
 The Irregular Energy Output File: EnergyIrr<name>.dat

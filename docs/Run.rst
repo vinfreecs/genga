@@ -373,6 +373,24 @@ param.dat file.
 
 The tool will create a new file :literal:`timeClean<name>.dat` with the cleaned times. 
 
+
+.. _cleanEnergy:
+
+Cleaning the Energy files
+-------------------------
+
+Similarly to the time files, the Energy files contain additional lines when a run was interrupted. 
+With the tool :literal:`cleanEnergy.py` in the :literal:`tools` directory, the Energy files can be cleaned. 
+
+The tool can be used with::
+
+    python3 cleanEnergy.py -n <name> -ei <I> -dt <timestep>
+
+where <name> is the name in the simulation files, <I> is the energy output interval, and
+<timestep> is the time step  used in the param.dat file. 
+
+The tool will create a new file :literal:`EnergyClean<name>.dat` with the cleaned Energies. 
+
 .. _IrregularOutput:
 
 Irregular output times

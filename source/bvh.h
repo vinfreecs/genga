@@ -34,7 +34,7 @@ __global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *inde
 			if(idx >= idy){
 				overlap = false;
 			}
-			//ingnore encounters within the same particle cloud
+			//ignore encounters within the same particle cloud
 			if(index_d[idx] / WriteEncountersCloudSize_c[0] == index_d[idy] / WriteEncountersCloudSize_c[0]){
 				overlap = false;
 			}
@@ -61,7 +61,7 @@ __global__ void collisioncheck_kernel(double4 *x4_d, double *rcritv_d, int *inde
 
 // *****************************************************
 // This function prints the binary representation of a variable
-// Usefull for testing
+// Useful for testing
 // *****************************************************
 __device__ void CheckBinary(unsigned int n){
 
@@ -113,7 +113,7 @@ __device__ unsigned int morton3D(double4 x4i){
 
 
 // *******************************************************
-// This funtion reads the last 4 bits of the array morton_d and sorts them with a counting sort routine
+// This function reads the last 4 bits of the array morton_d and sorts them with a counting sort routine
 // Each threads has to perform a prefix scan on 16 buckets
 // This kernel could still be parallelized further
 // 256 * 16 is the maximum to be stored in shared memory
@@ -500,7 +500,7 @@ __device__ int highestBit(unsigned int *morton_d, int i){
 }
 
 // ***********************************************************
-// This kernel build a BVH tree
+// This kernel builds a BVH tree
 // It uses a bottom up approach as described in Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
 //
 // (Apetri 2014: Optional kernel to store delta(i,j) beforehand)
@@ -587,9 +587,9 @@ __global__ void buildBVH_kernel(unsigned int *morton_d, Node *leafNodes_d, Node 
 					node = parent;
 					//make sure that global memory updates is visible to other threads
 					__threadfence();
-					}
-					else{
-						p = -1;
+				}
+				else{
+					p = -1;
 					break;
 				}
 			}
@@ -618,7 +618,7 @@ __device__ bool checkOverlap(Node *nodeA, Node *nodeB){
 
 // ***********************************************************
 // This kernel walks down the BVH tree and compares the nodes to a leaf node
-// Ever leaf node is processed in parallel
+// Every leaf node is processed in parallel
 // The kernel uses a local stack to store the traversal path
 // See https://developer.nvidia.com/blog/thinking-parallel-part-ii-tree-traversal-gpu/
 // ***********************************************************
@@ -705,14 +705,14 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 			}
 			else{
 				node = (traverseL) ? childL : childR;
-			if(traverseL && traverseR){
-				*stackPtr++ = childR;
-			}
+				if(traverseL && traverseR){
+					*stackPtr++ = childR;
+				}
 
 			}
 			if(node == nullptr){
 //printf("%d id %d %d reached the end\n", i, id, leaf->nodeID);
-			break;
+				break;
 			}
 			__threadfence();
 		}

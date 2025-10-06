@@ -2,22 +2,18 @@
 # output time intervals. For example when a wall time of 24 hours was used.
 
 # run with:
-# python3 cleanTime.py -n FP32High -ci 730500
+# python3 cleanTime.py -n test -ci 100
 # -n is the name of the simulation output
 # -ci is the coordinate output interval of the simulation
 
 # Date: Jan 2023
-#Author: Simon Grimm
+# Author: Simon Grimm
 
 import numpy as np
 import math
 import argparse
 
 
-
-#name = 'FP32High'
-
-#T = 730500
 
 
 def main(name, T):
