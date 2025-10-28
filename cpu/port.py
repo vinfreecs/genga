@@ -454,6 +454,8 @@ for line in Lines:
 		line = line.replace('Scan.h', 'ScanCPU.h')
 	if(line.find('createparticles.h') != -1):
 		line = line.replace('createparticles.h', 'createparticlesCPU.h')
+	if(line.find('collisions.h') != -1):
+		line = line.replace('collisions.h', 'collisionsCPU.h')
 	if(line.find('bvh.h') != -1):
 		line = line.replace('bvh.h', 'bvhCPU.h')
 
@@ -662,6 +664,11 @@ for line in Lines:
 		line = line.replace('>>>', '*/')
 
 	if(line.find('compare_a_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+
+	if(line.find('BSB_sett_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
 		line = line.replace('<<<', '/*')
 		line = line.replace('>>>', '*/')
@@ -1788,6 +1795,89 @@ for line in Lines:
 			omp_if = ''
 
 	if(line.find('cudaDeviceSynchronize') != -1):
+		continue 
+
+	#random
+	if(line.find('curandState *random_d') != -1):
+		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+
+	if(line.find('random_d[id]') != -1):
+		line = ''
+
+	if(line.find('curand_uniform(&random)') != -1):
+		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+
+	if(line.find('create1_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+		line = line.replace('random_d', 'generator')
+
+	if(line.find('create2_kernel') != -1):
+		line = line.replace('_kernel', '_cpu')
+		line = line.replace('<<<', '/*')
+		line = line.replace('>>>', '*/')
+		line = line.replace('random_d', 'generator')
+
+	line = DtoH(line)
+	line = memorycopy(line)
+
+	print(line, file=file2, end='')
+
+file1.close()
+file2.close()
+
+
+################################################
+# collisions.h
+################################################
+
+filename = '../source/collisions.h'
+filename2 = 'collisionsCPU.h'
+
+
+file1 = open(filename, 'r')
+file2 = open(filename2, 'w')
+
+Lines = file1.readlines()
+
+for line in Lines:
+
+
+	if(line.find('__host__') != -1):
+		line = line.replace('__host__ ', '')
+	
+	if(line.find('__shared__') != -1):
+		line = line.replace('__shared__ ', '')
+
+	if(line.find('collision_model1_kernel') != -1):
+		loop_id = 'id'
+		loop_N = 'nf'
+		loop_id2 = 'jj'
+		loop_N2 = 'Nc'
+		addLoop = 1
+
+	if(line.find('encounter_fragments_kernel') != -1):
+		loop_id = 'jj'
+		loop_N = 'N'
+		addLoop = 1
+
+	if(addLoop == 1):
+		line, i_id, i_id2 = kernelToLoop(line, i_id, loop_id, loop_N, omp, i_id2, loop_id2, loop_N2, omp_if)
+		if(line.startswith('}',0,1)):
+			addLoop = 0
+			loop_id = ''
+			loop_id2 = ''
+			loop_N = ''
+			loop_N2 = ''
+			i_id = ''
+			i_id22 = ''
+			omp = 0
+			omp_if = ''
+
+	if(line.find('cudaDeviceSynchronize') != -1):
+		continue 
+	if(line.find('__syncthreads') != -1):
 		continue 
 
 	#random

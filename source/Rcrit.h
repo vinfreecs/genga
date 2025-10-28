@@ -464,7 +464,7 @@ __host__ void Data::firstStep(int noColl){
 			firstKick_small(noColl);
 		}
 		else{
-			if(NB[0] <= WarpSize){
+			if(NB[0] <= WarpSize && P.CollisionModel == 0){
 				firstKick_16(noColl);
 			}
 			else{
@@ -512,7 +512,7 @@ __host__ int Data::step(int noColl){
 		}
 		//check the number of massive particles
 		else{
-			if(NB[0] <= WarpSize){
+			if(NB[0] <= WarpSize && P.CollisionModel == 0){
 				er =  step_16(noColl);
 			}
 			else{

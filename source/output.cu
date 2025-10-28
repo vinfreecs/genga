@@ -1438,28 +1438,32 @@ __host__ int Data::printCollisions(){
 	for(int nc = 0; nc < Ncoll_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Coll_h[nc * def_NColl + 1]) / def_MaxIndex;
+		else st = (int)(Coll_h[nc * def_NColl + 2]) / def_MaxIndex;
 		collisionfile = fopen(GSF[st].collisionfilename, "a");
 
 		logfile = fopen(GSF[st].logfilename, "a");
 
 		for(int in = 0; in < def_NColl; ++in){
-			if(in == 1 || in == 13){
+			if(in == 2 || in == 15){
 				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * def_NColl + in]));
 				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * def_NColl + in])) % def_MaxIndex);
+			}
+			else if(in == 1 || in == 14){
+				//skip memory indexes
+				continue;
 			}
 			else fprintf(collisionfile, "%.20g ", Coll_h[nc * def_NColl + in]);
 		}
 		if(Nst == 1){
-			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]), timeStep);
-			printf("Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]), (int)(Coll_h[nc * def_NColl + 13]), timeStep);
+			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 2]), (int)(Coll_h[nc * def_NColl + 15]), timeStep);
+			printf("Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 2]), (int)(Coll_h[nc * def_NColl + 15]), timeStep);
 		}
 		else{
-			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex, timeStep);
-			printf("In Simulation %s: Collision between body %d and %d at time step %lld\n", GSF[st].path, (int)(Coll_h[nc * def_NColl + 1]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 13]) % def_MaxIndex, timeStep);
+			fprintf(logfile, "Collision between body %d and %d at time step %lld\n", (int)(Coll_h[nc * def_NColl + 2]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 15]) % def_MaxIndex, timeStep);
+			printf("In Simulation %s: Collision between body %d and %d at time step %lld\n", GSF[st].path, (int)(Coll_h[nc * def_NColl + 2]) % def_MaxIndex , (int)(Coll_h[nc * def_NColl + 15]) % def_MaxIndex, timeStep);
 		}
 	
-		if(Coll_h[nc * def_NColl + 2] >= P.StopMinMass && Coll_h[nc * def_NColl + 14] >= P.StopMinMass){
+		if(Coll_h[nc * def_NColl + 3] >= P.StopMinMass && Coll_h[nc * def_NColl + 16] >= P.StopMinMass){
 			stopAtCollision = 1;
 		}
 
@@ -1477,13 +1481,17 @@ __host__ void Data::printCollisionsTshift(){
 	for(int nc = Ncoll_m[0] / 2; nc < Ncoll_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Coll_h[nc * def_NColl + 1]) / def_MaxIndex;
+		else st = (int)(Coll_h[nc * def_NColl + 2]) / def_MaxIndex;
 		collisionfile = fopen(GSF[st].collisionTshiftfilename, "a");
 
 		for(int in = 0; in < def_NColl; ++in){
-			if(in == 1 || in == 13){
+			if(in == 2 || in == 15){
 				if(Nst == 1) fprintf(collisionfile, "%d ", (int)(Coll_h[nc * def_NColl + in]));
 				else fprintf(collisionfile, "%d ", ((int)(Coll_h[nc * def_NColl + in])) % def_MaxIndex);
+			}
+			else if(in == 1 || in == 14){
+				//skip memory index
+				continue;
 			}
 			else fprintf(collisionfile, "%.20g ", Coll_h[nc * def_NColl + in]);
 		}
@@ -1511,13 +1519,17 @@ __host__ int Data::printEncounters(){
 	for(int nc = 0; nc < NWriteEnc_m[0]; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(writeEnc_h[nc * def_NColl + 1]) / def_MaxIndex;
+		else st = (int)(writeEnc_h[nc * def_NColl + 2]) / def_MaxIndex;
 		encounterfile = fopen(GSF[st].encounterfilename, "a");
 
 		for(int in = 0; in < def_NColl; ++in){
-			if(in == 1 || in == 13){
+			if(in == 2 || in == 15){
 				if(Nst == 1) fprintf(encounterfile, "%d ", (int)(writeEnc_h[nc * def_NColl + in]));
 				else fprintf(encounterfile, "%d ", ((int)(writeEnc_h[nc * def_NColl + in])) % def_MaxIndex);
+			}
+			else if(in == 1 || in == 14){
+				//skip memory idex
+				continue;
 			}
 			else fprintf(encounterfile, "%.20g ", writeEnc_h[nc * def_NColl + in]);
 		}
@@ -1554,25 +1566,25 @@ __host__ int Data::printFragments(int nf){
 		return 0;
 	}
  
-	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * P.Nfragments, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * def_NColl * P.Nfragments, cudaMemcpyDeviceToHost);
 
 	FILE *fragmentfile;
 	for(int nc = 0; nc < nf + 1; ++nc){
 		int st;
 		if(Nst == 1) st = 0;
-		else st = (int)(Fragments_h[nc * 25 + 1]) / def_MaxIndex;
+		else st = (int)(Fragments_h[nc * def_NColl + 1]) / def_MaxIndex;
 		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
 
 		for(int in = 0; in < 13; ++in){
 			if(in == 1 || in == 13){
-				if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[nc * 25 + in]));
-				else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[nc * 25 + in])) % def_MaxIndex);
+				if(Nst == 1) fprintf(fragmentfile, "%d ", (int)(Fragments_h[nc * def_NColl + in]));
+				else fprintf(fragmentfile, "%d ", ((int)(Fragments_h[nc * def_NColl + in])) % def_MaxIndex);
 			}
-			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * 25 + in]);
+			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * def_NColl + in]);
 		}
 		if(nc == 0) fprintf(fragmentfile, " -1\n");	//particle is destroyed
 		else{
-			if(Fragments_h[nc * 25 + 3] * def_AU < P.Asteroid_rdel) fprintf(fragmentfile, " 2\n");	//new particle but too small
+			if(Fragments_h[nc * def_NColl + 3] * def_AU < P.Asteroid_rdel) fprintf(fragmentfile, " 2\n");	//new particle but too small
 			else fprintf(fragmentfile, " 1\n");							//new particle
 		}
 		fclose(fragmentfile);
@@ -1588,7 +1600,7 @@ __host__ int Data::printRotation(){
 	printf("Rotation reset\n");
 	fclose(GSF[st].logfile);
 
-	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * def_NColl, cudaMemcpyDeviceToHost);
 
 	FILE *fragmentfile;
 	if(Nst == 1) st = 0;
@@ -1613,12 +1625,12 @@ __host__ int Data::printCreateparticle(int nf){
 
 	int st = 0; 
 
-	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * 25 * nf, cudaMemcpyDeviceToHost);
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * def_NColl * nf, cudaMemcpyDeviceToHost);
 
 	FILE *fragmentfile;
 	for(int nc = 0; nc < nf; ++nc){
 		if(Nst == 1) st = 0;
-		else st = (int)(Fragments_h[nc * 25 + 1]) / def_MaxIndex;
+		else st = (int)(Fragments_h[nc * def_NColl + 1]) / def_MaxIndex;
 		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
 		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
 
@@ -1626,15 +1638,15 @@ __host__ int Data::printCreateparticle(int nf){
 		for(int in = 0; in < 13; ++in){
 			if(in == 1 || in == 13){
 				if(Nst == 1){
-					id = (int)(Fragments_h[nc * 25 + in]);
+					id = (int)(Fragments_h[nc * def_NColl + in]);
 					fprintf(fragmentfile, "%d ", id);
 				}
 				else{
-					id = ((int)(Fragments_h[nc * 25 + in])) % def_MaxIndex;
+					id = ((int)(Fragments_h[nc * def_NColl + in])) % def_MaxIndex;
 					fprintf(fragmentfile, "%d ", id);
 				}
 			}
-			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * 25 + in]);
+			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * def_NColl + in]);
 		}
 		fprintf(GSF[st].logfile, "Create particle %d\n", id);
 		fprintf(fragmentfile, " 10\n");

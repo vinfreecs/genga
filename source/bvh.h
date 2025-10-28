@@ -114,7 +114,7 @@ __device__ unsigned int morton3D(double4 x4i){
 
 // *******************************************************
 // This function reads the last 4 bits of the array morton_d and sorts them with a counting sort routine
-// Each threads has to perform a prefix scan on 16 buckets
+// Each thread has to perform a prefix scan on 16 buckets
 // This kernel could still be parallelized further
 // 256 * 16 is the maximum to be stored in shared memory
 //
@@ -481,7 +481,7 @@ __global__ void setInternalNode_kernel(Node *internalNodes_d, const int N){
 
 // ***********************************************************
 // This function computes the highest differing bit as described in 
-// Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
+// Apetrei 2014 "Fast and Simple Agglomerative LBVH Construction"
 // When the two morton codes are identical, then use the index instead
 // see Karras 2012 "Maximizing Parallelism in the Construction of BVHs,
 // Octrees, and k-d Tree"
@@ -501,9 +501,9 @@ __device__ int highestBit(unsigned int *morton_d, int i){
 
 // ***********************************************************
 // This kernel builds a BVH tree
-// It uses a bottom up approach as described in Apetri 2014 "Fast and Simple Agglomerative LBVH Construction"
+// It uses a bottom up approach as described in Apetrei 2014 "Fast and Simple Agglomerative LBVH Construction"
 //
-// (Apetri 2014: Optional kernel to store delta(i,j) beforehand)
+// (Apetrei 2014: Optional kernel to store delta(i,j) beforehand)
 // Date: October 2022
 // Author: Simon Grimm
 // ***********************************************************
@@ -656,7 +656,7 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 			if(overlapL && childL->isLeaf){
 				if(leaf->nodeID >= N1 && childL->nodeID >= N1){
 
-					//ingnore encounters within the same particle cloud
+					//ignore encounters within the same particle cloud
 					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childL->nodeID] / WriteEncountersCloudSize_c[0]){
 #if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);
@@ -677,7 +677,7 @@ __global__ void traverseBVH_kernel(Node *leafNodes_d, Node *internalNodes_d, int
 			}
 			if(overlapR && childR->isLeaf){
 				if(leaf->nodeID >= N1 && childR->nodeID >= N1){
-					//ingnore encounters within the same particle cloud
+					//ignore encounters within the same particle cloud
 					if(index_d[leaf->nodeID] / WriteEncountersCloudSize_c[0] != index_d[childR->nodeID] / WriteEncountersCloudSize_c[0]){
 #if def_CPU == 0
 						int ne = atomicAdd(&Nencpairs2_d[0], 1);

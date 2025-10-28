@@ -94,7 +94,7 @@ public:
 	double *t1_d;
 	double *dtgr_d;
 	int *BSAstop_h, *BSAstop_d;
-	int *BSstop_d;
+	int *BSstop_h, *BSstop_d;
 	double *Coltime_d;
 
 	// G3 Data
@@ -241,7 +241,6 @@ public:
 	double *t1_h;
 	double *dtgr_h;
 	double *Coltime_h;
-	int *BSstop_h;
 
 	double *K_h;
 	double *Kold_h;

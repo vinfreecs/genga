@@ -1,6 +1,6 @@
 
 template <int NN>
-void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, double *t1_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 //printf("BSA %d %g\n", idx, StopMinMass_c[0]);
@@ -36,6 +36,7 @@ void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, dou
 	double3 scalev_s[NN];
 
 	double error = 0.0;
+	int stop = 0;
 	double test;
 	int si = Encpairs2_h[ (st+2) * NT + idx].y;
 	int N2 = Encpairs2_h[si].y; //Number of bodies in  current BS simulation
@@ -46,12 +47,22 @@ void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, dou
 	}
 
 //printf("BS %d %d %d %d %d\n", idx, st, si, N2, NT);
-
+	if(CollisionModel_c[0] == 1){
+		int idi0 = Encpairs2_h[start].x; //index of first body
+		t = t1_h[idi0];
+		if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+	}
 
 	for(int i = 0; i < N2; ++i){
 		int idi = Encpairs2_h[start + i].x;
-		x4_s[i] = xold_h[idi];
-		v4_s[i] = vold_h[idi];
+		if(t == 0.0){
+			x4_s[i] = xold_h[idi];
+			v4_s[i] = vold_h[idi];
+		}
+		else{
+			x4_s[i] = x4_h[idi];
+			v4_s[i] = v4_h[idi];
+		}
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[i + l * NN] = rcritv_h[idi + l * NconstT];
 		}
@@ -428,6 +439,10 @@ void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, dou
 								}
 //printf("cTime coll BSA %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, index_h[Encpairs2_h[start + i].x], index_h[Encpairs2_h[start + j].x], nc);
 								collide(generator, xt_s, vt_s, i, j, Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, Msun, U_h, test, index_h, nc, Coll_h, time + (t + dt1) / dayUnit, spin_h, love_h, createFlag_h, rcritv_s, rcrit_h, NN, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
+								if(noColl == 3){
+									stop = 1;
+									noColl = 0;
+								}
 							}
 						}
 
@@ -465,12 +480,18 @@ void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, dou
 		}
 //printf("not finished %d\n", idx);
 
+		if(stop == 1){
+//printf("Stop BSB %d %g %g\n", idi, dt / dayUnit, t / dayUnit);
+			BSstop_h[1] = 1;
+			break;
+		}
 	}//end of tt loop
 	for(int i = 0; i < N2; ++i){
 		int idi = Encpairs2_h[start + i].x;
 //if(xt_s[i].w <= 0){
 		x4_h[idi] = xt_s[i];
 		v4_h[idi] = vt_s[i];
+		t1_h[idi] = t;
 		for(int l = 0; l < SLevels; ++l){  
 			rcritv_h[idi + l * NconstT] = rcritv_s[i + l * NN];
 		}
@@ -727,7 +748,7 @@ void BSAccept_cpu(double4 *xt_h, double4 *vt_h, double3 *dx_h, double3 *dv_h, in
 }
 
 
-void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vold_h, double4 *x4_h, double4 *v4_h, double4 *xt_h, double4 *vt_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *BSAstop_h, double *dt1_h, double *t1_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, double *dtgr_h, double *Coltime_h, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vold_h, double4 *x4_h, double4 *v4_h, double4 *xt_h, double4 *vt_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *BSstop_h, int *BSAstop_h, double *dt1_h, double *t1_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, double *dtgr_h, double *Coltime_h, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 	int si = Encpairs2_h[ (st+2) * NT + idx].y;
@@ -872,7 +893,6 @@ void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vo
 	for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 		int i = Colpairs_s[c].x;
 		int j = Colpairs_s[c].y;
-		double t1 = t1_h[i];
 		if(Coltime_h[0] == 10.0){
 			if(xt_h[i].w >= 0 && xt_h[j].w >= 0){
 				int nc = 0;
@@ -885,7 +905,11 @@ void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vo
 					}
 				}
 //printf("cTime coll BSAm %g %g %g %.20g %d %d %d | noColl %d\n", time, t1_h[i] / dayUnit, dt /dayUnit, time + (t1_h[i] + dt1_h[i]) / dayUnit, index_h[i], index_h[j], nc, noColl);
-				collide(generator, xt_h, vt_h, i, j, i, j, Msun, U_h, test, index_h, nc, Coll_h, time + (t1 + dt1_h[i]) / dayUnit, spin_h, love_h, createFlag_h, rcritv_h, rcrit_h, NconstT, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
+				collide(generator, xt_h, vt_h, i, j, i, j, Msun, U_h, test, index_h, nc, Coll_h, time + (t1_h[i] + dt1_h[i]) / dayUnit, spin_h, love_h, createFlag_h, rcritv_h, rcrit_h, NconstT, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
+				if(noColl == 3){
+					BSstop_h[1] = 1;
+					noColl = 0;
+				}
 			}
 		}
 	}
@@ -929,6 +953,7 @@ void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vo
 					//BS step finished
 					x4_h[idi] = xt_h[idi];
 					v4_h[idi] = vt_h[idi];
+					t1_h[idi] = t1;
 					Encpairs_h[idi + 7 * NT].y = -1;
 //if(id == 0) printf("finished %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %d %d\n", idi, index_h[idi], x4_h[idi].w, x4_h[idi].x, x4_h[idi].y, x4_h[idi].z, v4_h[idi].x, v4_h[idi].y, v4_h[idi].z, f, n);
 				}
@@ -946,16 +971,20 @@ void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vo
 	}
 }
 
-void BSA_setdt_cpu(double *dt1_h, double *t1_h, const double dt, const int N, double ksqMsun, double4 *x4_h, double4 *v4_h, double *dtgr_h, const int UseGR){
+void BSA_setdt_cpu(double *dt1_h, double *t1_h, const double dt, const int N, double ksqMsun, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *dtgr_h, const int UseGR){
 
 
 	#pragma omp parallel for
 	for(int i = 0; i < N; ++i){
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
+
+			double4 xi = xold_h[i];
+			double4 vi = vold_h[i];
+
 			double c2 = def_cm * def_cm;
 			double mu = ksqMsun;
-			double rsq = x4_h[i].x * x4_h[i].x + x4_h[i].y * x4_h[i].y + x4_h[i].z * x4_h[i].z;
-			double vsq = v4_h[i].x * v4_h[i].x + v4_h[i].y * v4_h[i].y + v4_h[i].z * v4_h[i].z;
+			double rsq = xi.x * xi.x + xi.y * xi.y + xi.z * xi.z;
+			double vsq = vi.x * vi.x + vi.y * vi.y + vi.z * vi.z;
 			double ir = 1.0/sqrt(rsq);
 			double ia = 2.0*ir-vsq/mu;
 			dtgr_h[i] = 1.0 - 1.5 * mu * ia / c2;
@@ -964,14 +993,34 @@ void BSA_setdt_cpu(double *dt1_h, double *t1_h, const double dt, const int N, do
 			dtgr_h[i] = 1.0;
 		}
 		dt1_h[i] = dt;
-		t1_h[i] = 0.0;
+
+		if(CollisionModel_c[0] == 1){
+
+			int sgnt = 1;
+			if(dt < 0.0){
+				sgnt = -1;
+			}
+
+			if(sgnt * (t1_h[i] + dt1_h[i]) > sgnt * dt){
+				dt1_h[i] = dt - t1_h[i];
+			}
+
+			if(t1_h[i] != 0.0){
+				xold_h[i] = x4_h[i];
+				vold_h[i] = v4_h[i];
+
+			}
+		}
+		else{
+			t1_h[i] = 0.0;
+		}
 	}
 }
 
 void Data::BSACall(const int st, const int b, const int Nm, const int si, const double t, const double FGt, int noColl){
 	int N = N_h[0] + Nsmall_h[0];
 
-	BSA_setdt_cpu (dt1_h, t1_h, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, xold_h, vold_h, dtgr_h, P.UseGR);
+	BSA_setdt_cpu (dt1_h, t1_h, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, x4_h, v4_h, xold_h, vold_h, dtgr_h, P.UseGR);
 	BSAstop_h[0] = 0;
 	for(int f = 0; f < 100000; ++f){
 		for(int n = 1; n <= 8; ++n){
@@ -1003,15 +1052,17 @@ void Data::BSACall(const int st, const int b, const int Nm, const int si, const 
 				BSAccept_cpu (xt_h, vt_h, dx_h, dv_h, Encpairs_h, Encpairs2_h, dt1_h, st, N, n, idx);
 			}
 			for(int idx = 0; idx < Nm; ++idx){ 
-				BSUpdate_cpu (generator, xold_h, vold_h, x4_h, v4_h, xt_h, vt_h, rcrit_h, rcritv_h, index_h, spin_h, love_h, createFlag_h, Encpairs_h, Encpairs2_h, BSAstop_h, dt1_h, t1_h, dt_h[0] * FGt, Msun_h[0].x, U_h, st, N, NconstT, f, n, P.NencMax, Ncoll_m, Coll_h, t, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, NWriteEnc_m, writeEnc_h, dtgr_h, Coltime_h, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
+				BSUpdate_cpu (generator, xold_h, vold_h, x4_h, v4_h, xt_h, vt_h, rcrit_h, rcritv_h, index_h, spin_h, love_h, createFlag_h, Encpairs_h, Encpairs2_h, BSstop_h, BSAstop_h, dt1_h, t1_h, dt_h[0] * FGt, Msun_h[0].x, U_h, st, N, NconstT, f, n, P.NencMax, Ncoll_m, Coll_h, t, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, NWriteEnc_m, writeEnc_h, dtgr_h, Coltime_h, P.MinMass, P.UseTestParticles, P.SLevels, noColl, idx);
 			}
 //printf("A %d %d\n", BSAstop_h[0], Ncoll_m[0]);
+			if(BSstop_h[1] == 1) break;
 			if(BSAstop_h[0] == 1) break;
 			if(BSAstop_h[0] == 2) break;
 			if(BSAstop_h[0] == 3) break;
 			if(Ncoll_m[0] > def_MaxColl) break; 
 		}
 //printf("B %d %d\n", BSAstop_h[0], Ncoll_m[0]);
+		if(BSstop_h[1] == 1) break;
 		if(BSAstop_h[0] == 1) break; 
 		if(BSAstop_h[0] == 3) break;
 		if(Ncoll_m[0] > def_MaxColl) break; 

@@ -977,7 +977,6 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		if(idy < Ne){
 			encpairs_s[idy] = Encpairs2_d[idy];
 			A_s[idy] = encpairs_s[idy];
-//printf("%d %d %d\n", idy, encpairs_s[idy].x, encpairs_s[idy].y);
 		}
 		// encpairs_s[idy] contains the two close encounter pairs
 		else{

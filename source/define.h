@@ -8,7 +8,7 @@
 #include <chrono>
 #include <cstring>
 
-#define def_Version 3.202
+#define def_Version 3.203
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -130,7 +130,7 @@
 #define def_NAFformat 1
 #define def_NAFinterval 1
 #define def_Ninformat 55		//number of entries in informat array
-#define def_NColl 25			//number of parameters in Coll and writeEnc arrays
+#define def_NColl 27			//number of parameters in Coll and writeEnc arrays
 #define def_BufferSize 29		//number of parameters in the Buffer arrays
 
 #define def_pc 3.0			//Factor in Prechecker, Pairs with rij^2 < pc * rcrit^2 are considered as close encounter candidates

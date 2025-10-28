@@ -7,12 +7,25 @@
 //using a Bulirsh Stoer method with nb threads. Where n is the minimum of n^2 and 256
 //The implementation of the Bulirsh Stoer method is based on the mercury code from Chambers.
 //
+//noColl = 0, Resolve Collisions as normal
+//noColl = 1, Used in collision refinement of a specific collision pair. Entering collision
+//noColl = -1 Used in collision refinement of a specific collision pair. Leaving collision
+//noColl = 2 Used to stop at collision
+
 //Authors: Simon Grimm
 //November 2016
 // ****************************************
+__global__ void BSB_sett_kernel(double *t1_d, const int N){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id < N){
+		t1_d[id] = 0.0;
+	}
+}
 
 template< int NN, int nb>
-__global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, double4 *spin_d, double3 *love_d, int *createFlag_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int NconstT, int *NWriteEnc_d, double *writeEnc_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, int *index_d, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, double *t1_d, double4 *spin_d, double3 *love_d, int *createFlag_d, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, const int NT, const int NconstT, int *NWriteEnc_d, double *writeEnc_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 
 	int idy = threadIdx.x;
@@ -28,7 +41,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 //if(idy == 0 && idx == 0)      printf("Stop BSB b\n");
 		return;
 	}
-//printf("BSB %d %d %g %g %d\n", idy, idx, StopMinMass_c[0], CollisionPrecision_c[0], noColl);
+//if(idy == 0) printf("BSB %d %d %.20g %g %g %d\n", idy, idx, time, StopMinMass_c[0], CollisionPrecision_c[0], noColl);
 
 	int ii = idy / nb;
 	int jj = idy % nb;
@@ -54,6 +67,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
 	__shared__ double Coltime_s[def_MaxColl];
+	__shared__ int stop_s[1];
 	volatile int sgnt;
 
 	double3 scalex;
@@ -69,7 +83,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 //printf("BS %d %d %d %d %d %d\n", idx, st, si, N2, NT, start);
 	if(idy < N2){
 		idi = Encpairs2_d[start + idy].x;
-//printf("BS2 %d %d %d %d %d %d %d\n", idx, st, si, idi, index_d[idi], N2, NN);
+//printf("BS2 %d %d %d %d %d %d %d t1: %g\n", idx, st, si, idi, index_d[idi], N2, NN, t1_d[idi] / dayUnit);
 	}
 	else idi = 0;
 
@@ -78,14 +92,28 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	}
 	else sgnt = 1;
 
+	if(CollisionModel_c[0] == 1){
+		int idi0 = Encpairs2_d[start].x; //index of first body
+		t = t1_d[idi0];
+		if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+	}
+
  	__syncthreads();
 	if(idy < N2){
-		x4_s[idy] = xold_d[idi];
-		v4_s[idy] = vold_d[idi];
+		if(t == 0.0){
+			x4_s[idy] = xold_d[idi];
+			v4_s[idy] = vold_d[idi];
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
+		}
+		else{
+			x4_s[idy] = x4_d[idi];
+			v4_s[idy] = v4_d[idi];
+
+//printf("BSnew %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z);
+		}
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NconstT];
 		}
-//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z);
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
@@ -116,6 +144,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	}
 	if(idy == 0){
 		error_s[0] = 0.0;
+		stop_s[0] = 0;
 	}
 	__syncthreads();
 
@@ -619,6 +648,8 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 							double enct = 100.0;
 							double colt = 100.0;
 							double rcrit = v4_s[ii].w + v4_s[jj + l].w;
+
+							//When CollTshift is used, then increase now the physical radius of the particular pair of bodies
 							if((noColl == 1 || noColl == -1) && index_d[Encpairs2_d[start + ii].x] == CollTshiftpairs_c[0].x && index_d[Encpairs2_d[start + jj + l].x] == CollTshiftpairs_c[0].y){
 								rcrit = v4_s[ii].w * CollTshift_c[0] + v4_s[jj + l].w * CollTshift_c[0];
 							}
@@ -637,6 +668,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 								delta = 100.0;
 							}
 							if((noColl == 1 || noColl == -1) && colt == 200.0){
+								//Bodies are already overlapping, stop BS kernel
 								noColl = 2;
 								BSstop_d[0] = 3;
 							}
@@ -748,6 +780,10 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 									}
 //printf("cTime coll BSB %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt /dayUnit, time + (t + dt1) / dayUnit, index_d[Encpairs2_d[start + i].x], index_d[Encpairs2_d[start + j].x], nc);
 									collide(random, xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, love_d, createFlag_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+									if(noColl == 3){
+										stop_s[0] = 1;
+										noColl = 0;
+									}
 								}
 							}
 						}
@@ -773,34 +809,41 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 					__syncthreads();
 					break;
-				}
+				}//end of accept update section
 				__syncthreads();
 				if(BSstop_d[0] == 3){
-//if(idy == 0) printf("Stop BSB\n");
+//if(idy == 0) printf("Stop BSB %g %g\n", dt / dayUnit, t / dayUnit);
 					__syncthreads();
 					return;
 				}
 			}//end of n loop
-			if(f == 0) break;
+			if(f == 0){
+				break;
+			}
 			__syncthreads();
 			dt1 *= 0.5;
 		}//end of ff loop
 		if(sgnt * t >= sgnt * dt){
 			break;
 		}
-
 		__syncthreads();
+
+		if(stop_s[0] == 1){
+//if(idy == 0) printf("Stop BSB %d %g %g\n", idi, dt / dayUnit, t / dayUnit);
+			BSstop_d[1] = 1;
+			break;
+		}
+
 	}//end of tt loop
 	__syncthreads();
 	if(idy < N2){
-//if(x4_s[idy].w <= 0){
 		x4_d[idi] = x4_s[idy]; 
 		v4_d[idi] = v4_s[idy];
+		t1_d[idi] = t;
 		for(int l = 0; l < SLevels; ++l){  
 			rcritv_d[idi + l * NconstT] = rcritv_s[idy + l * NN];
 		}
-//}
-//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g\n", idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, time + t/dayUnit);
+//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g t1: %.20g\n", idi, x4_s[idy].x, x4_s[idy].y, x4_s[idy].z, v4_s[idy].x, v4_s[idy].y, v4_s[idy].z, time + t/dayUnit, t1_d[idi] / dayUnit);
 	}
 #if USE_RANDOM == 1
 	random_d[idx] = random;

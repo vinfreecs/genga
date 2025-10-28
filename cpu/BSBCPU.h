@@ -1,8 +1,18 @@
 #include "directAccCPU.h"
 #include "Encounter3CPU.h"
 
+
+void BSB_sett_cpu(double *t1_h, const int N){
+
+	#pragma omp parallel for schedule(static)
+	for(int id = 0; id < N; ++id){
+		t1_h[id] = 0.0;
+	}
+}
+
+
 template< int NN>
-void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double *t1_h, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 //printf("BSB start %d %d\n", NN, idx);
@@ -10,7 +20,7 @@ void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h,
 //if(idx == 0)      printf("Stop BSB b\n");
 		return;
 	}
-//printf("BSB %d %g %g %d\n", idx, StopMinMass_c[0], CollisionPrecision_c[0], noColl);
+//printf("BSB %d %g %.20g %g %d\n", idx, time, StopMinMass_c[0], CollisionPrecision_c[0], noColl);
 
 	double dt1 = dt; 
 	double dt2, dt22;
@@ -39,6 +49,7 @@ void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h,
 	double3 scalev_s[NN];
 
 	double error = 0.0;
+	int stop = 0;
 	double test;
 	int si = Encpairs2_h[ (st+2) * NT + idx].y;	//group index 
 	int N2 = Encpairs2_h[si].y; //Number of bodies in current BS simulation
@@ -51,16 +62,30 @@ void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h,
 	}
 	else sgnt = 1;
 
+	if(CollisionModel_c[0] == 1){
+		int idi0 = Encpairs2_h[start].x; //index of first body
+		t = t1_h[idi0];
+		if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+	}
+
+
 	for(int i = 0; i < N2; ++i){
 		int idi = Encpairs2_h[start + i].x;
-//printf("BS2 %d %d %d %d %d %d %d\n", idx, st, si, idi, index_h[idi], N2, NN);
+//printf("BS2 %d %d %d %d %d %d %d t1: %g\n", idx, st, si, idi, index_h[idi], N2, NN, t1_h[idi] / dayUnit);
 
-		x4_s[i] = xold_h[idi];
-		v4_s[i] = vold_h[idi];
+		if(t == 0.0){
+			x4_s[i] = xold_h[idi];
+			v4_s[i] = vold_h[idi];
+//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xold_h[idi].y, xold_h[idi].z, vold_h[idi].x, vold_h[idi].y, vold_h[idi].z);
+		}
+		else{
+			x4_s[i] = x4_h[idi];
+			v4_s[i] = v4_h[idi];
+//printf("BSnew %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, x4_h[idi].x, x4_h[idi].y, x4_h[idi].z, v4_h[idi].x, v4_h[idi].y, v4_h[idi].z);
+		}
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[i + l * NN] = rcritv_h[idi + l * NconstT];
 		}
-//printf("BSold %d %.40g %.40g %.40g %.40g %.40g %.40g\n", idi, xold_h[idi].x, xold_h[idi].y, xold_h[idi].z, vold_h[idi].x, vold_h[idi].y, vold_h[idi].z);
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
@@ -414,6 +439,10 @@ void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h,
 								}
 //printf("cTime coll BSB %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt /dayUnit, time + (t + dt1) / dayUnit, index_h[Encpairs2_h[start + i].x], index_h[Encpairs2_h[start + j].x], nc);
 								collide(generator, xt_s, vt_s, i, j, Encpairs2_h[start + i].x, Encpairs2_h[start + j].x, Msun, U_h, test, index_h, nc, Coll_h, time + (t + dt1) / dayUnit, spin_h, love_h, createFlag_h, rcritv_s, rcrit_h, NN, NconstT, aelimits_h, aecount_h, enccount_h, aecountT_h, enccountT_h, SLevels, noColl);
+								if(noColl == 3){
+									stop = 1;
+									noColl = 0;
+								}
 							}
 						}
 
@@ -443,25 +472,30 @@ void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h,
 					return;
 				}
 			}//end of n loop
-			if(f == 0) break;
+			if(f == 0){
+				break;
+			}
 			dt1 *= 0.5;
 		}//end of ff loop
 		if(sgnt * t >= sgnt * dt){
 			break;
 		}
-
+		if(stop == 1){
+//printf("Stop BSB %g %g\n", dt / dayUnit, t / dayUnit);
+			BSstop_h[1] = 1;
+			break;
+		}
 	}//end of tt loop
 
 	for(int i = 0; i < N2; ++i){
-//if(x4_s[i].w <= 0){
 		int idi = Encpairs2_h[start + i].x;
 		x4_h[idi] = x4_s[i]; 
 		v4_h[idi] = v4_s[i];
+		t1_h[idi] = t;
 		for(int l = 0; l < SLevels; ++l){  
 			rcritv_h[idi + l * NconstT] = rcritv_s[i + l * NN];
 		}
-//}
-//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g\n", i, x4_s[i].x, x4_s[i].y, x4_s[i].z, v4_s[i].x, v4_s[i].y, v4_s[i].z, time + t/dayUnit);
+//printf("BS %d %.40g %.40g %.40g %.40g %.40g %.40g %.20g t1: %.20g\n", i, x4_s[i].x, x4_s[i].y, x4_s[i].z, v4_s[i].x, v4_s[i].y, v4_s[i].z, time + t/dayUnit, t1_h[idi] / dayUnit);
 	}
 //printf("BSB end   %d %d\n", NN, idx);
 }

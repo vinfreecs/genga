@@ -1,5 +1,5 @@
 template <int NN>
-__global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, double *t1_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -27,7 +27,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	__shared__ double4 v4_s[NN];
 	__shared__ double4 vt_s[NN];
 	__shared__ double rcritv_s[NN * def_SLevelsMax];
-	__shared__ volatile int stop_s[1];
+	__shared__ volatile int stop_s[2];
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
 	__shared__ double Coltime_s[def_MaxColl];
@@ -47,6 +47,9 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	double3 dx7, dv7;
 
 	volatile int sgnt = 1;
+	if(dt < 0.0){
+		sgnt = -1;
+	}
 
 	double3 scalex;
 	double3 scalev;
@@ -65,16 +68,35 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 	volatile int j0 = 0;
 	volatile int j1 = 0;
 
+	if(CollisionModel_c[0] == 1){
+		int idi0 = Encpairs2_d[start].x; //index of first body
+		t = t1_d[idi0];
+		if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+	}
+
 	if(idy < N2){
 		idi = Encpairs2_d[start + idy].x;
-		x4_s[idy].x = xold_d[idi].x;
-		x4_s[idy].y = xold_d[idi].y;
-		x4_s[idy].z = xold_d[idi].z;
-		x4_s[idy].w = xold_d[idi].w;
-		v4_s[idy].x = vold_d[idi].x;
-		v4_s[idy].y = vold_d[idi].y;
-		v4_s[idy].z = vold_d[idi].z;
-		v4_s[idy].w = vold_d[idi].w;
+		if(t == 0.0){
+			x4_s[idy].x = xold_d[idi].x;
+			x4_s[idy].y = xold_d[idi].y;
+			x4_s[idy].z = xold_d[idi].z;
+			x4_s[idy].w = xold_d[idi].w;
+			v4_s[idy].x = vold_d[idi].x;
+			v4_s[idy].y = vold_d[idi].y;
+			v4_s[idy].z = vold_d[idi].z;
+			v4_s[idy].w = vold_d[idi].w;
+		}
+		else{
+			x4_s[idy].x = x4_d[idi].x;
+			x4_s[idy].y = x4_d[idi].y;
+			x4_s[idy].z = x4_d[idi].z;
+			x4_s[idy].w = x4_d[idi].w;
+			v4_s[idy].x = v4_d[idi].x;
+			v4_s[idy].y = v4_d[idi].y;
+			v4_s[idy].z = v4_d[idi].z;
+			v4_s[idy].w = v4_d[idi].w;
+
+		}
 		for(int l = 0; l < SLevels; ++l){
 			rcritv_s[idy + l * NN] = rcritv_d[idi + l * NconstT];
 		}
@@ -90,7 +112,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 			j1g = Encpairs_d[idi * NencMax + 1].x; //index of j in global memory
 			j1 = Encpairs_d[NT + j1g].y;
 		}
-//printf("BSA2 %d %d %d %d %d %d %d %d %d %d %d\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne);
+//printf("BSA2 %d %d %d %d %d %d %d %d %d %d %d t1: %g\n", idx, idy, st, idi, index_d[idi], j0g, j0, j1g, j1, N2, Ne, t1_d[idi] / dayUnit);
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 			double c2 = def_cm * def_cm;
 			double mu = def_ksq * Msun;
@@ -116,9 +138,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 		}
 	}
 
-	if(dt < 0.0){
-		sgnt = -1;
-	}
+
 
 	__syncthreads();
 	for(int tt = 0; tt < 10000; ++tt){
@@ -154,7 +174,10 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 		for(int ff = 0; ff < 1e6; ++ff){
 			__syncthreads();
 			for(int n = 1; n <= 8; ++n){
-				if(idy == 0) stop_s[0] = 1;
+				if(idy == 0){
+					stop_s[0] = 1;
+					stop_s[1] = 0;
+				}
 				__syncthreads();
 				dt2 = dt1 / (2.0 * n);
 				dt22 = dt2 * 2.0;
@@ -654,6 +677,10 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 									}
 //printf("cTime coll BSA %g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, index_d[Encpairs2_d[start + i].x], index_d[Encpairs2_d[start + j].x], nc);
 									collide(random, xt_s, vt_s, i, j, Encpairs2_d[start + i].x, Encpairs2_d[start + j].x, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, love_d, createFlag_d, rcritv_s, rcrit_d, NN, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+									if(noColl == 3){
+										stop_s[1] = 1;
+										noColl = 0;
+									}
 								}
 							}
 						}
@@ -708,6 +735,12 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 //if(idy == 0) printf("not finished %d %d\n", idy, idx);
 
 		__syncthreads();
+
+		if(stop_s[1] == 1){
+//if(idy == 0) printf("Stop BSB %d %g %g\n", idi, dt / dayUnit, t / dayUnit);
+			BSstop_d[1] = 1;
+			break;
+		}
 	}//end of tt loop
 	if(idy < N2){
 //if(xt_s[idy].w <= 0){
@@ -719,6 +752,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 		v4_d[idi].y = vt.y;
 		v4_d[idi].z = vt.z;
 		v4_d[idi].w = vt.w;
+		t1_d[idi] = t;
 		for(int l = 0; l < SLevels; ++l){  
 			rcritv_d[idi + l * NconstT] = rcritv_s[idy + l * NN];
 		}
@@ -732,7 +766,7 @@ __global__ void BSA_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, 
 
 
 template <int NN, int Bl>
-__global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double4 *xp_d, double4 *vp_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, double *t1_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, double3 *dx_d, double3 *dv_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_d, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 	int idy = threadIdx.x;
 	int idx = blockIdx.x;
@@ -751,7 +785,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 	volatile double dt2, dt22;
 	volatile double t = 0.0;
 
-	__shared__ volatile int stop_s[1];
+	__shared__ volatile int stop_s[2];
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
 	__shared__ double Coltime_s[def_MaxColl];
@@ -772,6 +806,13 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 //if(idy == 0) printf("BS %d %d %d %d %d\n", idx, st, si, N2, NT);
 	if(dt < 0.0) sgnt = -1;
 
+
+	if(CollisionModel_c[0] == 1){
+		int idi0 = Encpairs2_d[start].x; //index of first body
+		t = t1_d[idi0];
+		if(sgnt * (t+dt1) > sgnt * dt) dt1 = dt - t;
+	}
+
 	for(int i = 0; i < NN; i += Bl){
 		volatile int Ne = -1; //number of pairs
 		volatile int idi = 0;
@@ -780,6 +821,10 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 			Ne = Encpairs_d[idi].y;
 		}
 		if(Ne >= 0){
+			if(t != 0.0){
+				xold_d[idi] = x4_d[idi];
+				vold_d[idi] = v4_d[idi];
+			}
 			if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
 				double c2 = def_cm * def_cm;
 				double mu = def_ksq * Msun;
@@ -799,7 +844,10 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 		__syncthreads();
 		for(int ff = 0; ff < 1e6; ++ff){
 			for(int n = 1; n <= 8; ++n){
-				if(idy == 0) stop_s[0] = 1;
+				if(idy == 0){
+					stop_s[0] = 1;
+					stop_s[1] = 0;
+				}
 				__syncthreads();
 				dt2 = dt1 / (2.0 * n);
 				dt22 = dt2 * 2.0;
@@ -1233,6 +1281,10 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 									double test;
 //printf("cTime coll BSA512%g %g %g %.20g %d %d %d\n", time, t / dayUnit, dt / dayUnit, time + (t + dt1) / dayUnit, index_d[i], index_d[j], nc);
 									collide(random, xt_d, vt_d, i, j, i, j, Msun, U_d, test, index_d, nc, Coll_d, time + (t + dt1) / dayUnit, spin_d, love_d, createFlag_d, rcritv_d, rcrit_d, NconstT, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+									if(noColl == 3){
+										stop_s[1] = 1;
+										noColl = 0;
+									}
 								}
 							}
 						}
@@ -1282,6 +1334,11 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 		}
 
 		__syncthreads();
+		if(stop_s[1] == 1){
+//if(idy == 0) printf("Stop BSB %g %g\n", dt / dayUnit, t / dayUnit);
+			BSstop_d[1] = 1;
+			break;
+		}
 	}//end if tt loop
 	for(int i = 0; i < NN; i += Bl){
 		volatile int Ne = -1; //number of pairs
@@ -1293,6 +1350,7 @@ __global__ void BSA512_kernel(curandState *random_d, double4 *x4_d, double4 *v4_
 		if(Ne >= 0){
 			x4_d[idi] = xold_d[idi];
 			v4_d[idi] = vold_d[idi];
+			t1_d[idi] = t;
 //if(idi == 0) printf("final %g %d %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.10g\n", time, idi, NN, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, xold_d[idi].w, vold_d[idi].w, rcritv_d[idi]);
 		}
 	}
@@ -1543,7 +1601,7 @@ __global__ void BSAccept_kernel(double4 *xt_d, double4 *vt_d, double3 *dx_d, dou
 }
 
 
-__global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
+__global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 *vold_d, double4 *x4_d, double4 *v4_d, double4 *xt_d, double4 *vt_d, double *rcrit_d, double *rcritv_d, int *index_d, double4 *spin_d, double3 *love_d, int *createFlag_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *BSstop_d, int *BSAstop_d, double *dt1_d, double *t1_d, const double dt, const double Msun, double *U_d, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_d, double *Coll_d, const double time, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, int *NWriteEnc_d, double *writeEnc_d, double *dtgr_d, double *Coltime_d, const double MinMass, const int UseTestParticles, const int SLevels, int noColl){
 
 	int idx = blockIdx.y;	
 
@@ -1700,7 +1758,6 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 		for(int c = 0; c < min(Ncol_s[0], def_MaxColl); ++c){
 			int i = Colpairs_s[c].x;
 			int j = Colpairs_s[c].y;
-			volatile double t1 = t1_d[i];
 			if(Coltime_d[0] == 10.0){
 				if(xt_d[i].w >= 0 && xt_d[j].w >= 0){
 					int nc = 0;
@@ -1713,7 +1770,11 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 						}
 					}
 //printf("cTime coll BSAm %g %g %g %.20g %d %d %d | noColl %d\n", time, t1_d[i] / dayUnit, dt /dayUnit, time + (t1_d[i] + dt1_d[i]) / dayUnit, index_d[i], index_d[j], nc, noColl);
-					collide(random, xt_d, vt_d, i, j, i, j, Msun, U_d, test, index_d, nc, Coll_d, time + (t1 + dt1_d[i]) / dayUnit, spin_d, love_d, createFlag_d, rcritv_d, rcrit_d, NconstT, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+					collide(random, xt_d, vt_d, i, j, i, j, Msun, U_d, test, index_d, nc, Coll_d, time + (t1_d[i] + dt1_d[i]) / dayUnit, spin_d, love_d, createFlag_d, rcritv_d, rcrit_d, NconstT, NconstT, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, SLevels, noColl);
+					if(noColl == 3){
+						BSstop_d[1] = 1;
+						noColl = 0;
+					}
 				}
 			}
 		}
@@ -1745,7 +1806,7 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 
 						xold_d[idi] = xt_d[idi];
 						vold_d[idi] = vt_d[idi];
-//if(idi == 12888 || idi == 11191) printf("update %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %d %d\n", idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, t1 / dayUnit, dt1 / dayUnit, dt / dayUnit, f, n);
+//if(id == 0) printf("update %d %d %.20g %.20g %.20g %.20g %.20g %.20g %g %g %g %d %d\n", idx, idi, xold_d[idi].x, xold_d[idi].y, xold_d[idi].z, vold_d[idi].x, vold_d[idi].y, vold_d[idi].z, t1 / dayUnit, dt1 / dayUnit, dt / dayUnit, f, n);
 						dt1_d[idi] = dt1;
 						t1_d[idi] = t1;
 						Encpairs_d[idi + 6 * NT].y = -1;
@@ -1760,6 +1821,7 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 						//BS step finished
 						x4_d[idi] = xt_d[idi];
 						v4_d[idi] = vt_d[idi];
+						t1_d[idi] = t1;
 						Encpairs_d[idi + 7 * NT].y = -1;
 //if(id == 0) printf("finished %d %d %g %.20g %.20g %.20g %.20g %.20g %.20g %d %d\n", idi, index_d[idi], x4_d[idi].w, x4_d[idi].x, x4_d[idi].y, x4_d[idi].z, v4_d[idi].x, v4_d[idi].y, v4_d[idi].z, f, n);
 					}
@@ -1781,16 +1843,20 @@ __global__ void BSUpdate_kernel(curandState *random_d, double4 *xold_d, double4 
 #endif
 }
 
-__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double *dtgr_d, const int UseGR){
+__global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, const int N, double ksqMsun, double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double *dtgr_d, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
 		if(UseGR == 1){// GR time rescale (Saha & Tremaine 1994)
+
+			double4 xi = xold_d[id];
+			double4 vi = vold_d[id];
+
 			double c2 = def_cm * def_cm;
 			double mu = ksqMsun;
-			double rsq = x4_d[id].x * x4_d[id].x + x4_d[id].y * x4_d[id].y + x4_d[id].z * x4_d[id].z;
-			double vsq = v4_d[id].x * v4_d[id].x + v4_d[id].y * v4_d[id].y + v4_d[id].z * v4_d[id].z;
+			double rsq = xi.x * xi.x + xi.y * xi.y + xi.z * xi.z;
+			double vsq = vi.x * vi.x + vi.y * vi.y + vi.z * vi.z;
 			double ir = 1.0/sqrt(rsq);
 			double ia = 2.0*ir-vsq/mu;
 			dtgr_d[id] = 1.0 - 1.5 * mu * ia / c2;
@@ -1798,8 +1864,29 @@ __global__ void BSA_setdt_kernel(double *dt1_d, double *t1_d, const double dt, c
 		else{
 			dtgr_d[id] = 1.0;
 		}
+
 		dt1_d[id] = dt;
-		t1_d[id] = 0.0;
+
+		if(CollisionModel_c[0] == 1){
+
+			int sgnt = 1;
+			if(dt < 0.0){
+				sgnt = -1;
+			}
+
+			if(sgnt * (t1_d[id] + dt1_d[id]) > sgnt * dt){
+				dt1_d[id] = dt - t1_d[id];
+			}
+
+			if(t1_d[id] != 0.0){
+				xold_d[id] = x4_d[id];
+				vold_d[id] = v4_d[id];
+
+			}
+		}
+		else{
+			t1_d[id] = 0.0;
+		}
 	}
 }
 
@@ -1807,7 +1894,7 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 	int Nt = 32;
 	int Nb = (b + Nt - 1) / Nt;
 	int N = N_h[0] + Nsmall_h[0];
-	BSA_setdt_kernel <<< (N + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, xold_d, vold_d, dtgr_d, P.UseGR);
+	BSA_setdt_kernel <<< (N + 255) / 256, 256 >>> (dt1_d, t1_d, dt_h[0] * FGt, N, def_ksq * Msun_h[0].x, x4_d, v4_d, xold_d, vold_d, dtgr_d, P.UseGR);
 	BSAstop_h[0] = 0;
 	for(int f = 0; f < 100000; ++f){
 		for(int n = 1; n <= 8; ++n){
@@ -1824,15 +1911,18 @@ __host__ void Data::BSACall(const int st, const int b, const int Nm, const int s
 			BSAcc_kernel < 3 > <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xt_d, vt_d, xp_d, vp_d, rcritv_d, Encpairs_d, Encpairs2_d, dt1_d, dtgr_d, Msun_h[0].x, st, N, NconstT, P.NencMax, BSAstop_d, Coltime_d, n, f, P.MinMass, P.UseTestParticles, dt_h[0], P.SLevels, noColl);
 			BSError_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xold_d, vold_d, xp_d, vp_d, xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, st, N, n, f);
 			BSAccept_kernel <<< dim3(Nb, Nm, 1), dim3(Nt, 1, 1) >>> (xt_d, vt_d, dx_d, dv_d, Encpairs_d, Encpairs2_d, dt1_d, st, N, n);
-			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (random_d, xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N, NconstT, f, n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
+			BSUpdate_kernel <<< dim3(1, Nm, 1), dim3(Nt, 1, 1) >>> (random_d, xold_d, vold_d, x4_d, v4_d, xt_d, vt_d, rcrit_d, rcritv_d, index_d, spin_d, love_d, createFlag_d, Encpairs_d, Encpairs2_d, BSstop_d, BSAstop_d, dt1_d, t1_d, dt_h[0] * FGt, Msun_h[0].x, U_d, st, N, NconstT, f, n, P.NencMax, Ncoll_d, Coll_d, t, aelimits_d, aecount_d, enccount_d, aecountT_d, enccountT_d, NWriteEnc_d, writeEnc_d, dtgr_d, Coltime_d, P.MinMass, P.UseTestParticles, P.SLevels, noColl);
 			cudaMemcpy(BSAstop_h, BSAstop_d, sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(BSstop_h, BSstop_d, 2 * sizeof(int), cudaMemcpyDeviceToHost);
 //printf("A %d %d\n", BSAstop_h[0], Ncoll_m[0]);
+			if(BSstop_h[1] == 1) break;
 			if(BSAstop_h[0] == 1) break;
 			if(BSAstop_h[0] == 2) break;
 			if(BSAstop_h[0] == 3) break;
 			if(Ncoll_m[0] > def_MaxColl) break; 
 		}
 //printf("B %d %d\n", BSAstop_h[0], Ncoll_m[0]);
+		if(BSstop_h[1] == 1) break;
 		if(BSAstop_h[0] == 1) break; 
 		if(BSAstop_h[0] == 3) break;
 		if(Ncoll_m[0] > def_MaxColl) break; 

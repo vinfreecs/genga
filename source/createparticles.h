@@ -76,26 +76,26 @@ __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 #endif
 
 			if(NN + nf < NT){
-printf("Create particle, %d %d\n", nf, MaxIndex + nf + 1);
+printf("Create particle, %d %d %d\n", nf, MaxIndex, MaxIndex + nf + 1);
 				x4_d[NN + nf] = x4i;
 				v4_d[NN + nf] = v4i;
 				index_d[NN + nf] = MaxIndex + nf + 1;
 				spin_d[NN + nf] = spin4;
 				love_d[NN + nf] = love3;
 
-				Fragments_d[nf * 25 + 0] = time/365.25;
-				Fragments_d[nf * 25 + 1] = (double)(MaxIndex + nf + 1);
-				Fragments_d[nf * 25 + 2] = x4i.w;
-				Fragments_d[nf * 25 + 3] = v4i.w;
-				Fragments_d[nf * 25 + 4] = x4i.x;
-				Fragments_d[nf * 25 + 5] = x4i.y;
-				Fragments_d[nf * 25 + 6] = x4i.z;
-				Fragments_d[nf * 25 + 7] = v4i.x;
-				Fragments_d[nf * 25 + 8] = v4i.y;
-				Fragments_d[nf * 25 + 9] = v4i.z;
-				Fragments_d[nf * 25 + 10] = spin4.x;
-				Fragments_d[nf * 25 + 11] = spin4.y;
-				Fragments_d[nf * 25 + 12] = spin4.z;
+				Fragments_d[nf * def_NColl + 0] = time/365.25;
+				Fragments_d[nf * def_NColl + 1] = (double)(MaxIndex + nf + 1);
+				Fragments_d[nf * def_NColl + 2] = x4i.w;
+				Fragments_d[nf * def_NColl + 3] = v4i.w;
+				Fragments_d[nf * def_NColl + 4] = x4i.x;
+				Fragments_d[nf * def_NColl + 5] = x4i.y;
+				Fragments_d[nf * def_NColl + 6] = x4i.z;
+				Fragments_d[nf * def_NColl + 7] = v4i.x;
+				Fragments_d[nf * def_NColl + 8] = v4i.y;
+				Fragments_d[nf * def_NColl + 9] = v4i.z;
+				Fragments_d[nf * def_NColl + 10] = spin4.x;
+				Fragments_d[nf * def_NColl + 11] = spin4.y;
+				Fragments_d[nf * def_NColl + 12] = spin4.z;
 
 			}
 		}
@@ -151,9 +151,9 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				double s = curand_uniform(&random);
 
 				//move the new particle 3 times the physical radius of the parent body away
-				double x = 3 * vp.w * sqrt(1.0 - u * u) * cos(theta);
-				double y = 3 * vp.w * sqrt(1.0 - u * u) * sin(theta);
-				double z = 3 * vp.w * u;
+				double x = 3.0 * vp.w * sqrt(1.0 - u * u) * cos(theta);
+				double y = 3.0 * vp.w * sqrt(1.0 - u * u) * sin(theta);
+				double z = 3.0 * vp.w * u;
 
 				volatile double vx = v * sqrt(1.0 - u * u) * cos(theta);
 				volatile double vy = v * sqrt(1.0 - u * u) * sin(theta);
@@ -190,7 +190,7 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 #endif
 
 				if(NN + nf < NT){
-printf("Create particle, %d %d %d\n", id, nf, MaxIndex + nf + 1);
+printf("Create particle, %d %d %d %d\n", id, nf, MaxIndex, MaxIndex + nf + 1);
 					x4_d[NN + nf] = x4i;
 					v4_d[NN + nf] = v4i;
 					index_d[NN + nf] = MaxIndex + nf + 1;
@@ -198,19 +198,19 @@ printf("Create particle, %d %d %d\n", id, nf, MaxIndex + nf + 1);
 					love_d[NN + nf] = love3;
 					createFlag_d[NN + nf] = 0;
 
-					Fragments_d[nf * 25 + 0] = time/365.25;
-					Fragments_d[nf * 25 + 1] = (double)(MaxIndex + nf + 1);
-					Fragments_d[nf * 25 + 2] = x4i.w;
-					Fragments_d[nf * 25 + 3] = v4i.w;
-					Fragments_d[nf * 25 + 4] = x4i.x;
-					Fragments_d[nf * 25 + 5] = x4i.y;
-					Fragments_d[nf * 25 + 6] = x4i.z;
-					Fragments_d[nf * 25 + 7] = v4i.x;
-					Fragments_d[nf * 25 + 8] = v4i.y;
-					Fragments_d[nf * 25 + 9] = v4i.z;
-					Fragments_d[nf * 25 + 10] = spin4.x;
-					Fragments_d[nf * 25 + 11] = spin4.y;
-					Fragments_d[nf * 25 + 12] = spin4.z;
+					Fragments_d[nf * def_NColl + 0] = time/365.25;
+					Fragments_d[nf * def_NColl + 1] = (double)(MaxIndex + nf + 1);
+					Fragments_d[nf * def_NColl + 2] = x4i.w;
+					Fragments_d[nf * def_NColl + 3] = v4i.w;
+					Fragments_d[nf * def_NColl + 4] = x4i.x;
+					Fragments_d[nf * def_NColl + 5] = x4i.y;
+					Fragments_d[nf * def_NColl + 6] = x4i.z;
+					Fragments_d[nf * def_NColl + 7] = v4i.x;
+					Fragments_d[nf * def_NColl + 8] = v4i.y;
+					Fragments_d[nf * def_NColl + 9] = v4i.z;
+					Fragments_d[nf * def_NColl + 10] = spin4.x;
+					Fragments_d[nf * def_NColl + 11] = spin4.y;
+					Fragments_d[nf * def_NColl + 12] = spin4.z;
 				}
 			}
 		}

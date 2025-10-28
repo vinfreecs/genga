@@ -10,7 +10,7 @@ BUILD_PATH := "`pwd`"
 BUILD_DATA = -DGIT_BRANCH=\"$(GIT_BRANCH)\" -DGIT_COMMIT=\"$(GIT_COMMIT)\" -DBUILD_DATE=\"$(BUILD_DATE)\" -DBUILD_SYSTEM=\"$(BUILD_SYSTEM)\" -DBUILD_PATH=\"$(BUILD_PATH)\" -DBUILD_SM=\"$(SM)\"
 
 source = genga.cu Host2.cu Orbit2.cu Energy.cu output.cu integrator.cu gas.cu
-headers = define.h Host2.h Orbit2.h FG2.h BSSingle.h Encounter3.h Kick3.h Kick4.h HC.h BSB.h BSBM.h BSBM3.h BSA.h BSAM3.h ComEnergy.h directAcc.h force.h forceYarkovskyOld.h TTVStep2.h BSTTV.h  BSRV.h Scan.h Rcrit.h convert.h createparticles.h bvh.h
+headers = define.h Host2.h Orbit2.h FG2.h BSSingle.h Encounter3.h Kick3.h Kick4.h HC.h BSB.h BSBM.h BSBM3.h BSA.h BSAM3.h ComEnergy.h directAcc.h force.h forceYarkovskyOld.h TTVStep2.h BSTTV.h  BSRV.h Scan.h Rcrit.h convert.h createparticles.h bvh.h collisions.h
 genga: $(source) $(headers)
 	nvcc $(ARCH) --compiler-options -Wall -o genga $(source) $(BUILD_DATA)
 #	nvcc $(ARCH) --ptxas-options=-v --compiler-options -Wall -o genga $(source) $(BUILD_DATA)

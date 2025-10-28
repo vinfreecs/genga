@@ -37,7 +37,7 @@ __host__ int Data::AllocateOrbit(){
 	Energy0_h = (double*)malloc(Nst * sizeof(double));
 	Coll_h = (double*)malloc(def_NColl * def_MaxColl * Nst * sizeof(double));
 	writeEnc_h = (double*)malloc(def_NColl * def_MaxWriteEnc * Nst * sizeof(double));
-	Fragments_h = (double*)malloc(25 * P.Nfragments * Nst * sizeof(double));
+	Fragments_h = (double*)malloc(def_NColl * P.Nfragments * Nst * sizeof(double));
 	aelimits_h = (float4*)malloc(NconstT * sizeof(float4));
 	aecount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
 	enccount_h = (unsigned int*)malloc(NconstT * sizeof(unsigned int));
@@ -122,6 +122,7 @@ __host__ int Data::AllocateOrbit(){
 	PFlag_h[0] = 0;
 #endif
 
+	BSstop_h = (int*)malloc( 2 * sizeof(int));
 	BSAstop_h = (int*)malloc(sizeof(int));
 
 	error = cudaGetLastError();
@@ -198,7 +199,7 @@ __host__ int Data::AllocateOrbit(){
 	cudaMalloc((void **) &scan_d, sizeof(int2) * NconstT);
 	cudaMalloc((void **) &Coll_d, sizeof(double) * Nst * def_NColl * def_MaxColl);
 	cudaMalloc((void **) &writeEnc_d, sizeof(double) * Nst * def_NColl * def_MaxWriteEnc);
-	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * 25 * P.Nfragments);
+	cudaMalloc((void **) &Fragments_d, sizeof(double) * Nst * def_NColl * P.Nfragments);
 	cudaMalloc((void **) &aelimits_d, NconstT * sizeof(float4));
 	cudaMalloc((void **) &aecount_d, NconstT * sizeof(unsigned int));
 	cudaMalloc((void **) &enccount_d, NconstT * sizeof(unsigned int));
@@ -292,12 +293,10 @@ __host__ int Data::AllocateOrbit(){
 	t1_h = (double*)malloc(NconstT * sizeof(double));
 	dtgr_h = (double*)malloc(NconstT * sizeof(double));
 	Coltime_h = (double*)malloc(sizeof(double));
-	BSstop_h = (int*)malloc(sizeof(int));
-	BSAstop_h = (int*)malloc(sizeof(int));
 
 
 	//Check if malloc was successful
-	if(BSAstop_h == NULL){
+	if(Coltime_h == NULL){
 		fprintf(masterfile,"malloc error\n");
 		printf("malloc error\n");
 		return 0;
@@ -542,7 +541,7 @@ printf("size %lu %lu %lu\n", sizeof(double), sizeof(elements), Nst * (N_h[0] + 1
 	cudaMalloc((void **) &t1_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &dtgr_d, NconstT * sizeof(double));
 	cudaMalloc((void **) &BSAstop_d, sizeof(int));
-	cudaMalloc((void **) &BSstop_d, sizeof(int));
+	cudaMalloc((void **) &BSstop_d, 2 * sizeof(int));
 	cudaMalloc((void **) &Coltime_d, sizeof(double));
 #if def_G3 > 0
 	cudaMalloc((void **) &K_d, NconstT * NconstT * sizeof(double));
@@ -984,7 +983,7 @@ __host__ int Data::init(){
 		writeEnc_h[i] = 0.0;
 	}
 
-	for(int i = 0; i < Nst * 25 * P.Nfragments; ++i){
+	for(int i = 0; i < Nst * def_NColl * P.Nfragments; ++i){
 		Fragments_h[i] = 0.0;
 	}
 
@@ -1073,7 +1072,7 @@ __host__ int Data::ic(){
 	cudaMemcpy(Nencpairs3_d, Nencpairs3_h, P.SLevels * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(Coll_d, Coll_h, sizeof(double) * Nst * def_NColl * def_MaxColl, cudaMemcpyHostToDevice);
 	cudaMemcpy(writeEnc_d, writeEnc_h, sizeof(double) * Nst * def_NColl * def_MaxWriteEnc, cudaMemcpyHostToDevice);
-	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * 25 * P.Nfragments, cudaMemcpyHostToDevice);
+	cudaMemcpy(Fragments_d, Fragments_h, sizeof(double) * Nst * def_NColl * P.Nfragments, cudaMemcpyHostToDevice);
 	cudaMemcpy(aelimits_d, aelimits_h, sizeof(float4) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(aecount_d, aecount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);
 	cudaMemcpy(enccount_d, enccount_h, sizeof(unsigned int) * NconstT, cudaMemcpyHostToDevice);

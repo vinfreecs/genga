@@ -1659,19 +1659,19 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 					v4_d[i + N + Nsmall].z = v4.z + vz;
 
 
-					Fragments_d[(i + 1) * 25 + 0] = time/365.25;
-					Fragments_d[(i + 1) * 25 + 1] = (double)(index_d[i + N + Nsmall]);
-					Fragments_d[(i + 1) * 25 + 2] = x4_d[i + N + Nsmall].w;
-					Fragments_d[(i + 1) * 25 + 3] = v4_d[i + N + Nsmall].w;
-					Fragments_d[(i + 1) * 25 + 4] = x4_d[i + N + Nsmall].x;
-					Fragments_d[(i + 1) * 25 + 5] = x4_d[i + N + Nsmall].y;
-					Fragments_d[(i + 1) * 25 + 6] = x4_d[i + N + Nsmall].z;
-					Fragments_d[(i + 1) * 25 + 7] = v4_d[i + N + Nsmall].x;
-					Fragments_d[(i + 1) * 25 + 8] = v4_d[i + N + Nsmall].y;
-					Fragments_d[(i + 1) * 25 + 9] = v4_d[i + N + Nsmall].z;
-					Fragments_d[(i + 1) * 25 + 10] = spin_d[i + N + Nsmall].x;
-					Fragments_d[(i + 1) * 25 + 11] = spin_d[i + N + Nsmall].y;
-					Fragments_d[(i + 1) * 25 + 12] = spin_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * def_NColl + 0] = time/365.25;
+					Fragments_d[(i + 1) * def_NColl + 1] = (double)(index_d[i + N + Nsmall]);
+					Fragments_d[(i + 1) * def_NColl + 2] = x4_d[i + N + Nsmall].w;
+					Fragments_d[(i + 1) * def_NColl + 3] = v4_d[i + N + Nsmall].w;
+					Fragments_d[(i + 1) * def_NColl + 4] = x4_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * def_NColl + 5] = x4_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * def_NColl + 6] = x4_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * def_NColl + 7] = v4_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * def_NColl + 8] = v4_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * def_NColl + 9] = v4_d[i + N + Nsmall].z;
+					Fragments_d[(i + 1) * def_NColl + 10] = spin_d[i + N + Nsmall].x;
+					Fragments_d[(i + 1) * def_NColl + 11] = spin_d[i + N + Nsmall].y;
+					Fragments_d[(i + 1) * def_NColl + 12] = spin_d[i + N + Nsmall].z;
 
 //printf("%.20g %d %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g %.20g 0\n", time/365.25, index_d[i + N + Nsmall], x4_d[i + N + Nsmall].w, v4_d[i + N + Nsmall].w, x4_d[i + N + Nsmall].x, x4_d[i + N + Nsmall].y, x4_d[i + N + Nsmall].z, v4_d[i + N + Nsmall].x, v4_d[i + N + Nsmall].y, v4_d[i + N + Nsmall].z, spin_d[i + N + Nsmall].x, spin_d[i + N + Nsmall].y, spin_d[i + N + Nsmall].z);
 
