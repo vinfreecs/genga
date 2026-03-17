@@ -2392,6 +2392,12 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		else if(strcmp(argv[i], "-GR") == 0){
 			P.UseGR = atoi(argv[i + 1]);
 		}
+		else if(strcmp(argv[i], "-NF") == 0){
+			P.Nfragments = atoi(argv[i + 1]);
+		}
+		else if(strcmp(argv[i], "-cm") == 0){
+			P.CollisionModel = atoi(argv[i + 1]);
+		}
 		else{
 			printf("Error: Console arguments not valid!\n");
 			return 0;
@@ -2505,6 +2511,17 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		printf("Error, TTV must use USE_RANDOM 1\n");
 		return 0;
 	}
+
+
+	if(P.CollisionModel == 1 && P.UseTestParticles > 0){
+		printf("Error, Collision Model 1 does not support test particle mode\n");
+		return 0;
+	}
+	if(P.CollisionModel == 1 && Nst > 1){
+		printf("Error, Collision Model 1 does not support multi simulation  mode\n");
+		return 0;
+	}
+
 
 	if(J2_h[0].x != 0.0){
 		P.UseJ2 = 1;
@@ -2859,7 +2876,7 @@ __host__ int Host::Param(int argc, char*argv[]){
 				tfile = fopen(GSF[st].encounterfilename, "w");
 				fclose(tfile);  
 			}
-			if(P.UseSmallCollisions > 0 || P.CreateParticles > 0){
+			if(P.UseSmallCollisions > 0 || P.CreateParticles > 0 || P.CollisionModel > 0){
 				tfile = fopen(GSF[st].fragmentfilename, "w");
 				fclose(tfile);  
 			}

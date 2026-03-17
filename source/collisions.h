@@ -3,7 +3,8 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int jj = blockIdx.y;
 
-	int nf = 400;
+	//int NF = 87;
+	int NF = 400;
 
 	if(id == 0 && jj == 0){
 		Nencpairs2_d[0] = 0;
@@ -11,7 +12,7 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 
 	if(jj < Nc){
 		int nc = jj + Nc0;
-		if(id < nf){
+		if(id < NF){
 
 			double Vmin = 1.0;
 			double Vmax = 1.005;
@@ -21,6 +22,8 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 
 
 			double time = Coll_d[nc * def_NColl];
+			int indexi = int(Coll_d[nc * def_NColl + 2]); 
+			int indexj = int(Coll_d[nc * def_NColl + 15]); 
 			int i = int(Coll_d[nc * def_NColl + 1]); 
 			//int j = int(Coll_d[nc * def_NColl + 14]); 
 
@@ -30,6 +33,7 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 
 			//Coordinates of the parent body 
 			double4 xp, vp;
+
 			xp.w = Coll_d[nc * def_NColl + 3];
 			vp.w = Coll_d[nc * def_NColl + 4];
 			xp.x = Coll_d[nc * def_NColl + 5];
@@ -39,6 +43,11 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 			vp.y = Coll_d[nc * def_NColl + 9];
 			vp.z = Coll_d[nc * def_NColl + 10];
 
+
+
+			//new radius of parent body
+			xp = x4_d[i];
+			vp = v4_d[i];
 
 			//Escape velocity at 1.1 times the physical radius of the parent body
 			double vesc = sqrt(2.0 * def_ksq * xp.w / (1.1 * vp.w));
@@ -81,6 +90,7 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 			v4i.x = vp.x + vx;
 			v4i.y = vp.y + vy;
 			v4i.z = vp.z + vz;
+//printf("%d %g %g %g %g %g\n", id, vp.w, x, y, z, sqrt(x*x + y*y + z*z));
 
 
 
@@ -119,7 +129,7 @@ printf("Create particle, %d %d %d %d %.20g \n", id, i, nf, MaxIndex + nf + 1, ti
 				rcritv_d[NN + nf] = rcritv;
 
 
-				Fragments_d[nf * def_NColl + 0] = time/365.25;
+				Fragments_d[nf * def_NColl + 0] = time;
 				Fragments_d[nf * def_NColl + 1] = (double)(MaxIndex + nf + 1);
 				Fragments_d[nf * def_NColl + 2] = x4i.w;
 				Fragments_d[nf * def_NColl + 3] = v4i.w;
@@ -132,6 +142,8 @@ printf("Create particle, %d %d %d %d %.20g \n", id, i, nf, MaxIndex + nf + 1, ti
 				Fragments_d[nf * def_NColl + 10] = spin4.x;
 				Fragments_d[nf * def_NColl + 11] = spin4.y;
 				Fragments_d[nf * def_NColl + 12] = spin4.z;
+				Fragments_d[nf * def_NColl + 13] = double(indexi);
+				Fragments_d[nf * def_NColl + 14] = double(indexj);
 
 
 			}

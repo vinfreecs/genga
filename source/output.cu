@@ -1620,6 +1620,43 @@ __host__ int Data::printRotation(){
 	return 1;
 }
 
+//This function prints details of collision model 1
+__host__ int Data::printCollisionModel1(int nf){
+
+	int st = 0; 
+
+	cudaMemcpy(Fragments_h, Fragments_d, sizeof(double) * def_NColl * nf, cudaMemcpyDeviceToHost);
+
+	FILE *fragmentfile;
+	for(int nc = 0; nc < nf; ++nc){
+		if(Nst == 1) st = 0;
+		else st = (int)(Fragments_h[nc * def_NColl + 1]) / def_MaxIndex;
+		fragmentfile = fopen(GSF[st].fragmentfilename, "a");
+		GSF[st].logfile = fopen(GSF[st].logfilename, "a");
+
+		int id = -1;
+		for(int in = 0; in < 15; ++in){
+			if(in == 1 || in == 13 || in == 14){
+				if(Nst == 1){
+					id = (int)(Fragments_h[nc * def_NColl + in]);
+					fprintf(fragmentfile, "%d ", id);
+				}
+				else{
+					id = ((int)(Fragments_h[nc * def_NColl + in])) % def_MaxIndex;
+					fprintf(fragmentfile, "%d ", id);
+				}
+			}
+			else fprintf(fragmentfile, "%.20g ", Fragments_h[nc * def_NColl + in]);
+		}
+		fprintf(GSF[st].logfile, "Create particle %d\n", id);
+		fprintf(fragmentfile, "\n");
+		fclose(fragmentfile);
+		fclose(GSF[st].logfile);
+	}
+
+	return 1;
+}
+
 //This function prints details of particle creation events
 __host__ int Data::printCreateparticle(int nf){
 

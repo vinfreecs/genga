@@ -308,6 +308,7 @@ public:
 	__host__ int printFragments(int);
 	__host__ int printRotation();
 	__host__ int printCreateparticle(int);
+	__host__ int printCollisionModel1(int);
 	__host__ int printTransits();
 	__host__ int printRV();
 	__host__ int printRV2();

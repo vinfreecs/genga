@@ -332,6 +332,7 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 		*U_d += 0.5 * mimj / mtot * vsq - mimj * def_ksq / sqrt(rsq);
 	}
 
+
 	x4[i].x = (x4[i].x * x4[i].w + x4[j].x * x4[j].w) / mtot;
 	x4[i].y = (x4[i].y * x4[i].w + x4[j].y * x4[j].w) / mtot;
 	x4[i].z = (x4[i].z * x4[i].w + x4[j].z * x4[j].w) / mtot;
@@ -431,6 +432,8 @@ __device__ void collide(curandState &random, volatile double4 *x4, volatile doub
 	//radius
 	v4[i].w = cbrt(v4[i].w * v4[i].w * v4[i].w + v4[j].w * v4[j].w * v4[j].w);
 	v4[j].w = 0.0;
+//printf("Radius %d %d %g %g\n", i, j, v4[i].w, v4[j].w);
+
 }
 
 

@@ -303,6 +303,7 @@ __host__ int Data::AllocateOrbit(){
 	}
 
   #if USE_RANDOM == 1
+	//generator.seed(0);
 	generator.seed(time(NULL));
 
 	random_h = (curandState*)malloc(NconstT * sizeof(curandState));
@@ -833,6 +834,7 @@ __global__ void randomInit_kernel(curandState *random_d, const int N){
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(id < N){
+		//set seed 
 		//curand_init(0, id, 0, &random_d[id]);
 		curand_init(clock64(), id, 0, &random_d[id]);
 	}

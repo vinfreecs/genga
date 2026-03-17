@@ -2667,7 +2667,7 @@ __host__ void Data::BSCall(int si, double time, int noColl, double ll){
 printf("**** Fragmentation, %d Collisions\n", Ncoll_m[0] - Nc0);
 		nFragments_m[0] = 0;
 	
-		collision_model1_kernel <<< dim3(1, Ncoll_m[0] - Nc0, 1), 400 >>>(random_d, x4_d, v4_d, spin_d, love_d, index_d, t1_d, rcrit_d, rcritv_d, N_h[0] + Nsmall_h[0], Coll_d, MaxIndex, Fragments_d, nFragments_d, Nencpairs2_d, n1_h[0], n2_h[0], 1.0 / (3.0 * Msun_h[0].x), dt_h[0], Nc0, Ncoll_m[0] - Nc0, NconstT);
+		collision_model1_kernel <<< dim3(1, Ncoll_m[0] - Nc0, 1), 100 >>>(random_d, x4_d, v4_d, spin_d, love_d, index_d, t1_d, rcrit_d, rcritv_d, N_h[0] + Nsmall_h[0], Coll_d, MaxIndex, Fragments_d, nFragments_d, Nencpairs2_d, n1_h[0], n2_h[0], 1.0 / (3.0 * Msun_h[0].x), dt_h[0], Nc0, Ncoll_m[0] - Nc0, NconstT);
 		
 
 
@@ -2681,13 +2681,14 @@ printf("**** Fragmentation, %d Collisions\n", Ncoll_m[0] - Nc0);
 			MaxIndex += nFragments_m[0];
 			cudaMemcpy(N_d + 0, N_h + 0, sizeof(int), cudaMemcpyHostToDevice);
 			resize(N_h[0], NB[0], 1);
+
+			printCollisionModel1(nFragments_m[0]);
 		}
 
 
 		cudaDeviceSynchronize();
 		encounter_fragments_kernel <<< N_h[0] + Nsmall_h[0], 256 >>> (x4_d, rcritv_d, t1_d, Encpairs2_d, Nencpairs2_d, EncFlag_d, P.NencMax, N_h[0] + Nsmall_h[0]);
 		groupCall();
-
 
 		cudaMemset(BSstop_d, 0, 2 * sizeof(int));
 		cudaDeviceSynchronize();
@@ -2803,6 +2804,8 @@ printf("**** Fragmentation, %d Collisions\n", Ncoll_m[0] - Nc0);
 			N_h[0] += nFragments_m[0];
 			MaxIndex += nFragments_m[0];
 			resize(N_h[0], NB[0], 1);
+
+			printCollisionModel1(nFragments_m[0]);
 		}
 
 
