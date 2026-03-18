@@ -3986,6 +3986,8 @@ __host__ int Host::readSetElements(){
 		fprintf(masterfile, "Error: Set Elements file not found: %s\n", P.setElementsfilename);		
 		return 0;
 	}
+
+	printf("Start reading set Elements file %s\n", P.setElementsfilename);
 	
 	int Elements[25];
 	for(int i = 0; i < 25; ++i){
@@ -4182,7 +4184,14 @@ __host__ int Host::readSetElements(){
 	for(int j = 0; j < def_NSetElementsMax; ++j){
 		for(int i = 0; i < nelements; ++i){
 			er = fscanf(Efile, "%lf", &t);
-			if(er <= 0) break;
+//printf("%d %d %g %d\n", j, i, t, er);
+			if(er <= 0){
+				if(i > 0){
+					printf("Error, in reading set Elements file, stopped at line %d, element %d, er = %d\n", j, i, er);
+					return 0;
+				}
+				break;
+			}
 			//find starting time of the simulation
 			if(Elements[i] == 1){
 				if(j % P.setElementsN == 0){
@@ -4220,12 +4229,12 @@ __host__ int Host::readSetElements(){
 	}
 	//cubic interpolation
 	if(time < time1){
-		printf("Error, set Elements end time larger than time in datafile: %g %g\n", time1, time);
+		printf("Error, set Elements end time larger than time in datafile: %.20g %.20g, numer of lines in file: %d\n", time1, time, nlines);
 		return 0;
 	}
 
 	fclose(Efile);
-	printf("%d lines, %d linesToSkip, %d bodies, %d elements\n", nlines, nlinesToSkip, P.setElementsN, nelements);
+	printf("Read set Elements file completed with %d lines, %d linesToSkip, %d bodies, %d elements\n", nlines, nlinesToSkip, P.setElementsN, nelements);
 	
 	constantCopy3(Elements, nelements, P.setElementsN, nlines);
 	//allocate memory
