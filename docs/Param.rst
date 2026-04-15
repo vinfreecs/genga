@@ -408,6 +408,9 @@ Statistical small body collisions
    - 2: enable only rotation reset model for test particles.
    - 3: enable only fragmentation model for test particles.
 
+- | :literal:`Small Collisions Interval`, in time steps: Interval in which the small body collision model is called (default 1000). 
+  | See :ref:`SmallBodies`
+
 - | :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default 0).
   | See :ref:`SmallBodies` or :ref:`CreateParticles`
 

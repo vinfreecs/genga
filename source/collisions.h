@@ -53,14 +53,14 @@ __global__ void collision_model1_kernel(curandState *random_d, double4 *x4_d, do
 			double vesc = sqrt(2.0 * def_ksq * xp.w / (1.1 * vp.w));
 
 
-			double v = (curand_uniform(&random) * (Vmax - Vmin) + Vmin) * vesc;
+			double v = (curand_uniform_double(&random) * (Vmax - Vmin) + Vmin) * vesc;
 
 			//direction 
-			double u = curand_uniform(&random);
-			double theta = curand_uniform(&random) * 2.0 * M_PI;
+			double u = curand_uniform_double(&random);
+			double theta = curand_uniform_double(&random) * 2.0 * M_PI;
 
 			//sign
-			double s = curand_uniform(&random);
+			double s = curand_uniform_double(&random);
 
 			//move the new particle 1.1 times the physical radius of the parent body away
 			double x = 1.1 * vp.w * sqrt(1.0 - u * u) * cos(theta);

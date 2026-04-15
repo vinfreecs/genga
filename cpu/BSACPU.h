@@ -1,6 +1,6 @@
 
 template <int NN>
-void BSA_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, double *t1_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSA_cpu(mt19937_64 &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, double *t1_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int NencMax, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 //printf("BSA %d %g\n", idx, StopMinMass_c[0]);
@@ -748,7 +748,7 @@ void BSAccept_cpu(double4 *xt_h, double4 *vt_h, double3 *dx_h, double3 *dv_h, in
 }
 
 
-void BSUpdate_cpu(default_random_engine &generator, double4 *xold_h, double4 *vold_h, double4 *x4_h, double4 *v4_h, double4 *xt_h, double4 *vt_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *BSstop_h, int *BSAstop_h, double *dt1_h, double *t1_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, double *dtgr_h, double *Coltime_h, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSUpdate_cpu(mt19937_64 &generator, double4 *xold_h, double4 *vold_h, double4 *x4_h, double4 *v4_h, double4 *xt_h, double4 *vt_h, double *rcrit_h, double *rcritv_h, int *index_h, double4 *spin_h, double3 *love_h, int *createFlag_h, int2 *Encpairs_h, int2 *Encpairs2_h, int *BSstop_h, int *BSAstop_h, double *dt1_h, double *t1_h, const double dt, const double Msun, double *U_h, const int st, const int NT, const int NconstT, const int f, const int n, const int NencMax, int *Ncoll_m, double *Coll_h, const double time, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, int *NWriteEnc_m, double *writeEnc_h, double *dtgr_h, double *Coltime_h, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 	int si = Encpairs2_h[ (st+2) * NT + idx].y;

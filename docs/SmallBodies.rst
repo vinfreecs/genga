@@ -38,6 +38,7 @@ a collision or ejection event.
 The following parameters are relevant for the small body collision model  and can be set in the :ref:`param.dat<ParamFile>` file:
 
 - :literal:`Use Small Collisions`, enable small bodies collisions model.
+- :literal:`Small Collisions Interval`, Interval at which the model is called.
 - :literal:`Asteroid rho`: density of the body in kg/m^3.
 - :literal:`Asteroid V`: Asteroid collisional velocity V, in m/s.
 - :literal:`Nfragments`: Number of additional memory size for debris particles, in particle numbers, (default 0). 
@@ -126,3 +127,26 @@ final probability of
 
 per second (all values in SI units).
 If the rotation rate is reset, then both the obliquity and the new rotation rate are randomized. 
+
+
+Set the call interval
+---------------------
+
+The two described probabilities of fragmentation and rotation reset events per time step, can have very small numbers, e.g. 
+in the order of :math:`1.0e-11` or even lover. Using a random number generator to filter for such small numbers can be problematic.
+Therefore the calling interval of the two functions can be increased with the :literal:`Small Collisions Interval` option.
+
+If this value is set to :math:`x`, then the probabilities is multiplied by :math:`x`, and the functions are called only
+at every :math:`x` time steps.  This also increases the performance of the code, since the functions are executed less times.
+
+The values of literal:`Small Collisions Interval` should be chosen such that the probabilities :math:`p` lie in
+
+.. math::
+    \text{def\_Rand\_Min} \ll p \ll 1
+
+where :literal:`def_Rand_Min` is set in the :literal:`define.h` file (default = 1.0e-12).
+
+
+
+
+

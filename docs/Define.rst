@@ -77,6 +77,8 @@ Other
   - 0: Poincare surface of section is not calculated
   - 1: Poincare surface of section is calculated
 
+- | :literal:`def_Rand_Min`: lower limit for acceptable random number range (default = 1.0e-12).
+  | See :ref:`SmallBodies`.
 
 .. _constants:
 

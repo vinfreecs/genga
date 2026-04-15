@@ -32,23 +32,23 @@ __global__ void create1_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	if(id < NN){
 
 		curandState random = random_d[id];
-		double rd = curand_uniform(&random);
+		double rd = curand_uniform_double(&random);
 		random_d[id] = random;
 
 		p = p / 365.25 * dt / dayUnit;          //probability per time step and per thread
 
 		if(rd < p){
 
-			double a = curand_uniform(&random) * da + aa - 0.5 * da;   //in AU
-			double e = curand_uniform(&random) * de + ee - 0.5 * de;
-			double inc = curand_uniform(&random) * dinc + iinc - 0.5 * dinc;
+			double a = curand_uniform_double(&random) * da + aa - 0.5 * da;   //in AU
+			double e = curand_uniform_double(&random) * de + ee - 0.5 * de;
+			double inc = curand_uniform_double(&random) * dinc + iinc - 0.5 * dinc;
 
 			if(inc < 0.0) inc = 2.0 * M_PI - inc;
 			if(e < 0.0) e = 0.0;
 
-			double Omega = curand_uniform(&random) * 2.0 * M_PI;
-			double w = curand_uniform(&random) * 2.0 * M_PI;
-			double M = curand_uniform(&random) * 2.0 * M_PI;
+			double Omega = curand_uniform_double(&random) * 2.0 * M_PI;
+			double w = curand_uniform_double(&random) * 2.0 * M_PI;
+			double M = curand_uniform_double(&random) * 2.0 * M_PI;
 
 
 			double4 spin4 = {0.0, 0.0, 0.0, 0.4};
@@ -127,7 +127,7 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 		if(createFlag_d[id] == 1){
 			curandState random = random_d[id];
-			double rd = curand_uniform(&random);
+			double rd = curand_uniform_double(&random);
 			random_d[id] = random;
 
 			p = p / 365.25 * dt / dayUnit;          //probability per time step and per thread
@@ -141,14 +141,14 @@ __global__ void create2_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				//escape velocity at 3 times the physical radius of the parent body
 				double vesc = sqrt(2.0 * def_ksq * xp.w / (3.0 * vp.w));
 
-				double v = (curand_uniform(&random) * (Vmax - Vmin) + Vmin) * vesc;
+				double v = (curand_uniform_double(&random) * (Vmax - Vmin) + Vmin) * vesc;
 
 				//direction 
-				double u = curand_uniform(&random);
-				double theta = curand_uniform(&random) * 2.0 * M_PI;
+				double u = curand_uniform_double(&random);
+				double theta = curand_uniform_double(&random) * 2.0 * M_PI;
 
 				//sign
-				double s = curand_uniform(&random);
+				double s = curand_uniform_double(&random);
 
 				//move the new particle 3 times the physical radius of the parent body away
 				double x = 3.0 * vp.w * sqrt(1.0 - u * u) * cos(theta);

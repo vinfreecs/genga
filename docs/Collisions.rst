@@ -93,7 +93,7 @@ The fluid love number :math:`k2f` of the new body is calculated as
 
    k2f_{\rm new} = \frac{m_i k2f_i + m_j k2f_j}{m_i + m_j}
 
-The time lag :math:`\Tau` of the new body is calculated as
+The time lag :math:`\tau` of the new body is calculated as
 
 .. math::
 

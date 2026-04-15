@@ -3,10 +3,10 @@
 // This is a template function for additional forces
 // The velocities in this kernel are already converted to heliocentric coordinates
 //
-// non canonical perturbations are treated in a symplectic way by the implicicit midpoint
+// non canonical perturbations are treated in a symplectic way by the implicit midpoint
 // method, according to Mikkola 1997
 //
-// si = 0 is used in tunig step, and no global variables are updated
+// si = 0 is used in tuning step, and no global variables are updated
 //
 // Use vold_d as temporary storage for Spinsun
 //
@@ -34,8 +34,8 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 		double4 Spin = spin_d[id];
 		double Msun = Msun_d[st].x;			//This is the mass of the central star
 		double4 Spinsun = Spinsun_d[st];		//This is the spin of the central star and the moment of inertia
-		double3 Lovesun = Lovesun_d[st];		//This is the Love number, fluid Love numer and time lag
-		double2 J2s = J2_d[st];			//This is the J2 value for additional gravitational harmonics forces and the mean radius
+		double3 Lovesun = Lovesun_d[st];		//This is the Love number, fluid Love number and time lag
+		double2 J2s = J2_d[st];				//This is the J2 value for additional gravitational harmonics forces and the mean radius
 		double dt = dt_d[st] * Kt;			//This is the time step to do
 //		double time = time_d[st] / 365.25;		//This is the time in years
 
@@ -50,7 +50,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 		T3.z = 0.0;
 
 		// **********************************************************
-		// prepare first all values which dont depend on the velocity
+		// prepare first all values which don't depend on the velocity
 		// **********************************************************
 
 		double rsq = (x4.x * x4.x + x4.y * x4.y + x4.z * x4.z);
@@ -222,7 +222,7 @@ __global__ void force_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double4
 			P = t * tau;
 			F1 = -tsun - t;
 
-			//F1 * x4i.xyz is the nondissipative radial part of the acceleration
+			//F1 * x4i.xyz is the non dissipative radial part of the acceleration
 
 		}
 
@@ -915,7 +915,7 @@ __host__ void Host::constantCopy3(int *Elements, const int nelements, const int 
 }
 
 // ***************************************************************
-// This kernel converts the heliocentric coordinates into Keplerian elemtnts,
+// This kernel converts the heliocentric coordinates into Keplerian elements,
 // modifies the Keplerian elements according to the setElementsData_d data and
 // converts back to heliocentric coordinates.
 //
@@ -1092,7 +1092,7 @@ __global__ void setElements_kernel(double4 *x4_d, double4 *v4_d, int *index_d, d
 					if(e3.y < 0.0) w = 2.0 * M_PI - w;
 				}
 				
-				//circular, inclinded orbit
+				//circular, inclined orbit
 				if(e < 1.0e-10 && inc > 1.0e-11){
 					w = 0.0;
 				}
@@ -1380,14 +1380,14 @@ if(setElements_c[i] == 13){
 
 
 // ***************************************************************
-// This kernel calulates the probability of a collisional induced
+// This kernel calculates the probability of a collisional induced
 // rotation reset. 
-// Fragmentation events are reportend in the Fragments_d array.
+// Fragmentation events are reported in the Fragments_d array.
 //
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int st, double *Fragments_d, double time, int *nFragments_d, int SmallCollisionsInterval){
 
 	int N = N_d[st];
 
@@ -1410,7 +1410,7 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double M = x4.w;
 			if(x4.w == 0.0){
 				M = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * v4.w * v4.w * v4.w * def_AU * def_AU * def_AU; 	//mass in kg;
-				M /= def_Solarmass;								//mass im Solar masses
+				M /= def_Solarmass;								//mass in Solar masses
 			}
 
 			//compute rotation vector from spin vector
@@ -1428,14 +1428,41 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 			double t1 = 2.0 * sqrt(2.0) * omega / (5.0 * Asteroid_V_c[0]);
 			double p = 1.0e-18 / cbrt(RR * RR * RR * RR) * pow(t1, -5.0/6.0);	//probability per second
 			p = p * 3600.0 * 24.0 * dt / dayUnit;					//probability per time step
+			p *= SmallCollisionsInterval;						//probability per time step interval
+
 #if USE_RANDOM == 1
-			double rd = curand_uniform(&random);
+			double rd = curand_uniform_double(&random);
 			int accept = -2;
-			if(rd < p && omega > 0.0) {
+//printf("r %d %g %g %g %g\n", id, rd, p, RR, omega);
+
+			//check if accept condition is in a valid random number range
+			//numbers less than 1.0e-12 can be problematic to sample and should be avoided
+			//if p is largen than 1, then the call interval must be reduced
+			if(p < def_Rand_Min){
+#if def_CPU == 0
+				atomicMax(&nFragments_d[0], NconstT + 2);
+#else
+				#pragma omp critical
+				nFragments_d[0] = NconstT + 2;
+#endif
+			}
+			else if(p >= 1.0){
+#if def_CPU == 0
+				atomicMax(&nFragments_d[0], NconstT + 3);
+#else
+				#pragma omp critical
+				nFragments_d[0] = NconstT + 3;
+#endif
+			}
+			else if(rd < p && omega > 0.0){
 #if def_CPU == 0
 				accept = atomicMax(&nFragments_d[0], 0);
 #else
-				accept = nFragments_d[0];
+				#pragma omp critical
+				{
+					accept = nFragments_d[0];
+					nFragments_d[0] = max(nFragments_d[0], 0);
+				}
 #endif
 
 printf("rotation reset %d %d %g %g %g\n", id, index_d[id], time/365.25, rd, p);
@@ -1443,16 +1470,16 @@ printf("rA %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 			}
 			if(accept == -1){
 				//reset the rotation rate and spin vector
-				rd = curand_uniform(&random);
+				rd = curand_uniform_double(&random);
 				double omega = 1.0/((rd * 35 + 1.0) * RR); //rotations per s
 printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
 				double S = Ic * M * v4.w * v4.w * omega;
-				double u = curand_uniform(&random);
-				double theta = curand_uniform(&random) * 2.0 * M_PI;
+				double u = curand_uniform_double(&random);
+				double theta = curand_uniform_double(&random) * 2.0 * M_PI;
 				//sign
-				double s = curand_uniform(&random);
+				double s = curand_uniform_double(&random);
 
 				double t2 = S * sqrt(1.0 - u * u);
 				spin.x = t2 * cos(theta);
@@ -1481,7 +1508,8 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 #if def_CPU == 0
 				atomicMax(&nFragments_d[0], 1);
 #else
-				nFragments_d[0] = 1;
+				#pragma omp critical
+				nFragments_d[0] = max(nFragments_d[0], 1);
 #endif
 			}
 #endif
@@ -1490,14 +1518,14 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 	}
 }
 // ***************************************************************
-// This kernel calulates the probability of Asteroid Collisions
+// This kernel calculates the probability of Asteroid Collisions
 // generates fragment kernels. 
-// Fragmentation events are reportend in the Fragments_d array.
+// Fragmentation events are reported in the Fragments_d array.
 //
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int MaxIndex, const int st, double *Fragments_d, double time, int *nFragments_d){
+__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int MaxIndex, const int st, double *Fragments_d, double time, int *nFragments_d, int SmallCollisionsInterval){
 #if USE_RANDOM == 1
 	int N = N_d[st];
 
@@ -1511,7 +1539,7 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 		volatile double4 x4 = x4_d[id];
 		volatile double4 v4 = v4_d[id];
 		curandState random = random_d[id];
-		curand_uniform(&random);
+		curand_uniform_double(&random);
 		random_d[id] = random;
 		
 		if(x4.w >= 0.0){
@@ -1525,13 +1553,41 @@ __global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v
 
 			double p = 1.0 / (2.0e7 * sqrt(RR));	//probability per year per body
 			p = p / 365.25 * dt / dayUnit;  	//probability per time step per body
-			double rd = curand_uniform(&random);
+			p *= SmallCollisionsInterval;		//probability per time step interval
+
+			double rd = curand_uniform_double(&random);
 			volatile int accept = -2;
-			if(rd < p) {
+//printf("f %d %g %g %g\n", id, rd, p, RR);
+
+
+			//check if accept condition is in a valid random number range
+			//numbers less than 1.0e-12 can be problematic to sample and should be avoided
+			//if p is largen than 1, then the call interval must be reduced
+			if(p < def_Rand_Min){
+#if def_CPU == 0
+				atomicMax(&nFragments_d[0], NconstT + 2);
+#else
+				#pragma omp critical
+				nFragments_d[0] = NconstT + 2;
+#endif
+			}
+			else if(p >= 1.0){
+#if def_CPU == 0
+				atomicMax(&nFragments_d[0], NconstT + 3);
+#else
+				#pragma omp critical
+				nFragments_d[0] = NconstT + 3;
+#endif
+			}
+			else if(rd < p){
 #if def_CPU == 0
 				accept = atomicMax(&nFragments_d[0], 0);
 #else
-				accept = nFragments_d[0];
+				#pragma omp critical
+				{
+					accept = nFragments_d[0];
+					nFragments_d[0] = max(nFragments_d[0], 0);
+				}
 #endif
 printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/365.25, rd, p, M, RR, MaxIndex);
 			}
@@ -1539,13 +1595,13 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 				double x0 = Asteroid_rmin_c[0];	//m
 				double x1 = RR;		//m
 
-				volatile int ii;
 				double vscaleT = 0.0;
+				int ii;
 				for(ii = 0; ii < 10000; ++ii){
 
 					//mass
 					double n = -1.5;
-					double u = curand_uniform(&random);
+					double u = curand_uniform_double(&random);
 					double r = pow((pow(x1,n+1.0) - pow(x0,n+1.0)) * u + pow(x0, n+1.0), 1.0/(n+1.0));
 					double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * r * r * r; //mass in kg;
 
@@ -1556,17 +1612,17 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 						r = cbrt(m * 3.0 / (Asteroid_rho_c[0] * 4.0 * M_PI));
 					}
 
-					double vscale = curand_uniform(&random) * 2.0 * 0.2 + (1.0 - 0.2) * pow(m, -1.0/6.0);
+					double vscale = curand_uniform_double(&random) * 2.0 * 0.2 + (1.0 - 0.2) * pow(m, -1.0/6.0);
 					vscaleT += vscale;
 					//velocity
 					double v = 31.0 * vscale; //m/s
 
 					//direction 
-					u = curand_uniform(&random);
-					double theta = curand_uniform(&random) * 2.0 * M_PI;
+					u = curand_uniform_double(&random);
+					double theta = curand_uniform_double(&random) * 2.0 * M_PI;
 
 					//sign
-					double s = curand_uniform(&random);
+					double s = curand_uniform_double(&random);
 
 					double x = 3 * RR * sqrt(1.0 - u * u) * cos(theta);
 					double y = 3 * RR * sqrt(1.0 - u * u) * sin(theta);
@@ -1583,7 +1639,7 @@ printf("fA %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 					}
 
 					//rotation rate and spin vector
-					rd = curand_uniform(&random);
+					rd = curand_uniform_double(&random);
 					double omega = 1.0/((rd * 35 + 1.0) * r);	//rotations per s
 					omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
@@ -1616,10 +1672,10 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 
 
 					double S = spin.w * m * r * r * omega;
-					u = curand_uniform(&random);
-					theta = curand_uniform(&random) * 2.0 * M_PI;
+					u = curand_uniform_double(&random);
+					theta = curand_uniform_double(&random) * 2.0 * M_PI;
 					//sign
-					s = curand_uniform(&random);;
+					s = curand_uniform_double(&random);;
 
 					double t2 = S * sqrt(1.0 - u * u);
 					spin.x = t2 * cos(theta);
@@ -1642,7 +1698,8 @@ printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 #if def_CPU == 0
 						atomicMax(&nFragments_d[0], ii);
 #else
-						nFragments_d[0] = ii;
+						#pragma omp critical
+						nFragments_d[0] = max(nFragments_d[0], ii);
 #endif
 						break;
 					}
@@ -1753,8 +1810,9 @@ __host__ void Data::fragmentCall(){
 	if(Nsmall_h[0] > 0.0){
 		int st = 0;
 		nFragments_m[0] = -1;
-		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time_h[0], nFragments_d);
+		fragment_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, love_d, index_d, N_d, Nsmall_d, dt_d, NconstT, MaxIndex, st, Fragments_d, time_h[0], nFragments_d, P.SmallCollisionsInterval);
 		cudaDeviceSynchronize();
+
 		if(nFragments_m[0] > 0){
 #if def_CPU == 0
 			Nsmall_h[st] += nFragments_m[0];
@@ -1767,7 +1825,7 @@ __host__ void Data::rotationCall(){
 	if(Nsmall_h[0] > 0.0){
 		int st = 0;
 		nFragments_m[0] = -1;
-		rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, st, Fragments_d, time_h[0], nFragments_d);
+		rotation_kernel <<< (Nsmall_h[0] + 255) / 256, 256 >>> (random_d, x4_d, v4_d, spin_d, index_d, N_d, Nsmall_d, dt_d, NconstT, st, Fragments_d, time_h[0], nFragments_d, P.SmallCollisionsInterval);
 		cudaDeviceSynchronize();
 	}
 }
@@ -1801,7 +1859,7 @@ __global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 
 			//material constants
 
-			double Gamma = sqrt(Asteroid_K_c[0] * Asteroid_rho_c[0] * Asteroid_C_c[0]);	//surface thermal intertia 
+			double Gamma = sqrt(Asteroid_K_c[0] * Asteroid_rho_c[0] * Asteroid_C_c[0]);	//surface thermal inertia 
 			double RR = v4i.w * def_AU;		//covert radius in m 
 
 			//int index = index_d[id];
@@ -1810,7 +1868,7 @@ __global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 			double m = x4i.w;
 			if(m == 0.0){
 				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
-				m /= def_Solarmass;						//mass im Solar masses
+				m /= def_Solarmass;						//mass in Solar masses
 			}
 			double mu = def_ksq * (Msun + m);
 	
@@ -2063,7 +2121,7 @@ __global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 			double X2sX = (X - 2.0) * sX;
 
 			double eX = exp(-X);
-			// A B C D are multiplied by e^-X, which cancelles out later
+			// A B C D are multiplied by e^-X, which cancels out later
 			double Ax = -eX * (X + 2.0) - (X2cX - X * sX);
 			double Bx = -eX * X - (X * cX + X2sX);
 			double Cx = Ax + L * (eX * 3.0 * (X + 2.0) + (3.0 * X2cX + X * (X - 3.0) * sX));
@@ -2090,7 +2148,7 @@ __global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 			a3.y *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
 			a3.z *= 24.0 * 3600.0 * 24.0 * 3600.0 / (def_AU * dayUnit * dayUnit);
 
-		//printf("%d %g %g %g %g %g %g %g %g\n", id, m, RR, a, omega, n, a3.x, a3.y, a3.z);
+//printf("%d %g %g %g %g %g %g %g %g\n", id, m, RR, a, omega, n, a3.x, a3.y, a3.z);
 
 			v4i.x += a3.x * dt;
 			v4i.y += a3.y * dt;
@@ -2138,7 +2196,7 @@ __device__ void alpha(double e){
 
 // ***************************************************************
 // This kernel computes the Poynting-Robertson drag.
-// it computes the PR drag drit rates da/dt and de/de and modifies the Keplerian elements
+// it computes the PR drag drift rates da/dt and de/de and modifies the Keplerian elements
 
 // BURNS, LAMY, AND SOTER, 1979 (Radiation Forces on Small Particles in the Solar System)
 
@@ -2167,7 +2225,7 @@ __global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *
 
 			if(m == 0.0){
 				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
-				m /= def_Solarmass;					//mass im Solar masses
+				m /= def_Solarmass;					//mass in Solar masses
 			}
 			double mu = def_ksq * (Msun + m);
 
@@ -2242,7 +2300,7 @@ __global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *
 					if(e3.y < 0.0) w = 2.0 * M_PI - w;
 				}
 				
-				//circular, inclinded orbit
+				//circular, inclined orbit
 				if(e < 1.0e-10 && inc > 1.0e-11){
 					w = 0.0;
 				}
@@ -2339,7 +2397,7 @@ __global__ void PoyntingRobertsonEffect2_kernel(double4 *x4_d, double4 *v4_d, in
 		
 			if(m == 0.0){
 				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
-				m /= def_Solarmass;					//mass im Solar masses
+				m /= def_Solarmass;					//mass in Solar masses
 			}
 		
 			//double eta = 2.53e8 / (Asteroid_rho_c[0] * RR);			//m^2 / s

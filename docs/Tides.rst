@@ -129,9 +129,11 @@ As initial values, we use the same parameters as given in Table 1 in :cite:p:`Au
 .. figure:: plots/PhobosTides.png  
     :name: figTides
 
-    Comparison of GENGA against secular evolution models on the example of the Mars-Phobos system. The models correspond to
-    :cite:p:`Hut1981` (blue solid line), [Equation 30] :cite:p:`EfroimskyLainey2007` (red dashed line) and  [Equation 36] :cite:p:`EfroimskyLainey2007`
-    (green dashed line). The evolution of the semi-major axis and the eccentricity in GENGA agree well with the constant :math:`\tau`
+    Comparison of GENGA against secular evolution models on the example of the Mars-Phobos system. The models correspond
+    to :cite:p:`Hut1981` (blue solid line),
+    (Equation 30, :cite:p:`EfroimskyLainey2007`) (red dashed line) and  (Equation 36, :cite:p:`EfroimskyLainey2007`)(green dashed line).
+    The evolution of the semi-major axis and the eccentricity in GENGA agree well with the constant :math:`\tau`
     scenario in the secular evolution models.
     This plot reproduces the results of Figure 2 from :cite:p:`EfroimskyLainey2007`.
+
 

@@ -4343,20 +4343,55 @@ int Data::step_small_cpu(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
-			fragmentCall();
-			if(nFragments_m[0] > 0){
-				int er = printFragments(nFragments_m[0]);
-				if(er == 0) return 0;
-				er = RemoveCall();
-				if(er == 0) return 0;
+
+		if(timeStep % P.SmallCollisionsInterval == 0){
+			if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
+				fragmentCall();
+			
+				if(nFragments_m[0] == NconstT + 3){
+				
+					printf("Error: accept condition in fragment kernel is larger than 1\n");
+					printf("Reduce Small Collisions Interval or time step\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+				if(nFragments_m[0] == NconstT + 2){
+				
+					printf("Error: accept condition in fragment kernel is smaller than def_Rand_Min = %g\n", def_Rand_Min);
+					printf("Increase Small Collisions Interval\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+
+				if(nFragments_m[0] > 0){
+					int er = printFragments(nFragments_m[0]);
+					if(er == 0) return 0;
+					er = RemoveCall();
+					if(er == 0) return 0;
+				}
 			}
-		}
-		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
-			rotationCall();
-			if(nFragments_m[0] > 0){
-				int er = printRotation();
-				if(er == 0) return 0;
+			if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
+				rotationCall();
+
+				if(nFragments_m[0] == NconstT + 3){
+				
+					printf("Error: accept condition in rotation kernel is larger than 1\n");
+					printf("Reduce Small Collisions Interval or time step\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+				if(nFragments_m[0] == NconstT + 2){
+				
+					printf("Error: accept condition in rotation kernel is smaller than def_Rand_Min = %g\n", def_Rand_Min);
+					printf("Increase Small Collisions Interval\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+
+				if(nFragments_m[0] > 0){
+					int er = printRotation();
+					if(er == 0) return 0;
+				}
 			}
 		}
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){
@@ -5284,6 +5319,7 @@ __host__ int Data::step_small(int noColl){
 				}
 			}
 		}
+
 		if(StopAtEncounterFlag2 == 1){
 			StopAtEncounterFlag2 = 0;
 			int enc = StopAtEncounterCall();
@@ -5293,20 +5329,55 @@ __host__ int Data::step_small(int noColl){
 			int col = CollisionCall(noColl);
 			if(col == 0) return 0;
 		}
-		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
-			fragmentCall();
-			if(nFragments_m[0] > 0){
-				int er = printFragments(nFragments_m[0]);
-				if(er == 0) return 0;
-				er = RemoveCall();
-				if(er == 0) return 0;
+
+		if(timeStep % P.SmallCollisionsInterval == 0){
+			if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 3){
+				fragmentCall();
+
+				if(nFragments_m[0] == NconstT + 3){
+				
+					printf("Error: accept condition in fragment kernel is larger than 1\n");
+					printf("Reduce Small Collisions Interval or time step\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+				if(nFragments_m[0] == NconstT + 2){
+				
+					printf("Error: accept condition in fragment kernel is smaller than def_Rand_Min = %g\n", def_Rand_Min);
+					printf("Increase Small Collisions Interval\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+
+				if(nFragments_m[0] > 0){
+					int er = printFragments(nFragments_m[0]);
+					if(er == 0) return 0;
+					er = RemoveCall();
+					if(er == 0) return 0;
+				}
 			}
-		}
-		if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
-			rotationCall();
-			if(nFragments_m[0] > 0){
-				int er = printRotation();
-				if(er == 0) return 0;
+			if(P.UseSmallCollisions == 1 || P.UseSmallCollisions == 2){
+				rotationCall();
+
+				if(nFragments_m[0] == NconstT + 3){
+				
+					printf("Error: accept condition in rotation kernel is larger than 1\n");
+					printf("Reduce Small Collisions Interval or time step\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+				if(nFragments_m[0] == NconstT + 2){
+				
+					printf("Error: accept condition in rotation kernel is smaller than def_Rand_Min = %g\n", def_Rand_Min);
+					printf("Increase Small Collisions Interval\n");
+					printf("Integration stopped\n");
+					return 0;
+				}
+
+				if(nFragments_m[0] > 0){
+					int er = printRotation();
+					if(er == 0) return 0;
+				}
 			}
 		}
 		if(CollisionFlag == 1 && P.ei > 0 && timeStep % min(P.ei, 10000) == 0){

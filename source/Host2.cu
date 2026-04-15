@@ -304,6 +304,7 @@ __host__ void Host::Halloc(){
 	P.UseYarkovsky = def_UseYarkovsky;
 	P.UseMigrationForce = def_UseMigrationForce;
 	P.UseSmallCollisions = def_UseSmallCollisions;
+	P.SmallCollisionsInterval = def_SmallCollisionsInterval;
 	P.CreateParticles = def_CreateParticles;
 	P.CreateParticlesN = def_CreateParticlesN;
 	sprintf(P.CreateParticlesfilename, "%s", "-");
@@ -1632,6 +1633,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(fgets(sp, 3, paramfile) != nullptr)
 			continue;
 		}
+		if(strcmp(sp, "Small Collisions Interval =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.SmallCollisionsInterval);
+				if(er <= 0){
+					printf("Error: Small Collisions Interval value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			if(fgets(sp, 3, paramfile) != nullptr)
+			continue;
+		}
 		if(strcmp(sp, "Create Particles file name =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%s", P.CreateParticlesfilename);
@@ -2502,6 +2518,9 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.UseSmallCollisions > 0 && USE_RANDOM != 1){
 		printf("Error, Use Small Collisions must use USE_RANDOM 1\n");
 		return 0;
+	}
+	if(P.UseSmallCollisions > 0 && P.Nfragments == 0){
+		P.Nfragments = 1;
 	}
 	if(P.CreateParticles > 0 && USE_RANDOM != 1){
 		printf("Error, Create Particles mode must use USE_RANDOM 1\n");
@@ -3654,6 +3673,8 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Migration Force: %d\n", P.UseMigrationForce);		// use only argument in simulation 0
 			fprintf(infofile, "Solar Wind factor: %g\n", P.SolarWind);			// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
+			fprintf(infofile, "Small Collisions Interval: %d\n", P.SmallCollisionsInterval);	// use only argument in simulation 0
+			fprintf(infofile, "def_Rand_Min: %g\n", def_Rand_Min);
 			fprintf(infofile, "Create Particles file name: %s\n", P.CreateParticlesfilename);// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0
 			fprintf(infofile, "Set Elements file name: %s\n", P.setElementsfilename);	// use only argument in simulation 0

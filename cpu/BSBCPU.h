@@ -12,7 +12,7 @@ void BSB_sett_cpu(double *t1_h, const int N){
 
 
 template< int NN>
-void BSBStep_cpu(default_random_engine &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double *t1_h, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
+void BSBStep_cpu(mt19937_64 &generator, double4 *x4_h, double4 *v4_h, double4 *xold_h, double4 *vold_h, double *rcrit_h, double *rcritv_h, int2 *Encpairs2_h, const double dt, const double Msun, double *U_h, const int st, int *index_h, int *BSstop_h, int *Ncoll_m, double *Coll_h, const double time, double *t1_h, double4 *spin_h, double3 *love_h, int *createFlag_h, float4 *aelimits_h, unsigned int *aecount_h, unsigned int *enccount_h, unsigned long long *aecountT_h, unsigned long long *enccountT_h, const int NT, const int NconstT, int *NWriteEnc_m, double *writeEnc_h, const int UseGR, const double MinMass, const int UseTestParticles, const int SLevels, int noColl, int idx){
 
 
 //printf("BSB start %d %d\n", NN, idx);

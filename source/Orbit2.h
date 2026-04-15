@@ -200,7 +200,7 @@ public:
 	int error;
 
  #if USE_RANDOM == 1
-	default_random_engine generator;
+	mt19937_64 generator;
  #endif
 
 	double4 *xold_h;

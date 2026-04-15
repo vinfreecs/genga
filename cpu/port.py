@@ -1469,11 +1469,11 @@ for line in Lines:
 
 	#random
 	if(line.find('curandState &random') != -1):
-		line = line.replace('curandState &random', 'default_random_engine &generator')
+		line = line.replace('curandState &random', 'mt19937_64 &generator')
 
 
-	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+	if(line.find('curand_uniform_double(&random)') != -1):
+		line = line.replace('curand_uniform_double(&random)', 'random_uniform(generator)')
 
 	line = DtoH(line)
 	print(line, file=file2, end='')
@@ -1636,13 +1636,13 @@ for line in Lines:
 
 	#random
 	if(line.find('curandState *random_d') != -1):
-		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+		line = line.replace('curandState *random_d', 'mt19937_64 &generator')
 
 	if(line.find('random_d[id]') != -1):
 		line = ''
 
-	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+	if(line.find('curand_uniform_double(&random)') != -1):
+		line = line.replace('curand_uniform_double(&random)', 'random_uniform(generator)')
 
 
 	if(line.find('fragment_kernel') != -1):
@@ -1725,8 +1725,8 @@ for line in Lines:
 	if(line.find('curandState') != -1):
 		line = line.replace('curandState', 'int')
 
-	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+	if(line.find('curand_uniform_double(&random)') != -1):
+		line = line.replace('curand_uniform_double(&random)', 'random_uniform(generator)')
 
 
 	if(line.find('fragment_kernel') != -1):
@@ -1799,13 +1799,13 @@ for line in Lines:
 
 	#random
 	if(line.find('curandState *random_d') != -1):
-		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+		line = line.replace('curandState *random_d', 'mt19937_64 &generator')
 
 	if(line.find('random_d[id]') != -1):
 		line = ''
 
-	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+	if(line.find('curand_uniform_double(&random)') != -1):
+		line = line.replace('curand_uniform_double(&random)', 'random_uniform(generator)')
 
 	if(line.find('create1_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')
@@ -1882,13 +1882,13 @@ for line in Lines:
 
 	#random
 	if(line.find('curandState *random_d') != -1):
-		line = line.replace('curandState *random_d', 'default_random_engine &generator')
+		line = line.replace('curandState *random_d', 'mt19937_64 &generator')
 
 	if(line.find('random_d[id]') != -1):
 		line = ''
 
-	if(line.find('curand_uniform(&random)') != -1):
-		line = line.replace('curand_uniform(&random)', 'random_uniform(generator)')
+	if(line.find('curand_uniform_double(&random)') != -1):
+		line = line.replace('curand_uniform_double(&random)', 'random_uniform(generator)')
 
 	if(line.find('create1_kernel') != -1):
 		line = line.replace('_kernel', '_cpu')

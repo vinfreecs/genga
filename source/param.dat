@@ -82,6 +82,7 @@ Asteroid minimal fragment radius = 0.01
 Asteroid fragment remove radius = 0.01
 Create Particles file name = -
 Use Small Collisions = 0
+Small Collisions Interval = 1000
 Nfragments = 0
 Set Elements file name = -
 FormatS = 0

@@ -8,7 +8,7 @@
 #include <chrono>
 #include <cstring>
 
-#define def_Version 3.205
+#define def_Version 3.206
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -97,6 +97,7 @@
 #define def_Asteroid_rmin 0.01		//minimal radius of new generated particles in m 
 #define def_Asteroid_rdel 0.01		//remove limit for new generated particles in n
 #define def_UseSmallCollisions 0	//fragmentation and rotation reset model
+#define def_SmallCollisionsInterval 1000	//fragmentation and rotation reset model, call interval
 #define def_CreateParticles 0		//flag for particle creation mode
 #define def_CreateParticlesN 0		//Maximum number of particles to be created
 #define def_FormatS 0			//0: one file per simulation, 1: all simulations in the same file
@@ -270,6 +271,8 @@
   #define curandState int
 #endif
 
+#define def_Rand_Min 1.0e-12		//lower limit for random number range
+
 
 #define def_CPU 0
 #if def_CPU == 1
@@ -427,6 +430,7 @@ struct Parameter{
 	int UseYarkovsky;
 	int UseMigrationForce;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
+	int SmallCollisionsInterval;
 	int CreateParticles;
 	int CreateParticlesN;
 	char CreateParticlesfilename[128];

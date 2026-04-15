@@ -1,7 +1,7 @@
 #include "Orbit2.h"
 cudaEvent_t tt1;			//start time
-cudaEvent_t tt2;			//start time of a output time intervall
-cudaEvent_t tt3;			//end time of a output time intervall
+cudaEvent_t tt2;			//start time of a output time interval
+cudaEvent_t tt3;			//end time of a output time interval
 cudaEvent_t tt4;			//end time//
 
 float times;				//elapsed time in milliseconds

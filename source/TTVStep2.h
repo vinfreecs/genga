@@ -664,26 +664,26 @@ __global__ void setCovarianceRandom1(curandState *random_d, elements10 *elements
 			random = random_d[idx * N0 + idy];
 			//generate random number vector X
 			//P
-			double rd = curand_normal(&random);
+			double rd = curand_normal_double(&random);
 			elementsL_d[idx * N0 + idy].P = rd;
  #if MCMC_NCOV > 1
 			//T
-			rd = curand_normal(&random);
+			rd = curand_normal_double(&random);
 			elementsL_d[idx * N0 + idy].T = rd;
  #endif
  #if MCMC_NCOV > 2
 			//m
-			rd = curand_normal(&random);
+			rd = curand_normal_double(&random);
 			elementsL_d[idx * N0 + idy].m = rd;
  #endif
  #if MCMC_NCOV > 3
 			//e
-			rd = curand_normal(&random);
+			rd = curand_normal_double(&random);
 			elementsL_d[idx * N0 + idy].e = rd;
  #endif
  #if MCMC_NCOV > 4
 			//w
-			rd = curand_normal(&random);
+			rd = curand_normal_double(&random);
 			elementsL_d[idx * N0 + idy].w = rd;
  #endif
 			random_d[idx * N0 + idy] = random;
@@ -1724,23 +1724,23 @@ __global__ void rmsPropRand(curandState *random_d, double4 *elementsAOld_d, doub
 
 		for(int ii = 0; ii < N0; ++ii){
 			if(Ne > 0){
-				rd = curand_normal(&random);
+				rd = curand_normal_double(&random);
 				elementsTOld_d[iid * N0 + ii].z += rd * elementsL_d[iid * N0 + ii].P;       //scale to standard deviation of tuning length
 			}
 			if(Ne > 1){
-				rd = curand_normal(&random);
+				rd = curand_normal_double(&random);
 				elementsTOld_d[iid * N0 + ii].x += rd * elementsL_d[iid * N0 + ii].T;
 			}
 			if(Ne > 2){
-				rd = curand_normal(&random);
+				rd = curand_normal_double(&random);
 				elementsAOld_d[iid * N0 + ii].w += rd * elementsL_d[iid * N0 + ii].m;
 			}
 			if(Ne > 3){
-				rd = curand_normal(&random);
+				rd = curand_normal_double(&random);
 				elementsAOld_d[iid * N0 + ii].y += rd * elementsL_d[iid * N0 + ii].e;
 			}
 			if(Ne > 4){
-				rd = curand_normal(&random);
+				rd = curand_normal_double(&random);
 				elementsBOld_d[iid * N0 + ii].y += rd * elementsL_d[iid * N0 + ii].w;
 			}
 		}
@@ -2265,35 +2265,35 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double rd;
 			if(EE == 0){
 				if(ne > 0){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					P += rd * elementsL_d[st0 * N0 + ii].P;       //scale to standard deviation of tuning length
 				}
 				if(ne > 1){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					T += rd * elementsL_d[st0 * N0 + ii].T;
 				}
 				if(ne > 2){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					m += rd * elementsL_d[st0 * N0 + ii].m;
 				}
 				if(ne > 3){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					e += rd * elementsL_d[st0 * N0 + ii].e;
 				}
 				if(ne > 4){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					w += rd * elementsL_d[st0 * N0 + ii].w;
 				}
 				if(ne > 5){
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					inc += rd * elementsL_d[st0 * N0 + ii].inc;
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					Omega += rd * elementsL_d[st0 * N0 + ii].O;
 				}
 				if(ne > 7){
-					//rd = curand_normal(&random);
+					//rd = curand_normal_double(&random);
 					//r += rd * elementsL_d[st0 * N0 + ii].r;
-					rd = curand_normal(&random);
+					rd = curand_normal_double(&random);
 					Sy += rd * elementsL_d[st0 * N0 + ii].r;
 				}
 			}
@@ -2306,9 +2306,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double m2 = elementsAOld_d[st2 * N0 + ii].w;		
 
 			if(ne > 0){
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				P += z * (1.0 - eb + rd) * (P1 - P2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].P;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].P;
 				P += P0 * rd;
 
 				P += elementsL_d[st0 * N0 + ii].P * sc;
@@ -2321,9 +2321,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 
 			if(ne > 2){
 				//modify m
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				m += z * (1.0 - eb + rd) * (m1 - m2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].m;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].m;
 				m += m0 * rd;
 
 				m += elementsL_d[st0 * N0 + ii].m * sc;
@@ -2374,9 +2374,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 
 */
 			if(ne > 3){
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				e += z * (1.0 - eb + rd) * (e1 - e2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].e;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].e;
 				e += e0 * rd;
 
 				e += elementsL_d[st0 * N0 + ii].e * sc;
@@ -2386,9 +2386,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 				}
 			}
 			if(ne > 4){
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				w += z * (1.0 - eb + rd) * (w1 - w2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].w;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].w;
 				w += w0 * rd;
 
 				w += elementsL_d[st0 * N0 + ii].w * sc;
@@ -2403,17 +2403,17 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 				double inc0 = inc;
 				double inc1 = elementsAOld_d[st1 * N0 + ii].z;		//eccentricity
 				double inc2 = elementsAOld_d[st2 * N0 + ii].z;		//eccentricity
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				inc += z * (1.0 - eb + rd) * (inc1 - inc2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].inc;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].inc;
 				inc += inc0 * rd;
 	
 				double Omega0 = Omega;
 				double Omega1 = elementsBOld_d[st1 * N0 + ii].x;		//eccentricity
 				double Omega2 = elementsBOld_d[st2 * N0 + ii].x;		//eccentricity
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				Omega += z * (1.0 - eb + rd) * (Omega1 - Omega2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].O;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].O;
 				Omega += Omega0 * rd;
 
 			}
@@ -2424,9 +2424,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double r2 = elementsBOld_d[st2 * N0 + ii].w;		
 			if(ne > 7){
 				//modify r
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				r += z * (1.0 - eb + rd) * (r1 - r2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].r;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].r;
 				r += r0 * rd;
 
 				r += elementsL_d[st0 * N0 + ii].r * sc;
@@ -2437,9 +2437,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double Sy2 = elementsSpinOld_d[st2 * N0 + ii].y;		
 			if(ne > 7){
 				//modify Sy
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				Sy += z * (1.0 - eb + rd) * (Sy1 - Sy2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].r;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].r;
 				Sy += Sy0 * rd;
 
 				Sy += elementsL_d[st0 * N0 + ii].r * sc;
@@ -2453,9 +2453,9 @@ __global__ void modifyElementsJ2(curandState *random_d, double4 *x4_d, double4 *
 			double T2 = elementsTOld_d[st2 * N0 + ii].x;
 
 			if(ne > 1){
-				rd = curand_uniform(&random) * 2.0 * eb;
+				rd = curand_uniform_double(&random) * 2.0 * eb;
 				T += z * (1.0 - eb + rd) * (T1 - T2);
-				rd = curand_normal(&random) * eps * elementsL_d[st0 * N0 + ii].T;
+				rd = curand_normal_double(&random) * eps * elementsL_d[st0 * N0 + ii].T;
 				T += T0 * rd;
 
 				T += elementsL_d[st0 * N0 + ii].T * sc;
@@ -2810,7 +2810,7 @@ __global__ void modifyElementsPQ2(curandState *random_d, double4 *x4_d, double4 
 		else{
 			curandState random;
 			random = random_d[id];
-			double rd = curand_uniform(&random);
+			double rd = curand_uniform_double(&random);
 			if(id / (Nst / 3) == 0){
 				elementsP_d[st0].y = rd;
 				elementsP_d[st1].y = rd;
@@ -3115,7 +3115,7 @@ __global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *e
 		if(EE == 4){
 //			elementsM_d[id] = Msun_d[id].x;
 //			//update Msun
-//			Msun_d[id].x = 0.089 + curand_normal(&random) * 0.012;
+//			Msun_d[id].x = 0.089 + curand_normal_double(&random) * 0.012;
 			
 			elementsP_d[id].x = elementsP_d[id].z; //set pOld to the accepted p
 
@@ -3123,13 +3123,13 @@ __global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *e
 			int st1 = id;
 			int st2 = id;
 			while(st0 == id){			
-				st0 = (int)(curand_uniform(&random) * Nst);
+				st0 = (int)(curand_uniform_double(&random) * Nst);
 			}
 			while(st1 == id){			
-				st1 = (int)(curand_uniform(&random) * Nst);
+				st1 = (int)(curand_uniform_double(&random) * Nst);
 			}
 			while(st2 == id || st2 == st1){			
-				st2 = (int)(curand_uniform(&random) * Nst);
+				st2 = (int)(curand_uniform_double(&random) * Nst);
 			}
 			elementsI_d[id].x = st0;
 			elementsI_d[id].y = st1;
@@ -3137,7 +3137,7 @@ __global__ void setJ_kernel(curandState *random_d, double4 *elementsP_d, int4 *e
 			//compute z
 			//double sigma = 0.01;
 
-			//double z = curand_normal(&random) * sigma;
+			//double z = curand_normal_double(&random) * sigma;
 			//double g0 = 2.38 / sqrt(2.0 * N0 * mcmcNE);
 			//double gamma = g0 * (1.0 + z);
 			int dd = mcmcNE * N0;//max(elementsI_d[0].w, 1);
@@ -3173,7 +3173,7 @@ if(id == 0) printf("z %d %g %d %g %d\n", id, gamma,  elementsC_d[0].x, w, dd);
 
 		}
 		elementsC_d[id + MCMC_NT].x = -1;
-		double rd = curand_uniform(&random);
+		double rd = curand_uniform_double(&random);
 		elementsP_d[id].y = rd;
 		random_d[id] = random;
 		if(EE < 3){		
@@ -3245,11 +3245,11 @@ __global__ void TSwap_kernel(curandState *random_d, double4 *elementsP_d, double
 
 	for(int k = 0; k < 50; ++k){
 
-		int i = int (curand_uniform(&random) * MCMC_NT);
-		int j = int (curand_uniform(&random) * MCMC_NT);
+		int i = int (curand_uniform_double(&random) * MCMC_NT);
+		int j = int (curand_uniform_double(&random) * MCMC_NT);
 
 		if(i == j){
-			j = int (curand_uniform(&random) * MCMC_NT);
+			j = int (curand_uniform_double(&random) * MCMC_NT);
 		}
 
 		double pi = elementsP_d[i].x;
@@ -3258,7 +3258,7 @@ __global__ void TSwap_kernel(curandState *random_d, double4 *elementsP_d, double
 		double Tj = elementsSA_d[j * Nst / MCMC_NT];
 
 		double q = exp((pi - pj) * (1.0 / Ti - 1.0 / Tj));
-		double rd = curand_uniform(&random);
+		double rd = curand_uniform_double(&random);
 		
 		if(q > rd && i != j){
 
