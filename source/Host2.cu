@@ -1,7 +1,7 @@
 #include "Host2.h"
 // ******************************
 //Costructor for Host class
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //April 2014
 // *******************************
 __host__ Host::Host(long long Restart){
@@ -133,7 +133,7 @@ __host__ int Host::NSimulations(int argc, char*argv[]){
 
 // ************************************************
 //Check Device Properties
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //March 2014
 // **********************************************
 __host__ int Host::DeviceInfo(){
@@ -3754,7 +3754,7 @@ __host__ void Host::Info(){
 
 // **************************************
 //This function determines the starting points of the individual simulations
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //March 2014
 // ******************************************
 __host__ void Host::Tsizes(){

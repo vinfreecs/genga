@@ -1153,7 +1153,7 @@ __host__ int Data::ic(){
 
 // ************************************** //
 //This function reads the initial conditions from the IC file.
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //March 2014
 // *****************************************
 __host__ int Data::readic(int st){
@@ -2229,7 +2229,7 @@ __host__ void Data::BaryToHelio(double4 *x4_h, double4 *v4_h, double Msun, int N
 //This kernel removes ghost-masses and decreases the number of bodies.
 //It also removes bodies wich a semi major axis bigger than Rcut.
 //It runs with only one thread ond the GPU, to avoid unnecesary data copies
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //March 2014
 // ***************************************
 __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N_d, int *Nsmall_d, int *index_d, double4 *spin_d, double3 *love_d, double3 *migration_d, int *createFlag_d, double *test_d, double *EnergySum_d, double *rcrit_d, double *rcritv_d, int NBS, int st, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *enccount_d, unsigned long long *aecountT_d, unsigned long long *enccountT_d, double *K_d, double *Kold_d, int NB, const int NconstT, const int SLevels, const int UseMigrationForce, const int CreateParticles, double *nafx_d, double *nafy_d, int nafn){
@@ -2529,7 +2529,7 @@ __global__ void remove_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, int *N
 //It sets the masses of ejected bodies to zero, this are then later removed
 //It Updates the lost Energy term U
 //
-//Authors: Simon Grimm, Joachim Stadel
+//Authors: Simon Grimm
 //Mai 2015
 //****************************************
 __host__ void Data::Ejection(){
@@ -2568,22 +2568,22 @@ __host__ void Data::Ejection(){
 					c = -3;
 					if(Nst == 1){
 						if(x4_h[i + NBS].w > 0.0){
-							printf("Body %d ejected\n", index_h[i + NBS]);
-							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS]);
+							printf("Body %d ejected at time step %lld\n", index_h[i + NBS], timeStep);
+							fprintf(logfile, "Body %d ejected at time step %lld\n", index_h[i + NBS], timeStep);
 						}
 						else{
-							printf("Test Particle %d ejected\n", index_h[i + NBS]);
-							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS]);
+							printf("Test Particle %d ejected at time step %lld\n", index_h[i + NBS], timeStep);
+							fprintf(logfile, "Test Particle %d ejected at time step %lld\n", index_h[i + NBS], timeStep);
 						}
 					}
 					else{
 						if(x4_h[i + NBS].w > 0.0){
-							printf("In Simulation %s: Body %d ejected \n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
-							fprintf(logfile, "Body %d ejected\n", index_h[i + NBS] % def_MaxIndex);
+							printf("In Simulation %s: Body %d ejected at time step %lld\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex, timeStep);
+							fprintf(logfile, "Body %d ejected at time step %lld\n", index_h[i + NBS] % def_MaxIndex, timeStep);
 						}
 						else{
-							printf("In Simulation %s: Test Particle %d ejected \n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
-							fprintf(logfile, "Test Particle %d ejected\n", index_h[i + NBS] % def_MaxIndex);
+							printf("In Simulation %s: Test Particle %d ejected at time step %lld\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex, timeStep);
+							fprintf(logfile, "Test Particle %d ejected at time step %lld\n", index_h[i + NBS] % def_MaxIndex, timeStep);
 						}
 					}
 				}
@@ -2592,22 +2592,22 @@ __host__ void Data::Ejection(){
 					c = -2;
 					if(Nst == 1){
 						if(x4_h[i + NBS].w > 0.0){
-							printf("Body %d too close to central mass -> removed\n", index_h[i + NBS]);
-							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS]);
+							printf("Body %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS], timeStep);
+							fprintf(logfile, "Body %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS], timeStep);
 						}
 						else{
-							printf("Test Particle %d too close to central mass -> removed\n", index_h[i + NBS]);
-							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS]);
+							printf("Test Particle %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS], timeStep);
+							fprintf(logfile, "Test Particle %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS], timeStep);
 						}
 					}
 					else{
 						if(x4_h[i + NBS].w > 0.0){
-							printf("In Simulation %s: Body %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
-							fprintf(logfile, "Body %d too close to central mass -> removed\n", index_h[i + NBS] % def_MaxIndex);
+							printf("In Simulation %s: Body %d too close to central mass -> removed at time step %lld\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex, timeStep);
+							fprintf(logfile, "Body %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS] % def_MaxIndex, timeStep);
 						}
 						else{
-							printf("In Simulation %s: Test Particle %d too close to central mass -> removed\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex);
-							fprintf(logfile, "Test Particle %d too close to central mass -> removed\n", index_h[i + NBS] % def_MaxIndex);
+							printf("In Simulation %s: Test Particle %d too close to central mass -> removed at time step %lld\n", GSF[st].path, index_h[i + NBS] % def_MaxIndex, timeStep);
+							fprintf(logfile, "Test Particle %d too close to central mass -> removed at time step %lld\n", index_h[i + NBS] % def_MaxIndex, timeStep);
 						}
 					}
 				}

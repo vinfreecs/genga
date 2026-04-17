@@ -3226,8 +3226,13 @@ __host__ int Data::EjectionCall(){
 	if(NminFlag > 0){
 		//at least one simulation has less bodies than Nmin and must be stopped
 		
+		if(P.ei != 0){
+			EnergyOutput(3);
+		}
+
 		if(P.ci != 0){
 			CoordinateOutput(3);
+			printTime(3);
 		}
 		
 		stopSimulations();
