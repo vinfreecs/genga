@@ -1387,7 +1387,7 @@ if(setElements_c[i] == 13){
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int st, double *Fragments_d, double time, int *nFragments_d, int SmallCollisionsInterval){
+__global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int st, double *Fragments_d, double time, int *nFragments_d, const int SmallCollisionsInterval){
 
 	int N = N_d[st];
 
@@ -1466,13 +1466,14 @@ __global__ void rotation_kernel(curandState *random_d, double4 *x4_d, double4 *v
 #endif
 
 printf("rotation reset %d %d %g %g %g\n", id, index_d[id], time/365.25, rd, p);
-printf("rA %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+//printf("rA %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 			}
+//printf("accept %d %d\n", id, accept);
 			if(accept == -1){
 				//reset the rotation rate and spin vector
 				rd = curand_uniform_double(&random);
 				double omega = 1.0/((rd * 35 + 1.0) * RR); //rotations per s
-printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
+//printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 				omega = omega / dayUnit * 24.0 * 3600.0;  //rotation in 1 / day'
 
 				double S = Ic * M * v4.w * v4.w * omega;
@@ -1525,7 +1526,7 @@ printf("rB %g %d %g %g %g %g\n", time, id, RR, omega, p, rd);
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int MaxIndex, const int st, double *Fragments_d, double time, int *nFragments_d, int SmallCollisionsInterval){
+__global__ void fragment_kernel(curandState *random_d, double4 *x4_d, double4 *v4_d, double4 *spin_d, double3 *love_d, int *index_d, int *N_d, int *Nsmall_d, double *dt_d, const int NconstT, const int MaxIndex, const int st, double *Fragments_d, double time, int *nFragments_d, const int SmallCollisionsInterval){
 #if USE_RANDOM == 1
 	int N = N_d[st];
 
@@ -1631,7 +1632,7 @@ printf("fragment %d %d %d %g %g %g %g %g %d\n", id, index_d[id], accept, time/36
 					volatile double vx = v * sqrt(1.0 - u * u) * cos(theta);
 					volatile double vy = v * sqrt(1.0 - u * u) * sin(theta);
 					volatile double vz = v * u;
-printf("fA %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
+//printf("fA %d %d %g %g %g %g %g %g %g %g %g\n", id, ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
 					if( s > 0.5){
 						z *= -1.0;
@@ -1651,7 +1652,7 @@ printf("fA %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.
 					vx = vx / def_AU * 3600.0 * 24.0 / dayUnit;
 					vy = vy / def_AU * 3600.0 * 24.0 / dayUnit;
 					vz = vz / def_AU * 3600.0 * 24.0 / dayUnit;
-printf("fB %d %g %g %g %g %g %g %g %g %g\n", ii, M, RR, m, r, v, vx, vy, vz, v4.x);
+//printf("fB %d %d %g %g %g %g %g %g %g %g %g\n", id, ii, M, RR, m, r, v, vx, vy, vz, v4.x);
 
 					m /= def_Solarmass;
 
@@ -1840,7 +1841,7 @@ __host__ void Data::rotationCall(){
 // March 2017
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
+__global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const int YarkovskyInterval, const double Kt, const int N, const int Nst, const int Nstart){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
@@ -1864,7 +1865,7 @@ __global__ void CallYarkovsky2_kernel(double4 *x4_d, double4 *v4_d, double4 *spi
 
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
-			double dt = dt_d[st] * Kt;
+			double dt = dt_d[st] * Kt * YarkovskyInterval;
 			double m = x4i.w;
 			if(m == 0.0){
 				m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR; 	//mass in kg;
@@ -2203,7 +2204,7 @@ __device__ void alpha(double e){
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
+__global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double2 *Msun_d, double *dt_d, const int PRInterval, const double Kt, const int N, const int Nst, const int Nstart){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
@@ -2219,7 +2220,7 @@ __global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *
 			double4 v4i = v4_d[id];
 
 			double Msun = Msun_d[st].x;
-			double dt = dt_d[st] * Kt;
+			double dt = dt_d[st] * Kt * PRInterval;
 			double m = x4i.w;
 			double RR = v4i.w * def_AU;					//covert radius in m	
 
@@ -2375,7 +2376,7 @@ __global__ void PoyntingRobertsonEffect_averaged_kernel(double4 *x4_d, double4 *
 // January 2019
 // Authors: Simon Grimm, Matthias Meier
 // *****************************************************************
-__global__ void PoyntingRobertsonEffect2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
+__global__ void PoyntingRobertsonEffect2_kernel(double4 *x4_d, double4 *v4_d, int *index_d, double *dt_d, const int PRInterval, const double Kt, const int N, const int Nst, const int Nstart){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
@@ -2391,7 +2392,7 @@ __global__ void PoyntingRobertsonEffect2_kernel(double4 *x4_d, double4 *v4_d, in
 			double3 a3t;
 
 
-			double dt = dt_d[st] * Kt;
+			double dt = dt_d[st] * Kt * PRInterval;
 			double RR = v4i.w * def_AU;					//covert radius in m	
 			double m = x4i.w;
 		

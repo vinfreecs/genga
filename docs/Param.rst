@@ -352,12 +352,18 @@ Non-Newtonian forces
    - 1: use Yarkovsky effect :math:`\mathbf{a_Y}` 
    - 2: use time averaged Yarkovsky effect :math:`\frac{da}{dt}`
 
+- | :literal:`Yarkovsky Interval`, in time steps: Interval in which the Yarkovsky model is called (default 1). 
+  | See :ref:`Yarkovsky`
+
 - | :literal:`Use Poynting-Robertson`: Flag for Poynting-Robertson effect 
   | See :ref:`PRdrag`
 
    - 0 (default) : no Poynting-Robertson effect
    - 1: use Poynting-Robertson effect :math:`\mathbf{a_{PR}}`
    - 2: use time averaged Poynting-Robertson effect :math:`\frac{da}{dt}` and :math:`\frac{de}{dt}`
+
+- | :literal:`Poynting-Robertson Interval`, in time steps: Interval in which the Poynting-Robertson model is called (default 1). 
+  | See :ref:`PRdrag`
 
 - | :literal:`Radiation Pressure Coefficient Qpr`, used in the Poynting-Robertson effect, in general assumed to be 1.
   | See :ref:`PRdrag`

@@ -302,13 +302,15 @@ __host__ void Host::Halloc(){
 	P.UseTides = def_UseTides;
 	P.UseRotationalDeformation = def_UseRotationalDeformation;
 	P.UseYarkovsky = def_UseYarkovsky;
+	P.YarkovskyInterval = def_YarkovskyInterval;
+	P.UsePR = def_UsePR;
+	P.PRInterval = def_PRInterval;
 	P.UseMigrationForce = def_UseMigrationForce;
 	P.UseSmallCollisions = def_UseSmallCollisions;
 	P.SmallCollisionsInterval = def_SmallCollisionsInterval;
 	P.CreateParticles = def_CreateParticles;
 	P.CreateParticlesN = def_CreateParticlesN;
 	sprintf(P.CreateParticlesfilename, "%s", "-");
-	P.UsePR = def_UsePR;
 	P.Qpr = def_Qpr;
 	P.SolarWind = def_SolarWind;
 	P.SolarConstant = def_SolarConstant;
@@ -1618,6 +1620,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 			if(fgets(sp, 3, paramfile) != nullptr)
 			continue;
 		}
+		if(strcmp(sp, "Yarkovsky Interval =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.YarkovskyInterval);
+				if(er <= 0){
+					printf("Error: Yarkovsky Interval value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			if(fgets(sp, 3, paramfile) != nullptr)
+			continue;
+		}
 		if(strcmp(sp, "Use Small Collisions =") == 0){
 			if(st == 0){
 				er = fscanf (paramfile, "%d", &P.UseSmallCollisions);
@@ -1668,6 +1685,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 				er = fscanf (paramfile, "%d", &P.UsePR);
 				if(er <= 0){
 					printf("Error: Use Poynting-Robertson value is not valid!\n");
+					return 0;
+				}
+			}
+			else{
+				int t;
+				er = fscanf (paramfile, "%d", &t);
+			}
+			if(fgets(sp, 3, paramfile) != nullptr)
+			continue;
+		}
+		if(strcmp(sp, "Poynting-Robertson Interval =") == 0){
+			if(st == 0){
+				er = fscanf (paramfile, "%d", &P.PRInterval);
+				if(er <= 0){
+					printf("Error: Poynting-Robertson Interval value is not valid!\n");
 					return 0;
 				}
 			}
@@ -2546,10 +2578,7 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 		P.UseJ2 = 1;
 	}
 
-	ForceFlag = 0;
-	if(P.UseForce > 0 || P.Usegas > 0 || P.UseYarkovsky > 0 || P.UsePR > 0 || P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0 || P.UseMigrationForce > 0){
-		ForceFlag = 1;
-	}
+
 	//set UseGR when old UseForce is used, choose Hamiltonian splitting
 	if(P.UseForce & 1){
 		P.UseGR = 1;
@@ -2560,6 +2589,21 @@ __host__ int Host::readparam(FILE *paramfile, int st, int argc, char*argv[]){
 	if(P.UseForce >> 2 & 1){
 		P.UseRotationalDeformation = 1;
 	}
+
+	ForceKernelFlag = 0;
+	if(P.UseGR > 0){
+		ForceKernelFlag = 1;
+	}
+	if(P.UseTides > 0){
+		ForceKernelFlag = 1;
+	}
+	if(P.UseRotationalDeformation > 0){
+		ForceKernelFlag = 1;
+	}
+	if(P.UseJ2 > 0){
+		ForceKernelFlag = 1;
+	}
+
 
 	//Nomp is only used on CPUs
 	if(Nomp <= 0) Nomp = 1;
@@ -3668,12 +3712,14 @@ __host__ void Host::Info(){
 			fprintf(infofile, "Use Tides: %d\n", P.UseTides);				// use only argument in simulation 0
 			fprintf(infofile, "Use Rotational Deformation: %d\n", P.UseRotationalDeformation);// use only argument in simulation 0
 			fprintf(infofile, "Use Yarkovsky: %d\n", P.UseYarkovsky);			// use only argument in simulation 0
+			fprintf(infofile, "Yarkovsky Interval: %d\n", P.YarkovskyInterval);		// use only argument in simulation 0
 			fprintf(infofile, "Use Poynting-Robertson: %d\n", P.UsePR);			// use only argument in simulation 0
+			fprintf(infofile, "Poynting-Robertson Interval: %d\n", P.PRInterval);		// use only argument in simulation 0
 			fprintf(infofile, "Radiation Pressure Coefficient Qpr: %g\n", P.Qpr);		// use only argument in simulation 0
 			fprintf(infofile, "Use Migration Force: %d\n", P.UseMigrationForce);		// use only argument in simulation 0
 			fprintf(infofile, "Solar Wind factor: %g\n", P.SolarWind);			// use only argument in simulation 0
 			fprintf(infofile, "Use Small Collisions: %d\n", P.UseSmallCollisions);		// use only argument in simulation 0
-			fprintf(infofile, "Small Collisions Interval: %d\n", P.SmallCollisionsInterval);	// use only argument in simulation 0
+			fprintf(infofile, "Small Collisions Interval: %d\n", P.SmallCollisionsInterval);// use only argument in simulation 0
 			fprintf(infofile, "def_Rand_Min: %g\n", def_Rand_Min);
 			fprintf(infofile, "Create Particles file name: %s\n", P.CreateParticlesfilename);// use only argument in simulation 0
 			fprintf(infofile, "Use Set Elemets function: %d\n", P.setElements);		// use only argument in simulation 0

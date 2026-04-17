@@ -479,7 +479,7 @@ __host__ int Data::beforeTimeStepLoop1(){
 				er = tuneKick(2, KP2, KTX2, KTY2);
 				if(er == 0) return 0;
 			}
-			if(ForceFlag > 0){
+			if(ForceKernelFlag > 0){
 				er = tuneForce(FrTX);
 				if(er == 0) return 0;
 			}
@@ -788,6 +788,38 @@ __host__ int Data::beforeTimeStepLoop(int ittv){
 // ****************************************************
 __host__ int Data::timeStepLoop(int interrupted, int ittv){
 	time_h[0] = timeStep * idt_h[0] + ict_h[0] * 365.25;
+
+
+
+	ForceFlag = 0;
+	if(P.UseForce > 0){
+		ForceFlag = 1;
+	}
+	if(P.Usegas > 0){
+		ForceFlag = 1;
+	}
+	if(P.UseYarkovsky > 0 && timeStep % P.YarkovskyInterval == 0){
+		ForceFlag = 1;
+	}
+	if(P.UsePR > 0 && timeStep % P.PRInterval == 0){
+		ForceFlag = 1;
+	}
+	if(P.UseGR > 0){
+		ForceFlag = 1;
+	}
+	if(P.UseTides > 0){
+		ForceFlag = 1;
+	}
+	if(P.UseRotationalDeformation > 0){
+		ForceFlag = 1;
+	}
+	if(P.UseJ2 > 0){
+		ForceFlag = 1;
+	}
+	if(P.UseMigrationForce > 0){
+		ForceFlag = 1;
+	}
+
 	
 	int er;	
 	er = step(0);
@@ -3954,17 +3986,17 @@ int Data::step_cpu(int noColl){
 			setElements_cpu(x4_h, v4_h, index_h, setElementsData_h, setElementsLine_h, Msun_h, dt_h, time_h, N_h[0], Nst, 1);
 		}
 		if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 		}
 		if(P.UseMigrationForce > 0){
 			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(HCX == 0){
 			comCall_1(-1);
 		}
@@ -4073,7 +4105,7 @@ int Data::step_cpu(int noColl){
 					comCall(1);
 				}
 				if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[si], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 				}
 				if(P.UseMigrationForce > 0){
@@ -4081,10 +4113,10 @@ int Data::step_cpu(int noColl){
 					//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0], Nst, 0, 1);
 				}
 
-				if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[si], N_h[0], Nst, 0);
 				if(HCX == 0){
 					comCall_1(-1);
 				}
@@ -4128,17 +4160,17 @@ int Data::step_cpu(int noColl){
 			comCall(1);
 		}
 		if(P.Usegas == 1) GasAccCall(time_h, dt_h, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 		}
 		if(P.UseMigrationForce > 0){
 			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		if(HCX == 0){
 			comCall_1(-1);
 		}
@@ -4257,17 +4289,17 @@ int Data::step_small_cpu(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 		}
 		if(P.UseMigrationForce > 0){
 			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
 			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(HCX == 0){
 			comCall_1(-1);
 		}
@@ -4472,7 +4504,7 @@ int Data::step_small_cpu(int noColl){
 					//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 					GasAccCall2_small(time_d, dt_d, Kt[si]);
 				}
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[si], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 				}
 				if(P.UseMigrationForce > 0){
@@ -4480,10 +4512,10 @@ int Data::step_small_cpu(int noColl){
 					//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0, 1);
 				}
 
-				if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				if(HCX == 0){
 					comCall_1(-1);
 				}
@@ -4548,17 +4580,17 @@ int Data::step_small_cpu(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_cpu (x4_h, v4_h, index_h, spin_h, love_h, Msun_h, Spinsun_h, Lovesun_h, J2_h, vold_h, dt_h, Kt[SIn - 1], time_h, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
 		}
 		if(P.UseMigrationForce > 0){
 			artificialMigration_cpu (x4_h, v4_h, index_h, migration_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
 			//artificialMigration2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_cpu (x4_h, v4_h, spin_h, index_h, Msun_h, dt_h, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_cpu (x4_h, v4_h, index_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_cpu (x4_h, v4_h, index_h, Msun_h, dt_h, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		if(HCX == 0){
 			comCall_1(-1);
 		}
@@ -4737,7 +4769,7 @@ __host__ int Data::step_16(int noColl){
 			setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		}
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -4751,10 +4783,10 @@ __host__ int Data::step_16(int noColl){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -4837,7 +4869,7 @@ __host__ int Data::step_16(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
 					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -4852,10 +4884,10 @@ __host__ int Data::step_16(int noColl){
 					//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0, 1);
 				}
 
-				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -4873,7 +4905,7 @@ __host__ int Data::step_16(int noColl){
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -4887,10 +4919,10 @@ __host__ int Data::step_16(int noColl){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 			//artificialMigration2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -4968,7 +5000,7 @@ __host__ int Data::step_largeN(int noColl){
 			setElements_kernel <<< (P.setElementsN + 63) / 64, 64 >>> (x4_d, v4_d, index_d, setElementsData_d, setElementsLine_d, Msun_d, dt_d, time_d, N_h[0], Nst, 1);
 		}
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -4981,10 +5013,10 @@ __host__ int Data::step_largeN(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -5093,7 +5125,7 @@ __host__ int Data::step_largeN(int noColl){
 			if(ForceFlag > 0){
 				comCall(1);
 				if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
 					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -5106,10 +5138,10 @@ __host__ int Data::step_largeN(int noColl){
 				if(P.UseMigrationForce > 0){
 					artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0, 1);
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[si], N_h[0], Nst, 0);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[si], N_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -5152,7 +5184,7 @@ __host__ int Data::step_largeN(int noColl){
 	if(ForceFlag > 0){
 		comCall(1);
 		if(P.Usegas == 1) GasAccCall(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -5165,10 +5197,10 @@ __host__ int Data::step_largeN(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -5242,7 +5274,7 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -5252,10 +5284,10 @@ __host__ int Data::step_small(int noColl){
 				}
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
@@ -5432,7 +5464,7 @@ __host__ int Data::step_small(int noColl){
 					//GasAccCall(time_d, dt_d, Kt[si]);
 					GasAccCall2_small(time_d, dt_d, Kt[si]);
 				}
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 					int ncb = min(nn, 1024);
 					force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -5442,10 +5474,10 @@ __host__ int Data::step_small(int noColl){
 						}
 					}
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[si], N_h[0] + Nsmall_h[0], Nst, 0);
 				comCall(-1);
 			}
 		}
@@ -5483,7 +5515,7 @@ __host__ int Data::step_small(int noColl){
 			//GasAccCall(time_d, dt_d, Kt[SIn - 1]);
 			GasAccCall2_small(time_d, dt_d, Kt[SIn - 1]);
 		}
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			int nn = (N_h[0] + Nsmall_h[0] + FrTX - 1) / FrTX;
 			int ncb = min(nn, 1024);
 			force_kernel <<< nn, FrTX, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, N_h[0] + Nsmall_h[0], Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, 0, 1);
@@ -5493,10 +5525,10 @@ __host__ int Data::step_small(int noColl){
 				}
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], N_h[0] + Nsmall_h[0], Nst, 0);
 		comCall(-1);
 	}
 	if(EjectionFlag_m[0] > 0){
@@ -5577,16 +5609,16 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 	}
 	EjectionFlag2 = 0;
@@ -5652,17 +5684,17 @@ __host__ int Data::step_M(int noColl){
 			if(ForceFlag > 0){
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 					}
 
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[si], NT, Nst, Nstart);
 				comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 			}
 		}
@@ -5675,17 +5707,17 @@ __host__ int Data::step_M(int noColl){
 	if(ForceFlag > 0){
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, 1, Nstart);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (vold_d, index_d, Spinsun_d, NBS_d, NT, Nstart);
 			}
 		}
 
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
 		comM_kernel < HCM_Bl, HCM_Bl2, NmaxM > <<< (NT + HCM_Bl2 - 1) / HCM_Bl2, HCM_Bl >>> (x4_d, v4_d, vcom_d, Msun_d, index_d, NBS_d, NT, -1, Nstart);
 	}
 	
@@ -5739,7 +5771,7 @@ __host__ int Data::step_M3(int noColl){
 	if(ForceFlag > 0){
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
@@ -5748,10 +5780,10 @@ __host__ int Data::step_M3(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 	}
 	EjectionFlag2 = 0;
@@ -5825,7 +5857,7 @@ __host__ int Data::step_M3(int noColl){
 			if(ForceFlag > 0){
 				comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 				if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[si]);
-				if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+				if(ForceKernelFlag > 0){
 					force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[si], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 					if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 						forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
@@ -5835,10 +5867,10 @@ __host__ int Data::step_M3(int noColl){
 				if(P.UseMigrationForce > 0){
 					artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[si], NT, Nst, 0, 1);
 				}
-				if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[si], NT, Nst, Nstart);
-				if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[si], NT, Nst, Nstart);
+				if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[si], NT, Nst, Nstart);
 				comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 			}
 		}
@@ -5851,7 +5883,7 @@ __host__ int Data::step_M3(int noColl){
 	if(ForceFlag > 0){
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, 1);
 		if(P.Usegas == 1) GasAccCall_M(time_d, dt_d, Kt[SIn - 1]);
-		if(P.UseGR > 0 || P.UseTides > 0 || P.UseRotationalDeformation > 0 || P.UseJ2 > 0){
+		if(ForceKernelFlag > 0){
 			force_kernel <<< (NT + 127) / 128, 128, WarpSize * sizeof(double3) >>> (x4_d, v4_d, index_d, spin_d, love_d, Msun_d, Spinsun_d, Lovesun_d, J2_d, vold_d, dt_d, Kt[SIn - 1], time_d, NT, Nst, P.UseGR, P.UseTides, P.UseRotationalDeformation, Nstart, 1);
 			if(P.UseTides > 0 || P.UseRotationalDeformation > 0){
 				forceBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (vold_d, Spinsun_d, N_d, NBS_d, Nst);
@@ -5860,10 +5892,10 @@ __host__ int Data::step_M3(int noColl){
 		if(P.UseMigrationForce > 0){
 			artificialMigration_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, migration_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, 0, 1);
 		}
-		if(P.UseYarkovsky == 1) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UseYarkovsky == 2) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 1) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
-		if(P.UsePR == 2) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 1 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UseYarkovsky == 2 && timeStep % P.YarkovskyInterval == 0) CallYarkovsky_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, spin_d, index_d, Msun_d, dt_d, P.YarkovskyInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 1 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect2_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
+		if(P.UsePR == 2 && timeStep % P.PRInterval == 0) PoyntingRobertsonEffect_averaged_kernel <<< (NT + 127) / 128, 128 >>> (x4_d, v4_d, index_d, Msun_d, dt_d, P.PRInterval, Kt[SIn - 1], NT, Nst, Nstart);
 		comBM_kernel <<< Nst, 32, WarpSize * sizeof(double3) >>> (x4_d, v4_d, vcom_d, Msun_d, N_d, NBS_d, Nst, -1);
 	}
 	

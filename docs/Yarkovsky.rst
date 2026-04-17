@@ -50,6 +50,17 @@ Note that the calculation of the Yarkovsky effect uses the :literal:`Asteroid rh
    \left(\frac{da}{dt} \right)_{seasonal} = \frac{4}{9} \frac{(1-A)\Phi}{n} \sum_{k \ge 1} \frac{G_k \sin \delta_k}{k} \chi_k \bar{\chi_k},
 
 
+Set the call interval
+---------------------
+
+With the parameter :literal:`Yarkovky Inteval` the calling interval of the Yarkovsky function can be set. This means that
+the function is called fewer times, and in increased drift rate :math:`dx = a * dt * YarkovskyInterval`.
+With the time averaged Yarkovsky function (mode 2) it is possible to use quite large interval numbers.
+The direct Yarkovsky effect (mode 1) is more sensitive to values greater than :math:`\approx 100`.
+Strictly speaking ,this argument violets the symplectic nature of the integrator, but as long as the Yarkovky force is small it is OK. 
+
+
+
 .. _YarkovskyTest:
 
 Test of the Yarkovsky effet

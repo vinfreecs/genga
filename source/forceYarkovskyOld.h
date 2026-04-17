@@ -297,7 +297,7 @@ __device__ void Yarkovski2(double &a, const double e, double m, const double Msu
 	
 }	
 
-__global__ void CallYarkovsky_averaged_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const double Kt, const int N, const int Nst, const int Nstart){
+__global__ void CallYarkovsky_averaged_kernel(double4 *x4_d, double4 *v4_d, double4 *spin_d, int *index_d, double2 *Msun_d, double *dt_d, const int YarkovskyInterval, const double Kt, const int N, const int Nst, const int Nstart){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
 
@@ -320,7 +320,7 @@ __global__ void CallYarkovsky_averaged_kernel(double4 *x4_d, double4 *v4_d, doub
 
 			//int index = index_d[id];
 			double Msun = Msun_d[st].x;
-			double dt = dt_d[st] * Kt;
+			double dt = dt_d[st] * Kt * YarkovskyInterval;
 			double mu = def_ksq * (Msun + x4i.w);
 			if(x4i.w == 0.0){
 				double m = Asteroid_rho_c[0] * 4.0 / 3.0 * M_PI * RR * RR * RR;; 	//mass in kg;

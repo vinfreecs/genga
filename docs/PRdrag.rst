@@ -65,6 +65,15 @@ Scheme 2: orbital averaged drift rates
    \frac{de}{dt} = - \frac{5}{2}\frac{\eta}{a^2}Q_{pr} \frac{e}{(1 - e^2)^{1/2}},
 
 
+Set the call interval
+---------------------
+
+With the parameter :literal:`Poynting-Robertson Inteval` the calling interval of the Poynting-Robertson function can be set. This means that
+the function is called fewer times, and in increased drift rate :math:`dx = a * dt * Poynting-RobertsonInterval`.
+With the time averaged Poynting-Robertson function (mode 2) it is possible to use quite large interval numbers.
+The direct Yarkovsky effect (mode 1) is more sensitive to values greater than :math:`\approx 100`.
+Strictly speaking ,this argument violets the symplectic nature of the integrator, but as long as the Yarkovky force is small it is OK. 
+
 
 Test of the Poynting-Robertson effect
 -------------------------------------

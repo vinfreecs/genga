@@ -8,7 +8,7 @@
 #include <chrono>
 #include <cstring>
 
-#define def_Version 3.206
+#define def_Version 3.207
 
 #define def_OldShuffle 0 		//set this to 1 when an old cuda version is used which doesn't have shfl_sync operations
 
@@ -84,7 +84,9 @@
 #define def_UseTides 0			//Flag for tidal force
 #define def_UseRotationalDeformation 0	//Flag for Rotational deformation
 #define def_UseYarkovsky 0		//Flag for Yarkovsky effect
+#define def_YarkovskyInterval 1		//Call interval
 #define def_UsePR 0			//Flag for Poynting-Robertson effect
+#define def_PRInterval 1		//Call interval
 #define def_UseMigrationForce 0		//Flag for artifitial migration force
 #define def_Qpr 1.0			//radiation pressure coefficient, 1 pure absortion
 #define def_SolarWind 0.0		//ratio of solar wind drag to Poynting-Robertson drag
@@ -428,13 +430,15 @@ struct Parameter{
 	int UseRotationalDeformation;
 	int UseJ2;
 	int UseYarkovsky;
-	int UseMigrationForce;
+	int YarkovskyInterval;
+	int UsePR;			//Poynting Robertson drag
+	int PRInterval;
 	int UseSmallCollisions;		//fragmentation and rotation reset model
 	int SmallCollisionsInterval;
+	int UseMigrationForce;
 	int CreateParticles;
 	int CreateParticlesN;
 	char CreateParticlesfilename[128];
-	int UsePR;			//Poynting Robertson drag
 	double Qpr;			//radiation pressure coefficient
 	double SolarWind;		//ratio of solar wind drag to Poynting-Robertson drag
 	double SolarConstant;

@@ -22,6 +22,7 @@ public:
 	int NconstT;
 	int MTFlag;
 	int ForceFlag;
+	int ForceKernelFlag;
 	int devCount;
 	int runtimeVersion;
 	int driverVersion;
