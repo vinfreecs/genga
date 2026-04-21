@@ -3,7 +3,7 @@
 Yarkovsky effect
 ================
 
-The Yarkovky effect is implemented according to :cite:p:`Vokrouhlicky1999` and :cite:p:`Vokrouhlicky2000`
+The Yarkovsky effect is implemented according to :cite:p:`Vokrouhlicky1999` and :cite:p:`Vokrouhlicky2000`
 and is available in the schemes (we recommend scheme 1):
 
 - | Velocity kick :math:`\mathbf{a_Y}`
@@ -53,11 +53,11 @@ Note that the calculation of the Yarkovsky effect uses the :literal:`Asteroid rh
 Set the call interval
 ---------------------
 
-With the parameter :literal:`Yarkovky Inteval` the calling interval of the Yarkovsky function can be set. This means that
+With the parameter :literal:`Yarkovsky Interval` the calling interval of the Yarkovsky function can be set. This means that
 the function is called fewer times, and in increased drift rate :math:`dx = a * dt * YarkovskyInterval`.
 With the time averaged Yarkovsky function (mode 2) it is possible to use quite large interval numbers.
 The direct Yarkovsky effect (mode 1) is more sensitive to values greater than :math:`\approx 100`.
-Strictly speaking ,this argument violets the symplectic nature of the integrator, but as long as the Yarkovky force is small it is OK. 
+Strictly speaking ,this argument violets the symplectic nature of the integrator, but as long as the Yarkovsky force is small it is OK. 
 
 
 
