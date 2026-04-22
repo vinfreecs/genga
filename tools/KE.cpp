@@ -521,41 +521,80 @@ printf("%s\n", inputfilename);
 					}
 					else if(outformat[f] == 19){
 						er = fscanf (inputfile, "%lf",&t);
+						if(f != 0 && er <= 0){
+							printf("Error,  read time in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 13){
 						er = fscanf (inputfile, "%d",&index);
+						if(f != 0 && er <= 0){
+							printf("Error,  read index in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 4){
 						er = fscanf (inputfile, "%lf",&m);
 					}
+						if(f != 0 && er <= 0){
+							printf("Error,  read mass in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					else if(outformat[f] == 8){
 						er = fscanf (inputfile, "%lf",&r);
+						if(f != 0 && er <= 0){
+							printf("Error,  read radius in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 1){
 						er = fscanf (inputfile, "%lf",&x.x);
+						if(f != 0 && er <= 0){
+							printf("Error,  read x coordinate in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 2){
 						er = fscanf (inputfile, "%lf",&x.y);
+						if(f != 0 && er <= 0){
+							printf("Error,  read y coordinate in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 3){
 						er = fscanf (inputfile, "%lf",&x.z);
+						if(f != 0 && er <= 0){
+							printf("Error,  read z coordinate in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 5){
 						er = fscanf (inputfile, "%lf",&v.x);
+						if(f != 0 && er <= 0){
+							printf("Error,  read x velocity in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 6){
 						er = fscanf (inputfile, "%lf",&v.y);
+						if(f != 0 && er <= 0){
+							printf("Error,  read y velocity in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else if(outformat[f] == 7){
 						er = fscanf (inputfile, "%lf",&v.z);
+						if(f != 0 && er <= 0){
+							printf("Error,  read z velocity in line %lld not sueccessful\n", tt);
+							return 0;
+						}
 					}
 					else{
 						er = fscanf (inputfile, "%lf",&s);
-					}
-					if(f != 0 && er <= 0){
-						printf("Error, file format does not match paramKE.dat file or default values\n");
-						return 0;
-
+						if(f != 0 && er <= 0){
+							printf("Error, read line %lld not sueccessful for f = %d\n", tt, f);
+							return 0;
+						}
 					}
 
 					if(f == 0 && er <= 0){
@@ -621,41 +660,83 @@ printf("T = %lld\n", tt);
 						}
 						else if(outformat[f] == 19){
 							er = fscanf (inputfile, "%lf",&t);
+							
+							if(f != 0 && er <= 0){
+								printf("Error,  read time in line %d not sueccessful\n", i);
+								return 0;
+							}
+
 						}
 						else if(outformat[f] == 13){
 							er = fscanf (inputfile, "%d",&index);
+						
+							if(f != 0 && er <= 0){
+								printf("Error,  read index in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 4){
 							er = fscanf (inputfile, "%lf",&m);
+							if(f != 0 && er <= 0){
+								printf("Error,  read mass in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 8){
 							er = fscanf (inputfile, "%lf",&r);
+							if(f != 0 && er <= 0){
+								printf("Error,  read radius in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 1){
 							er = fscanf (inputfile, "%lf",&x.x);
+							if(f != 0 && er <= 0){
+								printf("Error,  read x coordinate in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 2){
 							er = fscanf (inputfile, "%lf",&x.y);
+							if(f != 0 && er <= 0){
+								printf("Error,  read y coordinate in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 3){
 							er = fscanf (inputfile, "%lf",&x.z);
+							if(f != 0 && er <= 0){
+								printf("Error,  read z coordinate in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 5){
 							er = fscanf (inputfile, "%lf",&v.x);
+							if(f != 0 && er <= 0){
+								printf("Error,  read x velocity in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 6){
 							er = fscanf (inputfile, "%lf",&v.y);
+							if(f != 0 && er <= 0){
+								printf("Error,  read y velocity in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else if(outformat[f] == 7){
 							er = fscanf (inputfile, "%lf",&v.z);
+							if(f != 0 && er <= 0){
+								printf("Error,  read z velocity in line %d not sueccessful\n", i);
+								return 0;
+							}
 						}
 						else{
 							er = fscanf (inputfile, "%lf",&s);
-						}
-						if(f != 0 && er <= 0){
-							printf("Error, file format does not match paramKE.dat file or default values\n");
-							return 0;
-
+							if(f != 0 && er <= 0){
+								printf("Error, read line %d not sueccessful for f = %d\n", i, f);
+								return 0;
+							}
 						}
 
 						if(f == 0 && er <= 0){
