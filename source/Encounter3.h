@@ -938,6 +938,10 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	__shared__ volatile int T_s;
 	__shared__ int Nenc_s[def_GMax];
 	__shared__ int start_s[1];
+	//Compacted list of the bodies that take part in an encounter this step.
+	//Bounded by 2 * Ne, and the compacted path is only entered when Ne < Bl.
+	__shared__ int part_s[2 * Bl];
+	__shared__ int Np_s[1];
 
 	int Ne = *Nencpairs2_d;
 	
@@ -960,6 +964,17 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 	}
 //printf("E %d %d %d\n", bn, Bl, E);
+
+	//E == 3 is "NT > Bl with fewer than Bl encounter pairs": the test particle case,
+	//where NT can be 10^5 while Ne is a few dozen. There the body indexed loops below
+	//do not need to visit every body. Every body that can ever carry a group label
+	//appears in the encounter pair list, so that list names the exact working set and
+	//the loops can run over it instead of over NT.
+	//E == 4 (Ne >= Bl) stays on the original path: the participant list would not fit
+	//in shared memory, and NT / Ne is small enough there that little would be gained.
+	//SERIAL_GROUPING == 1 stays on the original path too, it depends on visiting the
+	//bodies in descending index order.
+	const int useCompact = (E == 3 && SERIAL_GROUPING == 0) ? 1 : 0;
 
 	int BN2 = NT * NT -1;
 	if(NT > 46340) BN2 = 2147483647;	//prevent from overflow
@@ -1015,13 +1030,18 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	if(E == 3 || E == 4){ //1024
 		B = &Encpairs_d[2 * NT];
 		B2 = &Encpairs_d[3 * NT];
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				B[idy + i].y = BN2;
-				B2[idy + i].y = BN2;
-				Encpairs_d[idy + i].y = 0;
+		if(useCompact == 0){
+			for(int i = 0; i < NT; i += Bl){
+				if(idy + i < NT){
+					B[idy + i].y = BN2;
+					B2[idy + i].y = BN2;
+					Encpairs_d[idy + i].y = 0;
+				}
 			}
 		}
+		//The compacted path initialises only the participating entries instead, below.
+		//It cannot be done here: encpairs_s is filled without a barrier and is not
+		//visible to the whole block until the __syncthreads() that follows.
 	}
 
 	if(idy == 0){
@@ -1029,8 +1049,47 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 	if(idy < def_GMax) Nenc_s[idy] = 0;
 	if(idy == 0) start_s[0] = 0;
+	if(idy == 0) Np_s[0] = 0;
 
 	__syncthreads();
+
+	//Build the participant list: the de duplicated union of the pair endpoints.
+	//De duplication is required, not cosmetic. The phases below perform one atomicAdd
+	//per body, so visiting a body twice would double count both the number of groups
+	//and the group sizes. O(Ne^2) over shared memory, with Ne a few dozen here.
+	int Nloop = NT;
+	if(useCompact == 1){
+		const int Ncand = 2 * Ne;
+		for(int j = idy; j < Ncand; j += Bl){
+			const int v = (j & 1) ? encpairs[j >> 1].y : encpairs[j >> 1].x;
+			int first = 1;
+			for(int m = 0; m < j; ++m){
+				const int w = (m & 1) ? encpairs[m >> 1].y : encpairs[m >> 1].x;
+				if(w == v){
+					first = 0;
+					break;
+				}
+			}
+			if(first == 1){
+				part_s[atomicAdd(&Np_s[0], 1)] = v;
+			}
+		}
+		__syncthreads();
+		Nloop = Np_s[0];
+		//Initialise exactly the entries the loops below can read. Every read of B, B2
+		//and Encpairs_d[].y beyond this point is either at a participant index or at
+		//B[participant].y, which is itself a participant index.
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = part_s[idy + i];
+				B[b].y = BN2;
+				B2[b].y = BN2;
+				Encpairs_d[b].y = 0;
+			}
+		}
+		__syncthreads();
+	}
+
 	for(int i = 0; i < Ne; i += Bl){
 		if(idy + i < Ne){
 			//create list of direct close encounter pairs
@@ -1088,9 +1147,10 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 		__syncthreads();
 
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				if(B[idy + i].y < BN2) B2[idy + i].y = B[B[idy + i].y].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+				if(B[b].y < BN2) B2[b].y = B[B[b].y].y;
 			}
 		}
 		__syncthreads();
@@ -1102,9 +1162,10 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 			}
 		}
 		__syncthreads();
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				B[idy + i].y = B2[idy + i].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+				B[b].y = B2[b].y;
 			}
 		}
 		__syncthreads();
@@ -1118,26 +1179,36 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	// At this point B[idy] contains the smallest index of the group
 	__syncthreads();
 
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			B2[idy + i].y = -1;
-//printf("B %d %d\n", idy + i, B[idy + i].y);
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			B2[b].y = -1;
+//printf("B %d %d\n", b, B[b].y);
 		}
 	}
 	__syncthreads();
 	// Check now for new groups and increase the total number of groups
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y == idy + i){
-				B2[idy + i].y = atomicAdd(&Nenc_s[0],1);
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y == b){
+				B2[b].y = atomicAdd(&Nenc_s[0],1);
 			}		
 		}
 	}
 	__syncthreads();
 	// Transform now the smallest index of the group into a consecutive group index
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y < BN2) B[idy + i].y = B2[B[idy + i].y].y;
+	//These two statements were in one loop over NT but are indexed differently: the
+	//remap is indexed by body, the clear of the group sizes is indexed by group. Split
+	//so each runs over its own range. Nenc_s[0] is the group count and is final here.
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y < BN2) B[b].y = B2[B[b].y].y;
+		}
+	}
+	for(int i = 0; i < Nenc_s[0]; i += Bl){
+		if(idy + i < Nenc_s[0]){
 			Encpairs2_d[idy + i].y = 0;
 		}
 	}
@@ -1153,12 +1224,13 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 //}
 
 	if(SERIAL_GROUPING == 0){
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				if(B[idy + i].y < BN2){
-					int Ns = atomicAdd(&Encpairs2_d[B[idy + i].y].y,1);
-					B2[idy + i].y = Ns; //index in the group
-					Encpairs_d[NT + idy + i].y = B2[idy + i].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+				if(B[b].y < BN2){
+					int Ns = atomicAdd(&Encpairs2_d[B[b].y].y,1);
+					B2[b].y = Ns; //index in the group
+					Encpairs_d[NT + b].y = B2[b].y;
 				}
 			// At this point Encpairs2_d.x contains now line by line the members of the groups, Encpairs2_s.y contains the sizes of the groups
 			}
@@ -1186,21 +1258,24 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 	}
 	__syncthreads();
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y < BN2){
-				int n = B2[idy + i].y;
-				int start = Encpairs2_d[NT + B[idy + i].y].y;
-				Encpairs2_d[start + n].x = idy + i;
-//printf("members %d %d %d\n", start, n, idy + i);
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y < BN2){
+				int n = B2[b].y;
+				int start = Encpairs2_d[NT + B[b].y].y;
+				Encpairs2_d[start + n].x = b;
+//printf("members %d %d %d\n", start, n, b);
 			}
 		// At this point Encpairs2_d.x contains now members of the groups, Encpairs2_d.y contains the sizes of the groups/
 		}
 	}
 	__syncthreads();
 
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
+	//Indexed by group, not by body: only Nenc_s[0] group entries exist. The loop that
+	//computes the group start offsets, two blocks up, already uses this bound.
+	for(int i = 0; i < Nenc_s[0]; i += Bl){
+		if(idy + i < Nenc_s[0]){
 			int nn = Encpairs2_d[idy + i].y;
 //if(nn > 0) printf("n %d %d\n", idy + i, nn);
 			volatile int ne2 = 2;

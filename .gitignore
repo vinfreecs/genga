@@ -1,4 +1,6 @@
 readme
+.vscode
+dev
 
 source/genga
 source/CheckGPU
@@ -43,3 +45,16 @@ cpu/integratorCPU.cu
 cpu/outputCPU.cu
 cpu/test.cu
 
+
+# Claude Code + local tooling (personal, kept out of upstream commits)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.clang-format
+.clang-tidy
+source/compile_commands.json
+prof-*/
+rundata/
+results/
+nsys_report/
+reports/
