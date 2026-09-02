@@ -141,6 +141,11 @@
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
+//Maximum number of gravitational sources in a close encounter group for which
+//BSBStep_kernel uses the compacted source loop instead of the (ii, jj) source
+//lanes. Only relevant for UseTestParticles = 1.
+#define def_BSMaxSrc 4
+
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames
