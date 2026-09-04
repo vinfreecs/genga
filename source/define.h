@@ -141,14 +141,15 @@
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
-//Maximum number of gravitational sources in a close encounter group for which
-//BSBStep_kernel uses the compacted source loop instead of the (ii, jj) source
-//lanes. Only relevant for UseTestParticles = 1.
-#define def_BSMaxSrc 4
-
 //Long term test particle simulations: a few massive bodies plus a large number of
-//massless test particles, integrated for many steps. Enables specialised code paths
-//that exploit that structure. Set to 0 to build the unmodified upstream code.
+//massless test particles, integrated for many steps. This is the master switch for
+//every code path specialised to that structure. Set to 0 to build the unmodified
+//upstream code; nothing below it takes effect while it is 0.
+//
+//It currently gates:
+//  HCCall            (HC.h)          Sun kick reduction over the massive bodies only
+//  group_kernel      (Encounter3.h)  connected components driven by the pair list
+//  BSBStep_kernel    (BSB.h)         close encounter force loop over the mass sources
 //
 //PRECONDITION for def_LongTermSim = 1:
 //  every test particle must have exactly m = 0.
@@ -157,6 +158,11 @@
 //particle masses satisfies the classification while violating this precondition.
 //Check the input with:  awk '{print $1}' <input> | sort -u | head
 #define def_LongTermSim 1
+
+//Maximum number of gravitational sources in a close encounter group for which
+//BSBStep_kernel uses the compacted source loop instead of the (ii, jj) source
+//lanes. Only relevant for UseTestParticles = 1, and only when def_LongTermSim = 1.
+#define def_BSMaxSrc 4
 
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 

@@ -67,6 +67,8 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	//Slots of the group that can pass accEnc's source guard. Under
 	//UseTestParticles == 1 that guard is x4j.w > MinMass, a condition on the
 	//source alone, so the set is well defined and fixed for the whole kernel.
+	//Only written when def_LongTermSim == 1. With the switch off useMsrc below is a
+	//compile time 0, every read of these two is dead code, and they are eliminated.
 	__shared__ int msrc_s[NN];
 	__shared__ int Nm_s[1];
 
@@ -151,10 +153,13 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	if(idy == 0){
 		error_s[0] = 0.0;
 		stop_s[0] = 0;
+#if def_LongTermSim == 1
 		Nm_s[0] = 0;
+#endif
 	}
 	__syncthreads();
 
+#if def_LongTermSim == 1
 	//Build the source list. All of x4_s is visible here, the barrier above covers the
 	//loads at the top of the kernel. Masses can only fall during the kernel
 	//(collide marks the absorbed body with w = -1.0e-12 and no body can cross
@@ -178,6 +183,12 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	//With more than def_BSMaxSrc sources the serial loop would lose to the nb way
 	//parallel one, so fall back to the original path there.
 	const int useMsrc = (UseTestParticles == 1 && Nm_s[0] <= def_BSMaxSrc) ? 1 : 0;
+#else
+	//Switch off: the five force sites below take their original (ii, jj) source lanes
+	//and the shuffle reduction. useMsrc is a compile time constant so every compacted
+	//branch, and the shared state it reads, is removed.
+	const int useMsrc = 0;
+#endif
 
 	for(int tt = 0; tt < 10000; ++tt){
 		__syncthreads();

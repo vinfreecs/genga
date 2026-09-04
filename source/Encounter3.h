@@ -940,6 +940,8 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	__shared__ int start_s[1];
 	//Compacted list of the bodies that take part in an encounter this step.
 	//Bounded by 2 * Ne, and the compacted path is only entered when Ne < Bl.
+	//Only written when def_LongTermSim == 1. With the switch off useCompact below is a
+	//compile time 0, every read of these two is dead code, and they are eliminated.
 	__shared__ int part_s[2 * Bl];
 	__shared__ int Np_s[1];
 
@@ -965,6 +967,7 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 //printf("E %d %d %d\n", bn, Bl, E);
 
+#if def_LongTermSim == 1
 	//E == 3 is "NT > Bl with fewer than Bl encounter pairs": the test particle case,
 	//where NT can be 10^5 while Ne is a few dozen. There the body indexed loops below
 	//do not need to visit every body. Every body that can ever carry a group label
@@ -975,6 +978,11 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	//SERIAL_GROUPING == 1 stays on the original path too, it depends on visiting the
 	//bodies in descending index order.
 	const int useCompact = (E == 3 && SERIAL_GROUPING == 0) ? 1 : 0;
+#else
+	//Switch off: every loop below runs over NT, as upstream. useCompact is a compile
+	//time constant so the compacted branches, and the shared state they read, go away.
+	const int useCompact = 0;
+#endif
 
 	int BN2 = NT * NT -1;
 	if(NT > 46340) BN2 = 2147483647;	//prevent from overflow
@@ -1049,7 +1057,9 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 	if(idy < def_GMax) Nenc_s[idy] = 0;
 	if(idy == 0) start_s[0] = 0;
+#if def_LongTermSim == 1
 	if(idy == 0) Np_s[0] = 0;
+#endif
 
 	__syncthreads();
 
@@ -1057,7 +1067,9 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	//De duplication is required, not cosmetic. The phases below perform one atomicAdd
 	//per body, so visiting a body twice would double count both the number of groups
 	//and the group sizes. O(Ne^2) over shared memory, with Ne a few dozen here.
+	//Nloop stays NT on the original path, so the loops below are unchanged there.
 	int Nloop = NT;
+#if def_LongTermSim == 1
 	if(useCompact == 1){
 		const int Ncand = 2 * Ne;
 		for(int j = idy; j < Ncand; j += Bl){
@@ -1089,6 +1101,7 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 		__syncthreads();
 	}
+#endif
 
 	for(int i = 0; i < Ne; i += Bl){
 		if(idy + i < Ne){
@@ -1198,6 +1211,7 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 	__syncthreads();
 	// Transform now the smallest index of the group into a consecutive group index
+#if def_LongTermSim == 1
 	//These two statements were in one loop over NT but are indexed differently: the
 	//remap is indexed by body, the clear of the group sizes is indexed by group. Split
 	//so each runs over its own range. Nenc_s[0] is the group count and is final here.
@@ -1212,6 +1226,14 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 			Encpairs2_d[idy + i].y = 0;
 		}
 	}
+#else
+	for(int i = 0; i < NT; i += Bl){
+		if(idy + i < NT){
+			if(B[idy + i].y < BN2) B[idy + i].y = B2[B[idy + i].y].y;
+			Encpairs2_d[idy + i].y = 0;
+		}
+	}
+#endif
 	// At this point B[idy] contains a consecutive group index
 	__syncthreads();
 
@@ -1274,8 +1296,15 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 
 	//Indexed by group, not by body: only Nenc_s[0] group entries exist. The loop that
 	//computes the group start offsets, two blocks up, already uses this bound.
-	for(int i = 0; i < Nenc_s[0]; i += Bl){
-		if(idy + i < Nenc_s[0]){
+	//Upstream ran this over NT and relied on the entries past the group count holding
+	//the zeros it had written itself.
+#if def_LongTermSim == 1
+	const int Ngroup = Nenc_s[0];
+#else
+	const int Ngroup = NT;
+#endif
+	for(int i = 0; i < Ngroup; i += Bl){
+		if(idy + i < Ngroup){
 			int nn = Encpairs2_d[idy + i].y;
 //if(nn > 0) printf("n %d %d\n", idy + i, nn);
 			volatile int ne2 = 2;
