@@ -1,6 +1,7 @@
 readme
 .vscode
 dev
+tune_sweep*
 
 source/genga
 source/CheckGPU

@@ -146,6 +146,18 @@
 //lanes. Only relevant for UseTestParticles = 1.
 #define def_BSMaxSrc 4
 
+//Long term test particle simulations: a few massive bodies plus a large number of
+//massless test particles, integrated for many steps. Enables specialised code paths
+//that exploit that structure. Set to 0 to build the unmodified upstream code.
+//
+//PRECONDITION for def_LongTermSim = 1:
+//  every test particle must have exactly m = 0.
+//GENGA classifies a body as a test particle with m <= MinMass (Orbit2.cu:1610) and
+//shifts it behind the massive bodies, so an input carrying small but non-zero test
+//particle masses satisfies the classification while violating this precondition.
+//Check the input with:  awk '{print $1}' <input> | sort -u | head
+#define def_LongTermSim 1
+
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames

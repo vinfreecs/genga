@@ -835,8 +835,25 @@ __host__ void Data::HCCall(const double Ct, const int f){
 	}
 	else{
 		int nct = 512;
+#if def_LongTermSim == 1
+		//The Sun kick is  x_i += dt / Msun * Sum_j(m_j * v_j)  for every body i.
+		//The sum runs over momenta only, and HC32d1_kernel already discards every
+		//term with m <= 0 (see its 'if(m > 0.0)' guard), so massless test particles
+		//contribute exactly nothing to it. That guard skips the multiply-add but not
+		//the loads of x4_d[i].w and v4_d[i], which is the whole cost of the kernel.
+		//With UseTestParticles = 1 the test particles are stored behind the massive
+		//bodies (Orbit2.cu:1610 shifts them to the end of the arrays), so the
+		//reduction can be driven over the massive bodies alone.
+		//HC32d3_kernel below, which applies the resulting displacement, is unchanged
+		//and still runs over every body.
+		//Requires def_LongTermSim's precondition: test particle masses are exactly 0.
+		int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
+		int ncb = min((Nred + nct - 1) / nct, 1024);
+		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
+#else
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
+#endif
 		HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
 		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 	}
