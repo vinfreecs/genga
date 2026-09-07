@@ -854,7 +854,17 @@ __host__ void Data::HCCall(const double Ct, const int f){
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
 #endif
-		HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
+		//With ncb == 1 the reduction is already complete: HC32d1_kernel's single block
+		//wrote the full sum into a_d[0], and HC32d2_kernel would only read it back and
+		//write it out again. Its block is then one warp, with lane 0 holding the value
+		//and lanes 1-31 holding exact zeros, so the shuffle tree returns the input
+		//unchanged and the cross-warp stage is skipped (blockDim.x == WarpSize).
+		//Dropping the launch is therefore bit-identical.
+		//This only fires with def_LongTermSim == 1, where Nred = N_h[0]: upstream this
+		//branch is reached only when N_h[0] + Nsmall_h[0] > 512, so ncb >= 2 always.
+		if(ncb > 1){
+			HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
+		}
 		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 	}
 
