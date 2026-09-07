@@ -5298,9 +5298,23 @@ __host__ int Data::step_small(int noColl){
 	EjectionFlag2 = 0;
 	for(int si = 0; si < SIn; ++si){
 
+		//HCCall's last kernel, HC32d3_kernel, and fg_kernel below are both one thread
+		//per body over the same arrays with nothing between them, so they are fused
+		//into a single launch. HCCall reports whether it actually skipped HC32d3 -
+		//it can only do so on its N > 512 path - and the plain fg_kernel runs when
+		//it did not. See def_FUSE_KERNELS in define.h.
+		int fusedHCfg = 0;
+#if def_FUSE_KERNELS == 1
+		fusedHCfg = HCCall(Ct[si], 1, 1);
+		if(fusedHCfg == 1){
+			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		}
+#else
 		HCCall(Ct[si], 1);
-		
-		fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+#endif
+		if(fusedHCfg == 0){
+			fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
+		}
 		cudaStreamSynchronize(copyStream);
 
 		if(P.WriteEncounters == 2 && si == 0){

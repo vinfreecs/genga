@@ -418,6 +418,87 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 	}
 }
 
+#if def_FUSE_KERNELS == 1
+// **********************************************************
+//Fusion of HC32d3_kernel (HC.h) and fg_kernel above.
+//
+//HCCall ends by applying the Sun kick displacement x_i += dt/Msun * Sum_j(m_j v_j)
+//to every body, and the very next launch in step_small is the Kepler drift over
+//the same bodies. Both are one thread per body over the same arrays with NO cross
+//particle reads, so unlike the acc4C + kick32Ab fusion this join needs no barrier
+//of any kind - x4_d[id] simply stays in a register instead of being written by one
+//kernel and read back by the next. The launch shapes are already identical.
+//
+//WHAT IT SAVES, per particle
+//  x4_d[id] is not written and read back, 64 B, plus one kernel launch per step.
+//
+//BIT IDENTICAL to the two separate launches. A double written to x4_d and read
+//back is exact, so holding it in a register changes nothing; the two bodies are
+//otherwise unchanged and in the same order. In particular xold_d/vold_d still
+//record the POST shift state, because fg_kernel re-read x4_d after HC32d3 had
+//already written it. v4_d is not touched by HC32d3, so v4i is the same value
+//fg_kernel would have read.
+//
+//fg_kernel's __syncthreads() is dropped. There is no __shared__ anywhere in FG2.h
+//or BSSingle.h, so it synchronises nothing; it only makes every block wait for its
+//slowest Kepler solve before any thread stores. It also sits inside if(id < N),
+//which makes it a divergent barrier in the last block whenever N is not a multiple
+//of blockDim, so dropping it removes that too.
+//
+//The caller must have HCCall skip its own HC32d3_kernel. That is what HCCall's
+//skipD3 argument and return value are for: HCCall can only skip it on the N > 512
+//path, since the small N branches do the whole Sun kick in one kernel, so it
+//reports back and the caller launches the plain fg_kernel when it did not.
+//
+//dtHC is HC32d3's dt (used only by the GR term), dtiMsun its dt/Msun scale, and
+//dtfg the Kepler drift step - the three values the two launches were given.
+//
+//Author: fused from Simon Grimm's HC32d3_kernel and fg_kernel
+//September 2026
+// **********************************************************
+__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id < N){
+		unsigned int aecount = 0u;
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+
+		//HC32d3_kernel. Its guard is on x4_d[id].w, which nothing below changes.
+		if(x4i.w >= 0.0){
+			double3 a = a_d[0];
+			x4i.x += a.x * dtiMsun;
+			x4i.y += a.y * dtiMsun;
+			x4i.z += a.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i.x -= __dmul_rn(v4i.x, vcdt);
+				x4i.y -= __dmul_rn(v4i.y, vcdt);
+				x4i.z -= __dmul_rn(v4i.z, vcdt);
+			}
+		}
+
+		//fg_kernel. It re-read x4_d[id] at this point, which is exactly the value
+		//now held in x4i, so xold_d still records the post shift state.
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		float4 aelimits = aelimits_d[id];
+		fgfull(x4i, v4i, dtfg, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
+		if(si >= 0){
+			//dont update arrays during tunig process
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+		}
+		if(si == 0){
+			aecount_d[id] += aecount;
+		}
+	}
+}
+#endif
+
 __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double dt, const double dtC, const double dtCiMsun, const double Msun, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;

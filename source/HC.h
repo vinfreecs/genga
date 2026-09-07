@@ -820,7 +820,9 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 
 //First call f = 1;
 //Second call f = -1;
-__host__ void Data::HCCall(const double Ct, const int f){
+__host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
+
+	int skipped = 0;
 
 	if(P.UseGR == 1 && f == 1){
 		convertVToPseidov <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, ErrorFlag_m, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
@@ -865,13 +867,25 @@ __host__ void Data::HCCall(const double Ct, const int f){
 		if(ncb > 1){
 			HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
 		}
-		HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+		//HC32d3_kernel applies the displacement to every body, and in step_small the
+		//very next launch, fg_kernel, is also one thread per body over the same
+		//arrays. skipD3 lets that caller take this kernel over as HC32d3fg_kernel
+		//(FG2.h). Only this branch has a separate HC32d3 to skip - the small N
+		//branches above do the whole Sun kick in one kernel - so the answer is
+		//reported back rather than assumed by the caller.
+		if(skipD3 == 0){
+			HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+		}
+		else{
+			skipped = 1;
+		}
 	}
 
 	if(P.UseGR == 1 && f == -1){
 		convertPseudovToV <<< (N_h[0] + Nsmall_h[0] + 127) / 128, 128 >>> (x4_d, v4_d, Msun_h[0].x, N_h[0] + Nsmall_h[0]);
 	}
 
+	return skipped;
 }
 
 

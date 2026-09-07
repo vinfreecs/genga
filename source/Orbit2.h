@@ -357,7 +357,10 @@ public:
 	__host__ int ttv_step();
 	
 	__host__ void comCall(const int);
-	__host__ void HCCall(const double, const int);
+	//The third argument asks HCCall to skip its final HC32d3_kernel so the caller
+	//can fuse it into HC32d3fg_kernel (FG2.h). The return value says whether it
+	//actually did: only the N > 512 path has a separate HC32d3 to skip.
+	__host__ int HCCall(const double, const int, const int = 0);
 	__host__ void groupCall();
 
 	__host__ int CollisionCall(int);
