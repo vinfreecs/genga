@@ -164,6 +164,32 @@
 //lanes. Only relevant for UseTestParticles = 1, and only when def_LongTermSim = 1.
 #define def_BSMaxSrc 4
 
+//Fuse adjacent kernels that have no host work between them, saving the round trip
+//through the array that carries the result from one to the other.
+//
+//It currently gates one fusion:
+//  acc4C_kernel + kick32Ab_kernel   (Kick4.h)   the two halves of one kick
+//
+//acc4C_kernel computes the far field acceleration into acck_d and records the
+//encounter pairs; the kick32Ab_kernel that immediately follows it in step_small
+//adds back the near field term acc_e deliberately zeroed and applies the result
+//to the velocity. The join needs no grid barrier, because every target's
+//encounter counter is written by exactly one acc4C block - see the comment above
+//acc4Ckick32Ab_kernel in Kick4.h for the full argument.
+//
+//Bit identical to the two separate launches.
+//
+//The fused path is skipped at runtime, falling back to the two launches, when
+//anything has to run between them:
+//  Do Kick in single precision = 1   picks acc4Cf_kernel instead
+//  Serial Grouping = 1               inserts Sortb_kernel
+//  Use Test Particles = 2            inserts a second acc4C_kernel
+//
+//NOTE for the generated backends: Kick4.h is translated by cpu/port.py and
+//HIP/GengaHIP.py, and neither has seen this kernel. Re-run them and check the
+//output before trusting a CPU or HIP build with this at 1.
+#define def_FUSE_KERNELS 1
+
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames

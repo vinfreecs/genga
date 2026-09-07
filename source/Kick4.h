@@ -358,6 +358,240 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 	}
 }
 
+#if def_FUSE_KERNELS == 1
+// **************************************
+//This function is the per target tail of the fused acc4C + kick32Ab kernel below.
+//It is kick32Ab_kernel's body with the acceleration taken from the caller's
+//register instead of from acck_d, and with the two departures documented above
+//acc4Ckick32Ab_kernel.
+//
+//Authors: Simon Grimm (kick32Ab_kernel), fused 2026
+//September 2026
+// *****************************************
+__device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile double3 &as, double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs2_d, const double dtksq, const int id, const int NencMax){
+
+	double3 acck;
+	acck.x = as.x;
+	acck.y = as.y;
+	acck.z = as.z;
+
+	//acck_d must still be written. The FIRST kick32Ab_kernel of the NEXT step
+	//(integrator.cu, the EjectionFlag2 == 0 branch of step_small) reuses this
+	//acceleration instead of recomputing it, so this array outlives the fusion.
+	acck_d[id] = acck;
+
+	if(x4i.w >= 0.0){
+		double3 a = {0.0, 0.0, 0.0};
+
+		//Departure 1 from kick32Ab_kernel: it branches on Nencpairs_d[0], a grid
+		//wide counter that is not final until every block has finished its source
+		//loop, so it cannot be read here. The neighbour loop simply runs NI times
+		//instead, which is 0 for a particle with no encounter. That reproduces
+		//kick32Ab_kernel's Nencpairs_d[0] > 0 branch with an empty loop, and it
+		//agrees with its else branch as well: a_s is initialised to +0.0 and acc_e
+		//only ever adds to it, so acck can never be -0.0 and 0.0 + acck == acck
+		//exactly, sign of zero included.
+		int NI = Encpairs2_d[id * NencMax].x;
+		NI = min(NI, NencMax);
+		for(int i = 0; i < NI; ++i){
+			int jj = Encpairs2_d[id * NencMax + i].y;
+			double4 x4j = x4_d[jj];
+			double rcritvj = rcritv_d[jj];
+			accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+		}
+		//Departure 2: kick32Ab_kernel's __syncthreads() after the neighbour loop is
+		//dropped. The kick reads no shared data beyond this thread's own reduction
+		//result, which the reduction's own barriers already ordered, and a barrier
+		//inside the divergent idy == 0 region would be undefined behaviour.
+
+		double3 aa;
+		aa.x = a.x + acck.x;
+		aa.y = a.y + acck.y;
+		aa.z = a.z + acck.z;
+
+		v4_d[id].x += __dmul_rn(aa.x, dtksq);
+		v4_d[id].y += __dmul_rn(aa.y, dtksq);
+		v4_d[id].z += __dmul_rn(aa.z, dtksq);
+
+		ab_d[id] = aa;
+	}
+}
+
+// **********************************************************
+//Fusion of acc4C_kernel and the kick32Ab_kernel that immediately follows it in
+//step_small. The two are the halves of one kick: acc4C computes the far field
+//acceleration into acck_d and records the encounter pairs, kick32Ab adds back the
+//near field term that acc_e deliberately zeroed and applies it to the velocity.
+//acck_d exists only to carry the result from the first to the second.
+//
+//WHY NO GRID BARRIER IS NEEDED
+//kick32Ab needs the per target encounter counter Encpairs2_d[i * NencMax].x and
+//the neighbour list beside it, both of which acc_e fills with an atomicAdd on the
+//TARGET index i. acc4C's target is
+//    idx = (blockIdx.x * blockDim.x + ix) * p + Nstart
+//a function of blockIdx.x and threadIdx.x only, so every target's counter and
+//list are written by exactly one block. __syncthreads() is a block wide memory
+//fence, so after the barrier that closes the source loop both are final for this
+//block's targets. Nothing has to wait on any other block.
+//
+//The neighbour data the kick then needs is x4_d[jj] and rcritv_d[jj] for the mass
+//sources, which the source loop above has already brought into the block, and
+//which no part of the kick writes - it writes only v4_d[id] and ab_d[id].
+//
+//WHAT IT SAVES, per target
+//  acck_d is not read back (24 B) and x4_d[id] and rcritv_d[id] are read once
+//  rather than twice (40 B). The strided Encpairs2_d[id * NencMax].x counter read
+//  also goes away, which is the kick32Ab O(N) pathology.
+//
+//BIT IDENTICAL to the two separate launches. The acceleration is computed by the
+//same code in the same order; a double written to acck_d and read back is exact,
+//so taking it from a register instead changes nothing; and both departures in
+//kick32Ab_fused are argued above.
+//
+//Only the EE = 1 call site is fused. The caller falls back to the two separate
+//launches when KickFloat, SERIAL_GROUPING or UseTestParticles == 2 puts another
+//kernel between them - see def_FUSE_KERNELS in define.h.
+//
+//Note the kick runs on the idy == 0 threads only, since those are the ones
+//holding the reduction result. With KTY = 1 every thread is an idy == 0 thread
+//and the whole block participates, but KTY = 1 reassociates acc4C's source sum
+//and is therefore NOT bit identical - measured a null on 2026-09-07 in any case.
+//
+//Author: fused from Simon Grimm's acc4C_kernel and kick32Ab_kernel
+//September 2026
+// **********************************************************
+__global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
+
+	int idy = threadIdx.y;
+	int ix = threadIdx.x;
+	int idx = (blockIdx.x * blockDim.x + ix) * p + Nstart;
+	int Bl = blockDim.y;
+	int Bll = Bl * blockDim.x;
+
+	extern volatile __shared__ double3 a_s[];
+
+	double4 x4i1, x4i2, x4i3, x4i4;
+	double rcritvi1, rcritvi2, rcritvi3, rcritvi4;
+
+	if(idx + 0 < N){
+		x4i1 = x4_d[idx + 0];
+		rcritvi1 = rcritv_d[idx + 0];
+		if(idy == 0){
+			Encpairs2_d[(idx + 0) * NencMax].x = 0;
+		}
+	}
+	if(idx + 1 < N && p > 1){
+		x4i2 = x4_d[idx + 1];
+		rcritvi2 = rcritv_d[idx + 1];
+		if(idy == 0){
+			Encpairs2_d[(idx + 1) * NencMax].x = 0;
+		}
+	}
+	if(idx + 2 < N && p > 2){
+		x4i3 = x4_d[idx + 2];
+		rcritvi3 = rcritv_d[idx + 2];
+		if(idy == 0){
+			Encpairs2_d[(idx + 2) * NencMax].x = 0;
+		}
+	}
+	if(idx + 3 < N && p > 3){
+		x4i4 = x4_d[idx + 3];
+		rcritvi4 = rcritv_d[idx + 3];
+		if(idy == 0){
+			Encpairs2_d[(idx + 3) * NencMax].x = 0;
+		}
+	}
+
+	for(int j = 0; j < p; ++j){
+		a_s[idy + ix * Bl + j * Bll].x = 0.0;
+		a_s[idy + ix * Bl + j * Bll].y = 0.0;
+		a_s[idy + ix * Bl + j * Bll].z = 0.0;
+	}
+
+	__syncthreads();
+	for(int i = N0; i < N1; i += Bl){
+		if(idy + i < N1){
+			double4 x4j = x4_d[idy + i];
+			double rcritvj = rcritv_d[idy + i];
+
+			if(idx + 0 < N)          acc_e(a_s[idy + ix * Bl + 0 * Bll], x4i1, x4j, rcritvi1, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 0, NencMax, EE);
+			if(idx + 1 < N && p > 1) acc_e(a_s[idy + ix * Bl + 1 * Bll], x4i2, x4j, rcritvi2, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 1, NencMax, EE);
+			if(idx + 2 < N && p > 2) acc_e(a_s[idy + ix * Bl + 2 * Bll], x4i3, x4j, rcritvi3, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 2, NencMax, EE);
+			if(idx + 3 < N && p > 3) acc_e(a_s[idy + ix * Bl + 3 * Bll], x4i4, x4j, rcritvi4, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 3, NencMax, EE);
+
+		}
+	}
+	//This barrier is what makes the fusion legal: it closes the source loop, so
+	//every atomicAdd this block made on its own targets' counters is complete and
+	//visible to the block after it.
+	__syncthreads();
+
+	int s = Bl/2;
+
+	for(int i = 6; i < log2f(Bl); ++i){
+		if( idy < s ) {
+			for(int j = 0; j < p; ++j){
+				a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + s].x;
+				a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + s].y;
+				a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + s].z;
+			}
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+	for(int j = 0; j < p; ++j){
+
+		if(Bl > 32 && idy < 32){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 32].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 32].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 32].z;
+		}
+		__syncthreads();        //this is needed here because idy are not neccessary in the same warp
+		if(Bl > 16 && idy < 16){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 16].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 16].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 16].z;
+		}
+		__syncthreads();
+		if(Bl >  8 && idy < 8){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 8].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 8].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 8].z;
+		}
+		__syncthreads();
+		if(Bl >  4 && idy < 4){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 4].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 4].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 4].z;
+		}
+		__syncthreads();
+		if(Bl >  2 && idy < 2){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 2].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 2].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 2].z;
+		}
+		__syncthreads();
+		if(Bl >  1 && idy < 1){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 1].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 1].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 1].z;
+		}
+		__syncthreads();
+	}
+
+	//The kick. Where acc4C_kernel stored a_s into acck_d and returned, the fused
+	//kernel keeps the value and finishes the kick here. x4i* and rcritvi* are the
+	//loads made at the top of this kernel, so kick32Ab's re-reads are gone.
+	if(idy == 0){
+		if(idx + 0 < N)          kick32Ab_fused(x4i1, rcritvi1, a_s[ix * Bl + 0 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 0, NencMax);
+		if(idx + 1 < N && p > 1) kick32Ab_fused(x4i2, rcritvi2, a_s[ix * Bl + 1 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 1, NencMax);
+		if(idx + 2 < N && p > 2) kick32Ab_fused(x4i3, rcritvi3, a_s[ix * Bl + 2 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 2, NencMax);
+		if(idx + 3 < N && p > 3) kick32Ab_fused(x4i4, rcritvi4, a_s[ix * Bl + 3 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 3, NencMax);
+	}
+}
+#endif
+
 //float version
 __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 

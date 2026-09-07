@@ -5487,28 +5487,44 @@ __host__ int Data::step_small(int noColl){
 			}
 		}
 	}
-	if(P.KickFloat == 0){
-		acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+	int fused = 0;
+#if def_FUSE_KERNELS == 1
+	//acc4C_kernel and the kick32Ab_kernel below are the two halves of one kick, so
+	//they are fused into a single launch whenever nothing has to run between them.
+	//KickFloat picks acc4Cf_kernel, SERIAL_GROUPING inserts Sortb_kernel and
+	//UseTestParticles == 2 inserts a second acc4C_kernel; any of those falls back
+	//to the two separate launches below. See def_FUSE_KERNELS in define.h.
+	if(P.KickFloat == 0 && P.SERIAL_GROUPING == 0 && P.UseTestParticles != 2){
+		acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		fused = 1;
 	}
-	else{
-		acc4Cf_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
-	}
-	if(P.UseTestParticles == 2){
+#endif
+	if(fused == 0){
 		if(P.KickFloat == 0){
-			acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 		}
 		else{
-			acc4Cf_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			acc4Cf_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+		}
+		if(P.UseTestParticles == 2){
+			if(P.KickFloat == 0){
+				acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			}
+			else{
+				acc4Cf_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
+			}
 		}
 	}
 	cudaEventRecord(KickEvent, 0);
 	cudaStreamWaitEvent(copyStream, KickEvent, 0);
 	cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
 
-	if(P.SERIAL_GROUPING == 1){
-		Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+	if(fused == 0){
+		if(P.SERIAL_GROUPING == 1){
+			Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
+		}
+		kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
 	}
-	kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
 	
 	if(ForceFlag > 0){
 		comCall(1);
