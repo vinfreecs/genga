@@ -5302,9 +5302,9 @@ __host__ int Data::step_small(int noColl){
 		//per body over the same arrays with nothing between them, so they are fused
 		//into a single launch. HCCall reports whether it actually skipped HC32d3 -
 		//it can only do so on its N > 512 path - and the plain fg_kernel runs when
-		//it did not. See def_FUSE_KERNELS in define.h.
+		//it did not. See def_FUSE_KERNELS and def_FUSE_HC32D3_FG in define.h.
 		int fusedHCfg = 0;
-#if def_FUSE_KERNELS == 1
+#if def_FUSE_HC32D3_FG == 1
 		fusedHCfg = HCCall(Ct[si], 1, 1);
 		if(fusedHCfg == 1){
 			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
@@ -5502,12 +5502,13 @@ __host__ int Data::step_small(int noColl){
 		}
 	}
 	int fused = 0;
-#if def_FUSE_KERNELS == 1
+#if def_FUSE_ACC4C_KICK32AB == 1
 	//acc4C_kernel and the kick32Ab_kernel below are the two halves of one kick, so
 	//they are fused into a single launch whenever nothing has to run between them.
 	//KickFloat picks acc4Cf_kernel, SERIAL_GROUPING inserts Sortb_kernel and
 	//UseTestParticles == 2 inserts a second acc4C_kernel; any of those falls back
-	//to the two separate launches below. See def_FUSE_KERNELS in define.h.
+	//to the two separate launches below. See def_FUSE_KERNELS and
+	//def_FUSE_ACC4C_KICK32AB in define.h.
 	if(P.KickFloat == 0 && P.SERIAL_GROUPING == 0 && P.UseTestParticles != 2){
 		acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 		fused = 1;

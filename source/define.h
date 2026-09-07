@@ -207,6 +207,14 @@
 //output before trusting a CPU or HIP build with this at 1.
 #define def_FUSE_KERNELS 1
 
+//Per fusion sub switches. Both follow def_FUSE_KERNELS, so the master switch above
+//is the only one to touch by hand. They exist so dev/ablation.sh can build one
+//fusion without the other and attribute a speedup - or a bit identity failure - to
+//the right one. The guards in Kick4.h / FG2.h / integrator.cu test these, not the
+//master.
+#define def_FUSE_ACC4C_KICK32AB def_FUSE_KERNELS
+#define def_FUSE_HC32D3_FG def_FUSE_KERNELS
+
 #define def_tol 1.0e-12		     //Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17	     //minimal time step in Bulirsh Stoer
 #define def_NFileNameDigits 12	     //number of digits in output filenames

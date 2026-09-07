@@ -358,7 +358,7 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 	}
 }
 
-#if def_FUSE_KERNELS == 1
+#if def_FUSE_ACC4C_KICK32AB == 1
 // **************************************
 //This function is the per target tail of the fused acc4C + kick32Ab kernel below.
 //It is kick32Ab_kernel's body with the acceleration taken from the caller's
@@ -450,7 +450,8 @@ __device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile doub
 //
 //Only the EE = 1 call site is fused. The caller falls back to the two separate
 //launches when KickFloat, SERIAL_GROUPING or UseTestParticles == 2 puts another
-//kernel between them - see def_FUSE_KERNELS in define.h.
+//kernel between them - see def_FUSE_KERNELS and def_FUSE_ACC4C_KICK32AB in
+//define.h.
 //
 //Note the kick runs on the idy == 0 threads only, since those are the ones
 //holding the reduction result. With KTY = 1 every thread is an idy == 0 thread

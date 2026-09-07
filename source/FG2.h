@@ -418,7 +418,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 	}
 }
 
-#if def_FUSE_KERNELS == 1
+#if def_FUSE_HC32D3_FG == 1
 // **********************************************************
 //Fusion of HC32d3_kernel (HC.h) and fg_kernel above.
 //
