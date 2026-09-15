@@ -2,6 +2,8 @@ readme
 .vscode
 dev
 tune_sweep*
+logs/
+ncu_reports/
 
 source/genga
 source/CheckGPU
