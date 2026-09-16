@@ -838,17 +838,8 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
 	else{
 		int nct = 512;
 #if def_LongTermSim == 1
-		//The Sun kick is  x_i += dt / Msun * Sum_j(m_j * v_j)  for every body i.
-		//The sum runs over momenta only, and HC32d1_kernel already discards every
-		//term with m <= 0 (see its 'if(m > 0.0)' guard), so massless test particles
-		//contribute exactly nothing to it. That guard skips the multiply-add but not
-		//the loads of x4_d[i].w and v4_d[i], which is the whole cost of the kernel.
-		//With UseTestParticles = 1 the test particles are stored behind the massive
-		//bodies (Orbit2.cu:1610 shifts them to the end of the arrays), so the
-		//reduction can be driven over the massive bodies alone.
-		//HC32d3_kernel below, which applies the resulting displacement, is unchanged
-		//and still runs over every body.
-		//Requires def_LongTermSim's precondition: test particle masses are exactly 0.
+		//test particles add nothing to the momentum sum, so reduce over
+		//the massive bodies only. Their masses must be exactly 0.
 		int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
 		int ncb = min((Nred + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
@@ -856,23 +847,11 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
 #endif
-		//With ncb == 1 the reduction is already complete: HC32d1_kernel's single block
-		//wrote the full sum into a_d[0], and HC32d2_kernel would only read it back and
-		//write it out again. Its block is then one warp, with lane 0 holding the value
-		//and lanes 1-31 holding exact zeros, so the shuffle tree returns the input
-		//unchanged and the cross-warp stage is skipped (blockDim.x == WarpSize).
-		//Dropping the launch is therefore bit-identical.
-		//This only fires with def_LongTermSim == 1, where Nred = N_h[0]: upstream this
-		//branch is reached only when N_h[0] + Nsmall_h[0] > 512, so ncb >= 2 always.
+		//ncb == 1: HC32d1 already holds the full sum, HC32d2 is a no-op
 		if(ncb > 1){
 			HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
 		}
-		//HC32d3_kernel applies the displacement to every body, and in step_small the
-		//very next launch, fg_kernel, is also one thread per body over the same
-		//arrays. skipD3 lets that caller take this kernel over as HC32d3fg_kernel
-		//(FG2.h). Only this branch has a separate HC32d3 to skip - the small N
-		//branches above do the whole Sun kick in one kernel - so the answer is
-		//reported back rather than assumed by the caller.
+		//the caller can fuse HC32d3 into fg_kernel, report if we skipped
 		if(skipD3 == 0){
 			HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 		}

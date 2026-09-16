@@ -360,14 +360,10 @@ __global__ void acc4C_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, i
 
 #if def_FUSE_ACC4C_KICK32AB == 1
 // **************************************
-//This function is the per target tail of the fused acc4C + kick32Ab kernel below.
-//It is kick32Ab_kernel's body with the acceleration taken from the caller's
-//register instead of from acck_d, and with the two departures documented above
-//acc4Ckick32Ab_kernel.
-//
-//Authors: Simon Grimm (kick32Ab_kernel), fused 2026
-//September 2026
-// *****************************************
+//This function is the per target tail of the fused acc4C + kick32Ab
+//kernel below. It is kick32Ab_kernel's body, with the acceleration
+//taken from the caller's register instead of from acck_d.
+// ****************************************
 __device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile double3 &as, double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs2_d, const double dtksq, const int id, const int NencMax){
 
 	double3 acck;
@@ -375,22 +371,13 @@ __device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile doub
 	acck.y = as.y;
 	acck.z = as.z;
 
-	//acck_d must still be written. The FIRST kick32Ab_kernel of the NEXT step
-	//(integrator.cu, the EjectionFlag2 == 0 branch of step_small) reuses this
-	//acceleration instead of recomputing it, so this array outlives the fusion.
+	//the next step's first kick32Ab reuses this acceleration
 	acck_d[id] = acck;
 
 	if(x4i.w >= 0.0){
 		double3 a = {0.0, 0.0, 0.0};
 
-		//Departure 1 from kick32Ab_kernel: it branches on Nencpairs_d[0], a grid
-		//wide counter that is not final until every block has finished its source
-		//loop, so it cannot be read here. The neighbour loop simply runs NI times
-		//instead, which is 0 for a particle with no encounter. That reproduces
-		//kick32Ab_kernel's Nencpairs_d[0] > 0 branch with an empty loop, and it
-		//agrees with its else branch as well: a_s is initialised to +0.0 and acc_e
-		//only ever adds to it, so acck can never be -0.0 and 0.0 + acck == acck
-		//exactly, sign of zero included.
+		//own NI instead of the grid wide Nencpairs_d[0]
 		int NI = Encpairs2_d[id * NencMax].x;
 		NI = min(NI, NencMax);
 		for(int i = 0; i < NI; ++i){
@@ -399,10 +386,7 @@ __device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile doub
 			double rcritvj = rcritv_d[jj];
 			accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
 		}
-		//Departure 2: kick32Ab_kernel's __syncthreads() after the neighbour loop is
-		//dropped. The kick reads no shared data beyond this thread's own reduction
-		//result, which the reduction's own barriers already ordered, and a barrier
-		//inside the divergent idy == 0 region would be undefined behaviour.
+		//no barrier here: divergent idy == 0 region
 
 		double3 aa;
 		aa.x = a.x + acck.x;
@@ -418,48 +402,19 @@ __device__ void kick32Ab_fused(double4 &x4i, const double rcritvi, volatile doub
 }
 
 // **********************************************************
-//Fusion of acc4C_kernel and the kick32Ab_kernel that immediately follows it in
-//step_small. The two are the halves of one kick: acc4C computes the far field
-//acceleration into acck_d and records the encounter pairs, kick32Ab adds back the
-//near field term that acc_e deliberately zeroed and applies it to the velocity.
-//acck_d exists only to carry the result from the first to the second.
-//
-//WHY NO GRID BARRIER IS NEEDED
-//kick32Ab needs the per target encounter counter Encpairs2_d[i * NencMax].x and
-//the neighbour list beside it, both of which acc_e fills with an atomicAdd on the
-//TARGET index i. acc4C's target is
-//    idx = (blockIdx.x * blockDim.x + ix) * p + Nstart
-//a function of blockIdx.x and threadIdx.x only, so every target's counter and
-//list are written by exactly one block. __syncthreads() is a block wide memory
-//fence, so after the barrier that closes the source loop both are final for this
-//block's targets. Nothing has to wait on any other block.
-//
-//The neighbour data the kick then needs is x4_d[jj] and rcritv_d[jj] for the mass
-//sources, which the source loop above has already brought into the block, and
-//which no part of the kick writes - it writes only v4_d[id] and ab_d[id].
-//
-//WHAT IT SAVES, per target
-//  acck_d is not read back (24 B) and x4_d[id] and rcritv_d[id] are read once
-//  rather than twice (40 B). The strided Encpairs2_d[id * NencMax].x counter read
-//  also goes away, which is the kick32Ab O(N) pathology.
-//
-//BIT IDENTICAL to the two separate launches. The acceleration is computed by the
-//same code in the same order; a double written to acck_d and read back is exact,
-//so taking it from a register instead changes nothing; and both departures in
-//kick32Ab_fused are argued above.
-//
-//Only the EE = 1 call site is fused. The caller falls back to the two separate
-//launches when KickFloat, SERIAL_GROUPING or UseTestParticles == 2 puts another
-//kernel between them - see def_FUSE_KERNELS and def_FUSE_ACC4C_KICK32AB in
-//define.h.
-//
-//Note the kick runs on the idy == 0 threads only, since those are the ones
-//holding the reduction result. With KTY = 1 every thread is an idy == 0 thread
-//and the whole block participates, but KTY = 1 reassociates acc4C's source sum
-//and is therefore NOT bit identical - measured a null on 2026-09-07 in any case.
-//
-//Author: fused from Simon Grimm's acc4C_kernel and kick32Ab_kernel
-//September 2026
+//This kernel fuses acc4C_kernel with the kick32Ab_kernel that
+//follows it in step_small. The two are the halves of one kick:
+//acc4C computes the far field acceleration and records the encounter
+//pairs, kick32Ab adds back the near field term that acc_e zeroed and
+//applies it to the velocity.
+//No grid barrier is needed: acc4C's target index depends only on
+//blockIdx.x and threadIdx.x, so every target's encounter counter is
+//written by exactly one block, and __syncthreads() makes it final.
+//Bit identical to the two separate launches.
+//Only the EE = 1 call site is fused, see def_FUSE_ACC4C_KICK32AB.
+//Note this duplicates ~120 lines of acc4C_kernel; a change there
+//must be mirrored here.
+//fused from Simon Grimm's acc4C_kernel and kick32Ab_kernel
 // **********************************************************
 __global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
@@ -522,9 +477,7 @@ __global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck
 
 		}
 	}
-	//This barrier is what makes the fusion legal: it closes the source loop, so
-	//every atomicAdd this block made on its own targets' counters is complete and
-	//visible to the block after it.
+	//closes the source loop: this block's counters are final
 	__syncthreads();
 
 	int s = Bl/2;
@@ -581,9 +534,7 @@ __global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck
 		__syncthreads();
 	}
 
-	//The kick. Where acc4C_kernel stored a_s into acck_d and returned, the fused
-	//kernel keeps the value and finishes the kick here. x4i* and rcritvi* are the
-	//loads made at the top of this kernel, so kick32Ab's re-reads are gone.
+	//the kick, on the threads holding the reduction result
 	if(idy == 0){
 		if(idx + 0 < N)          kick32Ab_fused(x4i1, rcritvi1, a_s[ix * Bl + 0 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 0, NencMax);
 		if(idx + 1 < N && p > 1) kick32Ab_fused(x4i2, rcritvi2, a_s[ix * Bl + 1 * Bll], x4_d, v4_d, acck_d, ab_d, rcritv_d, Encpairs2_d, dtksq, idx + 1, NencMax);
