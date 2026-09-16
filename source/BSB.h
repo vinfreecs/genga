@@ -64,13 +64,8 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 	double3 a0, a;
 
-	//Slots of the group that can pass accEnc's source guard. Under
-	//UseTestParticles == 1 that guard is x4j.w > MinMass, a condition on the
-	//source alone, so the set is well defined and fixed for the whole kernel.
-	//Only written when def_LongTermSim == 1. With the switch off useMsrc below is a
-	//compile time 0, every read of these two is dead code, and they are eliminated.
-	__shared__ int msrc_s[NN];
-	__shared__ int Nm_s[1];
+	__shared__ int msrc_s[NN];	//group slots that are mass sources
+	__shared__ int Nm_s;		//number of mass sources
 
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
@@ -154,39 +149,27 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		error_s[0] = 0.0;
 		stop_s[0] = 0;
 #if def_LongTermSim == 1
-		Nm_s[0] = 0;
+		Nm_s = 0;		//reset source count
 #endif
 	}
 	__syncthreads();
 
 #if def_LongTermSim == 1
-	//Build the source list. All of x4_s is visible here, the barrier above covers the
-	//loads at the top of the kernel. Masses can only fall during the kernel
-	//(collide marks the absorbed body with w = -1.0e-12 and no body can cross
-	//MinMass upwards), so this list stays a valid superset. accEnc keeps its own
-	//guard and rejects any stale entry, which is why staleness is harmless.
-	//The rank is computed by counting rather than by atomicAdd so that msrc_s comes
-	//out in ascending slot order and is reproducible from run to run. N2 <= NN <= 32,
-	//so this costs at most a few hundred shared reads, once per kernel.
+	//list mass sources in ascending slot order
 	if(idy < N2 && x4_s[idy].w > MinMass){
 		int r = 0;
 		for(int q = 0; q < idy; ++q){
 			if(x4_s[q].w > MinMass) ++r;
 		}
 		msrc_s[r] = idy;
-		atomicAdd(&Nm_s[0], 1);
+		atomicAdd(&Nm_s, 1);
 	}
 	__syncthreads();
 
-	//UseTestParticles == 1 only: in mode 2 the guard couples i and j and does not
-	//reduce to a condition on the source, and in mode 0 every body is a source.
-	//With more than def_BSMaxSrc sources the serial loop would lose to the nb way
-	//parallel one, so fall back to the original path there.
-	const int useMsrc = (UseTestParticles == 1 && Nm_s[0] <= def_BSMaxSrc) ? 1 : 0;
+	//compacted force loop: test particles, few sources
+	const int useMsrc = (UseTestParticles == 1 && Nm_s <= def_BSMaxSrc) ? 1 : 0;
 #else
-	//Switch off: the five force sites below take their original (ii, jj) source lanes
-	//and the shuffle reduction. useMsrc is a compile time constant so every compacted
-	//branch, and the shared state it reads, is removed.
+	//switch off: original source lanes and shuffle reduction
 	const int useMsrc = 0;
 #endif
 
@@ -214,8 +197,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 		__syncthreads();
 		if(useMsrc == 1){
+			//loop over mass sources only
 			if(idy < NN){
-				for(int m = 0; m < Nm_s[0]; ++m){
+				for(int m = 0; m < Nm_s; ++m){
 					accEnc(x4_s[idy], x4_s[msrc_s[m]], a0, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
 				}
 			}
@@ -227,8 +211,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		}
 		__syncthreads();
 		if(useMsrc == 1){
-			//One thread per body already accumulated the complete acceleration,
-			//so there is nothing to reduce across the (now unused) source lanes.
+			//full sum already in one thread
 			if(idy < NN) a0_s[idy] = a0;
 		}
 		else{
@@ -316,8 +299,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 				__syncthreads();
 				if(useMsrc == 1){
+					//loop over mass sources only
 					if(idy < NN){
-						for(int m = 0; m < Nm_s[0]; ++m){
+						for(int m = 0; m < Nm_s; ++m){
 							accEnc(xp_s[idy], xp_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
 						}
 					}
@@ -329,8 +313,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				}
 				__syncthreads();
 				if(useMsrc == 1){
-					//One thread per body already accumulated the complete acceleration,
-					//so there is nothing to reduce across the (now unused) source lanes.
+					//full sum already in one thread
 					if(idy < NN) a_s[idy] = a;
 				}
 				else{
@@ -409,8 +392,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 					__syncthreads();
 					if(useMsrc == 1){
+						//loop over mass sources only
 						if(idy < NN){
-							for(int m = 0; m < Nm_s[0]; ++m){
+							for(int m = 0; m < Nm_s; ++m){
 								accEnc(xt_s[idy], xt_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
 							}
 						}
@@ -422,8 +406,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					}
 					__syncthreads();
 					if(useMsrc == 1){
-						//One thread per body already accumulated the complete acceleration,
-						//so there is nothing to reduce across the (now unused) source lanes.
+						//full sum already in one thread
 						if(idy < NN) a_s[idy] = a;
 					}
 					else{
@@ -499,8 +482,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 					__syncthreads();
 					if(useMsrc == 1){
+						//loop over mass sources only
 						if(idy < NN){
-							for(int m = 0; m < Nm_s[0]; ++m){
+							for(int m = 0; m < Nm_s; ++m){
 								accEnc(xp_s[idy], xp_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
 							}
 						}
@@ -512,8 +496,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					}
 					__syncthreads();
 					if(useMsrc == 1){
-						//One thread per body already accumulated the complete acceleration,
-						//so there is nothing to reduce across the (now unused) source lanes.
+						//full sum already in one thread
 						if(idy < NN) a_s[idy] = a;
 					}
 					else{
@@ -590,8 +573,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 				__syncthreads();
 				if(useMsrc == 1){
+					//loop over mass sources only
 					if(idy < NN){
-						for(int m = 0; m < Nm_s[0]; ++m){
+						for(int m = 0; m < Nm_s; ++m){
 							accEnc(xt_s[idy], xt_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
 						}
 					}
@@ -603,8 +587,7 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				}
 				__syncthreads();
 				if(useMsrc == 1){
-					//One thread per body already accumulated the complete acceleration,
-					//so there is nothing to reduce across the (now unused) source lanes.
+					//full sum already in one thread
 					if(idy < NN) a_s[idy] = a;
 				}
 				else{
