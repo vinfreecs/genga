@@ -34,6 +34,10 @@ public:
 	double3 *migration_h, *migration_d;	//artificial migration force
 	int *createFlag_h, *createFlag_d;
 	double3 *a_d;
+	//mass sources as they were before the current fused kernel started,
+	//written by the kernel in front of it.  See def_FUSE_MEGA.
+	double4 *xS_d;
+	double4 *vS_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
 	double *rcritv_d1;			//used for multiGPUs
@@ -358,7 +362,11 @@ public:
 	
 	__host__ void comCall(const int);
 	//skipD3 leaves the final HC32d3_kernel to the caller, returns if it did
-	__host__ int HCCall(const double, const int, const int = 0);
+	//Nm > 0 folds HC32d1_kernel into a neighbour instead of launching it
+	__host__ int HCCall(const double, const int, const int = 0, const int = 0);
+	__host__ int HCfoldNm();
+	__host__ int megaPart1Ok();
+	__host__ int megaPart3Ok();
 	__host__ void groupCall();
 
 	__host__ int CollisionCall(int);

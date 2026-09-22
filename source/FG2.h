@@ -434,7 +434,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //dtHC is HC32d3's dt (GR term only), dtiMsun its dt/Msun scale,
 //dtfg the Kepler drift step.
 // **********************************************************
-__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
+__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, double4 *xS_d, double4 *vS_d, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -468,6 +468,147 @@ __global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			//dont update arrays during tunig process
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
+			//publish the mass sources for the part 3 fold, which cannot
+			//read them from x4_d because its own blocks overwrite them.
+			//Nm is 0 when that fold is off, so this costs nothing then.
+			if(id < Nm){
+				xS_d[id] = x4i;
+				vS_d[id] = v4i;
+			}
+		}
+		if(si == 0){
+			aecount_d[id] += aecount;
+		}
+	}
+}
+#endif
+
+#if def_FUSE_MEGA_PART1 == 1
+// **********************************************************
+//This kernel fuses the whole first half of a step into one launch:
+//  kick32Ab_kernel (Kick3.h)  K(dt/2), the interaction kick
+//  HC32d1_kernel   (HC.h)     the momentum sum over the mass sources
+//  HC32d3_kernel   (HC.h)     C(dt/2), the Sun kick shift it drives
+//  fg_kernel       (above)    D(dt), the Kepler drift
+//
+//The sum is the obstacle. Every block needs it to shift its own particles,
+//and it depends on the POST kick velocities of the mass sources, which block
+//0 writes. Blocks are not ordered, so a block reading v4_d[j] can get either
+//the pre or the post kick value.
+//The way past it: each block kicks the <= Nm sources itself, in registers,
+//from the snapshot Rcritd1_kernel (Rcrit.h) left in xS_d/vS_d before this
+//kernel started. Nothing here writes that snapshot, so no block can destroy
+//another block's input and the block order stops mattering. The sources are
+//4 bodies in test particle mode, so the repeat costs nothing.
+//rcritv_d needs no snapshot: this kernel never writes it.
+//
+//Bit identical to the four separate launches. The redundant source kick reads
+//the same values from the snapshot that block 0 reads from x4_d/v4_d, runs the
+//same operations in the same order (see kick32Ab_acc, Kick3.h), and the
+//reduction is HC32d1's own __shfl_xor_sync butterfly. Whatever a kernel would
+//have stored and read back is carried in a register instead, which is exact.
+//
+//kick32Ab's __syncthreads() is dropped: it sat in a divergent branch and
+//guarded nothing, and all of this kernel's shared data is written before the
+//barrier above and only read after it.
+//The kick is always EE = 1 here, the first kick of a step.
+//Requires Nm <= def_FoldMaxSrc, Nm <= warpSize and FTX >= warpSize; HCfoldNm()
+//enforces the first two and returns 0 otherwise, which turns the fold off.
+//Publishes the post drift sources for the part 3 fold on the way out.
+// **********************************************************
+__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	__shared__ double4 xs_s[def_FoldMaxSrc];
+	__shared__ double rs_s[def_FoldMaxSrc];
+	__shared__ double3 aHC_s;
+
+	//the mass sources as they were at the start of the step
+	if(threadIdx.x < Nm){
+		xs_s[threadIdx.x] = xS_d[threadIdx.x];
+		rs_s[threadIdx.x] = rcritv_d[threadIdx.x];
+	}
+	__syncthreads();
+
+	//HC32d1_kernel: kick the sources in registers, then reduce over them
+	if(threadIdx.x < warpSize){
+		double3 p = {0.0, 0.0, 0.0};
+		int j = threadIdx.x;
+		if(j < Nm){
+			double4 x4j = xs_s[j];
+			double4 v4j = vS_d[j];
+			if(x4j.w >= 0.0){
+				double3 a = kick32Ab_acc(x4j, rs_s[j], acck_d, Nencpairs_d, Encpairs2_d, xs_s, rs_s, j, NencMax, Nm);
+				v4j.x += __dmul_rn(a.x, dtksq);
+				v4j.y += __dmul_rn(a.y, dtksq);
+				v4j.z += __dmul_rn(a.z, dtksq);
+			}
+			if(x4j.w > 0.0){
+				p.x += x4j.w * v4j.x;
+				p.y += x4j.w * v4j.y;
+				p.z += x4j.w * v4j.z;
+			}
+		}
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+			p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+			p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+			p.x += __shfld_xor(p.x, i);
+			p.y += __shfld_xor(p.y, i);
+			p.z += __shfld_xor(p.z, i);
+#endif
+		}
+		if(threadIdx.x == 0){
+			aHC_s = p;
+		}
+	}
+	__syncthreads();
+
+	if(id < N){
+		unsigned int aecount = 0u;
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+
+		//kick32Ab_kernel
+		if(x4i.w >= 0.0){
+			double3 a = kick32Ab_acc(x4i, rcritv_d[id], acck_d, Nencpairs_d, Encpairs2_d, xs_s, rs_s, id, NencMax, Nm);
+			v4i.x += __dmul_rn(a.x, dtksq);
+			v4i.y += __dmul_rn(a.y, dtksq);
+			v4i.z += __dmul_rn(a.z, dtksq);
+			ab_d[id] = a;
+
+			//HC32d3_kernel: the Sun kick shift, on the kicked velocity
+			double3 aHC = aHC_s;
+			x4i.x += aHC.x * dtiMsun;
+			x4i.y += aHC.y * dtiMsun;
+			x4i.z += aHC.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i.x -= __dmul_rn(v4i.x, vcdt);
+				x4i.y -= __dmul_rn(v4i.y, vcdt);
+				x4i.z -= __dmul_rn(v4i.z, vcdt);
+			}
+		}
+
+		//fg_kernel
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		float4 aelimits = aelimits_d[id];
+		fgfull(x4i, v4i, dtfg, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
+		if(si >= 0){
+			//dont update arrays during tunig process
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+			//publish the post drift sources for the part 3 fold
+			if(id < Nm){
+				xS_d[id] = x4i;
+				vS_d[id] = v4i;
+			}
 		}
 		if(si == 0){
 			aecount_d[id] += aecount;

@@ -4,6 +4,7 @@ dev
 tune_sweep*
 logs/
 ncu_reports/
+project-genga-main/
 
 source/genga
 source/CheckGPU

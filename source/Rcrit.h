@@ -190,6 +190,117 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 	}
 }
 
+
+#if def_FUSE_MEGA_PART1 == 1
+// ****************************************
+//Rcrit_kernel above, plus the mass source snapshot that
+//kickHC32d3fg_kernel (FG2.h) needs.  That kernel's block 0 overwrites the
+//sources while other blocks still have to read them, and blocks are not
+//ordered, so the values are published here instead - one kernel earlier, where
+//the boundary orders the write against every read.
+//Rcrit writes rcrit_d and rcritv_d only, never x4_d or v4_d, so what lands in
+//xS_d/vS_d is the state at the start of the step, which is what the fold wants.
+//The planets' rcritv needs no snapshot: nothing in the fused kernel writes it.
+//Thread id < Nm writes slot id and nothing else, so no barrier is needed.
+//Identical to Rcrit_kernel in every value it stores.
+// ****************************************
+__global__ void Rcritd1_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f, double4 *xS_d, double4 *vS_d, const int Nm){
+	
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	
+	if(id == 0) time_d[0] = time;
+	
+	if(id < N){
+		double4 x4i;
+		double4 v4i;
+		
+		double rcrit, rcritv;
+		double rsq, vsq, r, v;
+		
+		if(StopAtCollision_c[0] != 0 || CollTshift_c[0] != 1.0){
+			//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);
+			if(f == 0){
+				x4i = x4_d[id];
+				v4i = v4_d[id];
+				
+				//store coordinates backup		
+				x4b_d[id] = x4i;
+				v4b_d[id] = v4i;
+				spinb_d[id] = spin_d[id];
+				for(int l = 0; l < SLevels; ++l){
+					rcritb_d[id + l * NconstT] = rcrit_d[id + l * NconstT];
+					rcritvb_d[id + l * NconstT] = rcritv_d[id + l * NconstT];
+				}
+				indexb_d[id] = index_d[id];
+			}
+			else{
+				//restore old coordinates
+				x4i = x4b_d[id];
+				v4i = v4b_d[id];
+				
+				x4_d[id] = x4i;
+				v4_d[id] = v4i;
+				spin_d[id] = spinb_d[id];
+				for(int l = 0; l < SLevels; ++l){
+					rcrit_d[id + l * NconstT] = rcritb_d[id + l * NconstT];
+					rcritv_d[id + l * NconstT] = rcritvb_d[id + l * NconstT];
+				}
+				index_d[id] = indexb_d[id];
+			}
+		}
+		else{
+			x4i = x4_d[id];
+			v4i = v4_d[id];
+			#if def_TTV > 0
+			v4b_d[id] = v4i;
+			#endif
+		}
+		rsq = x4i.x*x4i.x + x4i.y*x4i.y + x4i.z*x4i.z + 1.0e-30;
+		vsq = v4i.x*v4i.x + v4i.y*v4i.y + v4i.z*v4i.z + 1.0e-30;
+		
+		r = sqrt(rsq);
+		v = sqrt(vsq);
+		
+		rcrit = n1 * r * cbrt(x4i.w * iMsun3);
+		
+		if(WriteEncounters_c[0] > 0){
+			//in scales of planetary Radius
+			double writeRadius = WriteEncountersRadius_c[0] * v4i.w;
+			rcrit = (rcrit > writeRadius) ? rcrit : writeRadius;
+		}
+		
+		if(StopAtEncounter_c[0] > 0){
+			//rescale to non n2 rcrit 
+			rcrit = StopAtEncounterRadius_c[0] * rcrit / n1;
+		}
+		
+		double rc2 = n2 * fabs(dt) * v;
+		rcritv = (rcrit > rc2) ? rcrit : rc2;
+		
+		rcrit_d[id] = rcrit;
+		//the following prevents from too large critical radii for highly eccentric massive planets
+		if(rc2 > rcrit){
+			rcritv_d[id] = (rcritv_d[id] > rcritv) ? rcritv_d[id] : rcritv;
+		}
+		else{
+			rcritv_d[id] = rcritv;
+		}
+//if(id < 10) printf("rcrit %d %g %.20g %.20g %g %g %g %g %g %d\n", id, time, x4i.x, v4i.x, x4i.w, x4b_d[id].x, x4b_d[id].w, rcritv_d[id], rcritvb_d[id], f);
+		//Check for Ejections or too small distances to the Sun
+		if((rsq > Rcut_c[0] * Rcut_c[0] || rsq < RcutSun_c[0] * RcutSun_c[0]) && x4_d[id].w >= 0.0){
+			EjectionFlag_d[0] = 1;
+		}
+	}
+
+	//publish the mass sources for the fused half step that follows
+	if(id < Nm){
+		xS_d[id] = x4_d[id];
+		vS_d[id] = v4_d[id];
+	}
+}
+#endif
+
 //device function version of the Rcrit_kernel
 /*
 __device__ void Rcrit(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f){

@@ -525,6 +525,51 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 	}
 }
 
+#if def_FUSE_HC32D1_D3 == 1
+//**************************************
+//This kernel fuses HC32d1_kernel above into HC32d3_kernel above.
+//HC32d1 reduces over the mass sources to three numbers and HC32d3 adds them
+//to every body, so with few sources the reduction is cheaper to repeat in
+//each block than to launch for. It is safe to repeat because HC32d3 writes
+//only x4_d[id].xyz, while the sum reads v4_d and x4_d.w, so no block can
+//touch another block's input and the block order does not matter.
+//Warp 0 reduces, thread 0 publishes and the block reads after the barrier.
+//The barrier is outside the body guard, so every thread reaches it.
+//Bit identical to the two separate launches, see HC32d1_sum in Kick3.h.
+//HCCall skips its own HC32d1_kernel when it launches this one.
+//Nm is the number of mass sources and must be <= WarpSize.
+//  *****************************************
+__global__ void HC32d1d3_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseGR, const int Nm){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	__shared__ double3 aHC_s;
+
+	//HC32d1_kernel: this block produces the shift it is about to apply
+	double3 aw = HC32d1_sum(x4_d, v4_d, Nm);
+	if(threadIdx.y * blockDim.x + threadIdx.x == 0){
+		aHC_s = aw;
+	}
+	__syncthreads();
+
+	if(id < N && x4_d[id].w >= 0.0){
+		double3 a = aHC_s;
+		x4_d[id].x += a.x * dtiMsun;
+		x4_d[id].y += a.y * dtiMsun;
+		x4_d[id].z += a.z * dtiMsun;
+		if(UseGR == 1){
+			double c2 = def_cm * def_cm;
+			double4 v4 = v4_d[id];
+			double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+			double vcdt = 2.0 * vsq / c2 * dt;
+			x4_d[id].x -= __dmul_rn(v4.x, vcdt);
+			x4_d[id].y -= __dmul_rn(v4.y, vcdt);
+			x4_d[id].z -= __dmul_rn(v4.z, vcdt);
+		}
+	}
+}
+#endif
+
 //**************************************
 //This Kernels performs the Sun-Kick 1/Msun * Sum(p_i)^2 on all the bodies.
 //It uses a parallel reduction fomula to calculate the sum in log(N) steps.
@@ -818,9 +863,90 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 }
 
 
+//Number of mass sources for the HC32d1 fold, 0 when HCCall has to launch
+//HC32d1_kernel itself. Mirrors the reduction width HCCall uses, so a body
+//count that does not fit one warp switches the fold off on its own, and so
+//does a build with def_LongTermSim 0, where the reduction spans every body.
+//One definition, used by both the kick and the HCCall that follows it, so
+//the two cannot disagree about who produces the sum.
+__host__ int Data::HCfoldNm(){
+
+#if def_FUSE_HC32D1 == 1
+#if def_LongTermSim == 1
+	int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
+#else
+	int Nred = N_h[0] + Nsmall_h[0];
+#endif
+	if(N_h[0] + Nsmall_h[0] > 512 && Nred <= WarpSize){
+		return Nred;
+	}
+#endif
+	return 0;
+}
+
+//Can the first half of the step run as one kernel? kickHC32d3fg_kernel (FG2.h)
+//swallows the kick, the sum, the shift and the drift, so anything that used to
+//run BETWEEN them has to be absent. Each test below is one such thing:
+//  EjectionFlag2  that path kicks through acc4C and copies mid way
+//  SIn            more than one sub step means more than one kick per step
+//  ForceFlag, setElements, SERIAL_GROUPING   kernels between kick and drift
+//  UseGR          HCCall wraps the sum in the pseudovelocity conversion
+//  SLevels        the recursive path has its own drift
+//Returns the source count to pass down, or 0 to take the four launch route.
+__host__ int Data::megaPart1Ok(){
+
+#if def_FUSE_MEGA_PART1 == 1
+	int Nm = HCfoldNm();
+	if(Nm == 0) return 0;
+	if(EjectionFlag2 != 0) return 0;
+	if(SIn != 1) return 0;
+	if(ForceFlag > 0) return 0;
+	if(P.setElements > 0 || P.setElementsV > 0) return 0;
+	if(P.SERIAL_GROUPING == 1) return 0;
+	if(P.UseGR == 1) return 0;
+	if(P.SLevels > 1) return 0;
+	return Nm;
+#else
+	return 0;
+#endif
+}
+
+//Can the second half run as one kernel? HC32d1d3acc4Ckick32Ab_kernel (Kick4.h)
+//reads the mass sources from the snapshot the drift published, so it is valid
+//only while that snapshot still describes them. Bulirsch-Stoer rewrites the
+//planets on every close encounter step, and the collision, fragment, particle
+//creation and encounter writing paths can rewrite them too.
+//Nencpairs_h is current here: the cudaStreamSynchronize after the drift
+//refreshed it, and it is what gated the encounter path in the first place.
+//Returns the source count to pass down, or 0 to take the three launch route.
+__host__ int Data::megaPart3Ok(){
+
+#if def_FUSE_MEGA_PART3 == 1
+	int Nm = HCfoldNm();
+	if(Nm == 0) return 0;
+	if(SIn != 1) return 0;
+	if(Nencpairs_h[0] > 0) return 0;
+	if(Ncoll_m[0] > 0) return 0;
+	if(NWriteEnc_m[0] > 0) return 0;
+	if(nFragments_m[0] > 0) return 0;
+	if(CollisionFlag == 1) return 0;
+	if(P.UseSmallCollisions > 0) return 0;
+	if(P.CreateParticles > 0) return 0;
+	if(P.WriteEncounters == 2) return 0;
+	if(P.KickFloat != 0) return 0;
+	if(P.UseTestParticles == 2) return 0;
+	if(P.SERIAL_GROUPING == 1) return 0;
+	if(P.UseGR == 1) return 0;
+	if(P.SLevels > 1) return 0;
+	return Nm;
+#else
+	return 0;
+#endif
+}
+
 //First call f = 1;
 //Second call f = -1;
-__host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
+__host__ int Data::HCCall(const double Ct, const int f, const int skipD3, const int Nm){
 
 	int skipped = 0;
 
@@ -842,7 +968,12 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
 		//the massive bodies only. Their masses must be exactly 0.
 		int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
 		int ncb = min((Nred + nct - 1) / nct, 1024);
-		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
+		//Nm > 0: a neighbour repeats the reduction, so skip the launch.
+		//skipD3 == 1 means kick32Abd1_kernel has already left it in a_d[0],
+		//skipD3 == 0 means HC32d1d3_kernel below does it per block.
+		if(Nm == 0){
+			HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
+		}
 #else
 		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
 		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
@@ -853,7 +984,16 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3){
 		}
 		//the caller can fuse HC32d3 into fg_kernel, report if we skipped
 		if(skipD3 == 0){
+#if def_FUSE_HC32D1_D3 == 1
+			if(Nm > 0){
+				HC32d1d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR, Nm);
+			}
+			else{
+				HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+			}
+#else
 			HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
+#endif
 		}
 		else{
 			skipped = 1;

@@ -544,6 +544,337 @@ __global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck
 }
 #endif
 
+#if def_FUSE_MEGA_PART3 == 1
+// **********************************************************
+//kick32Ab_fused (above) with the near field partners, and the target store,
+//taken from the shared copy of the already shifted mass sources instead of
+//from x4_d. HC32d1d3acc4Ckick32Ab_kernel below needs that: its own blocks
+//shift x4_d, so a partner read from there could see either the shifted or the
+//unshifted position depending on which block ran first.
+//A partner is always a mass source, so jj < Nm - see kick32Ab_acc (Kick3.h)
+//for why, and why there is no else branch.
+//It also performs HC32d3_kernel's store of the shifted target. That happens
+//here, at the end of the kernel, rather than where the shift is computed:
+//with KTY = 2 the two threads sharing a target sit in DIFFERENT warps, so an
+//unsynchronised store there could be read back by the other one and shifted
+//twice. By this point several __syncthreads() have passed and every target
+//has been read.
+//Bit identical to kick32Ab_fused: same operations, same order, same values.
+// **********************************************************
+__device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile double3 &as, double4 *x4_d, double4 *xs_s, double *rs_s, double4 *v4_d, double3 *acck_d, double3 *ab_d, int2 *Encpairs2_d, const double dtksq, const int Nm, const int id, const int NencMax){
+
+	double3 acck;
+	acck.x = as.x;
+	acck.y = as.y;
+	acck.z = as.z;
+
+	//the next step's first kick32Ab reuses this acceleration
+	acck_d[id] = acck;
+
+	//HC32d3_kernel's store, deferred to here
+	x4_d[id] = x4i;
+
+	if(x4i.w >= 0.0){
+		double3 a = {0.0, 0.0, 0.0};
+
+		//own NI instead of the grid wide Nencpairs_d[0]
+		int NI = Encpairs2_d[id * NencMax].x;
+		NI = min(NI, NencMax);
+		for(int i = 0; i < NI; ++i){
+			int jj = Encpairs2_d[id * NencMax + i].y;
+			if(jj < Nm){
+				accA(a, x4i, xs_s[jj], rcritvi, rs_s[jj], jj, id);
+			}
+		}
+		//no barrier here: divergent idy == 0 region
+
+		double3 aa;
+		aa.x = a.x + acck.x;
+		aa.y = a.y + acck.y;
+		aa.z = a.z + acck.z;
+
+		v4_d[id].x += __dmul_rn(aa.x, dtksq);
+		v4_d[id].y += __dmul_rn(aa.y, dtksq);
+		v4_d[id].z += __dmul_rn(aa.z, dtksq);
+
+		ab_d[id] = aa;
+	}
+}
+
+// **********************************************************
+//This kernel fuses the whole second half of a step into one launch:
+//  HC32d1_kernel        (HC.h)    the momentum sum over the mass sources
+//  HC32d3_kernel        (HC.h)    C(dt/2), the Sun kick shift
+//  acc4Ckick32Ab_kernel (above)   K(dt/2), the far field kick
+//
+//Same obstacle as the first half: the sum needs the sources' velocities and
+//acc4C needs their SHIFTED positions, and this kernel writes both. The way
+//past it is the same - the drift (FG2.h) publishes the sources in xS_d/vS_d
+//before this kernel starts, warp 0 reduces over that snapshot, shifts its own
+//copy of the sources with the sum, and the whole block reads them from shared
+//memory. Nothing here writes the snapshot.
+//
+//The launch shape and the a_s reduction tree are acc4Ckick32Ab's, untouched.
+//That is load bearing for bit identity, not tuning: with KTY = 2 thread 0
+//accumulates sources {0,2} and thread 1 {1,3}, then a_s[0] += a_s[1], so the
+//sum is (acc0+acc2) + (acc1+acc3). Flattening the block, or letting one thread
+//walk all four sources, reassociates four non zero doubles and changes the
+//last bit.
+//
+//PRECONDITION: xS_d/vS_d must still describe the sources, so the caller runs
+//this only on steps where nothing between the drift and here touched them -
+//see Data::megaPart3Ok(). Close encounter steps take the unfused path, because
+//the Bulirsch-Stoer integration moves the planets after the drift.
+//Requires Nm <= def_FoldMaxSrc, Nm <= warpSize and KTX*KTY >= warpSize.
+// **********************************************************
+__global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double4 *xS_d, double4 *vS_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE, const double dtHC, const double dtiMsun, const int UseGR, const int Nm){
+
+	int idy = threadIdx.y;
+	int ix = threadIdx.x;
+	int idx = (blockIdx.x * blockDim.x + ix) * p + Nstart;
+	int Bl = blockDim.y;
+	int Bll = Bl * blockDim.x;
+
+	extern volatile __shared__ double3 a_s[];
+
+	__shared__ double4 xs_s[def_FoldMaxSrc];	//sources, already shifted
+	__shared__ double rs_s[def_FoldMaxSrc];
+	__shared__ double3 aHC_s;
+
+	//HC32d1_kernel + HC32d3_kernel for the mass sources. Warp 0 reduces
+	//over the snapshot the drift left, then shifts the sources with the
+	//sum it just produced - every lane of the warp holds it after the
+	//butterfly, so that needs no barrier of its own.
+	int tid = threadIdx.y * blockDim.x + threadIdx.x;
+	if(tid < warpSize){
+		double4 x4j = {0.0, 0.0, 0.0, 0.0};
+		double4 v4j = {0.0, 0.0, 0.0, 0.0};
+		double3 ps = {0.0, 0.0, 0.0};
+		if(tid < Nm){
+			x4j = xS_d[tid];
+			v4j = vS_d[tid];
+			if(x4j.w > 0.0){
+				ps.x += x4j.w * v4j.x;
+				ps.y += x4j.w * v4j.y;
+				ps.z += x4j.w * v4j.z;
+			}
+		}
+		for(int k = 1; k < warpSize; k*=2){
+#if def_OldShuffle == 0
+			ps.x += __shfl_xor_sync(0xffffffff, ps.x, k, warpSize);
+			ps.y += __shfl_xor_sync(0xffffffff, ps.y, k, warpSize);
+			ps.z += __shfl_xor_sync(0xffffffff, ps.z, k, warpSize);
+#else
+			ps.x += __shfld_xor(ps.x, k);
+			ps.y += __shfld_xor(ps.y, k);
+			ps.z += __shfld_xor(ps.z, k);
+#endif
+		}
+		if(tid == 0){
+			aHC_s = ps;
+		}
+		if(tid < Nm){
+			if(x4j.w >= 0.0){
+				x4j.x += ps.x * dtiMsun;
+				x4j.y += ps.y * dtiMsun;
+				x4j.z += ps.z * dtiMsun;
+				if(UseGR == 1){
+					double c2 = def_cm * def_cm;
+					double vsq = v4j.x * v4j.x + v4j.y * v4j.y + v4j.z * v4j.z;
+					double vcdt = 2.0 * vsq / c2 * dtHC;
+					x4j.x -= __dmul_rn(v4j.x, vcdt);
+					x4j.y -= __dmul_rn(v4j.y, vcdt);
+					x4j.z -= __dmul_rn(v4j.z, vcdt);
+				}
+			}
+			xs_s[tid] = x4j;
+			rs_s[tid] = rcritv_d[tid];
+		}
+	}
+	__syncthreads();
+
+	double4 x4i1, x4i2, x4i3, x4i4;
+	double rcritvi1, rcritvi2, rcritvi3, rcritvi4;
+
+	if(idx + 0 < N){
+		x4i1 = x4_d[idx + 0];
+		//HC32d3_kernel for this target, kept in a register
+		if(x4i1.w >= 0.0){
+			double3 aH = aHC_s;
+			x4i1.x += aH.x * dtiMsun;
+			x4i1.y += aH.y * dtiMsun;
+			x4i1.z += aH.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idx + 0];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i1.x -= __dmul_rn(v4.x, vcdt);
+				x4i1.y -= __dmul_rn(v4.y, vcdt);
+				x4i1.z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+		rcritvi1 = rcritv_d[idx + 0];
+		if(idy == 0){
+			Encpairs2_d[(idx + 0) * NencMax].x = 0;
+		}
+	}
+	if(idx + 1 < N && p > 1){
+		x4i2 = x4_d[idx + 1];
+		//HC32d3_kernel for this target, kept in a register
+		if(x4i2.w >= 0.0){
+			double3 aH = aHC_s;
+			x4i2.x += aH.x * dtiMsun;
+			x4i2.y += aH.y * dtiMsun;
+			x4i2.z += aH.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idx + 1];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i2.x -= __dmul_rn(v4.x, vcdt);
+				x4i2.y -= __dmul_rn(v4.y, vcdt);
+				x4i2.z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+		rcritvi2 = rcritv_d[idx + 1];
+		if(idy == 0){
+			Encpairs2_d[(idx + 1) * NencMax].x = 0;
+		}
+	}
+	if(idx + 2 < N && p > 2){
+		x4i3 = x4_d[idx + 2];
+		//HC32d3_kernel for this target, kept in a register
+		if(x4i3.w >= 0.0){
+			double3 aH = aHC_s;
+			x4i3.x += aH.x * dtiMsun;
+			x4i3.y += aH.y * dtiMsun;
+			x4i3.z += aH.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idx + 2];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i3.x -= __dmul_rn(v4.x, vcdt);
+				x4i3.y -= __dmul_rn(v4.y, vcdt);
+				x4i3.z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+		rcritvi3 = rcritv_d[idx + 2];
+		if(idy == 0){
+			Encpairs2_d[(idx + 2) * NencMax].x = 0;
+		}
+	}
+	if(idx + 3 < N && p > 3){
+		x4i4 = x4_d[idx + 3];
+		//HC32d3_kernel for this target, kept in a register
+		if(x4i4.w >= 0.0){
+			double3 aH = aHC_s;
+			x4i4.x += aH.x * dtiMsun;
+			x4i4.y += aH.y * dtiMsun;
+			x4i4.z += aH.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double4 v4 = v4_d[idx + 3];
+				double vsq = v4.x * v4.x + v4.y * v4.y + v4.z * v4.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i4.x -= __dmul_rn(v4.x, vcdt);
+				x4i4.y -= __dmul_rn(v4.y, vcdt);
+				x4i4.z -= __dmul_rn(v4.z, vcdt);
+			}
+		}
+		rcritvi4 = rcritv_d[idx + 3];
+		if(idy == 0){
+			Encpairs2_d[(idx + 3) * NencMax].x = 0;
+		}
+	}
+
+	for(int j = 0; j < p; ++j){
+		a_s[idy + ix * Bl + j * Bll].x = 0.0;
+		a_s[idy + ix * Bl + j * Bll].y = 0.0;
+		a_s[idy + ix * Bl + j * Bll].z = 0.0;
+	}
+
+	__syncthreads();
+	for(int i = N0; i < N1; i += Bl){
+		if(idy + i < N1){
+			double4 x4j = xs_s[idy + i];
+			double rcritvj = rs_s[idy + i];
+
+			if(idx + 0 < N)          acc_e(a_s[idy + ix * Bl + 0 * Bll], x4i1, x4j, rcritvi1, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 0, NencMax, EE);
+			if(idx + 1 < N && p > 1) acc_e(a_s[idy + ix * Bl + 1 * Bll], x4i2, x4j, rcritvi2, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 1, NencMax, EE);
+			if(idx + 2 < N && p > 2) acc_e(a_s[idy + ix * Bl + 2 * Bll], x4i3, x4j, rcritvi3, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 2, NencMax, EE);
+			if(idx + 3 < N && p > 3) acc_e(a_s[idy + ix * Bl + 3 * Bll], x4i4, x4j, rcritvi4, rcritvj, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, idy + i, idx + 3, NencMax, EE);
+
+		}
+	}
+	//closes the source loop: this block's counters are final
+	__syncthreads();
+
+	int s = Bl/2;
+
+	for(int i = 6; i < log2f(Bl); ++i){
+		if( idy < s ) {
+			for(int j = 0; j < p; ++j){
+				a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + s].x;
+				a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + s].y;
+				a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + s].z;
+			}
+		}
+		__syncthreads();
+		s /= 2;
+	}
+
+	for(int j = 0; j < p; ++j){
+
+		if(Bl > 32 && idy < 32){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 32].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 32].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 32].z;
+		}
+		__syncthreads();        //this is needed here because idy are not neccessary in the same warp
+		if(Bl > 16 && idy < 16){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 16].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 16].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 16].z;
+		}
+		__syncthreads();
+		if(Bl >  8 && idy < 8){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 8].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 8].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 8].z;
+		}
+		__syncthreads();
+		if(Bl >  4 && idy < 4){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 4].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 4].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 4].z;
+		}
+		__syncthreads();
+		if(Bl >  2 && idy < 2){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 2].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 2].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 2].z;
+		}
+		__syncthreads();
+		if(Bl >  1 && idy < 1){
+			a_s[idy + ix * Bl + j * Bll].x += a_s[idy + ix * Bl + j * Bll + 1].x;
+			a_s[idy + ix * Bl + j * Bll].y += a_s[idy + ix * Bl + j * Bll + 1].y;
+			a_s[idy + ix * Bl + j * Bll].z += a_s[idy + ix * Bl + j * Bll + 1].z;
+		}
+		__syncthreads();
+	}
+
+	//the kick, on the threads holding the reduction result
+	if(idy == 0){
+		if(idx + 0 < N)          kick32Ab_fused_s(x4i1, rcritvi1, a_s[ix * Bl + 0 * Bll], x4_d, xs_s, rs_s, v4_d, acck_d, ab_d, Encpairs2_d, dtksq, Nm, idx + 0, NencMax);
+		if(idx + 1 < N && p > 1) kick32Ab_fused_s(x4i2, rcritvi2, a_s[ix * Bl + 1 * Bll], x4_d, xs_s, rs_s, v4_d, acck_d, ab_d, Encpairs2_d, dtksq, Nm, idx + 1, NencMax);
+		if(idx + 2 < N && p > 2) kick32Ab_fused_s(x4i3, rcritvi3, a_s[ix * Bl + 2 * Bll], x4_d, xs_s, rs_s, v4_d, acck_d, ab_d, Encpairs2_d, dtksq, Nm, idx + 2, NencMax);
+		if(idx + 3 < N && p > 3) kick32Ab_fused_s(x4i4, rcritvi4, a_s[ix * Bl + 3 * Bll], x4_d, xs_s, rs_s, v4_d, acck_d, ab_d, Encpairs2_d, dtksq, Nm, idx + 3, NencMax);
+	}
+}
+#endif
+
 //float version
 __global__ void acc4Cf_kernel(double4 *x4_d, double3 *acck_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE){
 
