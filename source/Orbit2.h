@@ -34,12 +34,8 @@ public:
 	double3 *migration_h, *migration_d;	//artificial migration force
 	int *createFlag_h, *createFlag_d;
 	double3 *a_d;
-	//mass sources as they were before the current fused kernel started,
-	//written by the kernel in front of it.  See def_FUSE_MEGA.
-	//TWO pairs, not one: kickHC32d3fg_kernel READS the step start pair and
-	//PRODUCES the post drift pair, and a kernel that did both to the same
-	//array would race with itself - block 0 overwriting what block 47 has
-	//still to read.  S is written by Rcrit, T by the drift.
+	//mass source snapshots for def_FUSE_MEGA, two pairs so no kernel
+	//reads and writes the same one
 	double4 *xS_d;			//sources at the start of the step
 	double4 *vS_d;
 	double4 *xT_d;			//sources after the drift
@@ -368,7 +364,7 @@ public:
 	
 	__host__ void comCall(const int);
 	//skipD3 leaves the final HC32d3_kernel to the caller, returns if it did
-	//Nm > 0 folds HC32d1_kernel into a neighbour instead of launching it
+	//Nm > 0: HC32d1_kernel is folded into a neighbour
 	__host__ int HCCall(const double, const int, const int = 0, const int = 0);
 	__host__ int HCfoldNm();
 	__host__ int megaPart1Ok();

@@ -5222,15 +5222,9 @@ __host__ int Data::step_largeN(int noColl){
 // *************************************************
 // Step small
 // *************************************************
-//Can the first half of the step run as one kernel? kickHC32d3fg_kernel (FG2.h)
-//swallows the kick, the sum, the shift and the drift, so anything that used to
-//run BETWEEN them has to be absent. Each test below is one such thing:
-//  EjectionFlag2  that path kicks through acc4C and copies mid way
-//  SIn            more than one sub step means more than one kick per step
-//  ForceFlag, setElements, SERIAL_GROUPING   kernels between kick and drift
-//  UseGR          HCCall wraps the sum in the pseudovelocity conversion
-//  SLevels        the recursive path has its own drift
-//Returns the source count to pass down, or 0 to take the four launch route.
+//Source count for the part 1 mega, 0 when something runs between the kick
+//and the drift. Here, not in HC.h, because SIn and EjectionFlag2 are declared
+//in this file.
 __host__ int Data::megaPart1Ok(){
 
 #if def_FUSE_MEGA_PART1 == 1
@@ -5249,14 +5243,8 @@ __host__ int Data::megaPart1Ok(){
 #endif
 }
 
-//Can the second half run as one kernel? HC32d1d3acc4Ckick32Ab_kernel (Kick4.h)
-//reads the mass sources from the snapshot the drift published, so it is valid
-//only while that snapshot still describes them. Bulirsch-Stoer rewrites the
-//planets on every close encounter step, and the collision, fragment, particle
-//creation and encounter writing paths can rewrite them too.
-//Nencpairs_h is current here: the cudaStreamSynchronize after the drift
-//refreshed it, and it is what gated the encounter path in the first place.
-//Returns the source count to pass down, or 0 to take the three launch route.
+//Source count for the part 3 mega, 0 when anything after the drift may have
+//moved the planets (close encounters, collisions, ...).
 __host__ int Data::megaPart3Ok(){
 
 #if def_FUSE_MEGA_PART3 == 1
@@ -5283,8 +5271,7 @@ __host__ int Data::megaPart3Ok(){
 }
 
 __host__ int Data::step_small(int noColl){
-	//fuse the whole first half of the step? decided before anything launches,
-	//because Rcrit has to publish the mass source snapshot for it
+	//part 1 mega: Rcrit writes its snapshot
 	int NmP1 = megaPart1Ok();
 #if def_FUSE_MEGA_PART1 == 1
 	if(NmP1 > 0){
@@ -5309,12 +5296,11 @@ __host__ int Data::step_small(int noColl){
 	if(P.SERIAL_GROUPING == 1){
 		Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 	}
-	//NmP1 > 0: kickHC32d3fg_kernel below does this kick, with the sum, the
-	//shift and the drift, so nothing is launched here
+	//NmP1 > 0: the kick is in kickHC32d3fg_kernel below
 	if(NmP1 == 0){
 	if(EjectionFlag2 == 0){
 #if def_FUSE_HC32D1_KICK == 1
-		//fold HC32d1 in: block 0 leaves the Sun kick sum in a_d[0]
+		//HC32d1 folded in, sum in a_d[0]
 		kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
 		kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
@@ -5343,7 +5329,7 @@ __host__ int Data::step_small(int noColl){
 			Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 		}
 #if def_FUSE_HC32D1_KICK == 1
-		//fold HC32d1 in: block 0 leaves the Sun kick sum in a_d[0]
+		//HC32d1 folded in, sum in a_d[0]
 		kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
 		kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
@@ -5381,20 +5367,20 @@ __host__ int Data::step_small(int noColl){
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
-	//> 0: the second half runs as one kernel after the loop, see megaPart3Ok
+	//part 3 mega, after the loop
 	int NmP3 = 0;
 	for(int si = 0; si < SIn; ++si){
 
 		//fuse HC32d3 into fg_kernel when HCCall skipped it
 		int fusedHCfg = 0;
-		//the kick above folded HC32d1 in, so HCCall must not launch it
+		//HC32d1 folded into the kick
 		int NmHC = 0;
 #if def_FUSE_HC32D1_KICK == 1
 		NmHC = HCfoldNm();
 #endif
 #if def_FUSE_MEGA_PART1 == 1
 		if(NmP1 > 0){
-			//the whole first half in one launch: kick, sum, shift, drift
+			//part 1 mega
 			kickHC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, ab_d, rcritv_d, xS_d, vS_d, xT_d, vT_d, Nencpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, P.NencMax, NmP1);
 			fusedHCfg = 1;
 		}
@@ -5402,10 +5388,7 @@ __host__ int Data::step_small(int noColl){
 #endif
 		{
 #if def_FUSE_HC32D3_FG == 1
-		//the drift publishes the mass sources unconditionally: whether the
-		//part 3 fold may use them is decided after the encounter path, and
-		//Nencpairs_h is not refreshed until the sync below, so the test
-		//cannot be made here. Four stores, so publishing anyway is free.
+		//always writes the part 3 snapshot, whether it is used is decided later
 		fusedHCfg = HCCall(Ct[si], 1, 1, NmHC);
 		if(fusedHCfg == 1){
 			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, xT_d, vT_d, HCfoldNm());
@@ -5550,18 +5533,13 @@ __host__ int Data::step_small(int noColl){
 			}
 		}
 
-		//fold HC32d1 into HC32d3, which then reduces once per block
+		//HC32d1 folded into HC32d3
 		int NmHC3 = 0;
 #if def_FUSE_HC32D1_D3 == 1
 		NmHC3 = HCfoldNm();
 #endif
-		//decided here, after the encounter path: that is what can invalidate
-		//the drift's snapshot of the mass sources.
-		//fusedHCfg == 1 is the other half of the condition, and it is not
-		//optional: only kickHC32d3fg_kernel and HC32d3fg_kernel publish
-		//xT_d/vT_d, and both set that flag.  The plain fg_kernel does not
-		//publish, so with an unfused drift the snapshot is never written at
-		//all and the part 3 fold would read uninitialised memory.
+		//part 3 mega: after the encounter path, and only if the drift wrote
+		//the snapshot (fusedHCfg)
 		NmP3 = (fusedHCfg == 1) ? megaPart3Ok() : 0;
 		if(NmP3 == 0){
 			HCCall(Ct[si], -1, 0, NmHC3);
@@ -5590,9 +5568,7 @@ __host__ int Data::step_small(int noColl){
 				Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 			}
 #if def_FUSE_HC32D1_KICK == 1
-			//SIn > 1: the next sub step's HCCall skips HC32d1, so this
-			//kick has to leave the sum in a_d[0] the way the one before
-			//the sub step loop does
+			//the next sub step's HCCall skips HC32d1
 			kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
 			kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
@@ -5627,8 +5603,7 @@ __host__ int Data::step_small(int noColl){
 	}
 	int fused = 0;
 #if def_FUSE_MEGA_PART3 == 1
-	//the whole second half in one launch: the sum, the shift and both halves
-	//of the kick. Replaces the HCCall skipped in the loop above.
+	//part 3 mega
 	if(NmP3 > 0){
 		HC32d1d3acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, xT_d, vT_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1, dt_h[0] * Ct[SIn - 1], dt_h[0] / Msun_h[0].x * Ct[SIn - 1], P.UseGR, NmP3);
 		fused = 1;

@@ -545,22 +545,8 @@ __global__ void acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck
 #endif
 
 #if def_FUSE_MEGA_PART3 == 1
-// **********************************************************
-//kick32Ab_fused (above) with the near field partners, and the target store,
-//taken from the shared copy of the already shifted mass sources instead of
-//from x4_d. HC32d1d3acc4Ckick32Ab_kernel below needs that: its own blocks
-//shift x4_d, so a partner read from there could see either the shifted or the
-//unshifted position depending on which block ran first.
-//A partner is always a mass source, so jj < Nm - see kick32Ab_acc (Kick3.h)
-//for why, and why there is no else branch.
-//It also performs HC32d3_kernel's store of the shifted target. That happens
-//here, at the end of the kernel, rather than where the shift is computed:
-//with KTY = 2 the two threads sharing a target sit in DIFFERENT warps, so an
-//unsynchronised store there could be read back by the other one and shifted
-//twice. By this point several __syncthreads() have passed and every target
-//has been read.
-//Bit identical to kick32Ab_fused: same operations, same order, same values.
-// **********************************************************
+//kick32Ab_fused with partners from the shared source snapshot. Also does
+//HC32d3_kernel's store, late, so no thread reads a target already shifted.
 __device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile double3 &as, double4 *x4_d, double4 *xs_s, double *rs_s, double4 *v4_d, double3 *acck_d, double3 *ab_d, int2 *Encpairs2_d, const double dtksq, const int Nm, const int id, const int NencMax){
 
 	double3 acck;
@@ -568,10 +554,10 @@ __device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile do
 	acck.y = as.y;
 	acck.z = as.z;
 
-	//the next step's first kick32Ab reuses this acceleration
+	//reused by the next step's first kick
 	acck_d[id] = acck;
 
-	//HC32d3_kernel's store, deferred to here
+	//HC32d3_kernel store
 	x4_d[id] = x4i;
 
 	if(x4i.w >= 0.0){
@@ -601,32 +587,9 @@ __device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile do
 	}
 }
 
-// **********************************************************
-//This kernel fuses the whole second half of a step into one launch:
-//  HC32d1_kernel        (HC.h)    the momentum sum over the mass sources
-//  HC32d3_kernel        (HC.h)    C(dt/2), the Sun kick shift
-//  acc4Ckick32Ab_kernel (above)   K(dt/2), the far field kick
-//
-//Same obstacle as the first half: the sum needs the sources' velocities and
-//acc4C needs their SHIFTED positions, and this kernel writes both. The way
-//past it is the same - the drift (FG2.h) publishes the sources in xT_d/vT_d
-//before this kernel starts, warp 0 reduces over that snapshot, shifts its own
-//copy of the sources with the sum, and the whole block reads them from shared
-//memory. Nothing here writes the snapshot.
-//
-//The launch shape and the a_s reduction tree are acc4Ckick32Ab's, untouched.
-//That is load bearing for bit identity, not tuning: with KTY = 2 thread 0
-//accumulates sources {0,2} and thread 1 {1,3}, then a_s[0] += a_s[1], so the
-//sum is (acc0+acc2) + (acc1+acc3). Flattening the block, or letting one thread
-//walk all four sources, reassociates four non zero doubles and changes the
-//last bit.
-//
-//PRECONDITION: xT_d/vT_d must still describe the sources, so the caller runs
-//this only on steps where nothing between the drift and here touched them -
-//see Data::megaPart3Ok(). Close encounter steps take the unfused path, because
-//the Bulirsch-Stoer integration moves the planets after the drift.
-//Requires Nm <= def_FoldMaxSrc, Nm <= warpSize and KTX*KTY >= warpSize.
-// **********************************************************
+//Second half step in one kernel: HC32d1 + HC32d3 + acc4C + kick32Ab.
+//Sources from the xT_d/vT_d snapshot. Keep acc4Ckick32Ab's launch shape and
+//reduction tree, bit identity depends on them. Needs KTX*KTY >= warpSize.
 __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double4 *xT_d, double4 *vT_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE, const double dtHC, const double dtiMsun, const int UseGR, const int Nm){
 
 	int idy = threadIdx.y;
@@ -641,10 +604,7 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 	__shared__ double rs_s[def_FoldMaxSrc];
 	__shared__ double3 aHC_s;
 
-	//HC32d1_kernel + HC32d3_kernel for the mass sources. Warp 0 reduces
-	//over the snapshot the drift left, then shifts the sources with the
-	//sum it just produced - every lane of the warp holds it after the
-	//butterfly, so that needs no barrier of its own.
+	//HC32d1_kernel + HC32d3_kernel for the sources, in warp 0
 	int tid = threadIdx.y * blockDim.x + threadIdx.x;
 	if(tid < warpSize){
 		double4 x4j = {0.0, 0.0, 0.0, 0.0};
@@ -698,7 +658,7 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 
 	if(idx + 0 < N){
 		x4i1 = x4_d[idx + 0];
-		//HC32d3_kernel for this target, kept in a register
+		//HC32d3_kernel
 		if(x4i1.w >= 0.0){
 			double3 aH = aHC_s;
 			x4i1.x += aH.x * dtiMsun;
@@ -721,7 +681,7 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 	}
 	if(idx + 1 < N && p > 1){
 		x4i2 = x4_d[idx + 1];
-		//HC32d3_kernel for this target, kept in a register
+		//HC32d3_kernel
 		if(x4i2.w >= 0.0){
 			double3 aH = aHC_s;
 			x4i2.x += aH.x * dtiMsun;
@@ -744,7 +704,7 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 	}
 	if(idx + 2 < N && p > 2){
 		x4i3 = x4_d[idx + 2];
-		//HC32d3_kernel for this target, kept in a register
+		//HC32d3_kernel
 		if(x4i3.w >= 0.0){
 			double3 aH = aHC_s;
 			x4i3.x += aH.x * dtiMsun;
@@ -767,7 +727,7 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 	}
 	if(idx + 3 < N && p > 3){
 		x4i4 = x4_d[idx + 3];
-		//HC32d3_kernel for this target, kept in a register
+		//HC32d3_kernel
 		if(x4i4.w >= 0.0){
 			double3 aH = aHC_s;
 			x4i4.x += aH.x * dtiMsun;

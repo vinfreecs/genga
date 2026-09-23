@@ -171,52 +171,29 @@
 #define def_FUSE_ACC4C_KICK32AB def_FUSE_KERNELS
 #define def_FUSE_HC32D3_FG def_FUSE_KERNELS
 
-//Fold HC32d1_kernel's momentum sum into the kernels on either side of it.
-//With test particles the sum has only N_h[0] non zero terms, so the kernel
-//is a launch that produces three numbers. The folds compute those three
-//numbers where they are used instead. It gates:
+//Fold HC32d1_kernel's momentum sum into the kernel next to it. It gates:
 //  kick32Abd1_kernel (Kick3.h)  block 0 sums after its own kick
-//  HC32d1d3_kernel   (HC.h)     each block sums the shift it applies
-//Both replicate HC32d1_kernel's shuffle reduction, so both are bit
-//identical to it. Needs def_LongTermSim 1 and N_h[0] <= WarpSize; HCCall
-//falls back to the separate launch otherwise.
+//  HC32d1d3_kernel   (HC.h)     each block sums before its shift
+//Bit identical. Needs def_LongTermSim 1 and N_h[0] <= WarpSize.
 #define def_FUSE_HC32D1 1
 
-//Per fold sub switches, so one fold can be built without the other. Both
-//follow the master switch above, which is the only one to set by hand.
+//Per fold sub switches, following the master switch above.
 #define def_FUSE_HC32D1_KICK def_FUSE_HC32D1
 #define def_FUSE_HC32D1_D3 def_FUSE_HC32D1
 
-//Largest number of mass sources a fold can carry in one warp.  HCfoldNm()
-//returns 0 above it and every fold falls back to the separate launches.
+//Most mass sources a fold handles, size of the snapshot buffers.
 #define def_FoldMaxSrc 32
 
-//Fuse a whole half step into one kernel.  Both halves hit the same wall: the
-//block holding the mass sources overwrites the very state the other blocks
-//still need to read, and blocks are not ordered.  The way past it is a
-//def_FoldMaxSrc element snapshot of the sources, written by the kernel BEFORE
-//the fused one, so a kernel boundary orders the write against every read:
-//  Rcritd1_kernel  (Rcrit.h) -> kickHC32d3fg_kernel          (FG2.h)   part 1
-//  the drift       (FG2.h)   -> HC32d1d3acc4Ckick32Ab_kernel (Kick4.h) part 3
-//One buffer pair serves both, rewritten by each publisher in turn.
-//  part 1: kick32Ab + HC32d1 + HC32d3 + fg          4 launches -> 1 (+ Rcrit)
-//  part 3: HC32d1 + HC32d3 + acc4C + kick32Ab       3 launches -> 1
-//Supersedes def_FUSE_HC32D1 above, which is the same idea one kernel at a time.
-//Bit identical: same operations, same order, sources read from the snapshot
-//instead of from an array a neighbouring block is writing.
-//PART3 needs the snapshot to still describe the planets, so it runs only on
-//steps where nothing between the drift and the kick touched them - see
-//Data::megaPart3Ok().  Other steps take the unfused path.
-//PART3 ALSO NEEDS A PUBLISHER: only kickHC32d3fg_kernel and HC32d3fg_kernel
-//write xT_d/vT_d, so PART3 is inert unless PART1 or def_FUSE_HC32D3_FG is on.
-//step_small enforces that through fusedHCfg; production has FUSE_KERNELS = 1,
-//so HC32d3fg_kernel is always there to publish.
-//WATCH THE REGISTERS: the part 1 kernel carries the drift, measured at 110 on
-//sm_90 where 113 costs a block per SM; the part 3 kernel carries acc4C at 94
-//where 97 costs one.  Rebuild with --ptxas-options=-v before trusting either.
+//Fuse a whole half step into one kernel, from a snapshot of the mass sources
+//written by the kernel in front of it. It gates:
+//  part 1: kickHC32d3fg_kernel          (FG2.h)   kick32Ab+HC32d1+HC32d3+fg
+//  part 3: HC32d1d3acc4Ckick32Ab_kernel (Kick4.h) HC32d1+HC32d3+acc4C+kick32Ab
+//Bit identical. Also needs def_FUSE_HC32D1 1 (HCfoldNm), and part 3 needs
+//def_FUSE_HC32D3_FG or part 1 to write its snapshot. Close encounter steps
+//take the unfused path, see Data::megaPart3Ok().
 #define def_FUSE_MEGA 1
 
-//Per half sub switches, so one half can be built without the other.
+//Per half sub switches, following the master switch above.
 #define def_FUSE_MEGA_PART1 def_FUSE_MEGA
 #define def_FUSE_MEGA_PART3 def_FUSE_MEGA
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer

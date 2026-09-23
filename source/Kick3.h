@@ -708,19 +708,8 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 }
 
 #if def_FUSE_HC32D1 == 1
-// ****************************************
-//Computes HC32d1_kernel's (HC.h) momentum sum Sum(m_j * v_j) over the first
-//Nm bodies, inside the calling block, so that kernel's launch can be skipped.
-//Lane j of warp 0 loads body j and the same __shfl_xor_sync butterfly runs
-//over it, so the operations and their order are HC32d1_kernel's and the
-//result is bit identical to it. HC32d1's second, cross warp reduction adds
-//only exact zeros once Nm <= WarpSize, so it is left out.
-//The return value is valid in warp 0 only.
-//Lives here because Kick3.h is included before HC.h, its other user.
-//Requires Nm <= WarpSize and a block of at least WarpSize threads.
-//The thread id is linearised, so a 2D block works too: threadIdx.y is 0 in a
-//1D block, which leaves tid == threadIdx.x there.
-// ****************************************
+//HC32d1_kernel's momentum sum over the first Nm bodies, same butterfly.
+//Valid in warp 0 only. Needs Nm <= WarpSize.
 __device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm){
 
 	int tid = threadIdx.y * blockDim.x + threadIdx.x;
@@ -734,13 +723,12 @@ __device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm)
 			double4 x4i = x4_d[lane];
 			double4 v4i = v4_d[lane];
 			if(x4i.w > 0.0){
-				//+= not =, so a signed zero rounds as HC32d1 rounds it
+				//+= keeps HC32d1's signed zero rounding
 				a.x += x4i.w * v4i.x;
 				a.y += x4i.w * v4i.y;
 				a.z += x4i.w * v4i.z;
 			}
 		}
-		//every lane of warp 0 reaches this, diverged or not
 		for(int i = 1; i < warpSize; i*=2){
 #if def_OldShuffle == 0
 			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
@@ -759,19 +747,8 @@ __device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm)
 #endif
 
 #if def_FUSE_MEGA == 1
-// ****************************************
-//kick32Ab_kernel's acceleration for body id, with the near field partners read
-//from a shared copy of the mass sources instead of from x4_d.  The fused half
-//step kernels need that: their own blocks overwrite x4_d while other blocks
-//still have to read it.
-//Same operations in the same order as kick32Ab_kernel, so bit identical: the
-//near field terms accumulate first and acck_d is added last.
-//A partner is always a mass source.  acc_e (Kick4.h) only ever records pairs
-//whose j comes from the source range [0, N_h[0]), so jj < Nm holds for every
-//entry and the snapshot always has it.  There is deliberately no else branch:
-//nothing can reach it, and if that ever changes the ablation's bit identity
-//check is what will say so.
-// ****************************************
+//kick32Ab_kernel's acceleration for body id, partners read from the shared
+//source snapshot. A partner is always a mass source, so jj < Nm.
 __device__ inline double3 kick32Ab_acc(double4 &x4i, const double rcritvi, double3 *acck_d, int *Nencpairs_d, int2 *Encpairs2_d, double4 *xs_s, double *rs_s, const int id, const int NencMax, const int Nm){
 
 	if(Nencpairs_d[0] > 0){
@@ -797,19 +774,8 @@ __device__ inline double3 kick32Ab_acc(double4 &x4i, const double rcritvi, doubl
 #endif
 
 #if def_FUSE_HC32D1_KICK == 1
-// ****************************************
-//This kernel fuses HC32d1_kernel (HC.h) into kick32Ab_kernel above.
-//The first HCCall of a step only produces the momentum sum, which the next
-//kernel reads back from acck_d[0]. Block 0 holds the mass sources and has
-//just kicked them, so it can produce that sum and the launch can be skipped.
-//No barrier is needed: lane j of warp 0 reads body j, which is the body that
-//same thread wrote, and the shuffles carry the only cross lane traffic.
-//acck_d[0] is read by block 0 alone, before the sum overwrites it, and is
-//rewritten for every body by the kick at the end of the step.
-//Bit identical to the two separate launches.
-//The caller must have HCCall skip its own HC32d1_kernel: pass it the same
-//HCfoldNm(). Also needs Nstart = 0, so that lane j owns body j.
-// ****************************************
+//kick32Ab_kernel + HC32d1_kernel: block 0 leaves the sum in acck_d[0].
+//Needs Nstart = 0, and HCCall called with the same HCfoldNm().
 __global__ void kick32Abd1_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax, const int EE, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
@@ -856,7 +822,7 @@ __global__ void kick32Abd1_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d,
 		}
 	}
 
-	//HC32d1_kernel: the sum for the Sun kick the next kernel applies
+	//HC32d1_kernel
 	if(Nm > 0 && blockIdx.x == 0){
 		double3 aHC = HC32d1_sum(x4_d, v4_d, Nm);
 		if(threadIdx.y * blockDim.x + threadIdx.x == 0){

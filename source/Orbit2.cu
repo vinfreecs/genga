@@ -186,7 +186,7 @@ __host__ int Data::AllocateOrbit(){
 	cudaMalloc((void **) &LI_d, Nst *sizeof(double));
 	cudaMalloc((void **) &LI0_d, Nst * sizeof(double));
 	cudaMalloc((void **) &a_d, NconstT * sizeof(double3));
-	//mass source snapshot for the fused half steps, see def_FUSE_MEGA
+	//mass source snapshots, see def_FUSE_MEGA
 	cudaMalloc((void **) &xS_d, def_FoldMaxSrc * sizeof(double4));
 	cudaMalloc((void **) &vS_d, def_FoldMaxSrc * sizeof(double4));
 	cudaMalloc((void **) &xT_d, def_FoldMaxSrc * sizeof(double4));

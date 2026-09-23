@@ -526,26 +526,14 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 }
 
 #if def_FUSE_HC32D1_D3 == 1
-//**************************************
-//This kernel fuses HC32d1_kernel above into HC32d3_kernel above.
-//HC32d1 reduces over the mass sources to three numbers and HC32d3 adds them
-//to every body, so with few sources the reduction is cheaper to repeat in
-//each block than to launch for. It is safe to repeat because HC32d3 writes
-//only x4_d[id].xyz, while the sum reads v4_d and x4_d.w, so no block can
-//touch another block's input and the block order does not matter.
-//Warp 0 reduces, thread 0 publishes and the block reads after the barrier.
-//The barrier is outside the body guard, so every thread reaches it.
-//Bit identical to the two separate launches, see HC32d1_sum in Kick3.h.
-//HCCall skips its own HC32d1_kernel when it launches this one.
-//Nm is the number of mass sources and must be <= WarpSize.
-//  *****************************************
+//HC32d1_kernel + HC32d3_kernel: every block computes the sum itself.
 __global__ void HC32d1d3_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseGR, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
 	__shared__ double3 aHC_s;
 
-	//HC32d1_kernel: this block produces the shift it is about to apply
+	//HC32d1_kernel
 	double3 aw = HC32d1_sum(x4_d, v4_d, Nm);
 	if(threadIdx.y * blockDim.x + threadIdx.x == 0){
 		aHC_s = aw;
@@ -863,12 +851,7 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 }
 
 
-//Number of mass sources for the HC32d1 fold, 0 when HCCall has to launch
-//HC32d1_kernel itself. Mirrors the reduction width HCCall uses, so a body
-//count that does not fit one warp switches the fold off on its own, and so
-//does a build with def_LongTermSim 0, where the reduction spans every body.
-//One definition, used by both the kick and the HCCall that follows it, so
-//the two cannot disagree about who produces the sum.
+//Mass source count for the HC32d1 folds, 0 when they are off.
 __host__ int Data::HCfoldNm(){
 
 #if def_FUSE_HC32D1 == 1
@@ -884,9 +867,6 @@ __host__ int Data::HCfoldNm(){
 	return 0;
 }
 
-//megaPart1Ok() and megaPart3Ok(), the guards for the fused half steps,
-//live in integrator.cu: they read the file scope SIn and EjectionFlag2,
-//which are declared there, after this header is included.
 //First call f = 1;
 //Second call f = -1;
 __host__ int Data::HCCall(const double Ct, const int f, const int skipD3, const int Nm){
@@ -911,9 +891,7 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3, const 
 		//the massive bodies only. Their masses must be exactly 0.
 		int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
 		int ncb = min((Nred + nct - 1) / nct, 1024);
-		//Nm > 0: a neighbour repeats the reduction, so skip the launch.
-		//skipD3 == 1 means kick32Abd1_kernel has already left it in a_d[0],
-		//skipD3 == 0 means HC32d1d3_kernel below does it per block.
+		//Nm > 0: the sum comes from a folded kernel
 		if(Nm == 0){
 			HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
 		}

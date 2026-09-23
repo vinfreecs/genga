@@ -192,18 +192,8 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 
 
 #if def_FUSE_MEGA_PART1 == 1
-// ****************************************
-//Rcrit_kernel above, plus the mass source snapshot that
-//kickHC32d3fg_kernel (FG2.h) needs.  That kernel's block 0 overwrites the
-//sources while other blocks still have to read them, and blocks are not
-//ordered, so the values are published here instead - one kernel earlier, where
-//the boundary orders the write against every read.
-//Rcrit writes rcrit_d and rcritv_d only, never x4_d or v4_d, so what lands in
-//xS_d/vS_d is the state at the start of the step, which is what the fold wants.
-//The planets' rcritv needs no snapshot: nothing in the fused kernel writes it.
-//Thread id < Nm writes slot id and nothing else, so no barrier is needed.
-//Identical to Rcrit_kernel in every value it stores.
-// ****************************************
+//Rcrit_kernel, plus the step start snapshot of the mass sources for
+//kickHC32d3fg_kernel (FG2.h)
 __global__ void Rcritd1_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f, double4 *xS_d, double4 *vS_d, const int Nm){
 	
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -219,7 +209,6 @@ __global__ void Rcritd1_kernel(double4 *__restrict__ x4_d, double4 *__restrict__
 		double rsq, vsq, r, v;
 		
 		if(StopAtCollision_c[0] != 0 || CollTshift_c[0] != 1.0){
-			//printf("Rcrit %d %g %g\n", StopAtCollision_c[0], StopMinMass_c[0], CollTshift_c[0]);
 			if(f == 0){
 				x4i = x4_d[id];
 				v4i = v4_d[id];
@@ -286,14 +275,13 @@ __global__ void Rcritd1_kernel(double4 *__restrict__ x4_d, double4 *__restrict__
 		else{
 			rcritv_d[id] = rcritv;
 		}
-//if(id < 10) printf("rcrit %d %g %.20g %.20g %g %g %g %g %g %d\n", id, time, x4i.x, v4i.x, x4i.w, x4b_d[id].x, x4b_d[id].w, rcritv_d[id], rcritvb_d[id], f);
 		//Check for Ejections or too small distances to the Sun
 		if((rsq > Rcut_c[0] * Rcut_c[0] || rsq < RcutSun_c[0] * RcutSun_c[0]) && x4_d[id].w >= 0.0){
 			EjectionFlag_d[0] = 1;
 		}
 	}
 
-	//publish the mass sources for the fused half step that follows
+	//snapshot of the mass sources
 	if(id < Nm){
 		xS_d[id] = x4_d[id];
 		vS_d[id] = v4_d[id];
