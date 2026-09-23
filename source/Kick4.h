@@ -609,7 +609,7 @@ __device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile do
 //
 //Same obstacle as the first half: the sum needs the sources' velocities and
 //acc4C needs their SHIFTED positions, and this kernel writes both. The way
-//past it is the same - the drift (FG2.h) publishes the sources in xS_d/vS_d
+//past it is the same - the drift (FG2.h) publishes the sources in xT_d/vT_d
 //before this kernel starts, warp 0 reduces over that snapshot, shifts its own
 //copy of the sources with the sum, and the whole block reads them from shared
 //memory. Nothing here writes the snapshot.
@@ -621,13 +621,13 @@ __device__ void kick32Ab_fused_s(double4 &x4i, const double rcritvi, volatile do
 //walk all four sources, reassociates four non zero doubles and changes the
 //last bit.
 //
-//PRECONDITION: xS_d/vS_d must still describe the sources, so the caller runs
+//PRECONDITION: xT_d/vT_d must still describe the sources, so the caller runs
 //this only on steps where nothing between the drift and here touched them -
 //see Data::megaPart3Ok(). Close encounter steps take the unfused path, because
 //the Bulirsch-Stoer integration moves the planets after the drift.
 //Requires Nm <= def_FoldMaxSrc, Nm <= warpSize and KTX*KTY >= warpSize.
 // **********************************************************
-__global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double4 *xS_d, double4 *vS_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE, const double dtHC, const double dtiMsun, const int UseGR, const int Nm){
+__global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, double4 *xT_d, double4 *vT_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, int2 *Encpairs_d, int2 *Encpairs2_d, int *Nencpairs_d, int *EncFlag_d, const double dtksq, const int Nstart, const int N, const int N0, const int N1, const int NencMax, const int p, const int EE, const double dtHC, const double dtiMsun, const int UseGR, const int Nm){
 
 	int idy = threadIdx.y;
 	int ix = threadIdx.x;
@@ -651,8 +651,8 @@ __global__ void HC32d1d3acc4Ckick32Ab_kernel(double4 *x4_d, double4 *v4_d, doubl
 		double4 v4j = {0.0, 0.0, 0.0, 0.0};
 		double3 ps = {0.0, 0.0, 0.0};
 		if(tid < Nm){
-			x4j = xS_d[tid];
-			v4j = vS_d[tid];
+			x4j = xT_d[tid];
+			v4j = vT_d[tid];
 			if(x4j.w > 0.0){
 				ps.x += x4j.w * v4j.x;
 				ps.y += x4j.w * v4j.y;

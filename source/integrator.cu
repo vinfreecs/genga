@@ -5025,8 +5025,6 @@ __host__ int Data::step_largeN(int noColl){
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
-	//> 0: the second half runs as one kernel after the loop, see megaPart3Ok
-	int NmP3 = 0;
 	for(int si = 0; si < SIn; ++si){
 		HCCall(Ct[si], 1);
 		fg_kernel <<< (N_h[0] + FTX - 1) / FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, dt_h[0] * FGt[si], Msun_h[0].x, N_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
@@ -5224,6 +5222,66 @@ __host__ int Data::step_largeN(int noColl){
 // *************************************************
 // Step small
 // *************************************************
+//Can the first half of the step run as one kernel? kickHC32d3fg_kernel (FG2.h)
+//swallows the kick, the sum, the shift and the drift, so anything that used to
+//run BETWEEN them has to be absent. Each test below is one such thing:
+//  EjectionFlag2  that path kicks through acc4C and copies mid way
+//  SIn            more than one sub step means more than one kick per step
+//  ForceFlag, setElements, SERIAL_GROUPING   kernels between kick and drift
+//  UseGR          HCCall wraps the sum in the pseudovelocity conversion
+//  SLevels        the recursive path has its own drift
+//Returns the source count to pass down, or 0 to take the four launch route.
+__host__ int Data::megaPart1Ok(){
+
+#if def_FUSE_MEGA_PART1 == 1
+	int Nm = HCfoldNm();
+	if(Nm == 0) return 0;
+	if(EjectionFlag2 != 0) return 0;
+	if(SIn != 1) return 0;
+	if(ForceFlag > 0) return 0;
+	if(P.setElements > 0 || P.setElementsV > 0) return 0;
+	if(P.SERIAL_GROUPING == 1) return 0;
+	if(P.UseGR == 1) return 0;
+	if(P.SLevels > 1) return 0;
+	return Nm;
+#else
+	return 0;
+#endif
+}
+
+//Can the second half run as one kernel? HC32d1d3acc4Ckick32Ab_kernel (Kick4.h)
+//reads the mass sources from the snapshot the drift published, so it is valid
+//only while that snapshot still describes them. Bulirsch-Stoer rewrites the
+//planets on every close encounter step, and the collision, fragment, particle
+//creation and encounter writing paths can rewrite them too.
+//Nencpairs_h is current here: the cudaStreamSynchronize after the drift
+//refreshed it, and it is what gated the encounter path in the first place.
+//Returns the source count to pass down, or 0 to take the three launch route.
+__host__ int Data::megaPart3Ok(){
+
+#if def_FUSE_MEGA_PART3 == 1
+	int Nm = HCfoldNm();
+	if(Nm == 0) return 0;
+	if(SIn != 1) return 0;
+	if(Nencpairs_h[0] > 0) return 0;
+	if(Ncoll_m[0] > 0) return 0;
+	if(NWriteEnc_m[0] > 0) return 0;
+	if(nFragments_m[0] > 0) return 0;
+	if(CollisionFlag == 1) return 0;
+	if(P.UseSmallCollisions > 0) return 0;
+	if(P.CreateParticles > 0) return 0;
+	if(P.WriteEncounters == 2) return 0;
+	if(P.KickFloat != 0) return 0;
+	if(P.UseTestParticles == 2) return 0;
+	if(P.SERIAL_GROUPING == 1) return 0;
+	if(P.UseGR == 1) return 0;
+	if(P.SLevels > 1) return 0;
+	return Nm;
+#else
+	return 0;
+#endif
+}
+
 __host__ int Data::step_small(int noColl){
 	//fuse the whole first half of the step? decided before anything launches,
 	//because Rcrit has to publish the mass source snapshot for it
@@ -5323,6 +5381,8 @@ __host__ int Data::step_small(int noColl){
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
+	//> 0: the second half runs as one kernel after the loop, see megaPart3Ok
+	int NmP3 = 0;
 	for(int si = 0; si < SIn; ++si){
 
 		//fuse HC32d3 into fg_kernel when HCCall skipped it
@@ -5335,7 +5395,7 @@ __host__ int Data::step_small(int noColl){
 #if def_FUSE_MEGA_PART1 == 1
 		if(NmP1 > 0){
 			//the whole first half in one launch: kick, sum, shift, drift
-			kickHC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, ab_d, rcritv_d, xS_d, vS_d, Nencpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, P.NencMax, NmP1);
+			kickHC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, ab_d, rcritv_d, xS_d, vS_d, xT_d, vT_d, Nencpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, P.NencMax, NmP1);
 			fusedHCfg = 1;
 		}
 		else
@@ -5348,7 +5408,7 @@ __host__ int Data::step_small(int noColl){
 		//cannot be made here. Four stores, so publishing anyway is free.
 		fusedHCfg = HCCall(Ct[si], 1, 1, NmHC);
 		if(fusedHCfg == 1){
-			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, xS_d, vS_d, HCfoldNm());
+			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, xT_d, vT_d, HCfoldNm());
 		}
 #else
 		HCCall(Ct[si], 1, 0, NmHC);
@@ -5496,8 +5556,13 @@ __host__ int Data::step_small(int noColl){
 		NmHC3 = HCfoldNm();
 #endif
 		//decided here, after the encounter path: that is what can invalidate
-		//the drift's snapshot of the mass sources
-		NmP3 = megaPart3Ok();
+		//the drift's snapshot of the mass sources.
+		//fusedHCfg == 1 is the other half of the condition, and it is not
+		//optional: only kickHC32d3fg_kernel and HC32d3fg_kernel publish
+		//xT_d/vT_d, and both set that flag.  The plain fg_kernel does not
+		//publish, so with an unfused drift the snapshot is never written at
+		//all and the part 3 fold would read uninitialised memory.
+		NmP3 = (fusedHCfg == 1) ? megaPart3Ok() : 0;
 		if(NmP3 == 0){
 			HCCall(Ct[si], -1, 0, NmHC3);
 		}
@@ -5565,7 +5630,7 @@ __host__ int Data::step_small(int noColl){
 	//the whole second half in one launch: the sum, the shift and both halves
 	//of the kick. Replaces the HCCall skipped in the loop above.
 	if(NmP3 > 0){
-		HC32d1d3acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, xS_d, vS_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1, dt_h[0] * Ct[SIn - 1], dt_h[0] / Msun_h[0].x * Ct[SIn - 1], P.UseGR, NmP3);
+		HC32d1d3acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, xT_d, vT_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1, dt_h[0] * Ct[SIn - 1], dt_h[0] / Msun_h[0].x * Ct[SIn - 1], P.UseGR, NmP3);
 		fused = 1;
 	}
 #endif

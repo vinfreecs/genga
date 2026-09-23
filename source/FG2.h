@@ -434,7 +434,7 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 //dtHC is HC32d3's dt (GR term only), dtiMsun its dt/Msun scale,
 //dtfg the Kepler drift step.
 // **********************************************************
-__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, double4 *xS_d, double4 *vS_d, const int Nm){
+__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, double4 *xT_d, double4 *vT_d, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -472,8 +472,8 @@ __global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			//read them from x4_d because its own blocks overwrite them.
 			//Nm is 0 when that fold is off, so this costs nothing then.
 			if(id < Nm){
-				xS_d[id] = x4i;
-				vS_d[id] = v4i;
+				xT_d[id] = x4i;
+				vT_d[id] = v4i;
 			}
 		}
 		if(si == 0){
@@ -516,7 +516,7 @@ __global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 //enforces the first two and returns 0 otherwise, which turns the fold off.
 //Publishes the post drift sources for the part 3 fold on the way out.
 // **********************************************************
-__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
+__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, double4 *xT_d, double4 *vT_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -604,10 +604,13 @@ __global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_
 			//dont update arrays during tunig process
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-			//publish the post drift sources for the part 3 fold
+			//publish the post drift sources for the part 3 fold.
+			//Into xT_d/vT_d, NOT the xS_d/vS_d this kernel reads at the
+			//top: block 0 would be overwriting the step start values that
+			//the other blocks have still to load.
 			if(id < Nm){
-				xS_d[id] = x4i;
-				vS_d[id] = v4i;
+				xT_d[id] = x4i;
+				vT_d[id] = v4i;
 			}
 		}
 		if(si == 0){

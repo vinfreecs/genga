@@ -207,6 +207,10 @@
 //PART3 needs the snapshot to still describe the planets, so it runs only on
 //steps where nothing between the drift and the kick touched them - see
 //Data::megaPart3Ok().  Other steps take the unfused path.
+//PART3 ALSO NEEDS A PUBLISHER: only kickHC32d3fg_kernel and HC32d3fg_kernel
+//write xT_d/vT_d, so PART3 is inert unless PART1 or def_FUSE_HC32D3_FG is on.
+//step_small enforces that through fusedHCfg; production has FUSE_KERNELS = 1,
+//so HC32d3fg_kernel is always there to publish.
 //WATCH THE REGISTERS: the part 1 kernel carries the drift, measured at 110 on
 //sm_90 where 113 costs a block per SM; the part 3 kernel carries acc4C at 94
 //where 97 costs one.  Rebuild with --ptxas-options=-v before trusting either.

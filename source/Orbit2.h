@@ -36,8 +36,14 @@ public:
 	double3 *a_d;
 	//mass sources as they were before the current fused kernel started,
 	//written by the kernel in front of it.  See def_FUSE_MEGA.
-	double4 *xS_d;
+	//TWO pairs, not one: kickHC32d3fg_kernel READS the step start pair and
+	//PRODUCES the post drift pair, and a kernel that did both to the same
+	//array would race with itself - block 0 overwriting what block 47 has
+	//still to read.  S is written by Rcrit, T by the drift.
+	double4 *xS_d;			//sources at the start of the step
 	double4 *vS_d;
+	double4 *xT_d;			//sources after the drift
+	double4 *vT_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
 	double *rcritv_d1;			//used for multiGPUs

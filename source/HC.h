@@ -884,66 +884,9 @@ __host__ int Data::HCfoldNm(){
 	return 0;
 }
 
-//Can the first half of the step run as one kernel? kickHC32d3fg_kernel (FG2.h)
-//swallows the kick, the sum, the shift and the drift, so anything that used to
-//run BETWEEN them has to be absent. Each test below is one such thing:
-//  EjectionFlag2  that path kicks through acc4C and copies mid way
-//  SIn            more than one sub step means more than one kick per step
-//  ForceFlag, setElements, SERIAL_GROUPING   kernels between kick and drift
-//  UseGR          HCCall wraps the sum in the pseudovelocity conversion
-//  SLevels        the recursive path has its own drift
-//Returns the source count to pass down, or 0 to take the four launch route.
-__host__ int Data::megaPart1Ok(){
-
-#if def_FUSE_MEGA_PART1 == 1
-	int Nm = HCfoldNm();
-	if(Nm == 0) return 0;
-	if(EjectionFlag2 != 0) return 0;
-	if(SIn != 1) return 0;
-	if(ForceFlag > 0) return 0;
-	if(P.setElements > 0 || P.setElementsV > 0) return 0;
-	if(P.SERIAL_GROUPING == 1) return 0;
-	if(P.UseGR == 1) return 0;
-	if(P.SLevels > 1) return 0;
-	return Nm;
-#else
-	return 0;
-#endif
-}
-
-//Can the second half run as one kernel? HC32d1d3acc4Ckick32Ab_kernel (Kick4.h)
-//reads the mass sources from the snapshot the drift published, so it is valid
-//only while that snapshot still describes them. Bulirsch-Stoer rewrites the
-//planets on every close encounter step, and the collision, fragment, particle
-//creation and encounter writing paths can rewrite them too.
-//Nencpairs_h is current here: the cudaStreamSynchronize after the drift
-//refreshed it, and it is what gated the encounter path in the first place.
-//Returns the source count to pass down, or 0 to take the three launch route.
-__host__ int Data::megaPart3Ok(){
-
-#if def_FUSE_MEGA_PART3 == 1
-	int Nm = HCfoldNm();
-	if(Nm == 0) return 0;
-	if(SIn != 1) return 0;
-	if(Nencpairs_h[0] > 0) return 0;
-	if(Ncoll_m[0] > 0) return 0;
-	if(NWriteEnc_m[0] > 0) return 0;
-	if(nFragments_m[0] > 0) return 0;
-	if(CollisionFlag == 1) return 0;
-	if(P.UseSmallCollisions > 0) return 0;
-	if(P.CreateParticles > 0) return 0;
-	if(P.WriteEncounters == 2) return 0;
-	if(P.KickFloat != 0) return 0;
-	if(P.UseTestParticles == 2) return 0;
-	if(P.SERIAL_GROUPING == 1) return 0;
-	if(P.UseGR == 1) return 0;
-	if(P.SLevels > 1) return 0;
-	return Nm;
-#else
-	return 0;
-#endif
-}
-
+//megaPart1Ok() and megaPart3Ok(), the guards for the fused half steps,
+//live in integrator.cu: they read the file scope SIn and EjectionFlag2,
+//which are declared there, after this header is included.
 //First call f = 1;
 //Second call f = -1;
 __host__ int Data::HCCall(const double Ct, const int f, const int skipD3, const int Nm){
