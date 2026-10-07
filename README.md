@@ -29,51 +29,69 @@ Open the tutorial notebook in Colab and learn how to run GENGA.
 The same notebook is also included in this repository here: GengaTutorial.ipynb .
 
 
- ** News: **
+## About this fork
 
- * Version 3.195: CPU version without CUDA
- * Version 3.182: Corrected z-component of J2 force
- * Version 3.178: Corrected internal energy calculation of the gas disk
- * Version 3.159: Encounters between test particles can be reported with 'Report Encounters = 2'
- * Version 3.155: Added gas disk boundaries in param.dat file
- * Version 3.151: Added Output file format option
- * Version 3.148: Added solar wind factor
- * Version 3.146: Output files can be written in binary format.
- * Version 3.137: Corrected angular momentum units in the Energyfile to Msun AU^2/day.
- * Version 3.135: Moved KickFloat from defin.h to param.dat.
- * Version 3.134: Included spin evolution for tidal and rotational deformation forces.
- * Version 3.129: Included moment of inertia.
- * Version 3.124: Added 'Do kernel tuning' parameter.
- * Version 3.117: Changed and improved Collision Precision, Units are now in physical radius fraction, instead of time.
- * Version 3.116: Changed treatment of Gas alpha for values other than 1.
- * Version 3.115: The Asteroid options (Yarkovsky and PR-drag) are moved from the 'define.h' file to the 'param.dat' file.
- * Version 3.114: The SERIAL_GROUPING option is moved from the 'define.h' file to the 'param.dat' file.
- * Version 3.107: The GENGA repository has moved from Mercurial to Git, because bitbucket removed mercurial.
- * Version 3.103: The param.dat file has more parameters for the different gas disk effects.
- * Version 3.98: The number of digits in the output file names can be specified.
- * Version 3.92: Set Elements files have new format and cubic interpolation.
- * Version 3.90: Includes minimal number of test particles option.
- * Version 3.84: Requires at least CUDA 9, because of warp shuffle operations.
- * Version 3.83: Performs self tuning for kernel parameters.
- * Version 3.78: Moved stop-at-collision parameters to the param.dat file.
- * Version 3.77: Stop at Encounter arguments are included in the param.dat file.
- * Version 3.75: Angle values can be set in degrees or radians
- * Version 3.70: Genga supports now up to 131072 bodies in the massive body integration mode.
- * Version 3.61: MinMass moved to param.dat file.
- * Version 3.60: Ctrl-C signal is recognized to write the current output and stop the simulation.
- * Version 3.60: Restart time step -1 is introduced, to continue at the last output.
- * Version 3.60: Moved gas surface density to param.dat file.
- * Version 3.57: Colision Coordinates can be reported more precisly.
- * Version 3.56: The test particle mode supports semi massive particles
- * Version 3.48: The multi simulation mode can stop simulation at close encounters when 'StopAtEncounter' in the 'define.dat' file is set to 1
- * Version 3.45: The maximum close encounter group size is increased up to 1048576. It can be increased further by changing the 'def_GMax' parameter in the 'define.dat' file. 
- * Version 3.29: Genga supports now up to 32768 bodies in the massive body integration mode. A new parameter "Maximum encounter pairs" sets the maximum number of close encounters for each body.  
- * Version 3.21: Close Encounters can be reported to a separate file
- * Version 3.17: A calendar file can be used to generate irregular coordinate outputs.
- * Version 3.15: The multi simulation mode can now have individual time step sizes and an individual number of integration steps for each sub-simulation.
- * Version 3.14: The coordinate outputs can now be buffered on the GPU. This increases the performance when lots of consecutive outputs are written. Use the 'Coordinate output buffer' argument to set the buffer size. Energy outputs within a buffer size are skipped.
- * Version 3.12: The gas disk can now be started from the 'param.dat' file
- * Version 3.10: The aeGrid can be started from the 'param.dat' file instead from the 'define.h' file. The aeGrid contains now also a semi-major axis versus inclination grid.
- * Version 3.10: The Rcut and RcutSun parameters are moved to the param.dat file and are called now outer- and inner truncation radius. 
- * Version 3.10: The FormatP, FormatT and FormatS parameters are moved to the param.dat file.
+This is a fork of GENGA for one kind of simulation: **a few massive bodies (the 4 giant
+planets) plus many massless test particles**, integrated for 4.5 Gyr. The original code,
+its full version history and its news list are on Bitbucket:
+[bitbucket.org/sigrimm/genga](https://bitbucket.org/sigrimm/genga). Please cite the GENGA
+papers above when using this code.
+
+### Why the changes
+
+GENGA was designed for many massive bodies, where the O(N^2) force calculation takes almost
+all the time. With only 4 massive bodies the force calculation is cheap, and other parts of
+the time step become the cost: loops that visit every particle to find the ~20 that are in a
+close encounter, a momentum sum over a million bodies of which 4 have mass, and many small
+kernel launches per step. The changes below remove that work. They do not change the
+integrator or the physics.
+
+### The changes
+
+| change | file | what it does |
+|---|---|---|
+| group compaction | `Encounter3.h` | `group_kernel` loops over the bodies in the encounter list instead of over every particle. It runs in one block, so the full scan made it the most expensive kernel while encounters are frequent (45-65% of GPU time) |
+| BSB source loop | `BSB.h` | the Bulirsch-Stoer force loop in a close encounter group runs over the mass sources only, since test particles exert no force |
+| Sun kick sum | `HC.h` | `HC32d1_kernel` sums the momentum over the massive bodies only, and `HC32d2_kernel` is skipped when it has nothing to add. About 12% of the step on GH200 |
+| HC32d3 + fg | `FG2.h` | the Sun kick shift and the Kepler drift run in one kernel |
+| HC32d1 folds | `Kick3.h`, `HC.h` | the momentum sum is done inside the kick before it and the shift after it, removing two launches per step |
+| first half step | `Rcrit.h`, `FG2.h` | kick + Sun kick + drift in one kernel, from a copy of the planets saved at the start of the step |
+
+A step without close encounters went from 11 kernel launches to 5. On GH200, with 34,644 test
+particles, the changes measured 1.74x faster at the start of a simulation and 1.27-1.34x in the
+relaxed end state, which is most of a 4.5 Gyr run (measured with an earlier version of the
+changes, before the last two rows were added).
+
+A fusion of `acc4C_kernel` and `kick32Ab_kernel` was tried and removed: it was 1.9% slower
+on GH200, because the fused kernel ran at half the occupancy.
+
+### Switches
+
+All changes sit behind switches in `source/define.h`. Setting all of them to 0 builds the
+original code.
+
+| switch | default | |
+|---|---|---|
+| `def_LongTermSim` | 1 | group compaction, BSB source loop, Sun kick sum |
+| `def_FUSE_HC32D3_FG` | 1 | HC32d3 + fg |
+| `def_FUSE_HC32D1` | 1 | HC32d1 folds |
+| `def_FUSE_MEGA` | 1 | first half step in one kernel |
+
+**Test particle masses must be exactly 0.** GENGA treats a body as a test particle when its
+mass is at most `MinMass`, but the changes assume the mass is 0. Check an input with
+`awk '{print $1}' <input> | sort -u | head`.
+
+### Correctness
+
+The changes compute the same numbers in fewer steps, so the output should be identical to the
+original code byte for byte. This was checked on an RTX 5060 , GH200 and A100 for every change. The one
+exception is the BSB source loop, which adds the forces in a different order and can change the
+last bit when a group contains 3 or more planets. The energy file does not show errors in test
+particles (they have no mass), so the check compares the coordinate output files directly.
+
+### Build
+
+    cd source && make SM=90      # GH200 (JUPITER); SM=80 for A100
+
+`source/Makefile` defaults to `SM=60`, which builds for the wrong GPU.
 
