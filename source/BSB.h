@@ -64,6 +64,9 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 
 	double3 a0, a;
 
+	__shared__ int msrc_s[NN];	//group slots that are mass sources
+	__shared__ int Nm_s;		//number of mass sources
+
 	__shared__ int Ncol_s[1];
 	__shared__ int2 Colpairs_s[def_MaxColl];
 	__shared__ double Coltime_s[def_MaxColl];
@@ -145,8 +148,30 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 	if(idy == 0){
 		error_s[0] = 0.0;
 		stop_s[0] = 0;
+#if def_LongTermSim == 1
+		Nm_s = 0;		//reset source count
+#endif
 	}
 	__syncthreads();
+
+#if def_LongTermSim == 1
+	//list mass sources in ascending slot order
+	if(idy < N2 && x4_s[idy].w > MinMass){
+		int r = 0;
+		for(int q = 0; q < idy; ++q){
+			if(x4_s[q].w > MinMass) ++r;
+		}
+		msrc_s[r] = idy;
+		atomicAdd(&Nm_s, 1);
+	}
+	__syncthreads();
+
+	//compacted force loop: test particles, few sources
+	const int useMsrc = (UseTestParticles == 1 && Nm_s <= def_BSMaxSrc) ? 1 : 0;
+#else
+	//switch off: original source lanes and shuffle reduction
+	const int useMsrc = 0;
+#endif
 
 	for(int tt = 0; tt < 10000; ++tt){
 		__syncthreads();
@@ -171,11 +196,25 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 		a0.z = 0.0;
 
 		__syncthreads();
-		for(int l = 0; l < NN; l += nb){
-			accEnc(x4_s[ii], x4_s[jj + l], a0, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+		if(useMsrc == 1){
+			//loop over mass sources only
+			if(idy < NN){
+				for(int m = 0; m < Nm_s; ++m){
+					accEnc(x4_s[idy], x4_s[msrc_s[m]], a0, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
+				}
+			}
+		}
+		else{
+			for(int l = 0; l < NN; l += nb){
+				accEnc(x4_s[ii], x4_s[jj + l], a0, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+			}
 		}
 		__syncthreads();
-		{
+		if(useMsrc == 1){
+			//full sum already in one thread
+			if(idy < NN) a0_s[idy] = a0;
+		}
+		else{
 #if def_OldShuffle == 0
 			if(nb >= 16){
 				a0.x += __shfl_down_sync(0xffffffff, a0.x, 8, warpSize);
@@ -259,11 +298,25 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				a.z = 0.0;
 
 				__syncthreads();
-				for(int l = 0; l < NN; l += nb){
-					accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+				if(useMsrc == 1){
+					//loop over mass sources only
+					if(idy < NN){
+						for(int m = 0; m < Nm_s; ++m){
+							accEnc(xp_s[idy], xp_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
+						}
+					}
+				}
+				else{
+					for(int l = 0; l < NN; l += nb){
+						accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					}
 				}
 				__syncthreads();
-				{
+				if(useMsrc == 1){
+					//full sum already in one thread
+					if(idy < NN) a_s[idy] = a;
+				}
+				else{
 #if def_OldShuffle == 0
 					if(nb >= 16){
 						a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
@@ -338,11 +391,25 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					a.z = 0.0;
 
 					__syncthreads();
-					for(int l = 0; l < NN; l += nb){
-						accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					if(useMsrc == 1){
+						//loop over mass sources only
+						if(idy < NN){
+							for(int m = 0; m < Nm_s; ++m){
+								accEnc(xt_s[idy], xt_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
+							}
+						}
+					}
+					else{
+						for(int l = 0; l < NN; l += nb){
+							accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+						}
 					}
 					__syncthreads();
-					{
+					if(useMsrc == 1){
+						//full sum already in one thread
+						if(idy < NN) a_s[idy] = a;
+					}
+					else{
 #if def_OldShuffle == 0
 						if(nb >= 16){
 							a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
@@ -414,11 +481,25 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 					a.z = 0.0;
 
 					__syncthreads();
-					for(int l = 0; l < NN; l += nb){
-						accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					if(useMsrc == 1){
+						//loop over mass sources only
+						if(idy < NN){
+							for(int m = 0; m < Nm_s; ++m){
+								accEnc(xp_s[idy], xp_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
+							}
+						}
+					}
+					else{
+						for(int l = 0; l < NN; l += nb){
+							accEnc(xp_s[ii], xp_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+						}
 					}
 					__syncthreads();
-					{
+					if(useMsrc == 1){
+						//full sum already in one thread
+						if(idy < NN) a_s[idy] = a;
+					}
+					else{
 #if def_OldShuffle == 0
 						if(nb >= 16){
 							a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);
@@ -491,11 +572,25 @@ __global__ void BSBStep_kernel(curandState *random_d, double4 *x4_d, double4 *v4
 				a.z = 0.0;
 
 				__syncthreads();
-				for(int l = 0; l < NN; l += nb){
-					accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+				if(useMsrc == 1){
+					//loop over mass sources only
+					if(idy < NN){
+						for(int m = 0; m < Nm_s; ++m){
+							accEnc(xt_s[idy], xt_s[msrc_s[m]], a, rcritv_s, test, idy, msrc_s[m], NN, MinMass, UseTestParticles, SLevels);
+						}
+					}
+				}
+				else{
+					for(int l = 0; l < NN; l += nb){
+						accEnc(xt_s[ii], xt_s[jj + l], a, rcritv_s, test, ii, jj + l, NN, MinMass, UseTestParticles, SLevels);
+					}
 				}
 				__syncthreads();
-				{
+				if(useMsrc == 1){
+					//full sum already in one thread
+					if(idy < NN) a_s[idy] = a;
+				}
+				else{
 #if def_OldShuffle == 0
 					if(nb >= 16){
 						a.x += __shfl_down_sync(0xffffffff, a.x, 8, warpSize);

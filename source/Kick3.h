@@ -707,6 +707,131 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 	}
 }
 
+#if def_FUSE_HC32D1 == 1
+//HC32d1_kernel's momentum sum over the first Nm bodies, same butterfly.
+//Valid in warp 0 only. Needs Nm <= WarpSize.
+__device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm){
+
+	int tid = threadIdx.y * blockDim.x + threadIdx.x;
+	int lane = tid % warpSize;
+	int warp = tid / warpSize;
+
+	double3 a = {0.0, 0.0, 0.0};
+
+	if(warp == 0){
+		if(lane < Nm){
+			double4 x4i = x4_d[lane];
+			double4 v4i = v4_d[lane];
+			if(x4i.w > 0.0){
+				//+= keeps HC32d1's signed zero rounding
+				a.x += x4i.w * v4i.x;
+				a.y += x4i.w * v4i.y;
+				a.z += x4i.w * v4i.z;
+			}
+		}
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			a.x += __shfl_xor_sync(0xffffffff, a.x, i, warpSize);
+			a.y += __shfl_xor_sync(0xffffffff, a.y, i, warpSize);
+			a.z += __shfl_xor_sync(0xffffffff, a.z, i, warpSize);
+#else
+			a.x += __shfld_xor(a.x, i);
+			a.y += __shfld_xor(a.y, i);
+			a.z += __shfld_xor(a.z, i);
+#endif
+		}
+	}
+
+	return a;
+}
+#endif
+
+#if def_FUSE_MEGA == 1
+//kick32Ab_kernel's acceleration for body id, partners read from the shared
+//source snapshot. A partner is always a mass source, so jj < Nm.
+__device__ inline double3 kick32Ab_acc(double4 &x4i, const double rcritvi, double3 *acck_d, int *Nencpairs_d, int2 *Encpairs2_d, double4 *xs_s, double *rs_s, const int id, const int NencMax, const int Nm){
+
+	if(Nencpairs_d[0] > 0){
+		double3 a = {0.0, 0.0, 0.0};
+		int NI = Encpairs2_d[id * NencMax].x;
+		NI = min(NI, NencMax);
+		for(int i = 0; i < NI; ++i){
+			int jj = Encpairs2_d[id * NencMax + i].y;
+			if(jj < Nm){
+				accA(a, x4i, xs_s[jj], rcritvi, rs_s[jj], jj, id);
+			}
+		}
+		double3 aa;
+		aa.x = a.x + acck_d[id].x;
+		aa.y = a.y + acck_d[id].y;
+		aa.z = a.z + acck_d[id].z;
+		return aa;
+	}
+	else{
+		return acck_d[id];
+	}
+}
+#endif
+
+#if def_FUSE_HC32D1_KICK == 1
+//kick32Ab_kernel + HC32d1_kernel: block 0 leaves the sum in acck_d[0].
+//Needs Nstart = 0, and HCCall called with the same HCfoldNm().
+__global__ void kick32Abd1_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax, const int EE, const int Nm){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;
+
+	if(id < N){
+		double3 a = {0.0, 0.0, 0.0};
+		double4 x4i = x4_d[id];
+		if(x4i.w >= 0.0){
+			if(Nencpairs_d[0] > 0){
+				int NI = Encpairs2_d[id * NencMax].x;
+				NI = min(NI, NencMax);
+				double rcritvi = rcritv_d[id];
+				for(int i = 0; i < NI; ++i){
+					int jj = Encpairs2_d[id * NencMax + i].y;
+					double4 x4j = x4_d[jj];
+					double rcritvj = rcritv_d[jj];
+					accA(a, x4i, x4j, rcritvi, rcritvj, jj, id);
+				}
+				__syncthreads();
+
+				double3 aa;
+				aa.x = a.x + acck_d[id].x;
+				aa.y = a.y + acck_d[id].y;
+				aa.z = a.z + acck_d[id].z;
+
+				if(EE >= 1){
+					v4_d[id].x += __dmul_rn(aa.x, dtksq);
+					v4_d[id].y += __dmul_rn(aa.y, dtksq);
+					v4_d[id].z += __dmul_rn(aa.z, dtksq);
+				}
+				ab_d[id] = aa;
+			}
+			else{
+
+				double3 a = acck_d[id];
+				if(EE >= 1){
+					v4_d[id].x += __dmul_rn(a.x, dtksq);
+					v4_d[id].y += __dmul_rn(a.y, dtksq);
+					v4_d[id].z += __dmul_rn(a.z, dtksq);
+				}
+				ab_d[id] = a;
+			}
+
+		}
+	}
+
+	//HC32d1_kernel
+	if(Nm > 0 && blockIdx.x == 0){
+		double3 aHC = HC32d1_sum(x4_d, v4_d, Nm);
+		if(threadIdx.y * blockDim.x + threadIdx.x == 0){
+			acck_d[0] = aHC;
+		}
+	}
+}
+#endif
+
 #if def_CPU == 1
 //Serial Version
 void Data::kick32Ab1_cpu(const double dtksq, const int N, const int EE){

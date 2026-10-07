@@ -938,6 +938,8 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	__shared__ volatile int T_s;
 	__shared__ int Nenc_s[def_GMax];
 	__shared__ int start_s[1];
+	__shared__ int part_s[2 * Bl];	//bodies taking part in an encounter
+	__shared__ int Np_s;		//number of entries in part_s
 
 	int Ne = *Nencpairs2_d;
 	
@@ -960,6 +962,13 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 	}
 //printf("E %d %d %d\n", bn, Bl, E);
+
+//compacted path: loop over encounter bodies instead of all NT
+#if def_LongTermSim == 1
+	const int useCompact = (E == 3 && SERIAL_GROUPING == 0) ? 1 : 0;
+#else
+	const int useCompact = 0;
+#endif
 
 	int BN2 = NT * NT -1;
 	if(NT > 46340) BN2 = 2147483647;	//prevent from overflow
@@ -1015,11 +1024,13 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	if(E == 3 || E == 4){ //1024
 		B = &Encpairs_d[2 * NT];
 		B2 = &Encpairs_d[3 * NT];
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				B[idy + i].y = BN2;
-				B2[idy + i].y = BN2;
-				Encpairs_d[idy + i].y = 0;
+		if(useCompact == 0){ //initialise all bodies
+			for(int i = 0; i < NT; i += Bl){
+				if(idy + i < NT){
+					B[idy + i].y = BN2;
+					B2[idy + i].y = BN2;
+					Encpairs_d[idy + i].y = 0;
+				}
 			}
 		}
 	}
@@ -1029,8 +1040,46 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 	if(idy < def_GMax) Nenc_s[idy] = 0;
 	if(idy == 0) start_s[0] = 0;
+#if def_LongTermSim == 1
+	if(idy == 0) Np_s = 0;	//reset participant count
+#endif
 
 	__syncthreads();
+
+	int Nloop = NT;	//loop bound: NT, or the number of participants
+#if def_LongTermSim == 1
+	if(useCompact == 1){
+		//build the participant list, each body only once
+		const int Ncand = 2 * Ne;
+		for(int j = idy; j < Ncand; j += Bl){
+			const int v = (j & 1) ? encpairs[j >> 1].y : encpairs[j >> 1].x;
+			int first = 1;
+			for(int m = 0; m < j; ++m){
+				const int w = (m & 1) ? encpairs[m >> 1].y : encpairs[m >> 1].x;
+				if(w == v){
+					first = 0;
+					break;
+				}
+			}
+			if(first == 1){
+				part_s[atomicAdd(&Np_s, 1)] = v;
+			}
+		}
+		__syncthreads();
+		Nloop = Np_s;
+		//initialise participants only
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = part_s[idy + i];
+				B[b].y = BN2;
+				B2[b].y = BN2;
+				Encpairs_d[b].y = 0;
+			}
+		}
+		__syncthreads();
+	}
+#endif
+
 	for(int i = 0; i < Ne; i += Bl){
 		if(idy + i < Ne){
 			//create list of direct close encounter pairs
@@ -1088,9 +1137,10 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 		__syncthreads();
 
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				if(B[idy + i].y < BN2) B2[idy + i].y = B[B[idy + i].y].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i); //body index
+				if(B[b].y < BN2) B2[b].y = B[B[b].y].y;
 			}
 		}
 		__syncthreads();
@@ -1102,9 +1152,10 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 			}
 		}
 		__syncthreads();
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				B[idy + i].y = B2[idy + i].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+				B[b].y = B2[b].y;
 			}
 		}
 		__syncthreads();
@@ -1118,29 +1169,47 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	// At this point B[idy] contains the smallest index of the group
 	__syncthreads();
 
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			B2[idy + i].y = -1;
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			B2[b].y = -1;
 //printf("B %d %d\n", idy + i, B[idy + i].y);
 		}
 	}
 	__syncthreads();
 	// Check now for new groups and increase the total number of groups
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y == idy + i){
-				B2[idy + i].y = atomicAdd(&Nenc_s[0],1);
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y == b){
+				B2[b].y = atomicAdd(&Nenc_s[0],1);
 			}		
 		}
 	}
 	__syncthreads();
 	// Transform now the smallest index of the group into a consecutive group index
+#if def_LongTermSim == 1
+	//remap over bodies
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y < BN2) B[b].y = B2[B[b].y].y;
+		}
+	}
+	//clear group sizes over groups
+	for(int i = 0; i < Nenc_s[0]; i += Bl){
+		if(idy + i < Nenc_s[0]){
+			Encpairs2_d[idy + i].y = 0;
+		}
+	}
+#else
 	for(int i = 0; i < NT; i += Bl){
 		if(idy + i < NT){
 			if(B[idy + i].y < BN2) B[idy + i].y = B2[B[idy + i].y].y;
 			Encpairs2_d[idy + i].y = 0;
 		}
 	}
+#endif
 	// At this point B[idy] contains a consecutive group index
 	__syncthreads();
 
@@ -1153,12 +1222,13 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 //}
 
 	if(SERIAL_GROUPING == 0){
-		for(int i = 0; i < NT; i += Bl){
-			if(idy + i < NT){
-				if(B[idy + i].y < BN2){
-					int Ns = atomicAdd(&Encpairs2_d[B[idy + i].y].y,1);
-					B2[idy + i].y = Ns; //index in the group
-					Encpairs_d[NT + idy + i].y = B2[idy + i].y;
+		for(int i = 0; i < Nloop; i += Bl){
+			if(idy + i < Nloop){
+				const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+				if(B[b].y < BN2){
+					int Ns = atomicAdd(&Encpairs2_d[B[b].y].y,1);
+					B2[b].y = Ns; //index in the group
+					Encpairs_d[NT + b].y = B2[b].y;
 				}
 			// At this point Encpairs2_d.x contains now line by line the members of the groups, Encpairs2_s.y contains the sizes of the groups
 			}
@@ -1186,12 +1256,13 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 		}
 	}
 	__syncthreads();
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
-			if(B[idy + i].y < BN2){
-				int n = B2[idy + i].y;
-				int start = Encpairs2_d[NT + B[idy + i].y].y;
-				Encpairs2_d[start + n].x = idy + i;
+	for(int i = 0; i < Nloop; i += Bl){
+		if(idy + i < Nloop){
+			const int b = (useCompact == 1) ? part_s[idy + i] : (idy + i);
+			if(B[b].y < BN2){
+				int n = B2[b].y;
+				int start = Encpairs2_d[NT + B[b].y].y;
+				Encpairs2_d[start + n].x = b;
 //printf("members %d %d %d\n", start, n, idy + i);
 			}
 		// At this point Encpairs2_d.x contains now members of the groups, Encpairs2_d.y contains the sizes of the groups/
@@ -1199,8 +1270,14 @@ __global__ void group_kernel(int *Nenc_d, int *Nencpairs2_d, int2 *Encpairs2_d, 
 	}
 	__syncthreads();
 
-	for(int i = 0; i < NT; i += Bl){
-		if(idy + i < NT){
+//loop over groups only
+#if def_LongTermSim == 1
+	const int Ngroup = Nenc_s[0];
+#else
+	const int Ngroup = NT;
+#endif
+	for(int i = 0; i < Ngroup; i += Bl){
+		if(idy + i < Ngroup){
 			int nn = Encpairs2_d[idy + i].y;
 //if(nn > 0) printf("n %d %d\n", idy + i, nn);
 			volatile int ne2 = 2;

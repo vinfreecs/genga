@@ -418,6 +418,174 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 	}
 }
 
+#if def_FUSE_HC32D3_FG == 1
+// **********************************************************
+//This kernel fuses HC32d3_kernel (HC.h) with fg_kernel above.
+//HCCall ends by applying the Sun kick displacement to every body,
+//and the next launch is the Kepler drift over the same bodies -
+//both one thread per body with no cross particle reads, so x4_d[id]
+//stays in a register instead of being written by one kernel and read
+//back by the next. No barrier of any kind is needed.
+//Bit identical to the two separate launches.
+//fg_kernel's __syncthreads() is dropped: there is no __shared__ in
+//FG2.h or BSSingle.h so it synchronises nothing, and it sits inside
+//if(id < N).
+//The caller must have HCCall skip its own HC32d3_kernel, see skipD3.
+//dtHC is HC32d3's dt (GR term only), dtiMsun its dt/Msun scale,
+//dtfg the Kepler drift step.
+// **********************************************************
+__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, double4 *xT_d, double4 *vT_d, const int Nm){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(id < N){
+		unsigned int aecount = 0u;
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+
+		//HC32d3_kernel: the Sun kick shift
+		if(x4i.w >= 0.0){
+			double3 a = a_d[0];
+			x4i.x += a.x * dtiMsun;
+			x4i.y += a.y * dtiMsun;
+			x4i.z += a.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i.x -= __dmul_rn(v4i.x, vcdt);
+				x4i.y -= __dmul_rn(v4i.y, vcdt);
+				x4i.z -= __dmul_rn(v4i.z, vcdt);
+			}
+		}
+
+		//fg_kernel: x4i is the value it would have re-read
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		float4 aelimits = aelimits_d[id];
+		fgfull(x4i, v4i, dtfg, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
+		if(si >= 0){
+			//dont update arrays during tunig process
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+			//snapshot of the mass sources for the part 3 mega
+			if(id < Nm){
+				xT_d[id] = x4i;
+				vT_d[id] = v4i;
+			}
+		}
+		if(si == 0){
+			aecount_d[id] += aecount;
+		}
+	}
+}
+#endif
+
+#if def_FUSE_MEGA_PART1 == 1
+//First half step in one kernel: kick32Ab + HC32d1 + HC32d3 + fg.
+//Every block kicks the sources itself from the xS_d/vS_d snapshot.
+//Needs FTX >= warpSize.
+__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, double4 *xT_d, double4 *vT_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
+
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	__shared__ double4 xs_s[def_FoldMaxSrc];
+	__shared__ double rs_s[def_FoldMaxSrc];
+	__shared__ double3 aHC_s;
+
+	//step start sources
+	if(threadIdx.x < Nm){
+		xs_s[threadIdx.x] = xS_d[threadIdx.x];
+		rs_s[threadIdx.x] = rcritv_d[threadIdx.x];
+	}
+	__syncthreads();
+
+	//kick the sources, then HC32d1_kernel
+	if(threadIdx.x < warpSize){
+		double3 p = {0.0, 0.0, 0.0};
+		int j = threadIdx.x;
+		if(j < Nm){
+			double4 x4j = xs_s[j];
+			double4 v4j = vS_d[j];
+			if(x4j.w >= 0.0){
+				double3 a = kick32Ab_acc(x4j, rs_s[j], acck_d, Nencpairs_d, Encpairs2_d, xs_s, rs_s, j, NencMax, Nm);
+				v4j.x += __dmul_rn(a.x, dtksq);
+				v4j.y += __dmul_rn(a.y, dtksq);
+				v4j.z += __dmul_rn(a.z, dtksq);
+			}
+			if(x4j.w > 0.0){
+				p.x += x4j.w * v4j.x;
+				p.y += x4j.w * v4j.y;
+				p.z += x4j.w * v4j.z;
+			}
+		}
+		for(int i = 1; i < warpSize; i*=2){
+#if def_OldShuffle == 0
+			p.x += __shfl_xor_sync(0xffffffff, p.x, i, warpSize);
+			p.y += __shfl_xor_sync(0xffffffff, p.y, i, warpSize);
+			p.z += __shfl_xor_sync(0xffffffff, p.z, i, warpSize);
+#else
+			p.x += __shfld_xor(p.x, i);
+			p.y += __shfld_xor(p.y, i);
+			p.z += __shfld_xor(p.z, i);
+#endif
+		}
+		if(threadIdx.x == 0){
+			aHC_s = p;
+		}
+	}
+	__syncthreads();
+
+	if(id < N){
+		unsigned int aecount = 0u;
+		double4 x4i = x4_d[id];
+		double4 v4i = v4_d[id];
+
+		//kick32Ab_kernel
+		if(x4i.w >= 0.0){
+			double3 a = kick32Ab_acc(x4i, rcritv_d[id], acck_d, Nencpairs_d, Encpairs2_d, xs_s, rs_s, id, NencMax, Nm);
+			v4i.x += __dmul_rn(a.x, dtksq);
+			v4i.y += __dmul_rn(a.y, dtksq);
+			v4i.z += __dmul_rn(a.z, dtksq);
+			ab_d[id] = a;
+
+			//HC32d3_kernel
+			double3 aHC = aHC_s;
+			x4i.x += aHC.x * dtiMsun;
+			x4i.y += aHC.y * dtiMsun;
+			x4i.z += aHC.z * dtiMsun;
+			if(UseGR == 1){
+				double c2 = def_cm * def_cm;
+				double vsq = v4i.x * v4i.x + v4i.y * v4i.y + v4i.z * v4i.z;
+				double vcdt = 2.0 * vsq / c2 * dtHC;
+				x4i.x -= __dmul_rn(v4i.x, vcdt);
+				x4i.y -= __dmul_rn(v4i.y, vcdt);
+				x4i.z -= __dmul_rn(v4i.z, vcdt);
+			}
+		}
+
+		//fg_kernel
+		xold_d[id] = x4i;
+		vold_d[id] = v4i;
+		float4 aelimits = aelimits_d[id];
+		fgfull(x4i, v4i, dtfg, def_ksq * Msun, Msun, aelimits, aecount, Gridaecount_d, Gridaicount_d, si, id, UseGR);
+		if(si >= 0){
+			//dont update arrays during tunig process
+			x4_d[id] = x4i;
+			v4_d[id] = v4i;
+			//snapshot for part 3, into T: this kernel reads S
+			if(id < Nm){
+				xT_d[id] = x4i;
+				vT_d[id] = v4i;
+			}
+		}
+		if(si == 0){
+			aecount_d[id] += aecount;
+		}
+	}
+}
+#endif
+
 __global__ void HCfg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, const double dt, const double dtC, const double dtCiMsun, const double Msun, int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;

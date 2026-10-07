@@ -1,4 +1,10 @@
 readme
+.vscode
+dev
+tune_sweep*
+logs/
+ncu_reports/
+project-genga-main/
 
 source/genga
 source/CheckGPU
@@ -43,3 +49,27 @@ cpu/integratorCPU.cu
 cpu/outputCPU.cu
 cpu/test.cu
 
+
+# Claude Code + local tooling (personal, kept out of upstream commits)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.clang-format
+.clang-tidy
+source/compile_commands.json
+prof-*/
+rundata/
+results/
+nsys_report/
+reports/
+
+# Personal files: presentation, poster, run data (not part of GENGA)
+.DS_Store
+71_day_run_data/
+GSP26-Patil-GENGA.pdf
+Media.zip
+Media/
+Poster EPSC2026.fig
+gsp26-deck.zip
+gsp26-slides-web.zip
+images/

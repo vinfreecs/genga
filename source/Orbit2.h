@@ -34,6 +34,12 @@ public:
 	double3 *migration_h, *migration_d;	//artificial migration force
 	int *createFlag_h, *createFlag_d;
 	double3 *a_d;
+	//mass source snapshots for def_FUSE_MEGA, two pairs so no kernel
+	//reads and writes the same one
+	double4 *xS_d;			//sources at the start of the step
+	double4 *vS_d;
+	double4 *xT_d;			//sources after the drift
+	double4 *vT_d;
 	double *rcrit_h, *rcrit_d;
 	double *rcritv_d;
 	double *rcritv_d1;			//used for multiGPUs
@@ -357,7 +363,12 @@ public:
 	__host__ int ttv_step();
 	
 	__host__ void comCall(const int);
-	__host__ void HCCall(const double, const int);
+	//skipD3 leaves the final HC32d3_kernel to the caller, returns if it did
+	//Nm > 0: HC32d1_kernel is folded into a neighbour
+	__host__ int HCCall(const double, const int, const int = 0, const int = 0);
+	__host__ int HCfoldNm();
+	__host__ int megaPart1Ok();
+	__host__ int megaPart3Ok();
 	__host__ void groupCall();
 
 	__host__ int CollisionCall(int);
