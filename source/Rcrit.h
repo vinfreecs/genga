@@ -191,9 +191,8 @@ __global__ void Rcrit_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v
 }
 
 
-#if def_FUSE_MEGA_PART1 == 1
-//Rcrit_kernel, plus the step start snapshot of the mass sources for
-//kickHC32d3fg_kernel (FG2.h)
+#if def_FUSE_MEGA == 1
+//Copy of Rcrit_kernel that also saves the mass sources for kickHC32d3fg.
 __global__ void Rcritd1_kernel(double4 *__restrict__ x4_d, double4 *__restrict__ v4_d, double4 * __restrict__ x4b_d, double4 *__restrict__ v4b_d, double4 *__restrict__ spin_d, double4 *__restrict__ spinb_d, double iMsun3, double *__restrict__ rcrit_d, double *__restrict__ rcritb_d, double *__restrict__ rcritv_d, double *__restrict__ rcritvb_d, int * __restrict__ index_d, int * __restrict__  indexb_d, double dt, double n1, double n2, double *time_d, double time, int *EjectionFlag_d, const int N, const int NconstT, const int SLevels, const int f, double4 *xS_d, double4 *vS_d, const int Nm){
 	
 	int id = blockIdx.x * blockDim.x + threadIdx.x;

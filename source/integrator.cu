@@ -5222,12 +5222,10 @@ __host__ int Data::step_largeN(int noColl){
 // *************************************************
 // Step small
 // *************************************************
-//Source count for the part 1 mega, 0 when something runs between the kick
-//and the drift. Here, not in HC.h, because SIn and EjectionFlag2 are declared
-//in this file.
-__host__ int Data::megaPart1Ok(){
+//Mass sources for kickHC32d3fg_kernel, 0 when it cannot be used.
+__host__ int Data::megaNm(){
 
-#if def_FUSE_MEGA_PART1 == 1
+#if def_FUSE_MEGA == 1
 	int Nm = HCfoldNm();
 	if(Nm == 0) return 0;
 	if(EjectionFlag2 != 0) return 0;
@@ -5243,37 +5241,10 @@ __host__ int Data::megaPart1Ok(){
 #endif
 }
 
-//Source count for the part 3 mega, 0 when anything after the drift may have
-//moved the planets (close encounters, collisions, ...).
-__host__ int Data::megaPart3Ok(){
-
-#if def_FUSE_MEGA_PART3 == 1
-	int Nm = HCfoldNm();
-	if(Nm == 0) return 0;
-	if(SIn != 1) return 0;
-	if(Nencpairs_h[0] > 0) return 0;
-	if(Ncoll_m[0] > 0) return 0;
-	if(NWriteEnc_m[0] > 0) return 0;
-	if(nFragments_m[0] > 0) return 0;
-	if(CollisionFlag == 1) return 0;
-	if(P.UseSmallCollisions > 0) return 0;
-	if(P.CreateParticles > 0) return 0;
-	if(P.WriteEncounters == 2) return 0;
-	if(P.KickFloat != 0) return 0;
-	if(P.UseTestParticles == 2) return 0;
-	if(P.SERIAL_GROUPING == 1) return 0;
-	if(P.UseGR == 1) return 0;
-	if(P.SLevels > 1) return 0;
-	return Nm;
-#else
-	return 0;
-#endif
-}
-
 __host__ int Data::step_small(int noColl){
-	//part 1 mega: Rcrit writes its snapshot
-	int NmP1 = megaPart1Ok();
-#if def_FUSE_MEGA_PART1 == 1
+	//Rcritd1 writes the source snapshot for kickHC32d3fg
+	int NmP1 = megaNm();
+#if def_FUSE_MEGA == 1
 	if(NmP1 > 0){
 		Rcritd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, x4b_d, v4b_d, spin_d, spinb_d, 1.0 / (3.0 * Msun_h[0].x), rcrit_d, rcritb_d, rcritv_d, rcritvb_d, index_d, indexb_d, dt_h[0], n1_h[0], n2_h[0], time_d, time_h[0], EjectionFlag_d, N_h[0] + Nsmall_h[0], NconstT, P.SLevels, noColl, xS_d, vS_d, NmP1);
 	}
@@ -5299,7 +5270,7 @@ __host__ int Data::step_small(int noColl){
 	//NmP1 > 0: the kick is in kickHC32d3fg_kernel below
 	if(NmP1 == 0){
 	if(EjectionFlag2 == 0){
-#if def_FUSE_HC32D1_KICK == 1
+#if def_FUSE_HC32D1 == 1
 		//HC32d1 folded in, sum in a_d[0]
 		kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
@@ -5328,7 +5299,7 @@ __host__ int Data::step_small(int noColl){
 		if(P.SERIAL_GROUPING == 1){
 			Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 		}
-#if def_FUSE_HC32D1_KICK == 1
+#if def_FUSE_HC32D1 == 1
 		//HC32d1 folded in, sum in a_d[0]
 		kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
@@ -5367,34 +5338,25 @@ __host__ int Data::step_small(int noColl){
 		comCall(-1);
 	}
 	EjectionFlag2 = 0;
-	//part 3 mega, after the loop
-	int NmP3 = 0;
 	for(int si = 0; si < SIn; ++si){
 
-		//fuse HC32d3 into fg_kernel when HCCall skipped it
+		//HC32d3 is done inside the drift kernel
 		int fusedHCfg = 0;
-		//HC32d1 folded into the kick
-		int NmHC = 0;
-#if def_FUSE_HC32D1_KICK == 1
-		NmHC = HCfoldNm();
-#endif
-#if def_FUSE_MEGA_PART1 == 1
+#if def_FUSE_MEGA == 1
 		if(NmP1 > 0){
-			//part 1 mega
-			kickHC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, ab_d, rcritv_d, xS_d, vS_d, xT_d, vT_d, Nencpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, P.NencMax, NmP1);
+			kickHC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, ab_d, rcritv_d, xS_d, vS_d, Nencpairs_d, Encpairs2_d, dt_h[0] * Kt[SIn - 1] * def_ksq, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, P.NencMax, NmP1);
 			fusedHCfg = 1;
 		}
 		else
 #endif
 		{
 #if def_FUSE_HC32D3_FG == 1
-		//always writes the part 3 snapshot, whether it is used is decided later
-		fusedHCfg = HCCall(Ct[si], 1, 1, NmHC);
+		fusedHCfg = HCCall(Ct[si], 1, 1, HCfoldNm());
 		if(fusedHCfg == 1){
-			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR, xT_d, vT_d, HCfoldNm());
+			HC32d3fg_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, xold_d, vold_d, a_d, dt_h[0] * Ct[si], dt_h[0] / Msun_h[0].x * Ct[si], dt_h[0] * FGt[si], Msun_h[0].x, N_h[0] + Nsmall_h[0], aelimits_d, aecount_d, Gridaecount_d, Gridaicount_d, si, P.UseGR);
 		}
 #else
-		HCCall(Ct[si], 1, 0, NmHC);
+		HCCall(Ct[si], 1, 0, HCfoldNm());
 #endif
 		}
 		if(fusedHCfg == 0){
@@ -5533,17 +5495,7 @@ __host__ int Data::step_small(int noColl){
 			}
 		}
 
-		//HC32d1 folded into HC32d3
-		int NmHC3 = 0;
-#if def_FUSE_HC32D1_D3 == 1
-		NmHC3 = HCfoldNm();
-#endif
-		//part 3 mega: after the encounter path, and only if the drift wrote
-		//the snapshot (fusedHCfg)
-		NmP3 = (fusedHCfg == 1) ? megaPart3Ok() : 0;
-		if(NmP3 == 0){
-			HCCall(Ct[si], -1, 0, NmHC3);
-		}
+		HCCall(Ct[si], -1, 0, HCfoldNm());
 		if(si < SIn - 1){
 			if(P.KickFloat == 0){
 				acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
@@ -5567,7 +5519,7 @@ __host__ int Data::step_small(int noColl){
 			if(P.SERIAL_GROUPING == 1){
 				Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 			}
-#if def_FUSE_HC32D1_KICK == 1
+#if def_FUSE_HC32D1 == 1
 			//the next sub step's HCCall skips HC32d1
 			kick32Abd1_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[si] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1, HCfoldNm());
 #else
@@ -5601,47 +5553,28 @@ __host__ int Data::step_small(int noColl){
 			}
 		}
 	}
-	int fused = 0;
-#if def_FUSE_MEGA_PART3 == 1
-	//part 3 mega
-	if(NmP3 > 0){
-		HC32d1d3acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, xT_d, vT_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1, dt_h[0] * Ct[SIn - 1], dt_h[0] / Msun_h[0].x * Ct[SIn - 1], P.UseGR, NmP3);
-		fused = 1;
+	if(P.KickFloat == 0){
+		acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 	}
-#endif
-#if def_FUSE_ACC4C_KICK32AB == 1
-	//fuse acc4C and kick32Ab when nothing has to run between them
-	if(fused == 0 && P.KickFloat == 0 && P.SERIAL_GROUPING == 0 && P.UseTestParticles != 2){
-		acc4Ckick32Ab_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, v4_d, a_d, ab_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, dt_h[0] * Kt[SIn - 1] * def_ksq, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
-		fused = 1;
+	else{
+		acc4Cf_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
 	}
-#endif
-	if(fused == 0){
+	if(P.UseTestParticles == 2){
 		if(P.KickFloat == 0){
-			acc4C_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
+			acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
 		}
 		else{
-			acc4Cf_kernel <<< dim3( (((N_h[0] + Nsmall_h[0] + KP - 1)/ KP) + KTX - 1) / KTX, 1, 1), dim3(KTX,KTY,1), KTX * KTY * KP * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0] + Nsmall_h[0], 0, N_h[0], P.NencMax, KP, 1);
-		}
-		if(P.UseTestParticles == 2){
-			if(P.KickFloat == 0){
-				acc4C_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
-			}
-			else{
-				acc4Cf_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
-			}
+			acc4Cf_kernel <<< dim3( (((N_h[0] + KP2 - 1)/ KP2) + KTX2 - 1) / KTX2, 1, 1), dim3(KTX2,KTY2,1), KTX2 * KTY2 * KP2 * sizeof(double3) >>> ( x4_d, a_d, rcritv_d, Encpairs_d, Encpairs2_d, Nencpairs_d, EncFlag_d, 0, N_h[0], N_h[0], N_h[0] + Nsmall_h[0], P.NencMax, KP2, 2);
 		}
 	}
 	cudaEventRecord(KickEvent, 0);
 	cudaStreamWaitEvent(copyStream, KickEvent, 0);
 	cudaMemcpyAsync(Nencpairs_h, Nencpairs_d, sizeof(int), cudaMemcpyDeviceToHost, copyStream);
 
-	if(fused == 0){
-		if(P.SERIAL_GROUPING == 1){
-			Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
-		}
-		kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
+	if(P.SERIAL_GROUPING == 1){
+		Sortb_kernel<<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>>(Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax);
 	}
+	kick32Ab_kernel <<< (N_h[0] + Nsmall_h[0] + RTX - 1) / RTX, RTX >>> (x4_d, v4_d, a_d, ab_d, rcritv_d, dt_h[0] * Kt[SIn - 1] * def_ksq, Nencpairs_d, Encpairs2_d, 0, N_h[0] + Nsmall_h[0], P.NencMax, 1);
 	
 	if(ForceFlag > 0){
 		comCall(1);

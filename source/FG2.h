@@ -419,22 +419,8 @@ __global__ void fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4
 }
 
 #if def_FUSE_HC32D3_FG == 1
-// **********************************************************
-//This kernel fuses HC32d3_kernel (HC.h) with fg_kernel above.
-//HCCall ends by applying the Sun kick displacement to every body,
-//and the next launch is the Kepler drift over the same bodies -
-//both one thread per body with no cross particle reads, so x4_d[id]
-//stays in a register instead of being written by one kernel and read
-//back by the next. No barrier of any kind is needed.
-//Bit identical to the two separate launches.
-//fg_kernel's __syncthreads() is dropped: there is no __shared__ in
-//FG2.h or BSSingle.h so it synchronises nothing, and it sits inside
-//if(id < N).
-//The caller must have HCCall skip its own HC32d3_kernel, see skipD3.
-//dtHC is HC32d3's dt (GR term only), dtiMsun its dt/Msun scale,
-//dtfg the Kepler drift step.
-// **********************************************************
-__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, double4 *xT_d, double4 *vT_d, const int Nm){
+//HC32d3_kernel + fg_kernel. HCCall must skip its own HC32d3 (skipD3).
+__global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *a_d, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -468,11 +454,6 @@ __global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 			//dont update arrays during tunig process
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-			//snapshot of the mass sources for the part 3 mega
-			if(id < Nm){
-				xT_d[id] = x4i;
-				vT_d[id] = v4i;
-			}
 		}
 		if(si == 0){
 			aecount_d[id] += aecount;
@@ -481,11 +462,10 @@ __global__ void HC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, d
 }
 #endif
 
-#if def_FUSE_MEGA_PART1 == 1
-//First half step in one kernel: kick32Ab + HC32d1 + HC32d3 + fg.
-//Every block kicks the sources itself from the xS_d/vS_d snapshot.
-//Needs FTX >= warpSize.
-__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, double4 *xT_d, double4 *vT_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
+#if def_FUSE_MEGA == 1
+//kick32Ab + HC32d1 + HC32d3 + fg. Every block kicks the mass sources itself,
+//from the snapshot Rcritd1_kernel wrote. Needs FTX >= warpSize.
+__global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_d, double4 *vold_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, double4 *xS_d, double4 *vS_d, int *Nencpairs_d, int2 *Encpairs2_d, const double dtksq, const double dtHC, const double dtiMsun, const double dtfg, const double Msun, const int N, float4 *aelimits_d, unsigned int *aecount_d, unsigned int *Gridaecount_d, unsigned int *Gridaicount_d, const int si, const int UseGR, const int NencMax, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -573,11 +553,6 @@ __global__ void kickHC32d3fg_kernel(double4 *x4_d, double4 *v4_d, double4 *xold_
 			//dont update arrays during tunig process
 			x4_d[id] = x4i;
 			v4_d[id] = v4i;
-			//snapshot for part 3, into T: this kernel reads S
-			if(id < Nm){
-				xT_d[id] = x4i;
-				vT_d[id] = v4i;
-			}
 		}
 		if(si == 0){
 			aecount_d[id] += aecount;

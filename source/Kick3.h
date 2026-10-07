@@ -708,8 +708,7 @@ __global__ void kick32Ab_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, d
 }
 
 #if def_FUSE_HC32D1 == 1
-//HC32d1_kernel's momentum sum over the first Nm bodies, same butterfly.
-//Valid in warp 0 only. Needs Nm <= WarpSize.
+//HC32d1_kernel's sum over the first Nm bodies, valid in warp 0 only.
 __device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm){
 
 	int tid = threadIdx.y * blockDim.x + threadIdx.x;
@@ -747,8 +746,7 @@ __device__ inline double3 HC32d1_sum(double4 *x4_d, double4 *v4_d, const int Nm)
 #endif
 
 #if def_FUSE_MEGA == 1
-//kick32Ab_kernel's acceleration for body id, partners read from the shared
-//source snapshot. A partner is always a mass source, so jj < Nm.
+//kick32Ab_kernel's acceleration, partners from the shared source snapshot.
 __device__ inline double3 kick32Ab_acc(double4 &x4i, const double rcritvi, double3 *acck_d, int *Nencpairs_d, int2 *Encpairs2_d, double4 *xs_s, double *rs_s, const int id, const int NencMax, const int Nm){
 
 	if(Nencpairs_d[0] > 0){
@@ -773,9 +771,8 @@ __device__ inline double3 kick32Ab_acc(double4 &x4i, const double rcritvi, doubl
 }
 #endif
 
-#if def_FUSE_HC32D1_KICK == 1
-//kick32Ab_kernel + HC32d1_kernel: block 0 leaves the sum in acck_d[0].
-//Needs Nstart = 0, and HCCall called with the same HCfoldNm().
+#if def_FUSE_HC32D1 == 1
+//kick32Ab_kernel + HC32d1_kernel, block 0 leaves the sum in acck_d[0].
 __global__ void kick32Abd1_kernel(double4 *x4_d, double4 *v4_d, double3 *acck_d, double3 *ab_d, double *rcritv_d, const double dtksq, int *Nencpairs_d, int2 *Encpairs2_d, const int Nstart, const int N, const int NencMax, const int EE, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x + Nstart;

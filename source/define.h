@@ -141,64 +141,19 @@
 #define def_MaxColl 120			//Maximum number of Collisions per time step, needed for memory allocation
 #define def_MaxWriteEnc 128		//Maximum number of Encounter per time step which can be written to file
 #define def_cef 1.0 			//Close encounter factor, pairs with rij^2 < f * rcrit^2 are considered as close encounter pairs.
-//Long term test particle simulations: a few massive bodies plus many massless
-//test particles. Master switch for every path specialised to that structure,
-//set to 0 to build the unmodified upstream code. It gates:
-//  HCCall           (HC.h)          Sun kick reduction over the massive bodies
-//  group_kernel     (Encounter3.h)  components driven by the pair list
-//  BSBStep_kernel   (BSB.h)         encounter force loop over the mass sources
-//PRECONDITION: every test particle must have exactly m = 0. GENGA classifies a
-//body as a test particle with m <= MinMass (Orbit2.cu:1610), so an input with
-//small but non-zero test particle masses passes that test while breaking this
-//one. Check with:  awk '{print $1}' <input> | sort -u | head
+//Few massive bodies + many test particles. 0 builds the upstream code.
+//Test particle masses must be exactly 0, not just <= MinMass.
 #define def_LongTermSim 1
-
-//Maximum number of gravitational sources in a close encounter group for which
-//BSBStep_kernel uses the compacted source loop. UseTestParticles = 1 only.
+//Most mass sources in a group for BSBStep_kernel's compacted loop.
 #define def_BSMaxSrc 4
-
-//Fuse adjacent kernels with no host work between them, saving the round trip
-//through the array that carries the result from one to the other. It gates:
-//  acc4C_kernel + kick32Ab_kernel   (Kick4.h)  the two halves of one kick
-//  HC32d3_kernel + fg_kernel        (FG2.h)    Sun kick shift and Kepler drift
-//Both are bit identical to the separate launches. The first falls back to the
-//two separate launches when something has to run between them: Do Kick in
-//single precision = 1, Serial Grouping = 1, or Use Test Particles = 2.
-#define def_FUSE_KERNELS 1
-
-//Per fusion sub switches, so one fusion can be built without the other.
-//acc4C + kick32Ab is off: on GH200 (sm_90) it is 1.9% slower end to end, its
-//occupancy drops from 45% to 23%. Set it to def_FUSE_KERNELS to re-enable.
-#define def_FUSE_ACC4C_KICK32AB 0
-#define def_FUSE_HC32D3_FG def_FUSE_KERNELS
-
-//Fold HC32d1_kernel's momentum sum into the kernel next to it. It gates:
-//  kick32Abd1_kernel (Kick3.h)  block 0 sums after its own kick
-//  HC32d1d3_kernel   (HC.h)     each block sums before its shift
-//Bit identical. Needs def_LongTermSim 1 and N_h[0] <= WarpSize.
+//Fuse HC32d3_kernel into fg_kernel.
+#define def_FUSE_HC32D3_FG 1
+//Fold HC32d1_kernel into the kick before it and the HC32d3 after it.
 #define def_FUSE_HC32D1 1
-
-//Per fold sub switches, following the master switch above.
-#define def_FUSE_HC32D1_KICK def_FUSE_HC32D1
-#define def_FUSE_HC32D1_D3 def_FUSE_HC32D1
-
-//Most mass sources a fold handles, size of the snapshot buffers.
-#define def_FoldMaxSrc 32
-
-//Fuse a whole half step into one kernel, from a snapshot of the mass sources
-//written by the kernel in front of it. It gates:
-//  part 1: kickHC32d3fg_kernel          (FG2.h)   kick32Ab+HC32d1+HC32d3+fg
-//  part 3: HC32d1d3acc4Ckick32Ab_kernel (Kick4.h) HC32d1+HC32d3+acc4C+kick32Ab
-//Bit identical. Also needs def_FUSE_HC32D1 1 (HCfoldNm), and part 3 needs
-//def_FUSE_HC32D3_FG or part 1 to write its snapshot. Close encounter steps
-//take the unfused path, see Data::megaPart3Ok().
+//First half step in one kernel: kick + HC32d1 + HC32d3 + fg.
 #define def_FUSE_MEGA 1
-
-//Per half sub switches, following the master switch above.
-//Part 3 is off: it contains the acc4C + kick32Ab fusion switched off above.
-//The step end then runs HC32d1d3_kernel, acc4C_kernel, kick32Ab_kernel.
-#define def_FUSE_MEGA_PART1 def_FUSE_MEGA
-#define def_FUSE_MEGA_PART3 0
+//Most mass sources the folds handle.
+#define def_FoldMaxSrc 32
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames

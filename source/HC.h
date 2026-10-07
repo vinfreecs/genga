@@ -525,8 +525,8 @@ __global__ void HC32d3_kernel(double4 *x4_d, double4 *v4_d, double3 *a_d, const 
 	}
 }
 
-#if def_FUSE_HC32D1_D3 == 1
-//HC32d1_kernel + HC32d3_kernel: every block computes the sum itself.
+#if def_FUSE_HC32D1 == 1
+//HC32d1_kernel + HC32d3_kernel, every block computes the sum itself.
 __global__ void HC32d1d3_kernel(double4 *x4_d, double4 *v4_d, const double dt, const double dtiMsun, const int N, const int UseGR, const int Nm){
 
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -851,17 +851,12 @@ __global__ void HC32c_kernel(double4 *x4_d, double4 *v4_d, const double dt, cons
 }
 
 
-//Mass source count for the HC32d1 folds, 0 when they are off.
+//Mass sources for the HC32d1 folds, 0 when they are off.
 __host__ int Data::HCfoldNm(){
 
-#if def_FUSE_HC32D1 == 1
-#if def_LongTermSim == 1
-	int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
-#else
-	int Nred = N_h[0] + Nsmall_h[0];
-#endif
-	if(N_h[0] + Nsmall_h[0] > 512 && Nred <= WarpSize){
-		return Nred;
+#if def_FUSE_HC32D1 == 1 && def_LongTermSim == 1
+	if(P.UseTestParticles == 1 && N_h[0] + Nsmall_h[0] > 512 && N_h[0] <= WarpSize){
+		return N_h[0];
 	}
 #endif
 	return 0;
@@ -887,37 +882,29 @@ __host__ int Data::HCCall(const double Ct, const int f, const int skipD3, const 
 	else{
 		int nct = 512;
 #if def_LongTermSim == 1
-		//test particles add nothing to the momentum sum, so reduce over
-		//the massive bodies only. Their masses must be exactly 0.
+		//test particles have m = 0 and add nothing to the sum
 		int Nred = (P.UseTestParticles == 1) ? N_h[0] : N_h[0] + Nsmall_h[0];
+#else
+		int Nred = N_h[0] + Nsmall_h[0];
+#endif
 		int ncb = min((Nred + nct - 1) / nct, 1024);
-		//Nm > 0: the sum comes from a folded kernel
 		if(Nm == 0){
 			HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, Nred);
 		}
-#else
-		int ncb = min((N_h[0] + Nsmall_h[0] + nct - 1) / nct, 1024);
-		HC32d1_kernel <<< dim3(ncb, 3, 1), dim3(nct, 1, 1), WarpSize * sizeof(double) >>> (x4_d, v4_d, a_d, N_h[0] + Nsmall_h[0]);
-#endif
-		//ncb == 1: HC32d1 already holds the full sum, HC32d2 is a no-op
+		//ncb == 1: HC32d1 already holds the full sum
 		if(ncb > 1){
 			HC32d2_kernel <<< 3, ((ncb + WarpSize - 1) / WarpSize) * WarpSize, WarpSize * sizeof(double)  >>> (a_d, ncb);
 		}
-		//the caller can fuse HC32d3 into fg_kernel, report if we skipped
-		if(skipD3 == 0){
-#if def_FUSE_HC32D1_D3 == 1
-			if(Nm > 0){
-				HC32d1d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR, Nm);
-			}
-			else{
-				HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
-			}
-#else
-			HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
-#endif
-		}
-		else{
+		if(skipD3 == 1){
 			skipped = 1;
+		}
+#if def_FUSE_HC32D1 == 1
+		else if(Nm > 0){
+			HC32d1d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR, Nm);
+		}
+#endif
+		else{
+			HC32d3_kernel <<<(N_h[0] + Nsmall_h[0] + FTX - 1)/FTX, FTX >>> (x4_d, v4_d, a_d, dt_h[0] * Ct, dt_h[0] / Msun_h[0].x * Ct, N_h[0] + Nsmall_h[0], P.UseGR);
 		}
 	}
 
