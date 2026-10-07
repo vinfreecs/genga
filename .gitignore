@@ -62,3 +62,14 @@ rundata/
 results/
 nsys_report/
 reports/
+
+# Personal files: presentation, poster, run data (not part of GENGA)
+.DS_Store
+71_day_run_data/
+GSP26-Patil-GENGA.pdf
+Media.zip
+Media/
+Poster EPSC2026.fig
+gsp26-deck.zip
+gsp26-slides-web.zip
+images/

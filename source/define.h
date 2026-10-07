@@ -166,9 +166,10 @@
 //single precision = 1, Serial Grouping = 1, or Use Test Particles = 2.
 #define def_FUSE_KERNELS 1
 
-//Per fusion sub switches, so one fusion can be built without the other. Both
-//follow the master switch above, which is the only one to set by hand.
-#define def_FUSE_ACC4C_KICK32AB def_FUSE_KERNELS
+//Per fusion sub switches, so one fusion can be built without the other.
+//acc4C + kick32Ab is off: on GH200 (sm_90) it is 1.9% slower end to end, its
+//occupancy drops from 45% to 23%. Set it to def_FUSE_KERNELS to re-enable.
+#define def_FUSE_ACC4C_KICK32AB 0
 #define def_FUSE_HC32D3_FG def_FUSE_KERNELS
 
 //Fold HC32d1_kernel's momentum sum into the kernel next to it. It gates:
@@ -194,8 +195,10 @@
 #define def_FUSE_MEGA 1
 
 //Per half sub switches, following the master switch above.
+//Part 3 is off: it contains the acc4C + kick32Ab fusion switched off above.
+//The step end then runs HC32d1d3_kernel, acc4C_kernel, kick32Ab_kernel.
 #define def_FUSE_MEGA_PART1 def_FUSE_MEGA
-#define def_FUSE_MEGA_PART3 def_FUSE_MEGA
+#define def_FUSE_MEGA_PART3 0
 #define def_tol 1.0e-12			//Tolerance in Bulirsh Stoer
 #define def_dtmin 1.0e-17		//minimal time step in Bulirsh Stoer 
 #define def_NFileNameDigits 12		//number of digits in output filenames
